@@ -72,6 +72,14 @@ export const authAPI = {
     });
   },
 
+  // Admin login endpoint
+  adminLogin: async (phone, password) => {
+    return apiCall('/auth/admin-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+  },
+
   // Verify token is still valid
   verify: async () => {
     return apiCall('/auth/verify', {
@@ -101,6 +109,55 @@ export const studentAPI = {
   // Get fees information
   getFees: async (userId) => {
     return apiCall(`/student/${userId}/fees`, {
+      method: 'GET',
+    });
+  },
+};
+
+/**
+ * Admin APIs
+ */
+export const adminAPI = {
+  // Get all students
+  getStudents: async () => {
+    return apiCall('/admin/students', {
+      method: 'GET',
+    });
+  },
+
+  // Get all users
+  getUsers: async () => {
+    return apiCall('/admin/users', {
+      method: 'GET',
+    });
+  },
+
+  // Add new user
+  addUser: async (userData) => {
+    return apiCall('/admin/users/create', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  // Add new student
+  addStudent: async (studentData) => {
+    return apiCall('/admin/students/create', {
+      method: 'POST',
+      body: JSON.stringify(studentData),
+    });
+  },
+
+  // Get unpaid fees
+  getUnpaidFees: async () => {
+    return apiCall('/admin/financials/unpaid-fees', {
+      method: 'GET',
+    });
+  },
+
+  // Get financial summary
+  getFinancialSummary: async () => {
+    return apiCall('/admin/financials/report', {
       method: 'GET',
     });
   },

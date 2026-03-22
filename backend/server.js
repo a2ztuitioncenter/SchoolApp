@@ -2,11 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pkg from 'pg';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
 import { initializeDatabase } from './database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const { Pool } = pkg;
 dotenv.config();
@@ -48,6 +53,14 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Handle favicon requests
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
@@ -57,6 +70,17 @@ app.use('/api/teacher', teacherRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
+});
+
+// Serve index.html for all other routes (SPA support)
+app.use((req, res) => {
+  const indexPath = path.join(__dirname, '../frontend/index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('Error serving index.html:', err.message);
+      res.status(404).json({ error: 'File not found', path: indexPath });
+    }
+  });
 });
 
 // Error Handling

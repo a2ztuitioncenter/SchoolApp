@@ -36,7 +36,7 @@ export const mockLogin = async (req, res) => {
           fatherName: 'Father Name',
           motherName: 'Mother Name',
           phone,
-          email: `student.${phone}@academy.local`,
+          email: `student.${phone}@a2z.local`,
           joiningDate: new Date().toISOString().split('T')[0],
           status: 'active',
           rollNumber: Math.floor(Math.random() * 100).toString(),

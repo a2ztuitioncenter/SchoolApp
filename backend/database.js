@@ -61,7 +61,7 @@ async function createDefaultAdmin() {
        VALUES ($1, $2, $3, $4)`,
       [
         adminPhone,
-        'admin@academy.local',
+        'admin@a2z.local',
         adminPassword,
         'admin'
       ]
