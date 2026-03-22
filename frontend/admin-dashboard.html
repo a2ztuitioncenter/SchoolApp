@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: #F5F7FA;
+        }
+
+        .admin-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            width: 250px;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar nav a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .sidebar nav a:hover,
+        .sidebar nav a.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .sidebar .logout-btn {
+            margin-top: 2rem;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .sidebar .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: #2D3436;
+            font-size: 2rem;
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #DDE4E9;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 1rem;
+            font-size: 1rem;
+            color: #636E72;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Card Grid */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #667eea;
+        }
+
+        .card h3 {
+            color: #2D3436;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: #2D3436;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #DDE4E9;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #E8EAED;
+            color: #2D3436;
+        }
+
+        .btn-secondary:hover {
+            background: #D5D8DF;
+        }
+
+        /* Tables */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #F5F7FA;
+            border-bottom: 2px solid #DDE4E9;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            color: #2D3436;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #DDE4E9;
+            color: #636E72;
+        }
+
+        tr:hover {
+            background: #F9FAFB;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-overdue {
+            background: #FADBD8;
+            color: #78281F;
+        }
+
+        .status-pending {
+            background: #FEF5E7;
+            color: #7D6608;
+        }
+
+        .status-active {
+            background: #D5F4E6;
+            color: #186A3B;
+        }
+
+        /* Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert-success {
+            background: #D5F4E6;
+            color: #186A3B;
+            border-left: 4px solid #27AE60;
+        }
+
+        .alert-error {
+            background: #FADBD8;
+            color: #78281F;
+            border-left: 4px solid #E74C3C;
+        }
+
+        .alert-info {
+            background: #D6EAF8;
+            color: #154360;
+            border-left: 4px solid #3498DB;
+        }
+
+        /* Loading state */
+        .loading {
+            display: inline-block;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #636E72;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #BDC3C7;
+        }
+
+        @media (max-width: 768px) {
+            .admin-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: fixed;
+                left: -250px;
+                width: 250px;
+                z-index: 1000;
+                transition: left 0.3s;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-crown"></i>
+                <span>ADMIN</span>
+            </div>
+            <nav>
+                <a href="#" class="nav-link active" data-tab="dashboard">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </a>
+                <a href="#" class="nav-link" data-tab="users">
+                    <i class="fas fa-users"></i> User Management
+                </a>
+                <a href="#" class="nav-link" data-tab="students">
+                    <i class="fas fa-graduation-cap"></i> Student Onboarding
+                </a>
+                <a href="#" class="nav-link" data-tab="financials">
+                    <i class="fas fa-money-bill"></i> Financials
+                </a>
+            </nav>
+            <button class="logout-btn" id="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>Admin Dashboard</h1>
+                <div class="admin-info">
+                    <i class="fas fa-user-circle" style="font-size: 2rem; color: #667eea;"></i>
+                    <div>
+                        <div style="font-weight: 600; color: #2D3436;" id="admin-name">Administrator</div>
+                        <div style="font-size: 0.85rem; color: #636E72;">Admin Panel</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div id="success-alert" class="alert alert-success">
+                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
+            </div>
+            <div id="error-alert" class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
+            </div>
+            <div id="info-alert" class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <span id="info-text"></span>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="card-grid">
+                    <div class="card">
+                        <h3><i class="fas fa-users"></i> Total Students</h3>
+                        <div style="font-size: 2.5rem; color: #667eea; font-weight: 700;" id="total-students">0</div>
+                        <p style="color: #636E72; margin-top: 0.5rem;">Active student accounts</p>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-money-bill-wave"></i> Unpaid Fees</h3>
+                        <div style="font-size: 2.5rem; color: #E74C3C; font-weight: 700;" id="total-unpaid">₹0</div>
+                        <p style="color: #636E72; margin-top: 0.5rem;">Outstanding fees</p>
+                    </div>
+                    <div class="card">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Overdue</h3>
+                        <div style="font-size: 2.5rem; color: #F39C12; font-weight: 700;" id="overdue-count">0</div>
+                        <p style="color: #636E72; margin-top: 0.5rem;">Fees overdue</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Management Tab -->
+            <div id="users" class="tab-content">
+                <div class="card-grid">
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <h3><i class="fas fa-user-plus"></i> Add New User</h3>
+                        <form id="add-user-form" style="display: grid; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="user-name" placeholder="Enter full name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="user-email" placeholder="user@academy.local">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select id="user-role" required>
+                                        <option value="">Select Role</option>
+                                        <option value="teacher">Teacher</option>
+                                        <option value="staff">Staff</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add User</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-top: 2rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-list">
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No users found. Add a new user to get started.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Student Onboarding Tab -->
+            <div id="students" class="tab-content">
+                <div class="card-grid">
+                    <div class="card" style="grid-column: 1 / -1;">
+                        <h3><i class="fas fa-user-graduate"></i> Onboard New Student</h3>
+                        <form id="add-student-form" style="display: grid; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>First Name</label>
+                                    <input type="text" id="student-firstName" placeholder="First name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Last Name</label>
+                                    <input type="text" id="student-lastName" placeholder="Last name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="student-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="student-email" placeholder="student@academy.local" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Class Level</label>
+                                    <input type="text" id="student-classLevel" placeholder="e.g., 10A, 12B" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Section</label>
+                                    <input type="text" id="student-section" placeholder="e.g., A, B, C" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Father's Name</label>
+                                    <input type="text" id="student-fatherName" placeholder="Father's full name">
+                                </div>
+                                <div class="form-group">
+                                    <label>Mother's Name</label>
+                                    <input type="text" id="student-motherName" placeholder="Mother's full name">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Onboard Student</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-top: 2rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Class</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-list">
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No students found. Onboard a student to get started.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Financials Tab -->
+            <div id="financials" class="tab-content">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Phone</th>
+                                <th>Class</th>
+                                <th>Unpaid Amount</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financials-list">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>Loading fee data...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./js/admin-dashboard.js"></script>
+</body>
+</html>
