@@ -4,41 +4,41 @@ export const attendanceModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS attendance (
       id SERIAL PRIMARY KEY,
-      studentId INT NOT NULL,
-      userId INT NOT NULL,
-      attendanceDate DATE NOT NULL,
+      "studentId" INT NOT NULL,
+      "userId" INT NOT NULL,
+      "attendanceDate" DATE NOT NULL,
       status VARCHAR(20) NOT NULL CHECK (status IN ('present', 'absent', 'late', 'leave')),
       remarks TEXT,
-      schoolId VARCHAR(50) NOT NULL DEFAULT 'school-001',
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("studentId") REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_attendance_studentId ON attendance(studentId);
-    CREATE INDEX IF NOT EXISTS idx_attendance_userId ON attendance(userId);
-    CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(attendanceDate);
-    CREATE INDEX IF NOT EXISTS idx_attendance_schoolId ON attendance(schoolId);
+    CREATE INDEX IF NOT EXISTS idx_attendance_studentId ON attendance("studentId");
+    CREATE INDEX IF NOT EXISTS idx_attendance_userId ON attendance("userId");
+    CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance("attendanceDate");
+    CREATE INDEX IF NOT EXISTS idx_attendance_schoolId ON attendance("schoolId");
   `,
 };
 
 // Helper to get attendance records for a student
 export const getAttendanceByStudentId = async (pool, studentId, startDate = null, endDate = null) => {
   try {
-    let query = 'SELECT * FROM attendance WHERE studentId = $1';
+    let query = 'SELECT * FROM attendance WHERE "studentId" = $1';
     const params = [studentId];
 
     if (startDate) {
-      query += ` AND attendanceDate >= $${params.length + 1}`;
+      query += ` AND "attendanceDate" >= $${params.length + 1}`;
       params.push(startDate);
     }
 
     if (endDate) {
-      query += ` AND attendanceDate <= $${params.length + 1}`;
+      query += ` AND "attendanceDate" <= $${params.length + 1}`;
       params.push(endDate);
     }
 
-    query += ' ORDER BY attendanceDate DESC';
+    query += ' ORDER BY "attendanceDate" DESC';
 
     const result = await pool.query(query, params);
     return result.rows;
@@ -52,12 +52,12 @@ export const getAttendanceByStudentId = async (pool, studentId, startDate = null
 export const getAttendancePercentage = async (pool, studentId, totalWorkingDays = 30) => {
   try {
     const result = await pool.query(
-      `SELECT COUNT(*) as presentDays FROM attendance 
-       WHERE studentId = $1 AND status = 'present'`,
+      `SELECT COUNT(*) as "presentDays" FROM attendance 
+       WHERE "studentId" = $1 AND status = 'present'`,
       [studentId]
     );
 
-    const presentDays = parseInt(result.rows[0].presentdays) || 0;
+    const presentDays = parseInt(result.rows[0].presentDays) || 0;
     const percentage = totalWorkingDays > 0 ? Math.round((presentDays / totalWorkingDays) * 100) : 0;
 
     return {
@@ -77,7 +77,7 @@ export const getAttendanceSummary = async (pool, studentId) => {
   try {
     const result = await pool.query(
       `SELECT status, COUNT(*) as count FROM attendance 
-       WHERE studentId = $1 
+       WHERE "studentId" = $1 
        GROUP BY status`,
       [studentId]
     );
@@ -113,7 +113,7 @@ export const createAttendance = async (pool, attendanceData) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO attendance (studentId, userId, attendanceDate, status, remarks, schoolId)
+      `INSERT INTO attendance ("studentId", "userId", "attendanceDate", status, remarks, "schoolId")
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [studentId, userId, attendanceDate, status, remarks, schoolId]
@@ -151,7 +151,7 @@ export const updateAttendance = async (pool, id, attendanceData) => {
       paramCount++;
     }
 
-    updates.push('updatedAt = CURRENT_TIMESTAMP');
+    updates.push('"updatedAt" = CURRENT_TIMESTAMP');
     values.push(id);
 
     const query = `UPDATE attendance SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;

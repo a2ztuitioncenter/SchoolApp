@@ -4,25 +4,25 @@ export const studentModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
-      userId INT NOT NULL UNIQUE,
+      "userId" INT NOT NULL UNIQUE,
       name VARCHAR(100) NOT NULL,
-      classLevel VARCHAR(10),
+      "classLevel" VARCHAR(10),
       section VARCHAR(5),
-      fatherName VARCHAR(100),
-      motherName VARCHAR(100),
+      "fatherName" VARCHAR(100),
+      "motherName" VARCHAR(100),
       phone VARCHAR(20),
       email VARCHAR(255),
-      joiningDate DATE,
+      "joiningDate" DATE,
       status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'graduated')),
-      rollNumber VARCHAR(20),
-      schoolId VARCHAR(50) NOT NULL DEFAULT 'school-001',
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      "rollNumber" VARCHAR(20),
+      "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_students_userId ON students(userId);
-    CREATE INDEX IF NOT EXISTS idx_students_rollNumber ON students(rollNumber);
-    CREATE INDEX IF NOT EXISTS idx_students_schoolId ON students(schoolId);
+    CREATE INDEX IF NOT EXISTS idx_students_userId ON students("userId");
+    CREATE INDEX IF NOT EXISTS idx_students_rollNumber ON students("rollNumber");
+    CREATE INDEX IF NOT EXISTS idx_students_schoolId ON students("schoolId");
   `,
 };
 

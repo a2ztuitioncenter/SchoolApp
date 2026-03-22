@@ -4,28 +4,28 @@ export const feeModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS fees (
       id SERIAL PRIMARY KEY,
-      studentId INT NOT NULL,
-      userId INT NOT NULL,
+      "studentId" INT NOT NULL,
+      "userId" INT NOT NULL,
       amount DECIMAL(10, 2) NOT NULL,
-      dueDate DATE,
-      paidDate DATE,
-      isPaid BOOLEAN DEFAULT FALSE,
-      paymentMethod VARCHAR(50) CHECK (paymentMethod IN ('cash', 'check', 'online', 'bank_transfer')),
-      receiptNumber VARCHAR(50),
+      "dueDate" DATE,
+      "paidDate" DATE,
+      "isPaid" BOOLEAN DEFAULT FALSE,
+      "paymentMethod" VARCHAR(50) CHECK ("paymentMethod" IN ('cash', 'check', 'online', 'bank_transfer')),
+      "receiptNumber" VARCHAR(50),
       month VARCHAR(50),
-      academicYear VARCHAR(20),
-      schoolId VARCHAR(50) NOT NULL DEFAULT 'school-001',
+      "academicYear" VARCHAR(20),
+      "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
       notes TEXT,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
-      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("studentId") REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_fees_studentId ON fees(studentId);
-    CREATE INDEX IF NOT EXISTS idx_fees_userId ON fees(userId);
-    CREATE INDEX IF NOT EXISTS idx_fees_isPaid ON fees(isPaid);
-    CREATE INDEX IF NOT EXISTS idx_fees_dueDate ON fees(dueDate);
-    CREATE INDEX IF NOT EXISTS idx_fees_schoolId ON fees(schoolId);
+    CREATE INDEX IF NOT EXISTS idx_fees_studentId ON fees("studentId");
+    CREATE INDEX IF NOT EXISTS idx_fees_userId ON fees("userId");
+    CREATE INDEX IF NOT EXISTS idx_fees_isPaid ON fees("isPaid");
+    CREATE INDEX IF NOT EXISTS idx_fees_dueDate ON fees("dueDate");
+    CREATE INDEX IF NOT EXISTS idx_fees_schoolId ON fees("schoolId");
   `,
 };
 

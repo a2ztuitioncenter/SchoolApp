@@ -8,14 +8,14 @@ export const userModel = {
       email VARCHAR(255),
       password VARCHAR(255),
       role VARCHAR(50) NOT NULL CHECK (role IN ('student', 'teacher', 'admin')),
-      schoolId VARCHAR(50) NOT NULL DEFAULT 'school-001',
-      isActive BOOLEAN DEFAULT TRUE,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
+      "isActive" BOOLEAN DEFAULT TRUE,
+      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
     CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-    CREATE INDEX IF NOT EXISTS idx_users_schoolId ON users(schoolId);
+    CREATE INDEX IF NOT EXISTS idx_users_schoolId ON users("schoolId");
   `,
 };
 

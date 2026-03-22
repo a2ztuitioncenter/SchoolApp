@@ -4,7 +4,9 @@ import dotenv from 'dotenv';
 import pkg from 'pg';
 import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
-import { initializeDatabase, seedDatabase } from './database.js';
+import adminRoutes from './routes/adminRoutes.js';
+import teacherRoutes from './routes/teacherRoutes.js';
+import { initializeDatabase } from './database.js';
 
 const { Pool } = pkg;
 dotenv.config();
@@ -24,10 +26,10 @@ const pool = new Pool({
 // Test the connection
 try {
   const client = await pool.connect();
-  console.log('PostgreSQL Database connected successfully');
+  console.log('✅ PostgreSQL Database connected successfully');
   client.release();
 } catch (error) {
-  console.error('PostgreSQL connection error:', error.message);
+  console.error('❌ PostgreSQL connection error:', error.message);
   console.error('Ensure PostgreSQL is running and your .env file is configured correctly.');
   process.exit(1);
 }
@@ -49,6 +51,8 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/teacher', teacherRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -68,25 +72,20 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
-    const shouldSeedDB = process.env.SEED_DB === 'true';
 
     if (shouldInitializeDB) {
-      console.log('Initializing database tables...');
+      console.log('📋 Initializing database tables and creating default admin...');
       await initializeDatabase(pool);
     }
 
-    if (shouldSeedDB) {
-      console.log('Seeding database with sample data...');
-      await seedDatabase(pool);
-    }
-
     app.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
-      console.log(`Dashboard: http://localhost:8000`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`\n🚀 Server running at http://localhost:${PORT}`);
+      console.log(`📚 Student Portal: http://localhost:8000/index.html`);
+      console.log(`👨‍💼 Admin Portal: http://localhost:8000/admin-login.html`);
+      console.log(`🎓 Teacher Portal: http://localhost:8000/teacher-login.html\n`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };
