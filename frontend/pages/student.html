@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard | Academy</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-book-open"></i>
+                <span>ACADEMY</span>
+            </div>
+            <nav>
+                <a href="#" class="active"><i class="fas fa-home"></i> Home</a>
+                <a href="#"><i class="fas fa-book"></i> Subjects</a>
+                <a href="#"><i class="fas fa-play-circle"></i> Videos</a>
+                <a href="#"><i class="fas fa-user"></i> Profile</a>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-header">
+                <div class="search-bar">
+                    </div>
+                <div class="user-profile">
+                    <div class="user-info">
+                        <h3 id="student-name">Anika Sharma</h3>
+                        <p id="student-class">Class: X | Section: A</p>
+                    </div>
+                    <div class="notification">
+                        <i class="fas fa-bell"></i>
+                        <span class="dot"></span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content">
+                <div class="dashboard-grid">
+                    
+                    <section class="left-col">
+                        <div class="action-cards">
+                            <div class="card">
+                                <div class="icon-box blue"><i class="fas fa-file-alt"></i></div>
+                                <h4>Homework</h4>
+                            </div>
+                            <div class="card">
+                                <div class="icon-box green"><i class="fas fa-question-circle"></i></div>
+                                <h4>Daily Practice</h4>
+                            </div>
+                            <div class="card">
+                                <div class="icon-box light-blue"><i class="fas fa-video"></i></div>
+                                <h4>Chapter Videos</h4>
+                            </div>
+                            <div class="card">
+                                <div class="icon-box orange"><i class="fas fa-bullhorn"></i></div>
+                                <h4>Notices</h4>
+                            </div>
+                        </div>
+
+                        <div class="section-container">
+                            <h3>Today's Homework</h3>
+                            <div id="homework-container">
+                                <div class="homework-item">
+                                    <div class="subject-icon math">3.5</div>
+                                    <div class="details">
+                                        <p class="subject-title">Mathematics - Algebra on 'Nature II'</p>
+                                        <p class="due-date"><i class="fas fa-pencil-alt"></i> Due: 29/10/23</p>
+                                    </div>
+                                </div>
+                                <div class="homework-item">
+                                    <div class="subject-icon science"><i class="fas fa-flask"></i></div>
+                                    <div class="details">
+                                        <p class="subject-title">Science - Physics</p>
+                                        <p class="due-date"><i class="fas fa-pencil-alt"></i> Due: 29/10/23</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="holiday-banner">
+                            <i class="fas fa-palmtree"></i>
+                            <p>Upcoming Holidays: <strong>Diwali Break (Nov 1-7)</strong></p>
+                        </div>
+                    </section>
+
+                    <section class="right-col">
+                        <div class="stats-card">
+                            <div class="progress-circle" style="--percent: 75;" id="course-progress">
+                                <div class="inner-text">75%</div>
+                            </div>
+                            <h4>Course Progress</h4>
+                        </div>
+
+                        <div class="stats-card">
+                            <h4>Attendance Summary</h4>
+                            <p class="attendance-count" id="attendance-display">Present: 25/30 days</p>
+                        </div>
+
+                        <div class="stats-card">
+                            <h4>Fees Status</h4>
+                            <p class="attendance-count" id="fees-display">Pending: ₹15,000</p>
+                        </div>
+                    </section>
+
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>
