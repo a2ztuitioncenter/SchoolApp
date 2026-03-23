@@ -19,15 +19,17 @@ export const mockLogin = async (req, res) => {
     let user = await getUserByPhone(pool, phone);
 
     if (!user) {
+      // Normalize role
+      const normalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1).toLowerCase() : 'Student';
       // Create new user
       user = await createUser(pool, {
         phone,
-        role,
+        role: normalizedRole,
         schoolId: 'school-001', // Default school ID for development
       });
 
       // If student, create student record
-      if (role === 'student') {
+      if (normalizedRole === 'Student') {
         await createStudent(pool, {
           userId: user.id,
           name: 'New Student',
@@ -47,7 +49,8 @@ export const mockLogin = async (req, res) => {
 
     // Get student details if role is student
     let studentData = null;
-    if (role === 'student') {
+    const normalizedRole = user.role || role;
+    if (normalizedRole === 'Student') {
       studentData = await getStudentByUserId(pool, user.id);
     }
 

@@ -22,17 +22,43 @@ router.post('/login', async (req, res) => {
 
     if (!user) {
       // Create new user if doesn't exist (development)
-      const normalizedRole = role ? role.toLowerCase() : 'student'; // Fixed to lowercase
+      const normalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Student';
       const createResult = await pool.query(
-        'INSERT INTO users (phone, email, role) VALUES ($1, $2, $3) RETURNING id, role',
-        [phone, `${phone}@student.local`, normalizedRole]
+        'INSERT INTO users (phone, email, role, "schoolId") VALUES ($1, $2, $3, $4) RETURNING id, role',
+        [phone, `${phone}@student.local`, normalizedRole, 'school-001']
       );
       user = createResult.rows[0];
+
+      // If the new user is a student, create a student record
+      if (normalizedRole === 'Student') {
+        try {
+          await pool.query(
+            `INSERT INTO students ("userId", name, "classLevel", section, "fatherName", "motherName", phone, email, "joiningDate", "rollNumber", status, "schoolId") 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+            [
+              user.id,
+              'New Student',
+              '10A',
+              'A',
+              'Father Name',
+              'Mother Name',
+              phone,
+              `${phone}@student.local`,
+              new Date().toISOString().split('T')[0],
+              Math.floor(Math.random() * 100).toString(),
+              'Active',
+              'school-001'
+            ]
+          );
+        } catch (studentError) {
+          console.warn('Warning: Could not create student record:', studentError.message);
+        }
+      }
     }
 
     // If user is a student, get student details
     let studentData = null;
-    if (user.role === 'student') { // Fixed to lowercase
+    if (user.role === 'Student') {
       const studentQuery = 'SELECT id, name, "classLevel", section FROM students WHERE "userId" = $1';
       const studentResult = await pool.query(studentQuery, [user.id]);
       if (studentResult.rows.length > 0) {

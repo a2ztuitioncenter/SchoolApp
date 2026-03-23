@@ -1,9 +1,9 @@
 /**
- * dashboard.js - Wire up the student.html with API calls
+ * dashboard.js - Wire up the student dashboard with API calls
  * Fetches data on page load and populates DOM elements
  */
 
-import { studentAPI, getAuthToken, setAuthToken } from './api.js';
+import { studentAPI } from './api.js';
 
 // ===========================
 // Initialization on Page Load
@@ -39,11 +39,27 @@ async function loadDashboardData(userId) {
     // Fetch data from backend
     const dashboardResponse = await studentAPI.getDashboard(userId);
 
-    if (!dashboardResponse.success) {
-      throw new Error(dashboardResponse.error || 'Failed to fetch dashboard data');
+    if (!dashboardResponse || !dashboardResponse.success) {
+      // If student record not found, show friendly message
+      if (dashboardResponse?.error === 'Student record not found') {
+        showErrorMessage('Your student profile is being set up. Please try again in a moment.');
+        console.warn('⚠️  Student record not found, will refresh:', dashboardResponse?.error);
+        
+        // Optionally redirect to login after delay
+        setTimeout(() => {
+          window.location.href = '/student-login.html';
+        }, 3000);
+        return;
+      }
+      
+      throw new Error(dashboardResponse?.error || 'Failed to fetch dashboard data');
     }
 
     const { data } = dashboardResponse;
+
+    if (!data) {
+      throw new Error('No data received from server');
+    }
 
     // Populate student profile
     if (data.profile) {
@@ -230,141 +246,8 @@ function formatDate(dateStr) {
  * Show error message to user
  */
 function showErrorMessage(message) {
-  console.error('Error:', message);
-  // Could add a UI error display here
-}
-
-    if (attendanceDisplay) {
-      const percentage = attendance.percentage || 0;
-      const present = attendance.presentDays || 0;
-      const total = attendance.totalDays || 0;
-
-      attendanceDisplay.textContent = `Present: ${present}/${total} days (${percentage}%)`;
-    }
-
-    console.log('✅ Attendance populated:', attendance.percentage + '%');
-  } catch (error) {
-    console.error('❌ Error populating attendance:', error);
-  }
-}
-
-/**
- * Populate fees status
- */
-function populateFees(fees) {
-  try {
-    const feesDisplay = document.getElementById('fees-display');
-
-    if (feesDisplay) {
-      const pending = fees.totalPending || 0;
-      const formatted = new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        minimumFractionDigits: 0,
-      }).format(pending);
-
-      feesDisplay.textContent = `Pending: ${formatted}`;
-    }
-
-    console.log('✅ Fees populated: Pending ₹' + fees.totalPending);
-  } catch (error) {
-    console.error('❌ Error populating fees:', error);
-  }
-}
-
-/**
- * Populate homework items
- */
-function populateHomework(homework) {
-  try {
-    const homeworkContainer = document.getElementById('homework-container');
-
-    if (!homeworkContainer) {
-      console.warn('⚠️  homework-container element not found');
-      return;
-    }
-
-    // Clear existing items (except template)
-    homeworkContainer.innerHTML = '';
-
-    if (!homework || homework.length === 0) {
-      homeworkContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No homework assigned</p>';
-      return;
-    }
-
-    // Create homework item for each assignment
-    homework.forEach((item, index) => {
-      const homeworkHTML = createHomeworkItemHTML(item, index);
-      homeworkContainer.innerHTML += homeworkHTML;
-    });
-
-    console.log('✅ Homework populated:', homework.length, 'items');
-  } catch (error) {
-    console.error('❌ Error populating homework:', error);
-  }
-}
-
-/**
- * Generate HTML for a single homework item
- */
-function createHomeworkItemHTML(item, index) {
-  const subjectColor = index % 2 === 0 ? 'math' : 'science';
-  const iconContent = index % 2 === 0 ? '📐' : '⚗️';
-
-  return `
-    <div class="homework-item">
-      <div class="subject-icon ${subjectColor}">${iconContent}</div>
-      <div class="details">
-        <p class="subject-title">${item.subject} - ${item.topic}</p>
-        <p class="due-date"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(item.dueDate)}</p>
-      </div>
-    </div>
-  `;
-}
-
-/**
- * Populate course progress circular indicator
- */
-function populateCourseProgress(courseProgress) {
-  try {
-    const progressCircle = document.getElementById('course-progress');
-
-    if (progressCircle) {
-      const percentage = courseProgress.percentage || 75;
-      progressCircle.style.setProperty('--percent', percentage);
-
-      const innerText = progressCircle.querySelector('.inner-text');
-      if (innerText) {
-        innerText.textContent = percentage + '%';
-      }
-    }
-
-    console.log('✅ Course progress populated:', courseProgress.percentage + '%');
-  } catch (error) {
-    console.error('❌ Error populating course progress:', error);
-  }
-}
-
-/**
- * Format date string to readable format (DD/MM/YY)
- */
-function formatDate(dateString) {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-    });
-  } catch {
-    return dateString;
-  }
-}
-
-/**
- * Show error message to user
- */
-function showErrorMessage(message) {
+  console.error('⚠️ Error:', message);
+  
   const content = document.querySelector('.content');
   if (content) {
     const errorDiv = document.createElement('div');
@@ -380,10 +263,6 @@ function showErrorMessage(message) {
     content.prepend(errorDiv);
   }
 }
-
-// ===========================
-// Utility Functions
-// ===========================
 
 /**
  * Logout function (clears session)

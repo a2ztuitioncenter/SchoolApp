@@ -1,54 +1,87 @@
 import fs from "fs";
 import path from "path";
 
-const publicDir = "./";
+// Point to the frontend directory (parent directory of server.ts)
+const publicDir = path.resolve(path.dirname(import.meta.url.replace("file:///", "")).replace(/\\/g, "/"), ".");
 const PORT = process.env.PORT || 8000;
+
+// MIME type mapping
+const mimeTypes: { [key: string]: string } = {
+  ".html": "text/html",
+  ".css": "text/css",
+  ".js": "application/javascript",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".eot": "application/vnd.ms-fontobject",
+};
+
+function getMimeType(filepath: string): string {
+  const ext = path.extname(filepath).toLowerCase();
+  return mimeTypes[ext] || "application/octet-stream";
+}
 
 const server = Bun.serve({
   port: PORT,
-  fetch(request) {
+  async fetch(request) {
     const url = new URL(request.url);
-    // Remove leading slash from pathname to avoid absolute path issues with path.join
-    const pathname = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+    let pathname = url.pathname;
+
+    // 1. Force the root to load the master dashboard
+    if (pathname === "/" || pathname === "") {
+      pathname = "/master-dashboard.html";
+    }
+
+    // 2. Build the full path to the file
     let filePath = path.join(publicDir, pathname);
 
-    // If no file specified, serve master-dashboard.html from pages
-    if (pathname === '' || pathname === '/' || filePath.endsWith("/")) {
-      filePath = path.join(publicDir, "pages/master-dashboard.html");
-    }
-
-    // Try to read the file
-    try {
-      if (fs.existsSync(filePath)) {
-        const file = Bun.file(filePath);
-        // Set appropriate content-type based on file extension
-        let contentType = "text/html";
-        if (filePath.endsWith(".css")) contentType = "text/css";
-        else if (filePath.endsWith(".js")) contentType = "application/javascript";
-        else if (filePath.endsWith(".json")) contentType = "application/json";
-        
-        return new Response(file, {
-          headers: { "Content-Type": contentType }
-        });
-      }
+    // 3. Check if file exists and serve it
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
       
-      // If file not found, try with master-dashboard.html (for SPA routing)
-      const fallback = path.join(publicDir, "pages/master-dashboard.html");
-      if (fs.existsSync(fallback)) {
-        const file = Bun.file(fallback);
-        return new Response(file, {
-          headers: { "Content-Type": "text/html" }
-        });
+      // If it's a directory, try to serve index.html or master-dashboard.html
+      if (stats.isDirectory()) {
+        const indexPath = path.join(filePath, "index.html");
+        if (fs.existsSync(indexPath)) {
+          filePath = indexPath;
+        } else {
+          // Directory listing not allowed, serve master dashboard instead
+          filePath = path.join(publicDir, "master-dashboard.html");
+        }
       }
 
-      return new Response("404 Not Found", { status: 404 });
-    } catch (error) {
-      console.error("Error serving file:", error);
-      return new Response("500 Internal Server Error", { status: 500 });
+      // Serve the file with correct MIME type
+      if (fs.existsSync(filePath)) {
+        const mimeType = getMimeType(filePath);
+        return new Response(Bun.file(filePath), {
+          headers: {
+            "Content-Type": mimeType,
+            "Cache-Control": "public, max-age=3600",
+          },
+        });
+      }
     }
+
+    // 4. Fallback to master-dashboard for any unknown routes (SPA support)
+    const fallbackPath = path.join(publicDir, "master-dashboard.html");
+    if (fs.existsSync(fallbackPath)) {
+      return new Response(Bun.file(fallbackPath), {
+        headers: {
+          "Content-Type": "text/html",
+        },
+      });
+    }
+
+    return new Response("404 Not Found", { status: 404 });
   },
 });
 
 console.log(`🚀 Frontend server running at http://localhost:${PORT}`);
-console.log(`📍 Serving files from: ${path.resolve(publicDir)}`);
-console.log(`📄 Root page: pages/master-dashboard.html`);
+console.log(`📍 Serving from: ${publicDir}`);

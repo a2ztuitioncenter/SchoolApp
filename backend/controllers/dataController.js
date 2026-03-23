@@ -1,7 +1,8 @@
 // dataController.js - Logic for fetching student dashboard data
-import { getStudentByUserId } from '../models/Student.js';
+import { getStudentByUserId, createStudent } from '../models/Student.js';
 import { getTotalPendingAmount, getAllStudentFees, getFeesSummary } from '../models/Fee.js';
 import { getAttendancePercentage, getAttendanceSummary, getAttendanceByStudentId } from '../models/Attendance.js';
+import { getUserById } from '../models/User.js';
 
 /**
  * Fetch complete dashboard data for a logged-in student
@@ -17,10 +18,39 @@ export const getStudentDashboard = async (req, res) => {
   try {
     const pool = req.db;
 
-    // 1. Get student profile
-    const student = await getStudentByUserId(pool, userId);
+    // 1. Get student profile - or create one if it doesn't exist
+    let student = await getStudentByUserId(pool, userId);
+    
     if (!student) {
-      return res.status(404).json({ error: 'Student record not found' });
+      console.warn(`⚠️  Student record not found for userId: ${userId}, attempting to create...`);
+      
+      // Try to get user details first
+      const user = await getUserById(pool, userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User record not found' });
+      }
+
+      // Create a default student record
+      try {
+        student = await createStudent(pool, {
+          userId: userId,
+          name: user.phone ? `Student (${user.phone})` : 'New Student',
+          classLevel: '10',
+          section: 'A',
+          fatherName: 'Father Name',
+          motherName: 'Mother Name',
+          phone: user.phone || '',
+          email: user.email || `student${userId}@a2z.local`,
+          joiningDate: new Date().toISOString().split('T')[0],
+          status: 'Active',
+          rollNumber: Math.floor(Math.random() * 100).toString(),
+          schoolId: 'school-001',
+        });
+        console.log('✅ Student record created for userId:', userId);
+      } catch (createError) {
+        console.error('❌ Failed to create student record:', createError.message);
+        return res.status(500).json({ error: 'Failed to initialize student record', details: createError.message });
+      }
     }
 
     // 2. Get attendance stats from database
@@ -40,12 +70,12 @@ export const getStudentDashboard = async (req, res) => {
     const allFees = await getAllStudentFees(pool, student.id);
 
     const feeStatus = {
-      totalAmount: parseFloat(feesSummary.totalamount) || 0,
-      totalPaid: parseFloat(feesSummary.totalpaid) || 0,
-      totalPending: parseFloat(feesSummary.totalpending) || 0,
-      pendingCount: parseInt(feesSummary.pendingcount) || 0,
-      paidCount: parseInt(feesSummary.paidcount) || 0,
-      fees: allFees.slice(0, 5), // Last 5 fees
+      totalAmount: parseFloat(feesSummary.totalAmount || feesSummary.totalamount) || 0,
+      totalPaid: parseFloat(feesSummary.totalPaid || feesSummary.totalpaid) || 0,
+      totalPending: parseFloat(feesSummary.totalPending || feesSummary.totalpending) || 0,
+      pendingCount: parseInt(feesSummary.pendingCount || feesSummary.pendingcount) || 0,
+      paidCount: parseInt(feesSummary.paidCount || feesSummary.paidcount) || 0,
+      fees: allFees ? allFees.slice(0, 5) : [], // Last 5 fees
     };
 
     // 4. Get homework (mock for now - can be extended to database)
@@ -78,11 +108,11 @@ export const getStudentDashboard = async (req, res) => {
       data: {
         profile: {
           id: student.id,
-          userId: student.user_id,
+          userId: student.userId,
           name: student.name,
-          classLevel: student.class_level,
-          fatherName: student.father_name,
-          joiningDate: student.joining_date,
+          classLevel: student.classLevel,
+          fatherName: student.fatherName,
+          joiningDate: student.joiningDate,
           status: student.status,
         },
         attendance: attendanceStats,

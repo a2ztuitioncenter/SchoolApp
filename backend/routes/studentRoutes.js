@@ -38,7 +38,7 @@ router.get('/:userId/homework', async (req, res) => {
 
     // Get student info to find their class
     const studentResult = await pool.query(
-      'SELECT classLevel, section FROM students WHERE userId = $1',
+      'SELECT "classLevel", section FROM students WHERE "userId" = $1',
       [userId]
     );
 
@@ -46,7 +46,7 @@ router.get('/:userId/homework', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    const { classLevel, section } = studentResult.rows[0];
+    const { classLevel, section } = studentResult.rows[0] || {};
 
     // Get homework for this class
     const homework = await getHomeworkByClass(pool, classLevel, section);
