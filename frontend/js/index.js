@@ -5,9 +5,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
-  console.log('✅ Master dashboard initialized');
+  console.log(' Master dashboard initialized');
 });
-
+// alert("Welcome")
 /**
  * Setup login card click handlers
  */

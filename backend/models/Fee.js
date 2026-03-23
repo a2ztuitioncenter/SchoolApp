@@ -1,142 +1,88 @@
-// Fee.js - Fee model for tracking student fees and payments
-export const feeModel = {
-  table: 'fees',
-  schema: `
-    CREATE TABLE IF NOT EXISTS fees (
-      id SERIAL PRIMARY KEY,
-      "studentId" INT NOT NULL,
-      "userId" INT NOT NULL,
-      amount DECIMAL(10, 2) NOT NULL,
-      "dueDate" DATE,
-      "paidDate" DATE,
-      "isPaid" BOOLEAN DEFAULT FALSE,
-      "paymentMethod" VARCHAR(50) CHECK ("paymentMethod" IN ('cash', 'check', 'online', 'bank_transfer')),
-      "receiptNumber" VARCHAR(50),
-      month VARCHAR(50),
-      "academicYear" VARCHAR(20),
-      "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
-      notes TEXT,
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY ("studentId") REFERENCES students(id) ON DELETE CASCADE,
-      FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
-    );
-    CREATE INDEX IF NOT EXISTS idx_fees_studentId ON fees("studentId");
-    CREATE INDEX IF NOT EXISTS idx_fees_userId ON fees("userId");
-    CREATE INDEX IF NOT EXISTS idx_fees_isPaid ON fees("isPaid");
-    CREATE INDEX IF NOT EXISTS idx_fees_dueDate ON fees("dueDate");
-    CREATE INDEX IF NOT EXISTS idx_fees_schoolId ON fees("schoolId");
-  `,
-};
+import db from '../database.js';
 
-// Helper to get pending fees for a student
-export const getPendingFees = async (pool, studentId) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM fees WHERE "studentId" = $1 AND "isPaid" = FALSE ORDER BY "dueDate" ASC',
-      [studentId]
-    );
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching pending fees:', error);
-    throw error;
-  }
-};
+const Fee = {
 
-// Helper to calculate total pending amount
-export const getTotalPendingAmount = async (pool, studentId) => {
-  try {
-    const result = await pool.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE "studentId" = $1 AND "isPaid" = FALSE',
-      [studentId]
-    );
-    return parseFloat(result.rows[0].total);
-  } catch (error) {
-    console.error('Error calculating pending amount:', error);
-    throw error;
-  }
-};
-
-// Helper to get all fees for a student
-export const getAllStudentFees = async (pool, studentId) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM fees WHERE "studentId" = $1 ORDER BY "createdAt" DESC',
-      [studentId]
-    );
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching all student fees:', error);
-    throw error;
-  }
-};
-
-// Helper to create a fee record
-export const createFee = async (pool, feeData) => {
-  const {
-    studentId,
-    userId,
-    amount,
-    dueDate,
-    month,
-    academicYear,
-    schoolId = 'school-001',
-    paymentMethod,
-    notes,
-  } = feeData;
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO fees 
-       ("studentId", "userId", amount, "dueDate", month, "academicYear", "schoolId", "paymentMethod", notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [studentId, userId, amount, dueDate, month, academicYear, schoolId, paymentMethod, notes]
-    );
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error creating fee:', error);
-    throw error;
-  }
-};
-
-// Helper to mark fee as paid
-export const markFeeAsPaid = async (pool, feeId, paymentMethod, receiptNumber) => {
-  try {
-    const paidDate = new Date();
-    const result = await pool.query(
-      `UPDATE fees 
-       SET "isPaid" = TRUE, "paidDate" = $1, "paymentMethod" = $2, "receiptNumber" = $3, "updatedAt" = CURRENT_TIMESTAMP
-       WHERE id = $4
-       RETURNING *`,
-      [paidDate, paymentMethod, receiptNumber, feeId]
-    );
-
-    return result.rows.length > 0 ? result.rows[0] : null;
-  } catch (error) {
-    console.error('Error marking fee as paid:', error);
-    throw error;
-  }
-};
-
-// Performance optimization: Get fees summary for a student
-export const getFeesSummary = async (pool, studentId) => {
-  try {
-    const result = await pool.query(
-      `SELECT 
-        COUNT(*) as totalRecords,
-        COALESCE(SUM(amount), 0) as totalAmount,
-        COALESCE(SUM(CASE WHEN "isPaid" = TRUE THEN amount ELSE 0 END), 0) as totalPaid,
-        COALESCE(SUM(CASE WHEN "isPaid" = FALSE THEN amount ELSE 0 END), 0) as totalPending,
-        SUM(CASE WHEN "isPaid" = TRUE THEN 1 ELSE 0 END) as paidCount,
-        SUM(CASE WHEN "isPaid" = FALSE THEN 1 ELSE 0 END) as pendingCount
-       FROM fees WHERE "studentId" = $1`,
-      [studentId]
+  async addFee({ student_id, amount, description, due_date }) {
+    const result = await db.query(
+      `INSERT INTO fees (student_id, amount, description, due_date)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [student_id, amount, description, due_date]
     );
     return result.rows[0];
-  } catch (error) {
-    console.error('Error fetching fees summary:', error);
-    throw error;
+  },
+
+  async getAll() {
+    const result = await db.query(
+      `SELECT f.*, s.name AS student_name, s.class_name, s.roll_number
+       FROM fees f
+       JOIN students s ON f.student_id = s.id
+       ORDER BY f.due_date ASC`
+    );
+    return result.rows;
+  },
+
+  async getUnpaid() {
+    const result = await db.query(
+      `SELECT f.*, s.name AS student_name, s.class_name, s.roll_number
+       FROM fees f
+       JOIN students s ON f.student_id = s.id
+       WHERE f.paid = FALSE
+       ORDER BY f.due_date ASC`
+    );
+    return result.rows;
+  },
+
+  async getByStudent(student_id) {
+    const result = await db.query(
+      `SELECT f.*, s.name AS student_name
+       FROM fees f
+       JOIN students s ON f.student_id = s.id
+       WHERE f.student_id = $1
+       ORDER BY f.created_at DESC`,
+      [student_id]
+    );
+    return result.rows;
+  },
+
+  async markPaid(fee_id) {
+    const result = await db.query(
+      `UPDATE fees SET paid=TRUE, paid_date=CURRENT_DATE
+       WHERE id=$1 RETURNING *`,
+      [fee_id]
+    );
+    return result.rows[0] || null;
+  },
+
+  async markUnpaid(fee_id) {
+    const result = await db.query(
+      `UPDATE fees SET paid=FALSE, paid_date=NULL
+       WHERE id=$1 RETURNING *`,
+      [fee_id]
+    );
+    return result.rows[0] || null;
+  },
+
+  async deleteFee(fee_id) {
+    const result = await db.query(
+      `DELETE FROM fees WHERE id=$1 RETURNING id`,
+      [fee_id]
+    );
+    return result.rows[0] || null;
+  },
+
+  async getStats() {
+    const result = await db.query(
+      `SELECT
+         COUNT(*)                                                  AS total_fees,
+         COUNT(CASE WHEN paid=TRUE  THEN 1 END)                   AS paid_count,
+         COUNT(CASE WHEN paid=FALSE THEN 1 END)                   AS unpaid_count,
+         COALESCE(SUM(CASE WHEN paid=TRUE  THEN amount END), 0)   AS total_collected,
+         COALESCE(SUM(CASE WHEN paid=FALSE THEN amount END), 0)   AS total_pending
+       FROM fees`
+    );
+    return result.rows[0];
   }
+
 };
+
+export default Fee;

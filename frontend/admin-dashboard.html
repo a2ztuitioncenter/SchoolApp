@@ -6,362 +6,8 @@
     <title>Admin Dashboard | A2Z</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
+    <link rel="stylesheet" href="..\frontend\css\admin-dashboard.css">
 
-        body {
-            background: #F5F7FA;
-        }
-
-        .admin-container {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem 1.5rem;
-            position: fixed;
-            height: 100vh;
-            width: 250px;
-            overflow-y: auto;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-weight: 700;
-            font-size: 1.3rem;
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .sidebar nav {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .sidebar nav a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            transition: all 0.3s;
-            font-size: 0.95rem;
-        }
-
-        .sidebar nav a:hover,
-        .sidebar nav a.active {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-        }
-
-        .sidebar .logout-btn {
-            margin-top: 2rem;
-            padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-
-        .sidebar .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .header h1 {
-            color: #2D3436;
-            font-size: 2rem;
-        }
-
-        .admin-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid #DDE4E9;
-            flex-wrap: wrap;
-        }
-
-        .tab-button {
-            background: none;
-            border: none;
-            padding: 1rem;
-            font-size: 1rem;
-            color: #636E72;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Card Grid */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .card {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #667eea;
-        }
-
-        .card h3 {
-            color: #2D3436;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            color: #2D3436;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #DDE4E9;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #E8EAED;
-            color: #2D3436;
-        }
-
-        .btn-secondary:hover {
-            background: #D5D8DF;
-        }
-
-        /* Tables */
-        .table-container {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: #F5F7FA;
-            border-bottom: 2px solid #DDE4E9;
-        }
-
-        th {
-            padding: 1rem;
-            text-align: left;
-            color: #2D3436;
-            font-weight: 600;
-        }
-
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid #DDE4E9;
-            color: #636E72;
-        }
-
-        tr:hover {
-            background: #F9FAFB;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .status-overdue {
-            background: #FADBD8;
-            color: #78281F;
-        }
-
-        .status-pending {
-            background: #FEF5E7;
-            color: #7D6608;
-        }
-
-        .status-active {
-            background: #D5F4E6;
-            color: #186A3B;
-        }
-
-        /* Messages */
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .alert-success {
-            background: #D5F4E6;
-            color: #186A3B;
-            border-left: 4px solid #27AE60;
-        }
-
-        .alert-error {
-            background: #FADBD8;
-            color: #78281F;
-            border-left: 4px solid #E74C3C;
-        }
-
-        .alert-info {
-            background: #D6EAF8;
-            color: #154360;
-            border-left: 4px solid #3498DB;
-        }
-
-        /* Loading state */
-        .loading {
-            display: inline-block;
-            color: #667eea;
-            font-weight: 600;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 2rem;
-            color: #636E72;
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: #BDC3C7;
-        }
-
-        @media (max-width: 768px) {
-            .admin-container {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: fixed;
-                left: -250px;
-                width: 250px;
-                z-index: 1000;
-                transition: left 0.3s;
-            }
-
-            .sidebar.open {
-                left: 0;
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .card-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .tabs {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-            }
-        }
-    </style>
 </head>
 <body>
 
@@ -377,36 +23,251 @@
                     <i class="fas fa-chart-line"></i> Dashboard
                 </a>
                 <a href="#" class="nav-link" data-tab="users">
+                    <i class="fas fa-graduation-cap"></i> Student Onboarding
                     <i class="fas fa-users"></i> User Management
+                    <a href="#" class="nav-link" data-tab="financials">
+                </a>
                 </a>
                 <a href="#" class="nav-link" data-tab="students">
-                    <i class="fas fa-graduation-cap"></i> Student Onboarding
+                    <button class="tab-btn" onclick="showTab('attendance')">📋 Attendance</button>
                 </a>
-                <a href="#" class="nav-link" data-tab="financials">
-                    <i class="fas fa-money-bill"></i> Financials
-                </a>
-            </nav>
-            <button class="logout-btn" id="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
-        </aside>
+                <button class="tab-btn" onclick="showTab('fees')">💰 Fees</button><!-- ===================== ATTENDANCE TAB ===================== -->
+                <i class="fas fa-money-bill"></i> Financials
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="header">
-                <h1>Admin Dashboard</h1>
-                <div class="admin-info">
-                    <i class="fas fa-user-circle" style="font-size: 2rem; color: #667eea;"></i>
-                    <div>
-                        <div style="font-weight: 600; color: #2D3436;" id="admin-name">Administrator</div>
-                        <div style="font-size: 0.85rem; color: #636E72;">Admin Panel</div>
+                     <!-- ADD to your existing tab nav bar -->
+                 <div class="section-header">
+                 <button class="tab-btn" onclick="showTab('homework')">📚 Homework</button>
+                                    
+                                    
+                <div id="tab-attendance" class="tab-content" style="display:none;">
+                    <div class="card">
+                    <h2>📋 Attendance Management</h2>
+                        <div class="form-row">
+                        
+                            <label>Class</label>
+                </div>  <!-- Mark Attendance Form -->
+                        <option value="">-- Select Class --</option>
+                  <h3>Mark Attendance</h3>
+                        </div>
+                    <div class="form-group">
+                            <label>Date</label>
+                          <select id="att-class-select" onchange="loadStudentsForAttendance()">
                     </div>
+                        </select>
+                <button class="btn-primary" onclick="loadAttendanceSheet()">Load Students</button>
+                        <div class="form-group">
                 </div>
-            </div>
+                          <input type="date" id="att-date" value="">
+                    <!-- Attendance Sheet Table -->
+                        <div class="form-group" style="align-self:flex-end;">
+                <table class="data-table" id="att-sheet-table">
+                    </div>
+                    <tr>
+                    
+                            <th>Student Name</th>
+                    <div id="attendance-sheet" style="display:none; margin-top:20px;">
+                                <th>Absent</th>
+                        <thead>
+                                </tr>
+                            <th>Roll No.</th>
+                            <tbody id="att-sheet-body"></tbody>
+                            <th>Present</th>
+                        <button class="btn-success" onclick="submitAttendance()" style="margin-top:15px;">
+                            <th>Late</th>
+                        </button>
+                        </thead>
+                </div>
+                    </table>
+                <!-- Monthly Summary -->
+                      ✅ Save Attendance
+                <h3>Monthly Summary</h3>
+                    </div>
+                <div class="form-group">
 
-            <!-- Alerts -->
-            <div id="success-alert" class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
+                    <select id="summary-class-select">
+                  <div class="card" style="margin-top:20px;">
+                        </select>
+                      <div class="form-row">
+                            <div class="form-group">
+                        <label>Class</label>
+                                <input type="month" id="summary-month">
+                        <option value="">-- Select Class --</option>
+                            <div class="form-group" style="align-self:flex-end;">
+                        </div>
+                        </div>
+                      <label>Month</label>
+                        <div id="summary-table-container" style="margin-top:15px; overflow-x:auto;"></div>
+                    </div>
+                </div><!-- ===================== HOMEWORK TAB ===================== -->
+                      <button class="btn-primary" onclick="loadAttendanceSummary()">View Summary</button>
+
+                    </div>
+                    <div class="section-header">
+                </div>
+                </div>
+
+                <!-- Add Homework Form -->
+                <div id="tab-homework" class="tab-content" style="display:none;">
+                    <h3 id="hw-form-title">➕ Add Homework</h3>
+                    <h2>📚 Homework Management</h2>
+                    <div class="form-row">
+                    
+                    <label>Title *</label>
+                  <div class="card">
+                        </div>
+                      <input type="hidden" id="hw-edit-id">
+                        <label>Class *</label>
+                    <div class="form-group">
+                        </div>
+                          <input type="text" id="hw-title" placeholder="e.g. Chapter 5 Exercise">
+                    <label>Subject *</label>
+                        <div class="form-group">
+                </div>
+                          <input type="text" id="hw-class" placeholder="e.g. Class 10A">
+                    <label>Due Date</label>
+                        <div class="form-group">
+                </div>
+                          <input type="text" id="hw-subject" placeholder="e.g. Mathematics">
+                    <div class="form-group">
+                        <div class="form-group">
+                    <textarea id="hw-description" rows="3" placeholder="Describe the homework..."></textarea>
+                          <input type="date" id="hw-due-date">
+                            <div class="form-actions">
+                    </div>
+                        <button class="btn-secondary" onclick="resetHomeworkForm()" style="margin-left:10px;">🔄 Reset</button>
+                    <label>Description</label>
+                
+                    </div>
+                    <button class="btn-primary"  onclick="saveHomework()">💾 Save Homework</button>
+                    <div class="card" style="margin-top:20px;">
+                    </div>
+                        <h3>All Homework</h3>
+
+                        <input type="text" id="hw-filter-class" placeholder="Filter by class..." oninput="filterHomework()">
+                </div>  <!-- Homework List -->
+                </div>
+                  <div class="card-header-row">
+                        <table class="data-table">
+                        <div class="form-group" style="margin:0;">
+                            <tr>
+                    </div>
+                        <th>Title</th>
+                      <div style="overflow-x:auto;">
+                            <th>Subject</th>
+                        <thead>
+                                    <th>Assigned By</th>
+                            <th>#</th>
+                            </tr>
+                            <th>Class</th>
+                        <tbody id="homework-table-body"></tbody>
+                            <th>Due Date</th>
+                    </div>
+                            <th>Actions</th>
+                </div><!-- ===================== FEES TAB ===================== -->
+                        </thead>
+                    
+                    </table>
+                    <div class="section-header">
+                    </div>
+                    </div>
+                
+                <!-- Fee Stats -->
+                <div id="tab-fees" class="tab-content" style="display:none;">
+                    <div class="stat-card green">
+                    <h2>💰 Fees Management</h2>
+                        <span class="stat-value" id="fee-stat-collected">₹0</span>
+                    
+                    <div class="stat-card red">
+                  <div class="stats-row" id="fee-stats-row">
+                              <span class="stat-value" id="fee-stat-pending">₹0</span>
+                      <span class="stat-label">Total Collected</span>
+                              <div class="stat-card blue">
+                    </div>
+                            <span class="stat-value" id="fee-stat-paid-count">0</span>
+                    <span class="stat-label">Total Pending</span>
+                            <div class="stat-card orange">
+                    </div>
+                            <span class="stat-value" id="fee-stat-unpaid-count">0</span>
+                    <span class="stat-label">Paid Fees</span>
+                        </div>
+                    </div>
+                    <!-- Add Fee Form -->
+                    <span class="stat-label">Unpaid Fees</span>
+                    <h3>➕ Add Fee Record</h3>
+                    </div>
+                <div class="form-group">
+
+                    <input type="number" id="fee-student-id" placeholder="Student ID">
+                  <div class="card" style="margin-top:20px;">
+                          <div class="form-group">
+                      <div class="form-row">
+                                <input type="number" id="fee-amount" placeholder="e.g. 2000" step="0.01">
+                        <label>Student ID *</label>
+                                <div class="form-group">
+                    </div>
+                            <input type="date" id="fee-due-date">
+                      <label>Amount (₹) *</label>
+                              <div class="form-group">
+                    </div>
+                            <input type="text" id="fee-description" placeholder="e.g. Monthly Tuition Fee">
+                      <label>Due Date *</label>
+                            </div>
+                    </div>
+                
+                      <label>Description</label>
+                    </div>
+                    <div class="card" style="margin-top:20px;">
+                      <button class="btn-primary" onclick="addFeeRecord()">➕ Add Fee</button>
+                          <h3>Fee Records</h3>
+                    
+                          <button class="mini-tab active" id="fee-tab-all"    onclick="loadFees('all')">All</button>
+                </div>  <!-- Fee Filter Tabs -->
+                </div>
+                  <div class="card-header-row">
+                        <div style="overflow-x:auto;">
+                        <div class="mini-tabs">
+                            <thead>
+                          <button class="mini-tab"        id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                                <th>#</th>
+                    </div>
+                        <th>Class</th>
+                    <table class="data-table">
+                                  <th>Description</th>
+                          <tr>
+                                  <th>Status</th>
+                              <th>Student</th>
+                            </tr>
+                            <th>Amount</th>
+                        <tbody id="fees-table-body"></tbody>
+                            <th>Due Date</th>
+                    </div>
+                            <th>Actions</th>
+                </div>
+                        </thead>
+                    </table>
+                    </div>
+                </nav>
+                            <button class="logout-btn" id="logout-btn">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </button>
+                        </aside>
+                    
+                        <!-- Main Content -->
+                        <div class="main-content">
+                            <div class="header">
+                                <h1>Admin Dashboard</h1>
+                                <div class="admin-info">
+                                    <i class="fas fa-user-circle" style="font-size: 2rem; color: #667eea;"></i>
+                                    <div>
+                                        <div style="font-weight: 600; color: #2D3436;" id="admin-name">Administrator</div>
+                                        <div style="font-size: 0.85rem; color: #636E72;">Admin Panel</div>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                            <!-- Alerts -->
+                            <div id="success-alert" class="alert alert-success">
+                                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
             </div>
             <div id="error-alert" class="alert alert-error">
                 <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>

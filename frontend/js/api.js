@@ -63,6 +63,89 @@ const apiCall = async (endpoint, options = {}) => {
 /**
  * Authentication APIs
  */
+
+// =============================================
+// ATTENDANCE API
+// =============================================
+const attendanceAPI = {
+  getClasses: () =>
+    fetch('/api/attendance/classes').then(r => r.json()),
+
+  getStudentsByClass: (class_name) =>
+    fetch(`/api/attendance/students?class_name=${encodeURIComponent(class_name)}`).then(r => r.json()),
+
+  getByClassAndDate: (class_name, date) =>
+    fetch(`/api/attendance/class?class_name=${encodeURIComponent(class_name)}&date=${date}`).then(r => r.json()),
+
+  getMonthlySummary: (class_name, month) =>
+    fetch(`/api/attendance/summary?class_name=${encodeURIComponent(class_name)}&month=${month}`).then(r => r.json()),
+
+  markBulk: (records) =>
+    fetch('/api/attendance/mark-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records })
+    }).then(r => r.json()),
+};
+
+// =============================================
+// HOMEWORK API
+// =============================================
+const homeworkAPI = {
+  getAll: (class_name = '') =>
+    fetch(`/api/homework${class_name ? '?class_name=' + encodeURIComponent(class_name) : ''}`).then(r => r.json()),
+
+  create: (data) =>
+    fetch('/api/homework', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  update: (id, data) =>
+    fetch(`/api/homework/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  delete: (id) =>
+    fetch(`/api/homework/${id}`, { method: 'DELETE' }).then(r => r.json()),
+};
+
+// =============================================
+// FEES API
+// =============================================
+const feesAPI = {
+  getAll: () =>
+    fetch('/api/fees').then(r => r.json()),
+
+  getUnpaid: () =>
+    fetch('/api/fees/unpaid').then(r => r.json()),
+
+  getStats: () =>
+    fetch('/api/fees/stats').then(r => r.json()),
+
+  getByStudent: (student_id) =>
+    fetch(`/api/fees/student/${student_id}`).then(r => r.json()),
+
+  add: (data) =>
+    fetch('/api/fees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+
+  markPaid: (id) =>
+    fetch(`/api/fees/${id}/paid`, { method: 'PATCH' }).then(r => r.json()),
+
+  markUnpaid: (id) =>
+    fetch(`/api/fees/${id}/unpaid`, { method: 'PATCH' }).then(r => r.json()),
+
+  delete: (id) =>
+    fetch(`/api/fees/${id}`, { method: 'DELETE' }).then(r => r.json()),
+};
+
 export const authAPI = {
   // Mock login endpoint (development)
   login: async (phone, role = 'student') => {
