@@ -1,7 +1,7 @@
 /**
  * master-dashboard.js - Master Dashboard navigation and login routing
  */
-
+// alert("Welcome to master dashboard")
 document.addEventListener('DOMContentLoaded', () => {
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
