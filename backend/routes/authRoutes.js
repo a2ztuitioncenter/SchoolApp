@@ -6,22 +6,52 @@ const router = express.Router();
 
 // Student login endpoint
 router.post('/login', async (req, res) => {
-  const { phone } = req.body;
+  const { phone, role } = req.body;
   const pool = req.db;
 
   try {
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
+    // Try to find user by phone
     const userQuery = 'SELECT id, role FROM users WHERE phone = $1';
     const result = await pool.query(userQuery, [phone]);
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid phone number' });
+    let user = result.rows[0];
+
+    if (!user) {
+      // Create new user if doesn't exist (development)
+      const normalizedRole = role ? role.toLowerCase() : 'student'; // Fixed to lowercase
+      const createResult = await pool.query(
+        'INSERT INTO users (phone, email, role) VALUES ($1, $2, $3) RETURNING id, role',
+        [phone, `${phone}@student.local`, normalizedRole]
+      );
+      user = createResult.rows[0];
+    }
+
+    // If user is a student, get student details
+    let studentData = null;
+    if (user.role === 'student') { // Fixed to lowercase
+      const studentQuery = 'SELECT id, name, "classLevel", section FROM students WHERE "userId" = $1';
+      const studentResult = await pool.query(studentQuery, [user.id]);
+      if (studentResult.rows.length > 0) {
+        studentData = studentResult.rows[0];
+      }
     }
 
     res.json({ 
-      success: true, 
-      user: result.rows[0] 
+      success: true,
+      user: {
+        id: user.id,
+        role: user.role,
+        phone: phone
+      },
+      student: studentData,
+      userId: user.id
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -58,7 +88,7 @@ router.post('/register', async (req, res) => {
     const user = await createUser(pool, {
       phone,
       email,
-      role: 'student',
+      role: 'student', // Fixed to lowercase
       schoolId: 'school-001',
     });
 
@@ -123,7 +153,7 @@ router.post('/admin-login', async (req, res) => {
     }
 
     // Check if user is admin
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin') { // Fixed to lowercase
       return res.status(403).json({ 
         error: 'Access Denied: This account does not have admin privileges',
         user: { id: user.id, role: user.role }
@@ -131,8 +161,7 @@ router.post('/admin-login', async (req, res) => {
     }
 
     // For development: Simple password check
-    // In production, use bcrypt for password verification
-    if (password !== 'admin123') { // Default dev password
+    if (password !== 'admin123') { 
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -148,6 +177,104 @@ router.post('/admin-login', async (req, res) => {
     });
   } catch (error) {
     console.error('Admin login error:', error);
+    return res.status(500).json({ error: 'Server error during login' });
+  }
+});
+
+/**
+ * Teacher Login - Verify credentials and check teacher role
+ * POST /api/auth/teacher-login
+ */
+router.post('/teacher-login', async (req, res) => {
+  const { phone, password } = req.body;
+  const pool = req.db;
+
+  try {
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone and password are required' });
+    }
+
+    // Find user by phone
+    const user = await getUserByPhone(pool, phone);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if user is teacher
+    if (user.role !== 'teacher') { // Fixed to lowercase
+      return res.status(403).json({ 
+        error: 'Access Denied: This account does not have teacher privileges',
+        user: { id: user.id, role: user.role }
+      });
+    }
+
+    // For development: Simple password check
+    if (password !== 'teacher123') { 
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Return success with user data
+    return res.json({
+      success: true,
+      message: 'Teacher login successful',
+      user: {
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Teacher login error:', error);
+    return res.status(500).json({ error: 'Server error during login' });
+  }
+});
+
+/**
+ * Parent Login - Verify credentials and check parent role
+ * POST /api/auth/parent-login
+ */
+router.post('/parent-login', async (req, res) => {
+  const { phone, password } = req.body;
+  const pool = req.db;
+
+  try {
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone and password are required' });
+    }
+
+    // Find user by phone
+    const user = await getUserByPhone(pool, phone);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if user is parent
+    if (user.role !== 'parent') { // Fixed to lowercase
+      return res.status(403).json({ 
+        error: 'Access Denied: This account does not have parent privileges',
+        user: { id: user.id, role: user.role }
+      });
+    }
+
+    // For development: Simple password check
+    if (password !== 'parent123') { 
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Return success with user data
+    return res.json({
+      success: true,
+      message: 'Parent login successful',
+      user: {
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('Parent login error:', error);
     return res.status(500).json({ error: 'Server error during login' });
   }
 });

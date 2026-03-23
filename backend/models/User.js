@@ -7,7 +7,7 @@ export const userModel = {
       phone VARCHAR(20) NOT NULL UNIQUE,
       email VARCHAR(255),
       password VARCHAR(255),
-      role VARCHAR(50) NOT NULL CHECK (role IN ('student', 'teacher', 'admin')),
+      role VARCHAR(50) NOT NULL CHECK (role IN ('Student', 'Teacher', 'Admin', 'Parent')),
       "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
       "isActive" BOOLEAN DEFAULT TRUE,
       "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -37,7 +37,7 @@ export const getUserByPhone = async (pool, phone) => {
 export const getUserById = async (pool, id) => {
   try {
     const result = await pool.query(
-      'SELECT id, phone, email, role, schoolId, isActive, createdAt, updatedAt FROM users WHERE id = $1 LIMIT 1',
+      'SELECT id, phone, email, role, "schoolId", "isActive", "createdAt", "updatedAt" FROM users WHERE id = $1 LIMIT 1',
       [id]
     );
     return result.rows.length > 0 ? result.rows[0] : null;
@@ -59,9 +59,9 @@ export const createUser = async (pool, userData) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO users (phone, email, password, role, schoolId) 
+      `INSERT INTO users (phone, email, password, role, "schoolId") 
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, phone, email, role, schoolId, isActive, createdAt, updatedAt`,
+       RETURNING id, phone, email, role, "schoolId", "isActive", "createdAt", "updatedAt"`,
       [phone, email, password, role, schoolId]
     );
 
@@ -90,14 +90,14 @@ export const updateUser = async (pool, id, userData) => {
     paramCount++;
   }
   if (isActive !== undefined) {
-    updates.push(`isActive = $${paramCount}`);
+    updates.push(`"isActive" = $${paramCount}`);
     values.push(isActive);
     paramCount++;
   }
 
   if (updates.length === 0) return null;
 
-  updates.push(`updatedAt = CURRENT_TIMESTAMP`);
+  updates.push(`"updatedAt" = CURRENT_TIMESTAMP`);
   values.push(id);
 
   try {

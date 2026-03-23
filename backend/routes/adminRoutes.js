@@ -52,7 +52,7 @@ router.post('/teachers/create', async (req, res) => {
       phone,
       email,
       password: 'teacher123', // Default password
-      role: 'teacher',
+      role: 'Teacher',
       schoolId: 'school-001',
     });
 
@@ -86,7 +86,7 @@ router.delete('/teachers/:id', async (req, res) => {
       return res.status(404).json({ error: 'Teacher not found' });
     }
 
-    if (result.rows[0].role !== 'teacher') {
+    if (result.rows[0].role !== 'Teacher') {
       return res.status(400).json({ error: 'User is not a teacher' });
     }
 
@@ -176,7 +176,7 @@ router.get('/students', async (req, res) => {
     const result = await pool.query(
       `SELECT s.*, u.phone 
        FROM students s 
-       LEFT JOIN users u ON s.userId = u.id 
+       LEFT JOIN users u ON s."userId" = u.id 
        ORDER BY s.name ASC`
     );
 
@@ -266,7 +266,7 @@ router.get('/financials/unpaid-fees', async (req, res) => {
       `SELECT 
         f.*,
         s.name as student_name,
-        s.classlevel,
+        s."classLevel",
         u.phone
        FROM fees f
        JOIN students s ON f.studentId = s.id

@@ -4,25 +4,20 @@ export const studentModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
-      "userId" INT NOT NULL UNIQUE,
+      "userId" INT NOT NULL,
       name VARCHAR(100) NOT NULL,
-      "classLevel" VARCHAR(10),
-      section VARCHAR(5),
+      "classLevel" VARCHAR(50) NOT NULL,
       "fatherName" VARCHAR(100),
-      "motherName" VARCHAR(100),
+      "joiningDate" DATE NOT NULL,
+      section VARCHAR(5),
       phone VARCHAR(20),
       email VARCHAR(255),
-      "joiningDate" DATE,
-      status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'graduated')),
       "rollNumber" VARCHAR(20),
-      "schoolId" VARCHAR(50) NOT NULL DEFAULT 'school-001',
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      "motherName" VARCHAR(100),
+      status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Blocked')),
       FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_students_userId ON students("userId");
-    CREATE INDEX IF NOT EXISTS idx_students_rollNumber ON students("rollNumber");
-    CREATE INDEX IF NOT EXISTS idx_students_schoolId ON students("schoolId");
+    CREATE INDEX IF NOT EXISTS idx_students_user_id ON students("userId");
   `,
 };
 
@@ -30,7 +25,7 @@ export const studentModel = {
 export const getStudentByUserId = async (pool, userId) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM students WHERE userId = $1 LIMIT 1',
+      'SELECT * FROM students WHERE "userId" = $1 LIMIT 1',
       [userId]
     );
     return result.rows.length > 0 ? result.rows[0] : null;
@@ -60,24 +55,18 @@ export const createStudent = async (pool, studentData) => {
     userId,
     name,
     classLevel,
-    section,
     fatherName,
-    motherName,
-    phone,
-    email,
     joiningDate,
-    status = 'active',
-    rollNumber,
-    schoolId = 'school-001',
+    status = 'Active',
   } = studentData;
 
   try {
     const result = await pool.query(
       `INSERT INTO students 
-       (userId, name, classLevel, section, fatherName, motherName, phone, email, joiningDate, status, rollNumber, schoolId)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ("userId", name, "classLevel", "fatherName", "joiningDate", status)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [userId, name, classLevel, section, fatherName, motherName, phone, email, joiningDate, status, rollNumber, schoolId]
+      [userId, name, classLevel, fatherName, joiningDate, status]
     );
 
     return result.rows[0];
@@ -110,7 +99,7 @@ export const updateStudent = async (pool, id, studentData) => {
     paramCount++;
   }
   if (classLevel !== undefined) {
-    updates.push(`classLevel = $${paramCount}`);
+    updates.push(`"classLevel" = $${paramCount}`);
     values.push(classLevel);
     paramCount++;
   }
@@ -120,12 +109,12 @@ export const updateStudent = async (pool, id, studentData) => {
     paramCount++;
   }
   if (fatherName !== undefined) {
-    updates.push(`fatherName = $${paramCount}`);
+    updates.push(`"fatherName" = $${paramCount}`);
     values.push(fatherName);
     paramCount++;
   }
   if (motherName !== undefined) {
-    updates.push(`motherName = $${paramCount}`);
+    updates.push(`"motherName" = $${paramCount}`);
     values.push(motherName);
     paramCount++;
   }

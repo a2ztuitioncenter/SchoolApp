@@ -80,6 +80,22 @@ export const authAPI = {
     });
   },
 
+  // Teacher login endpoint
+  teacherLogin: async (phone, password) => {
+    return apiCall('/auth/teacher-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+  },
+
+  // Parent login endpoint
+  parentLogin: async (phone, password) => {
+    return apiCall('/auth/parent-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+  },
+
   // Verify token is still valid
   verify: async () => {
     return apiCall('/auth/verify', {
@@ -159,6 +175,111 @@ export const adminAPI = {
   getFinancialSummary: async () => {
     return apiCall('/admin/financials/report', {
       method: 'GET',
+    });
+  },
+};
+
+/**
+ * Teacher APIs
+ */
+export const teacherAPI = {
+  // Get teacher's dashboard data
+  getDashboard: async (teacherId) => {
+    return apiCall(`/teacher/dashboard/${teacherId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get homework for a specific class
+  getClassHomework: async (classLevel, section) => {
+    return apiCall(`/teacher/class/${classLevel}?section=${section}`, {
+      method: 'GET',
+    });
+  },
+
+  // Add new homework
+  addHomework: async (homeworkData) => {
+    return apiCall('/teacher/homework/add', {
+      method: 'POST',
+      body: JSON.stringify(homeworkData),
+    });
+  },
+
+  // Update homework
+  updateHomework: async (homeworkId, homeworkData) => {
+    return apiCall(`/teacher/homework/${homeworkId}`, {
+      method: 'PUT',
+      body: JSON.stringify(homeworkData),
+    });
+  },
+
+  // Delete homework
+  deleteHomework: async (homeworkId) => {
+    return apiCall(`/teacher/homework/${homeworkId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+/**
+ * Parent API - Parent-specific endpoints
+ */
+export const parentAPI = {
+  // Parent login
+  parentLogin: async (phone, password) => {
+    return apiCall('/auth/parent-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+  },
+
+  // Get children linked to parent account
+  getChildren: async (parentUserId) => {
+    return apiCall(`/parent/children/${parentUserId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get child's attendance data
+  getAttendance: async (parentUserId) => {
+    return apiCall(`/parent/attendance/${parentUserId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get child's fees data
+  getFees: async (parentUserId) => {
+    return apiCall(`/parent/fees/${parentUserId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get child's homework assignments
+  getHomework: async (parentUserId) => {
+    return apiCall(`/parent/homework/${parentUserId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get child's performance metrics
+  getPerformance: async (parentUserId) => {
+    return apiCall(`/parent/performance/${parentUserId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Get teacher messages
+  getMessages: async (parentUserId) => {
+    return apiCall(`/parent/messages/${parentUserId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Send message to teacher
+  sendMessage: async (parentUserId, teacherId, message) => {
+    return apiCall('/parent/messages/send', {
+      method: 'POST',
+      body: JSON.stringify({ parentUserId, teacherId, message }),
     });
   },
 };

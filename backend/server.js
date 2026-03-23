@@ -8,6 +8,7 @@ import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
+import parentRoutes from './routes/parentRoutes.js';
 import { initializeDatabase } from './database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +54,12 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ extended: true }));
 
+// Serve master-dashboard.html on root route
+app.get('/', (req, res) => {
+  const masterDashboardPath = path.join(__dirname, '../frontend/pages/master-dashboard.html');
+  res.sendFile(masterDashboardPath);
+});
+
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
 
@@ -66,19 +73,20 @@ app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
+app.use('/api/parent', parentRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
 });
 
-// Serve index.html for all other routes (SPA support)
+// Serve master-dashboard.html for all other routes (SPA support)
 app.use((req, res) => {
-  const indexPath = path.join(__dirname, '../frontend/index.html');
-  res.sendFile(indexPath, (err) => {
+  const masterDashboardPath = path.join(__dirname, '../frontend/pages/master-dashboard.html');
+  res.sendFile(masterDashboardPath, (err) => {
     if (err) {
-      console.error('Error serving index.html:', err.message);
-      res.status(404).json({ error: 'File not found', path: indexPath });
+      console.error('Error serving master-dashboard.html:', err.message);
+      res.status(404).json({ error: 'Page not found' });
     }
   });
 });
@@ -104,9 +112,11 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
       console.log(`\n🚀 Server running at http://localhost:${PORT}`);
-      console.log(`📚 Student Portal: http://localhost:8000/index.html`);
-      console.log(`👨‍💼 Admin Portal: http://localhost:8000/admin-login.html`);
-      console.log(`🎓 Teacher Portal: http://localhost:8000/teacher-login.html\n`);
+      console.log(`📚 Master Portal: http://localhost:${PORT}/`);
+      console.log(`👤 Student Login: http://localhost:${PORT}/student-login.html`);
+      console.log(`👨‍💼 Admin Login: http://localhost:${PORT}/admin-login.html`);
+      console.log(`🎓 Teacher Login: http://localhost:${PORT}/teacher-login.html`);
+      console.log(`👨‍👩‍👧‍👦 Parent Login: http://localhost:${PORT}/parent-login.html\n`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

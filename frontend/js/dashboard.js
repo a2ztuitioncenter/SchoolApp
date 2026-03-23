@@ -13,15 +13,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     // Get userId from sessionStorage (set during login)
-    // For development, we'll use a mock userId
     let userId = sessionStorage.getItem('studentUserId');
 
     if (!userId) {
-      // For demo purposes, use a default student ID
-      // In production, redirect to login if not authenticated
-      userId = 'demo-student-001';
-      sessionStorage.setItem('studentUserId', userId);
-      console.log('⚠️  Using demo student ID:', userId);
+      console.warn('⚠️  No userId found in sessionStorage, redirecting to login...');
+      window.location.href = '/student-login.html';
+      return;
     }
 
     // Fetch and populate dashboard data
@@ -43,30 +40,40 @@ async function loadDashboardData(userId) {
     const dashboardResponse = await studentAPI.getDashboard(userId);
 
     if (!dashboardResponse.success) {
-      throw new Error('Failed to fetch dashboard data');
+      throw new Error(dashboardResponse.error || 'Failed to fetch dashboard data');
     }
 
     const { data } = dashboardResponse;
 
     // Populate student profile
-    populateProfile(data.profile);
+    if (data.profile) {
+      populateProfile(data.profile);
+    }
 
     // Populate attendance
-    populateAttendance(data.attendance);
+    if (data.attendance) {
+      populateAttendance(data.attendance);
+    }
 
     // Populate fees
-    populateFees(data.fees);
+    if (data.fees) {
+      populateFees(data.fees);
+    }
 
     // Populate homework
-    populateHomework(data.homework);
+    if (data.homework) {
+      populateHomework(data.homework);
+    }
 
     // Populate course progress
-    populateCourseProgress(data.courseProgress);
+    if (data.courseProgress) {
+      populateCourseProgress(data.courseProgress);
+    }
 
     console.log('✅ Dashboard loaded successfully');
   } catch (error) {
     console.error('❌ Error loading dashboard:', error);
-    showErrorMessage('Unable to load dashboard data');
+    showErrorMessage('Unable to load dashboard data: ' + error.message);
   }
 }
 
@@ -78,12 +85,12 @@ function populateProfile(profile) {
     const nameElement = document.getElementById('student-name');
     const classElement = document.getElementById('student-class');
 
-    if (nameElement) {
-      nameElement.textContent = profile.name || 'Student';
+    if (nameElement && profile.name) {
+      nameElement.textContent = profile.name;
     }
 
-    if (classElement) {
-      classElement.textContent = `Class: ${profile.classLevel} | Section: ${profile.section}`;
+    if (classElement && profile.classLevel) {
+      classElement.textContent = `Class: ${profile.classLevel} | Section: ${profile.section || 'N/A'}`;
     }
 
     console.log('✅ Profile populated:', profile.name);
@@ -98,6 +105,134 @@ function populateProfile(profile) {
 function populateAttendance(attendance) {
   try {
     const attendanceDisplay = document.getElementById('attendance-display');
+    
+    if (attendanceDisplay && attendance.presentDays !== undefined) {
+      const total = attendance.totalDays || 30;
+      attendanceDisplay.textContent = `Present: ${attendance.presentDays}/${total} days (${attendance.percentage}%)`;
+    }
+
+    console.log('✅ Attendance populated');
+  } catch (error) {
+    console.error('❌ Error populating attendance:', error);
+  }
+}
+
+/**
+ * Populate fees status
+ */
+function populateFees(fees) {
+  try {
+    const feesDisplay = document.getElementById('fees-display');
+    
+    if (feesDisplay && fees.totalPending !== undefined) {
+      const pending = fees.totalPending || 0;
+      feesDisplay.textContent = `Pending: ₹${pending.toLocaleString()}`;
+    }
+
+    console.log('✅ Fees populated');
+  } catch (error) {
+    console.error('❌ Error populating fees:', error);
+  }
+}
+
+/**
+ * Populate homework section
+ */
+function populateHomework(homework) {
+  try {
+    const homeworkContainer = document.getElementById('homework-container');
+    
+    if (!homeworkContainer) return;
+
+    if (!Array.isArray(homework) || homework.length === 0) {
+      homeworkContainer.innerHTML = '<p class="no-data">No homework assigned</p>';
+      return;
+    }
+
+    let html = '';
+    homework.forEach((hw, idx) => {
+      const subjectIcon = getSubjectIcon(hw.subject || `Subject ${idx + 1}`);
+      html += `
+        <div class="homework-item">
+          <div class="subject-icon">${subjectIcon}</div>
+          <div class="details">
+            <p class="subject-title">${hw.subject || 'Homework'} - ${hw.topic || hw.title || 'Assignment'}</p>
+            <p class="due-date"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
+          </div>
+        </div>
+      `;
+    });
+
+    homeworkContainer.innerHTML = html;
+    console.log('✅ Homework populated:', homework.length, 'items');
+  } catch (error) {
+    console.error('❌ Error populating homework:', error);
+  }
+}
+
+/**
+ * Populate course progress
+ */
+function populateCourseProgress(progress) {
+  try {
+    const progressCircle = document.getElementById('course-progress');
+    
+    if (progressCircle && progress.percentage !== undefined) {
+      const percent = progress.percentage;
+      progressCircle.style.setProperty('--percent', percent);
+      
+      const innerText = progressCircle.querySelector('.inner-text');
+      if (innerText) {
+        innerText.textContent = `${percent}%`;
+      }
+    }
+
+    console.log('✅ Course progress populated:', progress.percentage, '%');
+  } catch (error) {
+    console.error('❌ Error populating progress:', error);
+  }
+}
+
+/**
+ * Helper: Get subject icon
+ */
+function getSubjectIcon(subject) {
+  const subjectLower = (subject || '').toLowerCase();
+  
+  if (subjectLower.includes('math')) return '📐';
+  if (subjectLower.includes('science')) return '🔬';
+  if (subjectLower.includes('english')) return '📚';
+  if (subjectLower.includes('history')) return '📜';
+  if (subjectLower.includes('geography')) return '🗺️';
+  
+  return '📝';
+}
+
+/**
+ * Helper: Format date
+ */
+function formatDate(dateStr) {
+  if (!dateStr) return 'N/A';
+  
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-IN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+/**
+ * Show error message to user
+ */
+function showErrorMessage(message) {
+  console.error('Error:', message);
+  // Could add a UI error display here
+}
 
     if (attendanceDisplay) {
       const percentage = attendance.percentage || 0;
@@ -256,5 +391,5 @@ function showErrorMessage(message) {
 export function logout() {
   sessionStorage.removeItem('studentUserId');
   sessionStorage.removeItem('authToken');
-  window.location.href = '/index.html';
+  window.location.href = '/';
 }

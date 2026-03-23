@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard | A2Z Tuition App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="..\frontend\css\parent-dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo-section">
+                <h1>A2Z Parent Dashboard</h1>
+            </div>
+            <div class="user-section">
+                <span>Welcome, <strong id="parent-phone"></strong></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Error/Success Messages -->
+        <div id="error-alert" class="alert alert-error"></div>
+        <div id="success-alert" class="alert alert-success"></div>
+
+        <!-- Children Overview Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-users"></i> Your Children
+            </h2>
+            <div id="children-list">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Child Name</th>
+                            <th>Class & Section</th>
+                            <th>Roll Number</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="children-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>No children linked to this account yet.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Attendance Overview Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-calendar-check"></i> Attendance Overview
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Average Attendance</div>
+                    <div class="stat-value" id="avg-attendance">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Classes</div>
+                    <div class="stat-value" id="total-classes">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Days Present</div>
+                    <div class="stat-value" id="days-present">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Days Absent</div>
+                    <div class="stat-value" id="days-absent">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fees Status Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-money-bill-wave"></i> Fees Status
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Fees</div>
+                    <div class="stat-value" id="total-fees">₹0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Paid</div>
+                    <div class="stat-value" id="fees-paid">₹0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Pending</div>
+                    <div class="stat-value" id="fees-pending">₹0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Overdue</div>
+                    <div class="stat-value" id="fees-overdue">₹0</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="fees-tbody">
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>No fee records available.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Homework Updates Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-clipboard"></i> Recent Homework
+            </h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Topic</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="homework-tbody">
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>No homework assignments yet.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Performance Analysis Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-chart-bar"></i> Performance Metrics
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Test Average</div>
+                    <div class="stat-value" id="test-average">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Homework Score</div>
+                    <div class="stat-value" id="homework-score">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Participation</div>
+                    <div class="stat-value" id="participation">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Overall Grade</div>
+                    <div class="stat-value" id="overall-grade">N/A</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Communication Section -->
+        <div class="section">
+            <h2 class="section-title">
+                <i class="fas fa-bell"></i> Teacher Messages
+            </h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>From (Teacher)</th>
+                        <th>Message</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="messages-tbody">
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>No messages from teachers yet.</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script type="module" src="..\frontend\js\parent-dashboard.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
  * Called from index.html login form
  */
 
-import { authAPI, setAuthToken } from './api.js';
+import { authAPI } from './api.js';
 
 /**
  * Handle student login form submission
@@ -30,16 +30,21 @@ export async function handleStudentLogin(event) {
     // Call backend login endpoint
     const response = await authAPI.login(phone, 'student');
 
-    if (response.success && response.token) {
-      // Store token and user data
-      setAuthToken(response.token);
+    if (response.success && response.userId) {
+      // Store user data
       sessionStorage.setItem('studentUserId', response.userId);
-      sessionStorage.setItem('studentName', response.student?.name || 'Student');
+      sessionStorage.setItem('studentRole', response.user?.role || 'student');
+      sessionStorage.setItem('studentPhone', phone);
+      if (response.student?.name) {
+        sessionStorage.setItem('studentName', response.student.name);
+      }
 
       // Redirect to dashboard
-      window.location.href = './pages/student.html';
+      setTimeout(() => {
+        window.location.href = '/pages/student-dashboard.html';
+      }, 500);
     } else {
-      showError('Login failed. Please try again.');
+      showError(response.error || 'Login failed. Please try again.');
     }
   } catch (error) {
     console.error('❌ Login error:', error);

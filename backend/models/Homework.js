@@ -41,7 +41,7 @@ export const getHomeworkById = async (pool, id) => {
 // Helper to get all homework for a specific class
 export const getHomeworkByClass = async (pool, classLevel, section = null) => {
   try {
-    let query = 'SELECT h.*, u.phone as teacherPhone FROM homework h JOIN users u ON h.teacherId = u.id WHERE h.classLevel = $1';
+    let query = 'SELECT h.*, u.phone as teacherPhone FROM homework h JOIN users u ON h."teacherId" = u.id WHERE h."classLevel" = $1';
     const params = [classLevel];
 
     if (section) {
@@ -49,7 +49,7 @@ export const getHomeworkByClass = async (pool, classLevel, section = null) => {
       params.push(section);
     }
 
-    query += ' ORDER BY h.dueDate DESC';
+    query += ' ORDER BY h."dueDate" DESC';
 
     const result = await pool.query(query, params);
     return result.rows;
@@ -63,7 +63,7 @@ export const getHomeworkByClass = async (pool, classLevel, section = null) => {
 export const getHomeworkByTeacher = async (pool, teacherId) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM homework WHERE teacherId = $1 ORDER BY dueDate DESC',
+      'SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "dueDate" DESC',
       [teacherId]
     );
     return result.rows;
@@ -90,7 +90,7 @@ export const createHomework = async (pool, homeworkData) => {
   try {
     const result = await pool.query(
       `INSERT INTO homework 
-       (teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl, schoolId)
+       ("teacherId", "classLevel", section, title, description, "dueDate", subject, "attachmentUrl", "schoolId")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl, schoolId]
@@ -128,7 +128,7 @@ export const updateHomework = async (pool, id, homeworkData) => {
     paramCount++;
   }
   if (dueDate !== undefined) {
-    updates.push(`dueDate = $${paramCount}`);
+    updates.push(`"dueDate" = $${paramCount}`);
     values.push(dueDate);
     paramCount++;
   }
@@ -138,14 +138,14 @@ export const updateHomework = async (pool, id, homeworkData) => {
     paramCount++;
   }
   if (attachmentUrl !== undefined) {
-    updates.push(`attachmentUrl = $${paramCount}`);
+    updates.push(`"attachmentUrl" = $${paramCount}`);
     values.push(attachmentUrl);
     paramCount++;
   }
 
   if (updates.length === 0) return null;
 
-  updates.push('updatedAt = CURRENT_TIMESTAMP');
+  updates.push('"updatedAt" = CURRENT_TIMESTAMP');
   values.push(id);
 
   try {

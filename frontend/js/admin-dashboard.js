@@ -164,26 +164,48 @@ function setupForms() {
  */
 async function loadDashboardData() {
   try {
+    console.log('📊 Loading dashboard data...');
+    
     const [students, unpaidFees] = await Promise.all([
-      adminAPI.getStudents(),
-      adminAPI.getUnpaidFees(),
+      adminAPI.getStudents().catch(e => {
+        console.error('Error fetching students:', e);
+        return { students: [] };
+      }),
+      adminAPI.getUnpaidFees().catch(e => {
+        console.error('Error fetching unpaid fees:', e);
+        return { fees: [] };
+      }),
     ]);
 
+    console.log('✅ Students:', students);
+    console.log('✅ Unpaid Fees:', unpaidFees);
+
     // Display total students
-    document.getElementById('total-students').textContent = students.students?.length || 0;
+    const totalStudents = students.students?.length || 0;
+    const totalStudentElement = document.getElementById('total-students');
+    if (totalStudentElement) {
+      totalStudentElement.textContent = totalStudents;
+    }
 
     // Calculate unpaid totals
     const unpaidData = unpaidFees.fees || [];
     const totalUnpaid = unpaidData.reduce((sum, fee) => sum + parseFloat(fee.amount || 0), 0);
-    document.getElementById('total-unpaid').textContent = `₹${totalUnpaid.toLocaleString()}`;
+    const totalUnpaidElement = document.getElementById('total-unpaid');
+    if (totalUnpaidElement) {
+      totalUnpaidElement.textContent = `₹${totalUnpaid.toLocaleString()}`;
+    }
 
     // Count overdue (assume fees overdue if dueDate is in the past)
     const today = new Date();
     const overdueCount = unpaidData.filter(fee => new Date(fee.duedate) < today).length;
-    document.getElementById('overdue-count').textContent = overdueCount;
+    const overdueElement = document.getElementById('overdue-count');
+    if (overdueElement) {
+      overdueElement.textContent = overdueCount;
+    }
 
   } catch (error) {
     console.error('Error loading dashboard data:', error);
+    showErrorAlert('Failed to load dashboard data');
   }
 }
 
@@ -248,7 +270,7 @@ async function loadStudents() {
       <tr>
         <td>${student.name}</td>
         <td>${student.phone}</td>
-        <td>${student.classlevel || 'N/A'}</td>
+        <td>${student.classLevel || 'N/A'}</td>
         <td>
           <span class="status-badge ${student.status === 'active' ? 'status-active' : 'status-pending'}">
             ${student.status}
@@ -295,7 +317,7 @@ async function loadFinancials() {
         <tr>
           <td>${fee.student_name || 'Unknown'}</td>
           <td>${fee.phone || 'N/A'}</td>
-          <td>${fee.classlevel || 'N/A'}</td>
+          <td>${fee.classLevel || 'N/A'}</td>
           <td>₹${parseFloat(fee.amount).toLocaleString()}</td>
           <td>${new Date(fee.duedate).toLocaleDateString()}</td>
           <td><span class="status-badge ${statusClass}">${statusText}</span></td>

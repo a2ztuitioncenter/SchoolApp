@@ -33,7 +33,7 @@ export const feeModel = {
 export const getPendingFees = async (pool, studentId) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM fees WHERE studentId = $1 AND isPaid = FALSE ORDER BY dueDate ASC',
+      'SELECT * FROM fees WHERE "studentId" = $1 AND "isPaid" = FALSE ORDER BY "dueDate" ASC',
       [studentId]
     );
     return result.rows;
@@ -47,7 +47,7 @@ export const getPendingFees = async (pool, studentId) => {
 export const getTotalPendingAmount = async (pool, studentId) => {
   try {
     const result = await pool.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE studentId = $1 AND isPaid = FALSE',
+      'SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE "studentId" = $1 AND "isPaid" = FALSE',
       [studentId]
     );
     return parseFloat(result.rows[0].total);
@@ -61,7 +61,7 @@ export const getTotalPendingAmount = async (pool, studentId) => {
 export const getAllStudentFees = async (pool, studentId) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM fees WHERE studentId = $1 ORDER BY createdAt DESC',
+      'SELECT * FROM fees WHERE "studentId" = $1 ORDER BY "createdAt" DESC',
       [studentId]
     );
     return result.rows;
@@ -88,7 +88,7 @@ export const createFee = async (pool, feeData) => {
   try {
     const result = await pool.query(
       `INSERT INTO fees 
-       (studentId, userId, amount, dueDate, month, academicYear, schoolId, paymentMethod, notes)
+       ("studentId", "userId", amount, "dueDate", month, "academicYear", "schoolId", "paymentMethod", notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [studentId, userId, amount, dueDate, month, academicYear, schoolId, paymentMethod, notes]
@@ -107,7 +107,7 @@ export const markFeeAsPaid = async (pool, feeId, paymentMethod, receiptNumber) =
     const paidDate = new Date();
     const result = await pool.query(
       `UPDATE fees 
-       SET isPaid = TRUE, paidDate = $1, paymentMethod = $2, receiptNumber = $3, updatedAt = CURRENT_TIMESTAMP
+       SET "isPaid" = TRUE, "paidDate" = $1, "paymentMethod" = $2, "receiptNumber" = $3, "updatedAt" = CURRENT_TIMESTAMP
        WHERE id = $4
        RETURNING *`,
       [paidDate, paymentMethod, receiptNumber, feeId]
@@ -127,11 +127,11 @@ export const getFeesSummary = async (pool, studentId) => {
       `SELECT 
         COUNT(*) as totalRecords,
         COALESCE(SUM(amount), 0) as totalAmount,
-        COALESCE(SUM(CASE WHEN isPaid = TRUE THEN amount ELSE 0 END), 0) as totalPaid,
-        COALESCE(SUM(CASE WHEN isPaid = FALSE THEN amount ELSE 0 END), 0) as totalPending,
-        SUM(CASE WHEN isPaid = TRUE THEN 1 ELSE 0 END) as paidCount,
-        SUM(CASE WHEN isPaid = FALSE THEN 1 ELSE 0 END) as pendingCount
-       FROM fees WHERE studentId = $1`,
+        COALESCE(SUM(CASE WHEN "isPaid" = TRUE THEN amount ELSE 0 END), 0) as totalPaid,
+        COALESCE(SUM(CASE WHEN "isPaid" = FALSE THEN amount ELSE 0 END), 0) as totalPending,
+        SUM(CASE WHEN "isPaid" = TRUE THEN 1 ELSE 0 END) as paidCount,
+        SUM(CASE WHEN "isPaid" = FALSE THEN 1 ELSE 0 END) as pendingCount
+       FROM fees WHERE "studentId" = $1`,
       [studentId]
     );
     return result.rows[0];
