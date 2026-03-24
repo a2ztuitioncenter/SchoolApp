@@ -143,14 +143,14 @@
     <h1>Student Login</h1>
     <p class="subtitle">Welcome back! Enter your phone number to continue.</p>
 
-    <div class="error-message" id="errorMessage"></div>
+    <div class="error-message" id="error-message"></div>
 
-    <form id="loginForm">
+    <form id="login-form">
         <div class="form-group">
-            <label for="phone">Phone Number</label>
+            <label for="phone-input">Phone Number</label>
             <input
                 type="tel"
-                id="phone"
+                id="phone-input"
                 name="phone"
                 placeholder="Enter your 10-digit phone number"
                 pattern="[0-9]{10}"
@@ -158,7 +158,7 @@
             >
         </div>
 
-        <button type="submit" id="submitBtn">Log In</button>
+        <button type="submit" id="login-btn">Log In</button>
     </form>
 
     <div class="footer">
@@ -168,7 +168,7 @@
     </div>
 </div>
 
-<script type="module" src="js/login.js"></script>
+<script type="module" src="./js/auth.js"></script>
 
 </body>
 </html>

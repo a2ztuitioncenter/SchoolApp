@@ -33,9 +33,9 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
-    // 🔥 FORCE ROOT → MASTER DASHBOARD
+    // 🔥 FORCE ROOT → INDEX
     if (pathname === "/") {
-      pathname = "/master-dashboard.html";
+      pathname = "/index.html";
     }
 
     const filePath = path.join(publicDir, pathname);
@@ -49,8 +49,8 @@ const server = Bun.serve({
       });
     }
 
-    // 🔥 FALLBACK → MASTER DASHBOARD (NO DIRECTORY LISTING EVER)
-    const fallback = path.join(publicDir, "master-dashboard.html");
+    // 🔥 FALLBACK → INDEX (NO DIRECTORY LISTING EVER)
+    const fallback = path.join(publicDir, "index.html");
 
     return new Response(Bun.file(fallback), {
       headers: {

@@ -250,7 +250,7 @@ window.logout = function() {
 sessionStorage.removeItem('parentUserId');
 sessionStorage.removeItem('parentPhone');
 sessionStorage.removeItem('role');
-window.location.href = '/pages/master-dashboard.html';
+window.location.href = '/index.html';
 };
 /**
 * View child details

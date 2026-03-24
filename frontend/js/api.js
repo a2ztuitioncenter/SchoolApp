@@ -69,23 +69,22 @@ const apiCall = async (endpoint, options = {}) => {
 // =============================================
 const attendanceAPI = {
   getClasses: () =>
-    fetch('/api/attendance/classes').then(r => r.json()),
+    apiCall('/admin/attendance/classes', { method: 'GET' }),
 
   getStudentsByClass: (class_name) =>
-    fetch(`/api/attendance/students?class_name=${encodeURIComponent(class_name)}`).then(r => r.json()),
+    apiCall(`/admin/attendance/students?class_name=${encodeURIComponent(class_name)}`, { method: 'GET' }),
 
   getByClassAndDate: (class_name, date) =>
-    fetch(`/api/attendance/class?class_name=${encodeURIComponent(class_name)}&date=${date}`).then(r => r.json()),
+    apiCall(`/admin/attendance/class?class_name=${encodeURIComponent(class_name)}&date=${date}`, { method: 'GET' }),
 
   getMonthlySummary: (class_name, month) =>
-    fetch(`/api/attendance/summary?class_name=${encodeURIComponent(class_name)}&month=${month}`).then(r => r.json()),
+    apiCall(`/admin/attendance/summary?class_name=${encodeURIComponent(class_name)}&month=${month}`, { method: 'GET' }),
 
   markBulk: (records) =>
-    fetch('/api/attendance/mark-bulk', {
+    apiCall('/admin/attendance/mark-bulk', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ records })
-    }).then(r => r.json()),
+    }),
 };
 
 // =============================================
@@ -93,24 +92,22 @@ const attendanceAPI = {
 // =============================================
 const homeworkAPI = {
   getAll: (class_name = '') =>
-    fetch(`/api/homework${class_name ? '?class_name=' + encodeURIComponent(class_name) : ''}`).then(r => r.json()),
+    apiCall(`/admin/homework${class_name ? '?class_name=' + encodeURIComponent(class_name) : ''}`, { method: 'GET' }),
 
   create: (data) =>
-    fetch('/api/homework', {
+    apiCall('/admin/homework', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(r => r.json()),
+    }),
 
   update: (id, data) =>
-    fetch(`/api/homework/${id}`, {
+    apiCall(`/admin/homework/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(r => r.json()),
+    }),
 
   delete: (id) =>
-    fetch(`/api/homework/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    apiCall(`/admin/homework/${id}`, { method: 'DELETE' }),
 };
 
 // =============================================
@@ -118,32 +115,50 @@ const homeworkAPI = {
 // =============================================
 const feesAPI = {
   getAll: () =>
-    fetch('/api/fees').then(r => r.json()),
+    apiCall('/admin/fees', { method: 'GET' }),
 
   getUnpaid: () =>
-    fetch('/api/fees/unpaid').then(r => r.json()),
+    apiCall('/admin/fees/unpaid', { method: 'GET' }),
 
   getStats: () =>
-    fetch('/api/fees/stats').then(r => r.json()),
+    apiCall('/admin/fees/stats', { method: 'GET' }),
 
   getByStudent: (student_id) =>
-    fetch(`/api/fees/student/${student_id}`).then(r => r.json()),
+    apiCall(`/admin/fees/student/${student_id}`, { method: 'GET' }),
 
   add: (data) =>
-    fetch('/api/fees', {
+    apiCall('/admin/fees', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(r => r.json()),
+    }),
 
   markPaid: (id) =>
-    fetch(`/api/fees/${id}/paid`, { method: 'PATCH' }).then(r => r.json()),
+    apiCall(`/admin/fees/${id}/paid`, { method: 'PATCH' }),
 
   markUnpaid: (id) =>
-    fetch(`/api/fees/${id}/unpaid`, { method: 'PATCH' }).then(r => r.json()),
+    apiCall(`/admin/fees/${id}/unpaid`, { method: 'PATCH' }),
 
   delete: (id) =>
-    fetch(`/api/fees/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    apiCall(`/admin/fees/${id}`, { method: 'DELETE' }),
+};
+
+// =============================================
+// NEW ADMIN APIs for Missing Modules
+// =============================================
+const materialsAPI = {
+  getAll: () => apiCall('/admin/materials', { method: 'GET' }),
+  create: (data) => apiCall('/admin/materials', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id) => apiCall(`/admin/materials/${id}`, { method: 'DELETE' }),
+};
+
+const notificationsAPI = {
+  getAll: () => apiCall('/admin/notifications', { method: 'GET' }),
+  create: (data) => apiCall('/admin/notifications', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+const resultsAPI = {
+  getByStudent: (studentId) => apiCall(`/admin/results/${studentId}`, { method: 'GET' }),
+  create: (data) => apiCall('/admin/results', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export const authAPI = {
@@ -261,6 +276,9 @@ export const adminAPI = {
     });
   },
 };
+
+// Export missing APIs onto the global scoped variables so admin-dashboard.js can use them
+export { attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };
 
 /**
  * Teacher APIs

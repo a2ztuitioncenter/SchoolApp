@@ -41,7 +41,7 @@ export async function handleStudentLogin(event) {
 
       // Redirect to dashboard
       setTimeout(() => {
-        window.location.href = '/pages/student-dashboard.html';
+        window.location.href = '/student-dashboard.html';
       }, 500);
     } else {
       showError(response.error || 'Login failed. Please try again.');

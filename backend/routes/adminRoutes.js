@@ -271,8 +271,8 @@ router.get('/financials/unpaid-fees', async (req, res) => {
        FROM fees f
        JOIN students s ON f.studentId = s.id
        JOIN users u ON f.userId = u.id
-       WHERE f.ispaid = FALSE
-       ORDER BY f.duedate ASC`
+       WHERE f.paid = FALSE
+       ORDER BY f.due_date ASC`
     );
 
     return res.json({
@@ -299,23 +299,23 @@ router.get('/financials/report', async (req, res) => {
       `SELECT 
         COUNT(*) as totalRecords,
         COALESCE(SUM(amount), 0) as totalAmount,
-        COALESCE(SUM(CASE WHEN ispaid = TRUE THEN amount ELSE 0 END), 0) as totalPaid,
-        COALESCE(SUM(CASE WHEN ispaid = FALSE THEN amount ELSE 0 END), 0) as totalPending,
-        SUM(CASE WHEN ispaid = TRUE THEN 1 ELSE 0 END) as paidCount,
-        SUM(CASE WHEN ispaid = FALSE THEN 1 ELSE 0 END) as pendingCount
+        COALESCE(SUM(CASE WHEN paid = TRUE THEN amount ELSE 0 END), 0) as totalPaid,
+        COALESCE(SUM(CASE WHEN paid = FALSE THEN amount ELSE 0 END), 0) as totalPending,
+        SUM(CASE WHEN paid = TRUE THEN 1 ELSE 0 END) as paidCount,
+        SUM(CASE WHEN paid = FALSE THEN 1 ELSE 0 END) as pendingCount
        FROM fees`
     );
 
     // Get students with unpaid fees
     const unpaidResult = await pool.query(
-      `SELECT COUNT(DISTINCT studentId) as studentsWithUnpaid
+      `SELECT COUNT(DISTINCT student_id) as studentsWithUnpaid
        FROM fees
-       WHERE ispaid = FALSE`
+       WHERE paid = FALSE`
     );
 
     const report = {
       ...feesResult.rows[0],
-      studentsWithUnpaid: unpaidResult.rows[0].studentsWithUnpaid,
+      studentsWithUnpaid: unpaidResult.rows[0].studentswithunpaid,
     };
 
     return res.json({

@@ -10,7 +10,7 @@ let currentTab = 'dashboard';
 /**
  * Initialize dashboard on page load
  */
-alert("Welcome to admin dashboard")
+// alert("Welcome to admin dashboard")
 document.addEventListener('DOMContentLoaded', async () => {
   // Check if user is logged in as admin
   const adminId = sessionStorage.getItem('adminUserId');

@@ -12,6 +12,9 @@ import parentRoutes from './routes/parentRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import homeworkRoutes   from './routes/homeworkRoutes.js';
 import feeRoutes        from './routes/feeRoutes.js';
+import materialsRoutes  from './routes/materialsRoutes.js';
+import notificationsRoutes from './routes/notificationsRoutes.js';
+import resultsRoutes    from './routes/resultsRoutes.js';
 
 import { initializeDatabase } from './database.js';
 
@@ -78,9 +81,14 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/parent', parentRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/homework',   homeworkRoutes);
-app.use('/api/fees',       feeRoutes);
+
+// Admin Module Routes (from verification requirements)
+app.use('/admin/attendance', attendanceRoutes);
+app.use('/admin/homework', homeworkRoutes);
+app.use('/admin/fees', feeRoutes);
+app.use('/admin/materials', materialsRoutes);
+app.use('/admin/notifications', notificationsRoutes);
+app.use('/admin/results', resultsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

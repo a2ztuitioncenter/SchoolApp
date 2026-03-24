@@ -1,243 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | A2Z</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./css/admin-dashboard.css">
+import fs from 'fs';
 
-</head>
-<body>
+const htmlPath = 'm:/WebDev/projects/tuition-app/frontend/admin-dashboard.html';
+let html = fs.readFileSync(htmlPath, 'utf8');
 
-    <div class="admin-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo">
-                <i class="fas fa-crown"></i>
-                <span>ADMIN</span>
-            </div>
-            <nav>
-                <a href="#" class="nav-link active" data-tab="dashboard">
-                    <i class="fas fa-chart-line"></i> Dashboard
-                </a>
-                <a href="#" class="nav-link" data-tab="users">
-                    <i class="fas fa-users"></i> User Management
-                </a>
-                <a href="#" class="nav-link" data-tab="students">
-                    <i class="fas fa-graduation-cap"></i> Student Onboarding
-                </a>
-                <a href="#" class="nav-link" data-tab="financials">
-                    <i class="fas fa-money-bill"></i> Financials
-                </a>
-                <button class="tab-btn" onclick="showTab('attendance')">📋 Attendance</button>
-                <button class="tab-btn" onclick="showTab('homework')">📚 Homework</button>
-                <button class="tab-btn" onclick="showTab('fees')">💰 Fees Management</button>
-                <button class="tab-btn" onclick="showTab('materials')">📁 Study Materials</button>
-                <button class="tab-btn" onclick="showTab('timetable')">⏰ Timetable</button>
-                <button class="tab-btn" onclick="showTab('notifications')">🔔 Notifications</button>
-                <button class="tab-btn" onclick="showTab('results')">📊 Exam Results</button>
-            </nav>
-<button class="logout-btn" id="logout-btn">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </button>
-                        </aside>
-                    
-                        <!-- Main Content -->
-                        <div class="main-content">
-                            <div class="header">
-                                <h1>Admin Dashboard</h1>
-                                <div class="admin-info">
-                                    <i class="fas fa-user-circle" style="font-size: 2rem; color: #667eea;"></i>
-                                    <div>
-                                        <div style="font-weight: 600; color: #2D3436;" id="admin-name">Administrator</div>
-                                        <div style="font-size: 0.85rem; color: #636E72;">Admin Panel</div>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                            <!-- Alerts -->
-                            <div id="success-alert" class="alert alert-success">
-                                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
-            </div>
-            <div id="error-alert" class="alert alert-error">
-                <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
-            </div>
-            <div id="info-alert" class="alert alert-info">
-                <i class="fas fa-info-circle"></i> <span id="info-text"></span>
-            </div>
+const navEndIndex = html.indexOf('</nav>');
+// Find logout button
+const logoutIndex = html.indexOf('<button class="logout-btn" id="logout-btn">');
 
-            <!-- Dashboard Tab -->
-            <div id="dashboard" class="tab-content active">
-                <div class="card-grid">
-                    <div class="card">
-                        <h3><i class="fas fa-users"></i> Total Students</h3>
-                        <div style="font-size: 2.5rem; color: #667eea; font-weight: 700;" id="total-students">0</div>
-                        <p style="color: #636E72; margin-top: 0.5rem;">Active student accounts</p>
-                    </div>
-                    <div class="card">
-                        <h3><i class="fas fa-money-bill-wave"></i> Unpaid Fees</h3>
-                        <div style="font-size: 2.5rem; color: #E74C3C; font-weight: 700;" id="total-unpaid">₹0</div>
-                        <p style="color: #636E72; margin-top: 0.5rem;">Outstanding fees</p>
-                    </div>
-                    <div class="card">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Overdue</h3>
-                        <div style="font-size: 2.5rem; color: #F39C12; font-weight: 700;" id="overdue-count">0</div>
-                        <p style="color: #636E72; margin-top: 0.5rem;">Fees overdue</p>
-                    </div>
-                </div>
-            </div>
+// Delete everything between </nav> (inclusive of </nav>) up to the logout button element
+// Wait, the navEndIndex actually points to the FIRST </nav>. Let's keep the </nav> and delete everything after it until logout block.
+const cleanSidebar = html.substring(0, navEndIndex + 6) + '\n' + html.substring(logoutIndex);
 
-            <!-- User Management Tab -->
-            <div id="users" class="tab-content">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3><i class="fas fa-user-plus"></i> Add New User</h3>
-                        <form id="add-user-form" style="display: grid; gap: 1rem;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Full Name</label>
-                                    <input type="text" id="user-name" placeholder="Enter full name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Phone Number</label>
-                                    <input type="tel" id="user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" id="user-email" placeholder="user@a2z.local">
-                                </div>
-                                <div class="form-group">
-                                    <label>Role</label>
-                                    <select id="user-role" required>
-                                        <option value="">Select Role</option>
-                                        <option value="teacher">Teacher</option>
-                                        <option value="staff">Staff</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Add User</button>
-                        </form>
-                    </div>
-                </div>
+html = cleanSidebar;
 
-                <div class="table-container" style="margin-top: 2rem;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-list">
-                            <tr>
-                                <td colspan="4" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No users found. Add a new user to get started.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+// Now append the missing tabs to the main content area, right before the scripts.
+const scriptIndex = html.indexOf('<script type="module" src="./js/admin-dashboard.js"></script>');
+const beforeScript = html.substring(0, scriptIndex);
+const afterScript = html.substring(scriptIndex);
 
-            <!-- Student Onboarding Tab -->
-            <div id="students" class="tab-content">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3><i class="fas fa-user-graduate"></i> Onboard New Student</h3>
-                        <form id="add-student-form" style="display: grid; gap: 1rem;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>First Name</label>
-                                    <input type="text" id="student-firstName" placeholder="First name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Last Name</label>
-                                    <input type="text" id="student-lastName" placeholder="Last name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Phone Number</label>
-                                    <input type="tel" id="student-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" id="student-email" placeholder="student@a2z.local" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Class Level</label>
-                                    <input type="text" id="student-classLevel" placeholder="e.g., 10A, 12B" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Section</label>
-                                    <input type="text" id="student-section" placeholder="e.g., A, B, C" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Father's Name</label>
-                                    <input type="text" id="student-fatherName" placeholder="Father's full name">
-                                </div>
-                                <div class="form-group">
-                                    <label>Mother's Name</label>
-                                    <input type="text" id="student-motherName" placeholder="Mother's full name">
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Onboard Student</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="table-container" style="margin-top: 2rem;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Class</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="students-list">
-                            <tr>
-                                <td colspan="4" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No students found. Onboard a student to get started.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Financials Tab -->
-            <div id="financials" class="tab-content">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th>Phone</th>
-                                <th>Class</th>
-                                <th>Unpaid Amount</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="financials-list">
-                            <tr>
-                                <td colspan="6" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>Loading fee data...</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    
+const newTabs = `
             <!-- Attendance Tab -->
             <div id="tab-attendance" class="tab-content" style="display:none;">
                 <div class="card-grid">
@@ -515,6 +296,18 @@
                     </div>
                 </div>
             </div>
-\n        </div>\n    </div>\n\n    <script type="module" src="./js/admin-dashboard.js"></script>
-</body>
-</html>
+`;
+
+// Insert the newTabs string after the end of main-content closing tags or just before script
+let newHtml = beforeScript.trim();
+if (newHtml.endsWith('</div>')) {
+    // Strip trailing </div> if any to put it inside main-content, then re-add
+    newHtml = newHtml.substring(0, newHtml.lastIndexOf('</div>')) + newTabs + '\\n        </div>\\n    </div>\\n\\n';
+} else {
+    newHtml = newHtml + newTabs;
+}
+
+newHtml += '    ' + afterScript;
+
+fs.writeFileSync(htmlPath, newHtml, 'utf8');
+console.log('HTML updated');

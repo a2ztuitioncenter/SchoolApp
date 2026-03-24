@@ -66,20 +66,58 @@ CREATE TABLE IF NOT EXISTS students (
     status VARCHAR(20) CHECK (status IN ('Active', 'Blocked')) DEFAULT 'Active'
 );
 
--- 3. Attendance Table
-CREATE TABLE IF NOT EXISTS attendance (
-    id SERIAL PRIMARY KEY,
-    student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    status VARCHAR(20) CHECK (status IN ('Present', 'Absent')) NOT NULL,
-    UNIQUE(student_id, date) -- Prevents marking the same student twice on the same day
+-- =====================
+-- TIMETABLE TABLE
+-- =====================
+CREATE TABLE IF NOT EXISTS timetable (
+  id           SERIAL PRIMARY KEY,
+  class_name   VARCHAR(50) NOT NULL,
+  day_of_week  VARCHAR(15) NOT NULL,
+  subject      VARCHAR(100) NOT NULL,
+  start_time   TIME NOT NULL,
+  end_time     TIME NOT NULL,
+  teacher_id   INTEGER REFERENCES users(id),
+  created_at   TIMESTAMP DEFAULT NOW()
 );
 
--- 4. Fees Table (For the Auto-Block System)
-CREATE TABLE IF NOT EXISTS fees (
-    id SERIAL PRIMARY KEY,
-    student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
-    amount DECIMAL(10, 2) NOT NULL,
-    due_date DATE NOT NULL,
-    is_paid BOOLEAN DEFAULT FALSE
+-- =====================
+-- MATERIALS TABLE
+-- =====================
+CREATE TABLE IF NOT EXISTS materials (
+  id           SERIAL PRIMARY KEY,
+  title        VARCHAR(200) NOT NULL,
+  description  TEXT,
+  class_name   VARCHAR(50) NOT NULL,
+  subject      VARCHAR(100) NOT NULL,
+  file_url     VARCHAR(500) NOT NULL,
+  uploaded_by  INTEGER REFERENCES users(id),
+  created_at   TIMESTAMP DEFAULT NOW()
+);
+
+-- =====================
+-- NOTIFICATIONS TABLE
+-- =====================
+CREATE TABLE IF NOT EXISTS notifications (
+  id           SERIAL PRIMARY KEY,
+  title        VARCHAR(200) NOT NULL,
+  message      TEXT NOT NULL,
+  recipient_role VARCHAR(50),
+  class_name   VARCHAR(50),
+  created_by   INTEGER REFERENCES users(id),
+  created_at   TIMESTAMP DEFAULT NOW()
+);
+
+-- =====================
+-- RESULTS TABLE
+-- =====================
+CREATE TABLE IF NOT EXISTS results (
+  id           SERIAL PRIMARY KEY,
+  student_id   INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  exam_title   VARCHAR(200) NOT NULL,
+  subject      VARCHAR(100) NOT NULL,
+  marks_obtained DECIMAL(5,2) NOT NULL,
+  total_marks  DECIMAL(5,2) NOT NULL,
+  remarks      TEXT,
+  recorded_by  INTEGER REFERENCES users(id),
+  created_at   TIMESTAMP DEFAULT NOW()
 );
