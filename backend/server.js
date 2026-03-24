@@ -83,12 +83,12 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/parent', parentRoutes);
 
 // Admin Module Routes (from verification requirements)
-app.use('/admin/attendance', attendanceRoutes);
-app.use('/admin/homework', homeworkRoutes);
-app.use('/admin/fees', feeRoutes);
-app.use('/admin/materials', materialsRoutes);
-app.use('/admin/notifications', notificationsRoutes);
-app.use('/admin/results', resultsRoutes);
+app.use('/api/admin/attendance', attendanceRoutes);
+app.use('/api/admin/homework', homeworkRoutes);
+app.use('/api/admin/fees', feeRoutes);
+app.use('/api/admin/materials', materialsRoutes);
+app.use('/api/admin/notifications', notificationsRoutes);
+app.use('/api/admin/results', resultsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

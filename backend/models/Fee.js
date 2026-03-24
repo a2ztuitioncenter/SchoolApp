@@ -26,7 +26,7 @@ export const feeModel = {
 
   async getAll() {
     const result = await db.query(
-      `SELECT f.*, s.name AS student_name, s.class_name, s.roll_number
+      `SELECT f.*, s.name AS student_name, s.class_level AS class_name
        FROM fees f
        JOIN students s ON f.student_id = s.id
        ORDER BY f.due_date ASC`
@@ -36,7 +36,7 @@ export const feeModel = {
 
   async getUnpaid() {
     const result = await db.query(
-      `SELECT f.*, s.name AS student_name, s.class_name, s.roll_number
+      `SELECT f.*, s.name AS student_name, s.class_level AS class_name
        FROM fees f
        JOIN students s ON f.student_id = s.id
        WHERE f.paid = FALSE
@@ -132,7 +132,7 @@ export async function getAllStudentFees(pool, student_id) {
 export async function getPendingFees(pool) {
   try {
     const result = await pool.query(
-      `SELECT f.*, s.name AS student_name, s.class_name, s.roll_number
+      `SELECT f.*, s.name AS student_name, s.class_level AS class_name
        FROM fees f
        JOIN students s ON f.student_id = s.id
        WHERE f.paid = FALSE

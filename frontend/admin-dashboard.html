@@ -6,6 +6,7 @@
     <title>Admin Dashboard | A2Z</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Styles -->
     <link rel="stylesheet" href="./css/admin-dashboard.css">
 
 </head>
@@ -31,17 +32,31 @@
                 <a href="#" class="nav-link" data-tab="financials">
                     <i class="fas fa-money-bill"></i> Financials
                 </a>
-                <button class="tab-btn" onclick="showTab('attendance')">📋 Attendance</button>
-                <button class="tab-btn" onclick="showTab('homework')">📚 Homework</button>
-                <button class="tab-btn" onclick="showTab('fees')">💰 Fees Management</button>
-                <button class="tab-btn" onclick="showTab('materials')">📁 Study Materials</button>
-                <button class="tab-btn" onclick="showTab('timetable')">⏰ Timetable</button>
-                <button class="tab-btn" onclick="showTab('notifications')">🔔 Notifications</button>
-                <button class="tab-btn" onclick="showTab('results')">📊 Exam Results</button>
+                <a href="#" class="nav-link" data-tab="attendance">
+                    <i class="fas fa-clipboard-check"></i> Attendance
+                </a>
+                <a href="#" class="nav-link" data-tab="homework">
+                    <i class="fas fa-book"></i> Homework
+                </a>
+                <a href="#" class="nav-link" data-tab="fees">
+                    <i class="fas fa-wallet"></i> Fees Management
+                </a>
+                <a href="#" class="nav-link" data-tab="materials">
+                    <i class="fas fa-folder-open"></i> Study Materials
+                </a>
+                <a href="#" class="nav-link" data-tab="timetable">
+                    <i class="fas fa-clock"></i> Timetable
+                </a>
+                <a href="#" class="nav-link" data-tab="notifications">
+                    <i class="fas fa-bell"></i> Notifications
+                </a>
+                <a href="#" class="nav-link" data-tab="results">
+                    <i class="fas fa-chart-bar"></i> Exam Results
+                </a>
             </nav>
-<button class="logout-btn" id="logout-btn">
-                                <i class="fas fa-sign-out-alt"></i> Logout
-                            </button>
+            <button class="logout-btn" id="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
                         </aside>
                     
                         <!-- Main Content -->
@@ -236,8 +251,6 @@
                     </table>
                 </div>
             </div>
-        </div>
-    
             <!-- Attendance Tab -->
             <div id="tab-attendance" class="tab-content" style="display:none;">
                 <div class="card-grid">
@@ -515,6 +528,8 @@
                     </div>
                 </div>
             </div>
-\n        </div>\n    </div>\n\n    <script type="module" src="./js/admin-dashboard.js"></script>
+        </div>
+    </div>
+    <script type="module" src="./js/admin-dashboard.js"></script>
 </body>
 </html>

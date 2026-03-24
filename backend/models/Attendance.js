@@ -45,7 +45,7 @@ export const attendanceModel = {
 
   async getByClassAndDate(class_name, date) {
     const result = await db.query(
-      `SELECT a.*, s.name AS student_name, s.roll_number
+      `SELECT a.*, s.name AS student_name, NULL AS roll_number
        FROM attendance a
        JOIN students s ON a.student_id = s.id
        WHERE a.class_name = $1 AND a.date = $2
@@ -57,8 +57,8 @@ export const attendanceModel = {
 
   async getStudentsByClass(class_name) {
     const result = await db.query(
-      `SELECT id, name, roll_number FROM students
-       WHERE class_name = $1 ORDER BY name`,
+      `SELECT id, name, NULL AS roll_number FROM students
+       WHERE class_level = $1 ORDER BY name`,
       [class_name]
     );
     return result.rows;
@@ -76,7 +76,7 @@ export const attendanceModel = {
   async getMonthlySummary(class_name, month) {
     const result = await db.query(
       `SELECT
-         s.id, s.name, s.roll_number,
+         s.id, s.name, NULL AS roll_number,
          COUNT(a.id)                                        AS total_days,
          COUNT(CASE WHEN a.status='present' THEN 1 END)    AS present_count,
          COUNT(CASE WHEN a.status='absent'  THEN 1 END)    AS absent_count,
@@ -89,8 +89,8 @@ export const attendanceModel = {
        LEFT JOIN attendance a
          ON s.id = a.student_id
          AND TO_CHAR(a.date, 'YYYY-MM') = $2
-       WHERE s.class_name = $1
-       GROUP BY s.id, s.name, s.roll_number
+       WHERE s.class_level = $1
+       GROUP BY s.id, s.name
        ORDER BY s.name`,
       [class_name, month]
     );
@@ -99,7 +99,7 @@ export const attendanceModel = {
 
   async getAllClasses() {
     const result = await db.query(
-      `SELECT DISTINCT class_name FROM students ORDER BY class_name`
+      `SELECT DISTINCT class_level AS class_name FROM students ORDER BY class_level`
     );
     return result.rows.map(r => r.class_name);
   }

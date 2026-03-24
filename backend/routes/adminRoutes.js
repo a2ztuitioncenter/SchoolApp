@@ -266,11 +266,11 @@ router.get('/financials/unpaid-fees', async (req, res) => {
       `SELECT 
         f.*,
         s.name as student_name,
-        s."classLevel",
+        s.class_level as "classLevel",
         u.phone
        FROM fees f
-       JOIN students s ON f.studentId = s.id
-       JOIN users u ON f.userId = u.id
+       JOIN students s ON f.student_id = s.id
+       JOIN users u ON s.user_id = u.id
        WHERE f.paid = FALSE
        ORDER BY f.due_date ASC`
     );

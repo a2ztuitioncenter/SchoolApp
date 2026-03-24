@@ -1,9 +1,7 @@
 /**
  * admin-dashboard.js - Admin dashboard functionality
  */
-
-import { adminAPI } from './api.js';
-
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI } from './api.js';
 // Current tab state
 let currentTab = 'dashboard';
 
@@ -38,24 +36,65 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Setup tab navigation
  */
-// ============================================================
-// TAB SWITCHING — update your existing showTab function
-// ============================================================
+function setupTabNavigation() {
+  const tabs = document.querySelectorAll('.sidebar nav a.nav-link');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tabName = tab.getAttribute('data-tab');
+      if (tabName) {
+        showTab(tabName);
+      }
+    });
+  });
+}
+
 function showTab(tabName) {
-  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  // Hide all tab contents
+  document.querySelectorAll('.tab-content').forEach(t => {
+    t.style.display = 'none';
+    t.classList.remove('active');
+  });
+  
+  // Remove active state from all nav links
+  document.querySelectorAll('.sidebar nav a.nav-link').forEach(b => {
+    b.classList.remove('active');
+  });
 
-  const tab = document.getElementById('tab-' + tabName);
-  if (tab) tab.style.display = 'block';
+  // Find the target tab (handles both #tabName and #tab-tabName conventions)
+  let tab = document.getElementById(tabName);
+  if (!tab) tab = document.getElementById('tab-' + tabName);
+  
+  if (tab) {
+    tab.style.display = 'block';
+    tab.classList.add('active');
+  }
 
-  const btn = document.querySelector(`[onclick="showTab('${tabName}')"]`);
+  // Set clicked nav link as active
+  const btn = document.querySelector(`[data-tab="${tabName}"]`);
   if (btn) btn.classList.add('active');
 
-  // Load data when tab is opened
-  if (tabName === 'attendance') initAttendanceTab();
-  if (tabName === 'homework')   loadAllHomework();
-  if (tabName === 'fees')       initFeesTab();
+  // Update current tab state
+  currentTab = tabName;
+
+  // Load data when specific tab is opened
+  if (tabName === 'dashboard')  loadDashboardData();
+  if (tabName === 'users')      loadUsers();
+  if (tabName === 'students')   loadStudents();
+  if (tabName === 'financials') loadFinancials();
+  
+  if (tabName === 'attendance') if (typeof initAttendanceTab === 'function') initAttendanceTab();
+  if (tabName === 'homework')   if (typeof loadAllHomework === 'function') loadAllHomework();
+  if (tabName === 'fees')       if (typeof initFeesTab === 'function') initFeesTab();
+  
+  if (tabName === 'materials')  if (typeof loadMaterials === 'function') loadMaterials();
+  if (tabName === 'timetable')  if (typeof loadTimetable === 'function') loadTimetable();
+  if (tabName === 'notifications') if (typeof loadNotifications === 'function') loadNotifications();
+  if (tabName === 'results')    if (typeof loadResults === 'function') loadResults();
 }
+
+// Make globally available if needed by other inline scripts
+window.showTab = showTab;
 
 // ============================================================
 // ==================  ATTENDANCE MODULE  =====================
@@ -451,54 +490,7 @@ function showToast(message, type = 'success') {
   setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
-function setupTabNavigation() {
-  const navLinks = document.querySelectorAll('.nav-link');
-  const tabButtons = document.querySelectorAll('[data-tab]');
-
-  const switchTab = (tabName) => {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-      tab.classList.remove('active');
-    });
-
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-button, .nav-link').forEach(btn => {
-      btn.classList.remove('active');
-    });
-
-    // Show selected tab
-    const selectedTab = document.getElementById(tabName);
-    if (selectedTab) {
-      selectedTab.classList.add('active');
-    }
-
-    // Update active class
-    document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(btn => {
-      btn.classList.add('active');
-    });
-
-    currentTab = tabName;
-
-    // Load data based on tab
-    if (tabName === 'users') {
-      loadUsers();
-    } else if (tabName === 'students') {
-      loadStudents();
-    } else if (tabName === 'financials') {
-      loadFinancials();
-    }
-  };
-
-  // Sidebar nav links
-  navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tabName = link.getAttribute('data-tab');
-      switchTab(tabName);
-    });
-  });
-}
-
+// The duplicate setupTabNavigation has been removed successfully.
 /**
  * Setup form submission handlers
  */
@@ -578,6 +570,7 @@ function setupForms() {
  */
 async function loadDashboardData() {
   try {
+    showInfoAlert('Loading dashboard data...');
     console.log('📊 Loading dashboard data...');
     
     const [students, unpaidFees] = await Promise.all([
@@ -616,10 +609,14 @@ async function loadDashboardData() {
     if (overdueElement) {
       overdueElement.textContent = overdueCount;
     }
+    
+    // Hide info alert on success
+    const infoAlert = document.getElementById('info-alert');
+    if (infoAlert) infoAlert.style.display = 'none';
 
   } catch (error) {
     console.error('Error loading dashboard data:', error);
-    showErrorAlert('Failed to load dashboard data');
+    showErrorAlert(error.message || 'Failed to load dashboard data');
   }
 }
 
@@ -751,8 +748,8 @@ async function loadFinancials() {
 function showSuccessAlert(message) {
   const alert = document.getElementById('success-alert');
   if (alert) {
-    document.getElementById('success-text').textContent = message;
-    alert.style.display = 'block';
+    document.getElementById('success-text').textContent = message || 'Success!';
+    alert.style.display = 'flex';
     setTimeout(() => alert.style.display = 'none', 4000);
   }
 }
@@ -760,8 +757,8 @@ function showSuccessAlert(message) {
 function showErrorAlert(message) {
   const alert = document.getElementById('error-alert');
   if (alert) {
-    document.getElementById('error-text').textContent = message;
-    alert.style.display = 'block';
+    document.getElementById('error-text').textContent = message || 'An unknown error occurred';
+    alert.style.display = 'flex';
     setTimeout(() => alert.style.display = 'none', 4000);
   }
 }
@@ -769,8 +766,8 @@ function showErrorAlert(message) {
 function showInfoAlert(message) {
   const alert = document.getElementById('info-alert');
   if (alert) {
-    document.getElementById('info-text').textContent = message;
-    alert.style.display = 'block';
+    document.getElementById('info-text').textContent = message || 'Processing...';
+    alert.style.display = 'flex';
   }
 }
 
