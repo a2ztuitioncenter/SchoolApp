@@ -158,6 +158,7 @@ const notificationsAPI = {
 
 const resultsAPI = {
   getByStudent: (studentId) => apiCall(`/admin/results/${studentId}`, { method: 'GET' }),
+  getAll: () => apiCall('/admin/results', { method: 'GET' }),
   create: (data) => apiCall('/admin/results', { method: 'POST', body: JSON.stringify(data) }),
 };
 

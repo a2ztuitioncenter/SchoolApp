@@ -1,168 +1,105 @@
-import db from '../database.js';
+import db from '../pool.js';
 
 export const homeworkModel = {
   table: 'homework',
   schema: `
     CREATE TABLE IF NOT EXISTS homework (
-      id           SERIAL PRIMARY KEY,
-      title        VARCHAR(200) NOT NULL,
-      description  TEXT,
-      class_name   VARCHAR(50) NOT NULL,
-      subject      VARCHAR(100) NOT NULL,
-      due_date     DATE,
-      assigned_by  INTEGER REFERENCES users(id),
-      created_at   TIMESTAMP DEFAULT NOW(),
-      updated_at   TIMESTAMP DEFAULT NOW()
+      id SERIAL PRIMARY KEY,
+      "teacherId" INTEGER REFERENCES users(id),
+      "classLevel" VARCHAR(50) NOT NULL,
+      section VARCHAR(10),
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      "dueDate" DATE,
+      subject VARCHAR(100),
+      "attachmentUrl" VARCHAR(500),
+      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT NOW()
     );
   `,
 
-  async create({ title, description, class_name, subject, due_date, assigned_by }) {
+  async getAll(classLevel = '') {
+    let query = `SELECT h.*, u.phone AS "teacherPhone"
+                 FROM homework h
+                 LEFT JOIN users u ON h."teacherId" = u.id`;
+    const params = [];
+    if (classLevel) { query += ` WHERE h."classLevel" = $1`; params.push(classLevel); }
+    query += ` ORDER BY h."createdAt" DESC`;
+    const result = await db.query(query, params);
+    return result.rows;
+  },
+
+  async getByClass(classLevel) {
+    return this.getAll(classLevel);
+  },
+
+  async getById(id) {
+    const result = await db.query('SELECT * FROM homework WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  },
+
+  async create({ title, description, classLevel, subject, dueDate, assignedBy }) {
     const result = await db.query(
-      `INSERT INTO homework (title, description, class_name, subject, due_date, assigned_by)
+      `INSERT INTO homework (title, description, "classLevel", subject, "dueDate", "teacherId")
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description, class_name, subject, due_date, assigned_by]
+      [title, description || null, classLevel, subject || null, dueDate || null, assignedBy || null]
     );
     return result.rows[0];
   },
 
-  async getAll() {
+  async update(id, { title, description, classLevel, subject, dueDate }) {
     const result = await db.query(
-      `SELECT h.*, u.name AS teacher_name
-       FROM homework h
-       LEFT JOIN users u ON h.assigned_by = u.id
-       ORDER BY h.created_at DESC`
-    );
-    return result.rows;
-  },
-
-  async getByClass(class_name) {
-    const result = await db.query(
-      `SELECT h.*, u.name AS teacher_name
-       FROM homework h
-       LEFT JOIN users u ON h.assigned_by = u.id
-       WHERE h.class_name = $1
-       ORDER BY h.created_at DESC`,
-      [class_name]
-    );
-    return result.rows;
-  },
-
-  async getById(id) {
-    const result = await db.query(
-      `SELECT h.*, u.name AS teacher_name
-       FROM homework h
-       LEFT JOIN users u ON h.assigned_by = u.id
-       WHERE h.id = $1`,
-      [id]
-    );
-    return result.rows[0] || null;
-  },
-
-  async update(id, { title, description, class_name, subject, due_date }) {
-    const result = await db.query(
-      `UPDATE homework
-       SET title=$1, description=$2, class_name=$3,
-           subject=$4, due_date=$5, updated_at=NOW()
-       WHERE id=$6 RETURNING *`,
-      [title, description, class_name, subject, due_date, id]
+      `UPDATE homework SET title=$1, description=$2, "classLevel"=$3, subject=$4, "dueDate"=$5 WHERE id=$6 RETURNING *`,
+      [title, description || null, classLevel, subject || null, dueDate || null, id]
     );
     return result.rows[0] || null;
   },
 
   async delete(id) {
-    const result = await db.query(
-      `DELETE FROM homework WHERE id=$1 RETURNING id`,
-      [id]
-    );
+    const result = await db.query('DELETE FROM homework WHERE id=$1 RETURNING id', [id]);
     return result.rows[0] || null;
   }
 };
 
-// Helper function for getting homework by class
-export async function getHomeworkByClass(pool, classLevel, section = null) {
-  try {
-    let query = `
-      SELECT h.*, u.name AS teacher_name
-      FROM homework h
-      LEFT JOIN users u ON h.assigned_by = u.id
-      WHERE h.class_name = $1
-    `;
-    const params = [classLevel];
-    
-    if (section) {
-      query += ` AND h.section = $2`;
-      params.push(section);
-    }
-    
-    query += ` ORDER BY h.due_date DESC, h.created_at DESC`;
-    
-    const result = await pool.query(query, params);
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching homework by class:', error);
-    return [];
-  }
-}
+// Legacy pool-based named exports used by teacherRoutes.js and studentRoutes.js
+export const getHomeworkByClass = async (pool, classLevel, section = null) => {
+  let query = `SELECT h.*, u.phone AS "teacherPhone"
+               FROM homework h
+               LEFT JOIN users u ON h."teacherId" = u.id
+               WHERE h."classLevel" = $1`;
+  const params = [classLevel];
+  if (section) { query += ` AND h.section = $2`; params.push(section); }
+  query += ` ORDER BY h."createdAt" DESC`;
+  const result = await pool.query(query, params);
+  return result.rows;
+};
 
-// Helper function for getting homework by teacher
-export async function getHomeworkByTeacher(pool, teacherId) {
-  try {
-    const result = await pool.query(
-      `SELECT h.*, u.name AS teacher_name
-       FROM homework h
-       LEFT JOIN users u ON h.assigned_by = u.id
-       WHERE h.assigned_by = $1
-       ORDER BY h.due_date DESC, h.created_at DESC`,
-      [teacherId]
-    );
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching homework by teacher:', error);
-    return [];
-  }
-}
+export const getHomeworkByTeacher = async (pool, teacherId) => {
+  const result = await pool.query(
+    `SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC`,
+    [teacherId]
+  );
+  return result.rows;
+};
 
-// Helper function for creating homework
-export async function createHomework(pool, { title, description, class_name, subject, due_date, assigned_by }) {
-  try {
-    const result = await pool.query(
-      `INSERT INTO homework (title, description, class_name, subject, due_date, assigned_by)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description, class_name, subject, due_date, assigned_by]
-    );
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error creating homework:', error);
-    throw error;
-  }
-}
+export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject }) => {
+  const result = await pool.query(
+    `INSERT INTO homework (title, description, "classLevel", section, subject, "dueDate", "teacherId")
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null]
+  );
+  return result.rows[0];
+};
 
-// Helper function for updating homework
-export async function updateHomework(pool, id, { title, description, class_name, subject, due_date }) {
-  try {
-    const result = await pool.query(
-      `UPDATE homework
-       SET title=$1, description=$2, class_name=$3, subject=$4, due_date=$5, updated_at=NOW()
-       WHERE id=$6 RETURNING *`,
-      [title, description, class_name, subject, due_date, id]
-    );
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('Error updating homework:', error);
-    throw error;
-  }
-}
+export const updateHomework = async (pool, id, { title, description, dueDate, subject }) => {
+  const result = await pool.query(
+    `UPDATE homework SET title=$1, description=$2, "dueDate"=$3, subject=$4 WHERE id=$5 RETURNING *`,
+    [title, description || null, dueDate || null, subject || null, id]
+  );
+  return result.rows[0] || null;
+};
 
-// Helper function for deleting homework
-export async function deleteHomework(pool, id) {
-  try {
-    const result = await pool.query(
-      `DELETE FROM homework WHERE id=$1 RETURNING id`,
-      [id]
-    );
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('Error deleting homework:', error);
-    throw error;
-  }
-}
+export const deleteHomework = async (pool, id) => {
+  await pool.query('DELETE FROM homework WHERE id = $1', [id]);
+  return true;
+};

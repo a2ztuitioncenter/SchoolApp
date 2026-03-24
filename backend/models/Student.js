@@ -1,167 +1,54 @@
-// Student.js - Student model containing academic and personal information
+import db from '../database.js';
+
 export const studentModel = {
   table: 'students',
   schema: `
     CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
-      "userId" INT NOT NULL,
+      "userId" INTEGER REFERENCES users(id) ON DELETE CASCADE,
       name VARCHAR(100) NOT NULL,
       "classLevel" VARCHAR(50) NOT NULL,
+      section VARCHAR(10),
       "fatherName" VARCHAR(100),
-      "joiningDate" DATE NOT NULL,
-      section VARCHAR(5),
+      "motherName" VARCHAR(100),
       phone VARCHAR(20),
       email VARCHAR(255),
       "rollNumber" VARCHAR(20),
-      "motherName" VARCHAR(100),
-      status VARCHAR(20) DEFAULT 'Active' CHECK (status IN ('Active', 'Blocked')),
-      FOREIGN KEY ("userId") REFERENCES users(id) ON DELETE CASCADE
+      "joiningDate" DATE NOT NULL,
+      status VARCHAR(20) DEFAULT 'active',
+      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT NOW()
     );
-    CREATE INDEX IF NOT EXISTS idx_students_user_id ON students("userId");
   `,
 };
 
-// Helper to get student by userId
-export const getStudentByUserId = async (pool, userId) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM students WHERE "userId" = $1 LIMIT 1',
-      [userId]
-    );
-    return result.rows.length > 0 ? result.rows[0] : null;
-  } catch (error) {
-    console.error('Error fetching student by userId:', error);
-    throw error;
-  }
-};
-
-// Helper to get student by ID
-export const getStudentById = async (pool, id) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM students WHERE id = $1 LIMIT 1',
-      [id]
-    );
-    return result.rows.length > 0 ? result.rows[0] : null;
-  } catch (error) {
-    console.error('Error fetching student by ID:', error);
-    throw error;
-  }
-};
-
-// Helper to create a student record
-export const createStudent = async (pool, studentData) => {
+export const createStudent = async (pool, data) => {
   const {
-    userId,
-    name,
-    classLevel,
-    fatherName,
-    joiningDate,
-    status = 'Active',
-  } = studentData;
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO students 
-       ("userId", name, "classLevel", "fatherName", "joiningDate", status)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [userId, name, classLevel, fatherName, joiningDate, status]
-    );
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error creating student:', error);
-    throw error;
-  }
+    userId, name, classLevel, section, fatherName, motherName,
+    phone, email, rollNumber, joiningDate, status, schoolId = 'school-001'
+  } = data;
+  const result = await pool.query(
+    `INSERT INTO students ("userId", name, "classLevel", section, "fatherName", "motherName", phone, email, "rollNumber", "joiningDate", status, "schoolId")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+    [userId, name, classLevel, section || null, fatherName || null, motherName || null,
+     phone || null, email || null, rollNumber || null, joiningDate, status || 'active', schoolId]
+  );
+  return result.rows[0];
 };
 
-// Helper to update student
-export const updateStudent = async (pool, id, studentData) => {
-  const {
-    name,
-    classLevel,
-    section,
-    fatherName,
-    motherName,
-    phone,
-    email,
-    status,
-  } = studentData;
-
-  const updates = [];
-  const values = [];
-  let paramCount = 1;
-
-  if (name !== undefined) {
-    updates.push(`name = $${paramCount}`);
-    values.push(name);
-    paramCount++;
-  }
-  if (classLevel !== undefined) {
-    updates.push(`"classLevel" = $${paramCount}`);
-    values.push(classLevel);
-    paramCount++;
-  }
-  if (section !== undefined) {
-    updates.push(`section = $${paramCount}`);
-    values.push(section);
-    paramCount++;
-  }
-  if (fatherName !== undefined) {
-    updates.push(`"fatherName" = $${paramCount}`);
-    values.push(fatherName);
-    paramCount++;
-  }
-  if (motherName !== undefined) {
-    updates.push(`"motherName" = $${paramCount}`);
-    values.push(motherName);
-    paramCount++;
-  }
-  if (phone !== undefined) {
-    updates.push(`phone = $${paramCount}`);
-    values.push(phone);
-    paramCount++;
-  }
-  if (email !== undefined) {
-    updates.push(`email = $${paramCount}`);
-    values.push(email);
-    paramCount++;
-  }
-  if (status !== undefined) {
-    updates.push(`status = $${paramCount}`);
-    values.push(status);
-    paramCount++;
-  }
-
-  if (updates.length === 0) return null;
-
-  updates.push('updatedAt = CURRENT_TIMESTAMP');
-  values.push(id);
-
-  try {
-    const result = await pool.query(
-      `UPDATE students SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
-      values
-    );
-
-    return result.rows.length > 0 ? result.rows[0] : null;
-  } catch (error) {
-    console.error('Error updating student:', error);
-    throw error;
-  }
-};
-
-// Helper to get all students for a school
+// Legacy export used by getStudentsBySchool call in adminRoutes
 export const getStudentsBySchool = async (pool, schoolId) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM students WHERE schoolId = $1 ORDER BY name ASC',
-      [schoolId]
-    );
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching students by school:', error);
-    throw error;
-  }
+  const result = await pool.query(
+    'SELECT * FROM students WHERE "schoolId" = $1 ORDER BY name ASC',
+    [schoolId]
+  );
+  return result.rows;
+};
+
+export const getStudentByUserId = async (pool, userId) => {
+  const result = await pool.query(
+    'SELECT * FROM students WHERE "userId" = $1 LIMIT 1',
+    [userId]
+  );
+  return result.rows[0] || null;
 };

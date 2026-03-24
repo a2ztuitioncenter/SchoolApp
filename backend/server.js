@@ -61,10 +61,10 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ extended: true }));
 
-// Serve master-dashboard.html on root route
+// Serve main-dashboard.html on root route
 app.get('/', (req, res) => {
-  const masterDashboardPath = path.join(__dirname, '../frontend/pages/master-dashboard.html');
-  res.sendFile(masterDashboardPath);
+  const mainDashboardPath = path.join(__dirname, '../frontend/main-dashboard.html');
+  res.sendFile(mainDashboardPath);
 });
 
 // Serve static files from frontend
@@ -95,12 +95,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
 });
 
-// Serve master-dashboard.html for all other routes (SPA support)
+// Serve main-dashboard.html for all other routes (SPA support)
 app.use((req, res) => {
-  const masterDashboardPath = path.join(__dirname, '../frontend/pages/master-dashboard.html');
-  res.sendFile(masterDashboardPath, (err) => {
+  const mainDashboardPath = path.join(__dirname, '../frontend/main-dashboard.html');
+  res.sendFile(mainDashboardPath, (err) => {
     if (err) {
-      console.error('Error serving master-dashboard.html:', err.message);
+      console.error('Error serving main-dashboard.html:', err.message);
       res.status(404).json({ error: 'Page not found' });
     }
   });

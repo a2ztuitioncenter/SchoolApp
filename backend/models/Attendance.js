@@ -1,134 +1,117 @@
-import db from '../database.js';
+import db from '../pool.js';
 
 export const attendanceModel = {
   table: 'attendance',
   schema: `
     CREATE TABLE IF NOT EXISTS attendance (
-      id           SERIAL PRIMARY KEY,
-      student_id   INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-      class_name   VARCHAR(50) NOT NULL,
-      date         DATE NOT NULL,
-      status       VARCHAR(10) NOT NULL CHECK (status IN ('present', 'absent', 'late')),
-      marked_by    INTEGER REFERENCES users(id),
-      created_at   TIMESTAMP DEFAULT NOW(),
-      UNIQUE(student_id, date)
+      id SERIAL PRIMARY KEY,
+      "studentId" INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      "userId" INTEGER REFERENCES users(id),
+      "attendanceDate" DATE NOT NULL,
+      status VARCHAR(10) NOT NULL CHECK (status IN ('present', 'absent', 'late')),
+      remarks TEXT,
+      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      UNIQUE("studentId", "attendanceDate")
     );
   `,
 
-  async markAttendance({ student_id, class_name, date, status, marked_by }) {
-    const result = await db.query(
-      `INSERT INTO attendance (student_id, class_name, date, status, marked_by)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (student_id, date)
-       DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by
-       RETURNING *`,
-      [student_id, class_name, date, status, marked_by]
-    );
-    return result.rows[0];
-  },
-
-  async markBulk(records, marked_by) {
+  async markBulk(records, userId) {
     const results = [];
     for (const rec of records) {
+      const studentId = rec.studentId || rec.student_id;
+      const date = rec.date || rec.attendanceDate;
       const r = await db.query(
-        `INSERT INTO attendance (student_id, class_name, date, status, marked_by)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (student_id, date)
-         DO UPDATE SET status = EXCLUDED.status, marked_by = EXCLUDED.marked_by
+        `INSERT INTO attendance ("studentId", "attendanceDate", status, "userId")
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT ("studentId", "attendanceDate")
+         DO UPDATE SET status = EXCLUDED.status, "userId" = EXCLUDED."userId"
          RETURNING *`,
-        [rec.student_id, rec.class_name, rec.date, rec.status, marked_by]
+        [studentId, date, rec.status, userId]
       );
       results.push(r.rows[0]);
     }
     return results;
   },
 
-  async getByClassAndDate(class_name, date) {
+  async getByClassAndDate(classLevel, date) {
+    // attendance has no classLevel column — join via students
     const result = await db.query(
-      `SELECT a.*, s.name AS student_name, NULL AS roll_number
+      `SELECT a.*, s.name AS "studentName", s."rollNumber"
        FROM attendance a
-       JOIN students s ON a.student_id = s.id
-       WHERE a.class_name = $1 AND a.date = $2
+       JOIN students s ON a."studentId" = s.id
+       WHERE s."classLevel" = $1 AND a."attendanceDate" = $2
        ORDER BY s.name`,
-      [class_name, date]
+      [classLevel, date]
     );
     return result.rows;
   },
 
-  async getStudentsByClass(class_name) {
+  async getStudentsByClass(classLevel) {
     const result = await db.query(
-      `SELECT id, name, NULL AS roll_number FROM students
-       WHERE class_level = $1 ORDER BY name`,
-      [class_name]
+      `SELECT id, name, "rollNumber" FROM students WHERE "classLevel" = $1 ORDER BY name`,
+      [classLevel]
     );
     return result.rows;
   },
 
-  async getByStudent(student_id) {
+  async getByStudent(studentId) {
     const result = await db.query(
-      `SELECT * FROM attendance
-       WHERE student_id = $1 ORDER BY date DESC`,
-      [student_id]
+      `SELECT * FROM attendance WHERE "studentId" = $1 ORDER BY "attendanceDate" DESC`,
+      [studentId]
     );
     return result.rows;
   },
 
-  async getMonthlySummary(class_name, month) {
+  async getMonthlySummary(classLevel, month) {
     const result = await db.query(
       `SELECT
-         s.id, s.name, NULL AS roll_number,
-         COUNT(a.id)                                        AS total_days,
-         COUNT(CASE WHEN a.status='present' THEN 1 END)    AS present_count,
-         COUNT(CASE WHEN a.status='absent'  THEN 1 END)    AS absent_count,
-         COUNT(CASE WHEN a.status='late'    THEN 1 END)    AS late_count,
-         ROUND(
-           COUNT(CASE WHEN a.status='present' THEN 1 END) * 100.0
-           / NULLIF(COUNT(a.id), 0), 1
-         ) AS attendance_percent
+         s.id, s.name, s."rollNumber",
+         COUNT(a.id)                                         AS "totalDays",
+         COUNT(CASE WHEN a.status='present' THEN 1 END)     AS "presentCount",
+         COUNT(CASE WHEN a.status='absent'  THEN 1 END)     AS "absentCount",
+         COUNT(CASE WHEN a.status='late'    THEN 1 END)     AS "lateCount",
+         ROUND(COUNT(CASE WHEN a.status='present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS "attendancePercent"
        FROM students s
        LEFT JOIN attendance a
-         ON s.id = a.student_id
-         AND TO_CHAR(a.date, 'YYYY-MM') = $2
-       WHERE s.class_level = $1
-       GROUP BY s.id, s.name
+         ON s.id = a."studentId"
+         AND TO_CHAR(a."attendanceDate", 'YYYY-MM') = $2
+       WHERE s."classLevel" = $1
+       GROUP BY s.id, s.name, s."rollNumber"
        ORDER BY s.name`,
-      [class_name, month]
+      [classLevel, month]
     );
     return result.rows;
   },
 
   async getAllClasses() {
     const result = await db.query(
-      `SELECT DISTINCT class_level AS class_name FROM students ORDER BY class_level`
+      `SELECT DISTINCT "classLevel" FROM students ORDER BY "classLevel"`
     );
-    return result.rows.map(r => r.class_name);
+    return result.rows.map(r => r.classLevel);
   }
 };
 
-// Helper functions for attendance analytics
-export async function getAttendancePercentage(pool, student_id, days = 30) {
+// Legacy helper exports for dataController.js
+export const getAttendancePercentage = async (pool, studentId, days = 30) => {
   try {
     const result = await pool.query(
       `SELECT 
-         COUNT(CASE WHEN status = 'present' THEN 1 END) AS presentDays,
-         COUNT(CASE WHEN status = 'absent' THEN 1 END) AS absentDays,
-         COUNT(*) AS totalWorkingDays,
-         ROUND(
-           COUNT(CASE WHEN status = 'present' THEN 1 END) * 100.0 / 
-           NULLIF(COUNT(*), 0), 1
-         ) AS percentage
+         COUNT(CASE WHEN status = 'present' THEN 1 END) AS "presentDays",
+         COUNT(CASE WHEN status = 'absent' THEN 1 END) AS "absentDays",
+         COUNT(*) AS "totalWorkingDays",
+         ROUND(COUNT(CASE WHEN status = 'present' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS percentage
        FROM attendance
-       WHERE student_id = $1 AND date >= NOW() - INTERVAL '${days} days'`,
-      [student_id]
+       WHERE "studentId" = $1 AND "attendanceDate" >= NOW() - INTERVAL '${days} days'`,
+      [studentId]
     );
     return result.rows[0] || { presentDays: 0, absentDays: 0, totalWorkingDays: 0, percentage: 0 };
-  } catch (error) {
-    console.error('Error fetching attendance percentage:', error);
+  } catch (err) {
     return { presentDays: 0, absentDays: 0, totalWorkingDays: 0, percentage: 0 };
   }
-}
+};
 
-export async function getAttendanceSummary(pool, student_id) {
+export const getAttendanceSummary = async (pool, studentId) => {
   try {
     const result = await pool.query(
       `SELECT 
@@ -136,38 +119,25 @@ export async function getAttendanceSummary(pool, student_id) {
          COUNT(CASE WHEN status = 'absent' THEN 1 END) AS absent,
          COUNT(CASE WHEN status = 'late' THEN 1 END) AS late,
          COUNT(*) AS total
-       FROM attendance
-       WHERE student_id = $1`,
-      [student_id]
+       FROM attendance WHERE "studentId" = $1`,
+      [studentId]
     );
     return result.rows[0] || { present: 0, absent: 0, late: 0, total: 0 };
-  } catch (error) {
-    console.error('Error fetching attendance summary:', error);
+  } catch (err) {
     return { present: 0, absent: 0, late: 0, total: 0 };
   }
-}
+};
 
-export async function getAttendanceByStudentId(pool, student_id, startDate = null, endDate = null) {
+export const getAttendanceByStudentId = async (pool, studentId, startDate = null, endDate = null) => {
   try {
-    let query = `SELECT * FROM attendance WHERE student_id = $1`;
-    const params = [student_id];
-    
-    if (startDate) {
-      query += ` AND date >= $${params.length + 1}`;
-      params.push(startDate);
-    }
-    
-    if (endDate) {
-      query += ` AND date <= $${params.length + 1}`;
-      params.push(endDate);
-    }
-    
-    query += ` ORDER BY date DESC`;
-    
+    let query = `SELECT * FROM attendance WHERE "studentId" = $1`;
+    const params = [studentId];
+    if (startDate) { query += ` AND "attendanceDate" >= $${params.length + 1}`; params.push(startDate); }
+    if (endDate) { query += ` AND "attendanceDate" <= $${params.length + 1}`; params.push(endDate); }
+    query += ` ORDER BY "attendanceDate" DESC`;
     const result = await pool.query(query, params);
     return result.rows;
-  } catch (error) {
-    console.error('Error fetching attendance by student:', error);
+  } catch (err) {
     return [];
   }
-}
+};
