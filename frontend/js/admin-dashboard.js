@@ -7,6 +7,7 @@ import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificati
 
 let currentTab = 'dashboard';
 let allHomeworkData = [];
+let allFeesData = [];
 let currentEditHwId = null;
 
 // =============================================
@@ -65,7 +66,6 @@ async function loadTabContent(tabName) {
         case 'dashboard':     await loadDashboardData(); break;
         case 'users':         await loadUsers(); break;
         case 'students':      await loadStudents(); break;
-        case 'financials':    await loadFinancials(); break;
         case 'attendance':    await initAttendanceTab(); break;
         case 'homework':      await loadAllHomework(); break;
         case 'fees':          await initFeesTab(); break;
@@ -205,43 +205,19 @@ async function loadStudents() {
         if (!tbody) return;
         tbody.innerHTML = students.length ? students.map(s => `
             <tr>
+                <td><strong>${s.id}</strong></td>
                 <td>${s.name}</td>
                 <td>${s.phone || 'N/A'}</td>
                 <td>${s.classLevel || 'N/A'}</td>
                 <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
             </tr>
-        `).join('') : '<tr><td colspan="4" class="empty-state">No students found. Add one below.</td></tr>';
+        `).join('') : '<tr><td colspan="5" class="empty-state">No students found. Add one below.</td></tr>';
     } catch (err) {
         showErrorAlert('Failed to load students');
     }
 }
 
-// =============================================
-// FINANCIALS
-// =============================================
-async function loadFinancials() {
-    try {
-        const res = await adminAPI.getUnpaidFees();
-        const fees = res.fees || [];
-        const tbody = document.getElementById('financials-list');
-        if (!tbody) return;
-        const today = new Date();
-        tbody.innerHTML = fees.length ? fees.map(f => {
-            const due = new Date(f.dueDate);
-            const isOverdue = due < today;
-            return `<tr>
-                <td>${f.studentName || 'Unknown'}</td>
-                <td>${f.phone || 'N/A'}</td>
-                <td>${f.classLevel || 'N/A'}</td>
-                <td>₹${parseFloat(f.amount).toLocaleString()}</td>
-                <td>${due.toLocaleDateString()}</td>
-                <td><span class="status-badge ${isOverdue ? 'status-overdue' : 'status-pending'}">${isOverdue ? 'Overdue' : 'Pending'}</span></td>
-            </tr>`;
-        }).join('') : '<tr><td colspan="6" class="empty-state">All fees are paid. No outstanding payments.</td></tr>';
-    } catch (err) {
-        showErrorAlert('Failed to load financials');
-    }
-}
+
 
 // =============================================
 // ATTENDANCE
@@ -491,30 +467,45 @@ async function loadFees(mode = 'all') {
 
     try {
         const res  = mode === 'unpaid' ? await feesAPI.getUnpaid() : await feesAPI.getAll();
-        const fees = res.data || [];
-        const tbody = document.getElementById('fees-table-body');
-        if (!tbody) return;
-        tbody.innerHTML = fees.length ? fees.map((f, i) => `
-            <tr>
-                <td>${i + 1}</td>
-                <td>${f.studentName || f.studentId}</td>
-                <td>${f.classLevel || '-'}</td>
-                <td>₹${parseFloat(f.amount).toFixed(2)}</td>
-                <td>${f.description || '-'}</td>
-                <td>${new Date(f.dueDate).toLocaleDateString('en-IN')}</td>
-                <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
-                <td>
-                    <button class="btn-sm ${f.paid ? 'btn-warning' : 'btn-success'}" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
-                        ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteFeeRecord(${f.id})">Del</button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+        allFeesData = res.data || [];
+        renderFeesTable(allFeesData);
     } catch (err) {
         showErrorAlert('Failed to load fees');
     }
 }
+
+function renderFeesTable(fees) {
+    const tbody = document.getElementById('fees-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = fees.length ? fees.map((f, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td><strong>${f.studentName || f.studentId}</strong>${f.student_id ? `<br><small style="color:#636e72">ID: ${f.student_id}</small>` : ''}</td>
+            <td>${f.classLevel || '-'}</td>
+            <td>₹${parseFloat(f.amount).toFixed(2)}</td>
+            <td>${f.description || '-'}</td>
+            <td>${new Date(f.dueDate).toLocaleDateString('en-IN')}</td>
+            <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
+            <td>
+                <button class="btn-sm ${f.paid ? 'btn-warning' : 'btn-success'}" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
+                    ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
+                </button>
+                <button class="btn-sm btn-delete" onclick="deleteFeeRecord(${f.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('') : '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+}
+
+window.filterFeesTable = function() {
+    const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
+    const filtered = allFeesData.filter(f => 
+        (f.studentName || '').toLowerCase().includes(query) || 
+        (f.student_id?.toString() || '').includes(query) ||
+        (f.description || '').toLowerCase().includes(query)
+    );
+    renderFeesTable(filtered);
+};
+
 
 window.addFeeRecord = async function () {
     const studentId  = document.getElementById('fee-student-id')?.value;
@@ -731,4 +722,4 @@ function hideInfoAlert() {
     if (el) el.style.display = 'none';
 }
 
-export { loadDashboardData, loadUsers, loadStudents, loadFinancials, loadMaterials, loadResults };
+export { loadDashboardData, loadUsers, loadStudents, loadMaterials, loadResults };

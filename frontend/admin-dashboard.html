@@ -29,9 +29,7 @@
                 <a href="#" class="nav-link" data-tab="students">
                     <i class="fas fa-graduation-cap"></i> Student Onboarding
                 </a>
-                <a href="#" class="nav-link" data-tab="financials">
-                    <i class="fas fa-money-bill"></i> Financials
-                </a>
+
                 <a href="#" class="nav-link" data-tab="attendance">
                     <i class="fas fa-clipboard-check"></i> Attendance
                 </a>
@@ -39,7 +37,7 @@
                     <i class="fas fa-book"></i> Homework
                 </a>
                 <a href="#" class="nav-link" data-tab="fees">
-                    <i class="fas fa-wallet"></i> Fees Management
+                    <i class="fas fa-wallet"></i> Fees & Financials
                 </a>
                 <a href="#" class="nav-link" data-tab="materials">
                     <i class="fas fa-folder-open"></i> Study Materials
@@ -253,6 +251,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Name</th>
                                 <th>Phone</th>
                                 <th>Class</th>
@@ -261,7 +260,7 @@
                         </thead>
                         <tbody id="students-list">
                             <tr>
-                                <td colspan="4" class="empty-state">
+                                <td colspan="5" class="empty-state">
                                     <i class="fas fa-inbox"></i>
                                     <p>No students found. Onboard a student to get started.</p>
                                 </td>
@@ -271,31 +270,7 @@
                 </div>
             </div>
 
-            <!-- Financials Tab -->
-            <div id="financials" class="tab-content">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th>Phone</th>
-                                <th>Class</th>
-                                <th>Unpaid Amount</th>
-                                <th>Due Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="financials-list">
-                            <tr>
-                                <td colspan="6" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>Loading fee data...</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+
             <!-- Attendance Tab -->
             <div id="tab-attendance" class="tab-content" style="display:none;">
                 <div class="card-grid">
@@ -416,7 +391,7 @@
                 </div>
             </div>
 
-            <!-- Fees Management Tab -->
+            <!-- Fees & Financials Tab -->
             <div id="tab-fees" class="tab-content" style="display:none;">
                 <div class="card-grid">
                     <div class="card">
@@ -460,10 +435,15 @@
                 </div>
                 <div class="card-grid" style="margin-top:20px;">
                     <div class="card" style="grid-column: 1 / -1;">
-                        <h3>Fee Records</h3>
-                        <div style="margin-bottom:1rem;">
-                            <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All</button>
-                            <button class="btn" style="background:#eee;" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
+                                <button class="btn" style="background:#eee;" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                            </div>
+                            <div style="flex: 1; max-width: 400px; position: relative;">
+                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #636e72;"></i>
+                                <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="filterFeesTable()" style="padding-left: 2.5rem; width: 100%;">
+                            </div>
                         </div>
                         <div class="table-container">
                             <table class="data-table">

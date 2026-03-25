@@ -20,7 +20,8 @@ export const feeModel = {
 
   async addFee({ studentId, amount, description, dueDate }) {
     const result = await db.query(
-      `INSERT INTO fees ("studentId", amount, description, "dueDate") VALUES ($1, $2, $3, $4) RETURNING *`,
+      `INSERT INTO fees ("studentId", "userId", amount, description, "dueDate") 
+       VALUES ($1, (SELECT "userId" FROM students WHERE id = $1), $2, $3, $4) RETURNING *`,
       [studentId, amount, description || null, dueDate]
     );
     return result.rows[0];
@@ -28,7 +29,8 @@ export const feeModel = {
 
   async getAll() {
     const result = await db.query(
-      `SELECT f.*, s.name AS "studentName", s."classLevel"
+      `SELECT f.*, f."isPaid" AS paid, f."studentId" AS student_id, f."dueDate" AS due_date,
+              s.name AS "studentName", s."classLevel"
        FROM fees f JOIN students s ON f."studentId" = s.id
        ORDER BY f."dueDate" ASC`
     );
@@ -37,7 +39,8 @@ export const feeModel = {
 
   async getUnpaid() {
     const result = await db.query(
-      `SELECT f.*, s.name AS "studentName", s."classLevel"
+      `SELECT f.*, f."isPaid" AS paid, f."studentId" AS student_id, f."dueDate" AS due_date,
+              s.name AS "studentName", s."classLevel"
        FROM fees f JOIN students s ON f."studentId" = s.id
        WHERE f."isPaid" = FALSE
        ORDER BY f."dueDate" ASC`
@@ -47,7 +50,8 @@ export const feeModel = {
 
   async getByStudent(studentId) {
     const result = await db.query(
-      `SELECT f.*, s.name AS "studentName"
+      `SELECT f.*, f."isPaid" AS paid, f."studentId" AS student_id, f."dueDate" AS due_date,
+              s.name AS "studentName"
        FROM fees f JOIN students s ON f."studentId" = s.id
        WHERE f."studentId" = $1 ORDER BY f."createdAt" DESC`,
       [studentId]
