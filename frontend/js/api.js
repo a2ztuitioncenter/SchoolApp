@@ -163,6 +163,14 @@ const resultsAPI = {
 };
 
 export const authAPI = {
+  // Student registration endpoint
+  register: async (userData) => {
+    return apiCall('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
   // Mock login endpoint (development)
   login: async (phone, role = 'student') => {
     return apiCall('/auth/login', {

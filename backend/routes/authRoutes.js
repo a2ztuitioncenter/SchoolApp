@@ -6,102 +6,72 @@ const router = express.Router();
 
 // Student login endpoint
 router.post('/login', async (req, res) => {
-  const { phone, role } = req.body;
+  const { phone, password } = req.body;
   const pool = req.db;
 
   try {
-    if (!phone) {
-      return res.status(400).json({ error: 'Phone number is required' });
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone and password are required' });
     }
 
-    // Try to find user by phone
-    const userQuery = 'SELECT id, role FROM users WHERE phone = $1';
-    const result = await pool.query(userQuery, [phone]);
-
-    let user = result.rows[0];
+    // Find user by phone
+    const user = await getUserByPhone(pool, phone);
 
     if (!user) {
-      // Create new user if doesn't exist (development)
-      const normalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Student';
-      const createResult = await pool.query(
-        'INSERT INTO users (phone, email, role, "schoolId") VALUES ($1, $2, $3, $4) RETURNING id, role',
-        [phone, `${phone}@student.local`, normalizedRole, 'school-001']
-      );
-      user = createResult.rows[0];
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-      // If the new user is a student, create a student record
-      if (normalizedRole === 'Student') {
-        try {
-          await pool.query(
-            `INSERT INTO students ("userId", name, "classLevel", section, "fatherName", "motherName", phone, email, "joiningDate", "rollNumber", status, "schoolId") 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-            [
-              user.id,
-              'New Student',
-              '10A',
-              'A',
-              'Father Name',
-              'Mother Name',
-              phone,
-              `${phone}@student.local`,
-              new Date().toISOString().split('T')[0],
-              Math.floor(Math.random() * 100).toString(),
-              'Active',
-              'school-001'
-            ]
-          );
-        } catch (studentError) {
-          console.warn('Warning: Could not create student record:', studentError.message);
+    // Role check for student (frontend uses this endpoint for student login)
+    if (user.role !== 'student') {
+        return res.status(403).json({ error: 'Unauthorized role' });
+    }
+
+    // Development password check
+    if (password !== 'student123' && password !== 'password123') {
+        // Find if password matches what was registerd (if any)
+        // For now, allow simple checks since this is dev
+        if (user.password !== password) {
+            return res.status(401).json({ error: 'Invalid credentials' });
         }
-      }
     }
 
-    // If user is a student, get student details
-    let studentData = null;
-    if (user.role === 'Student') {
-      const studentQuery = 'SELECT id, name, "classLevel", section FROM students WHERE "userId" = $1';
-      const studentResult = await pool.query(studentQuery, [user.id]);
-      if (studentResult.rows.length > 0) {
-        studentData = studentResult.rows[0];
-      }
-    }
+    // Get student details
+    const studentData = await getStudentByUserId(pool, user.id);
 
     res.json({ 
       success: true,
+      message: 'Login successful',
       user: {
         id: user.id,
         role: user.role,
-        phone: phone
+        phone: user.phone
       },
       student: studentData,
       userId: user.id
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Server error during login' });
   }
 });
 
 /**
  * Student Registration - Create new student account
  * POST /api/auth/register
+ * Payload: { name, phone, password, classLevel }
  */
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, email, classLevel, section } = req.body;
+  const { name, phone, password, classLevel } = req.body;
   const pool = req.db;
 
   try {
     // Validation
-    if (!firstName || !lastName || !phone || !email || !classLevel || !section) {
-      return res.status(400).json({ error: 'All fields are required' });
+    if (!name || !phone || !password || !classLevel) {
+      return res.status(400).json({ error: 'All fields (name, phone, password, classLevel) are required' });
     }
 
-    if (phone.length !== 10 || !/^\d{10}$/.test(phone)) {
+    if (!/^\d{10}$/.test(phone)) {
       return res.status(400).json({ error: 'Phone must be a 10-digit number' });
-    }
-
-    if (!email.includes('@')) {
-      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     // Check if phone number already exists
@@ -113,23 +83,22 @@ router.post('/register', async (req, res) => {
     // Create user account
     const user = await createUser(pool, {
       phone,
-      email,
-      role: 'student', // Fixed to lowercase
+      email: `${phone}@student.local`,
+      password,
+      role: 'student',
       schoolId: 'school-001',
     });
 
-    // Create student record
-    const fullName = `${firstName} ${lastName}`;
+    // Create student record using double-quoted camelCase for database mapping
     const joiningDate = new Date().toISOString().split('T')[0];
-    const rollNumber = Math.floor(Math.random() * 10000).toString();
+    const rollNumber = 'REG-' + Math.floor(1000 + Math.random() * 9000);
 
     const student = await createStudent(pool, {
       userId: user.id,
-      name: fullName,
-      classLevel: `${classLevel}A`, // Add section to class level
-      section: section,
+      name,
+      classLevel,
       phone,
-      email,
+      email: user.email,
       joiningDate,
       status: 'active',
       rollNumber,
@@ -142,14 +111,12 @@ router.post('/register', async (req, res) => {
       user: {
         id: user.id,
         phone: user.phone,
-        email: user.email,
         role: user.role,
       },
       student: {
         id: student.id,
         name: student.name,
         classLevel: student.classLevel,
-        section: student.section,
       },
     });
   } catch (error) {

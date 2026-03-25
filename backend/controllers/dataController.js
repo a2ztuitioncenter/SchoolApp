@@ -32,11 +32,13 @@ export const getStudentDashboard = async (req, res) => {
       student = await createStudentRecord(pool, userId, user);
     }
 
-    const [attendancePercentage, attendanceSummary, feesSummary, allFees] = await Promise.all([
+    // Parallel fetch of attendance, fees, and homework (targeted by classLevel)
+    const [attendancePercentage, attendanceSummary, feesSummary, allFees, homeworkResult] = await Promise.all([
       getAttendancePercentage(pool, student.id, 30),
       getAttendanceSummary(pool, student.id),
       getFeesSummary(pool, student.id),
-      getAllStudentFees(pool, student.id)
+      getAllStudentFees(pool, student.id),
+      pool.query('SELECT * FROM homework WHERE "classLevel" = $1 ORDER BY "dueDate" ASC LIMIT 5', [student.classLevel])
     ]);
 
     return res.json({
@@ -66,7 +68,7 @@ export const getStudentDashboard = async (req, res) => {
           paidCount: parseInt(feesSummary.paidCount) || 0,
           fees: (allFees || []).slice(0, 5),
         },
-        homework: [],
+        homework: homeworkResult.rows || [],
         courseProgress: { percentage: 0, completedLessons: 0, totalLessons: 0 },
       },
     });
