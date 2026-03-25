@@ -255,6 +255,29 @@ export const adminAPI = {
     });
   },
 
+  // Update user
+  updateUser: async (id, userData) => {
+    return apiCall(`/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  // Delete user
+  deleteUser: async (id) => {
+    return apiCall(`/admin/users/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Toggle user active status
+  toggleUserStatus: async (id, isActive) => {
+    return apiCall(`/admin/users/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  },
+
   // Add new student
   addStudent: async (studentData) => {
     return apiCall('/admin/students/create', {

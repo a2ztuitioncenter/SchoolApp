@@ -86,6 +86,18 @@
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
                 <div class="card-grid">
+                    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+                        <i class="fas fa-tachometer-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                        <h2 style="color: #2D3436; margin-bottom: 0.5rem;">Welcome to Admin Dashboard</h2>
+                        <p style="color: #636E72;">Navigate to <strong>User Management</strong> for a full overview of stats and user controls.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Management Tab -->
+            <div id="users" class="tab-content">
+                <!-- Pinned Stats -->
+                <div class="card-grid">
                     <div class="card">
                         <h3><i class="fas fa-users"></i> Total Students</h3>
                         <div style="font-size: 2.5rem; color: #667eea; font-weight: 700;" id="total-students">0</div>
@@ -102,11 +114,9 @@
                         <p style="color: #636E72; margin-top: 0.5rem;">Fees overdue</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- User Management Tab -->
-            <div id="users" class="tab-content">
-                <div class="card-grid">
+                <!-- Add New User Form -->
+                <div class="card-grid" style="margin-top: 2rem;">
                     <div class="card" style="grid-column: 1 / -1;">
                         <h3><i class="fas fa-user-plus"></i> Add New User</h3>
                         <form id="add-user-form" style="display: grid; gap: 1rem;">
@@ -137,19 +147,54 @@
                     </div>
                 </div>
 
+                <!-- Edit User Section (hidden by default) -->
+                <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-user-section">
+                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid #667eea;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3><i class="fas fa-user-edit"></i> Edit User</h3>
+                            <button class="btn" style="background: #dfe6e9; color: #2d3436;" onclick="cancelEditUser()">✕ Cancel</button>
+                        </div>
+                        <form id="edit-user-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
+                            <input type="hidden" id="edit-user-id">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" id="edit-user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="edit-user-email" placeholder="user@a2z.local">
+                                </div>
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select id="edit-user-role" required>
+                                        <option value="teacher">Teacher</option>
+                                        <option value="staff">Staff</option>
+                                        <option value="admin">Admin</option>
+                                        <option value="parent">Parent</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
                 <div class="table-container" style="margin-top: 2rem;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Name</th>
                                 <th>Phone</th>
+                                <th>Email</th>
                                 <th>Role</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="users-list">
                             <tr>
-                                <td colspan="4" class="empty-state">
+                                <td colspan="5" class="empty-state">
                                     <i class="fas fa-inbox"></i>
                                     <p>No users found. Add a new user to get started.</p>
                                 </td>

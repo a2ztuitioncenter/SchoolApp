@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(15) UNIQUE NOT NULL,
     email VARCHAR(255),
     password VARCHAR(255) NOT NULL,
-    role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'admin')) NOT NULL,
+    role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'staff', 'admin')) NOT NULL,
     "isActive" BOOLEAN DEFAULT TRUE,
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP

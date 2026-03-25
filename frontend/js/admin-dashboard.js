@@ -107,26 +107,92 @@ async function loadDashboardData() {
 }
 
 // =============================================
-// USERS
+// USERS - with Edit, Delete, Toggle Access
 // =============================================
+let allUsersData = [];
+
 async function loadUsers() {
     try {
+        // Also load dashboard stats since they're pinned in users tab
+        await loadDashboardData();
+
         const res = await adminAPI.getUsers();
         const users = res.users || [];
+        allUsersData = users;
         const tbody = document.getElementById('users-list');
         if (!tbody) return;
-        tbody.innerHTML = users.length ? users.map(u => `
+        tbody.innerHTML = users.length ? users.map(u => {
+            const roleColors = {
+                teacher: 'background:#d6eaf8;color:#154360',
+                staff: 'background:#d5f5e3;color:#145a32',
+                admin: 'background:#fadbd8;color:#78281f',
+                parent: 'background:#fdebd0;color:#784212',
+            };
+            const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
+            return `
             <tr>
-                <td>${u.name || 'N/A'}</td>
                 <td>${u.phone}</td>
-                <td><span class="status-badge" style="background:#d6eaf8;color:#154360">${u.role}</span></td>
+                <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
+                <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
                 <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
-            </tr>
-        `).join('') : '<tr><td colspan="4" class="empty-state">No users found</td></tr>';
+                <td>
+                    <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
+                    <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                        <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
+                    </button>
+                    <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="5" class="empty-state">No users found</td></tr>';
     } catch (err) {
         showErrorAlert('Failed to load users');
     }
 }
+
+window.editUser = function (id) {
+    const user = allUsersData.find(u => u.id === id);
+    if (!user) return;
+    document.getElementById('edit-user-id').value = user.id;
+    document.getElementById('edit-user-phone').value = user.phone || '';
+    document.getElementById('edit-user-email').value = user.email || '';
+    document.getElementById('edit-user-role').value = user.role || 'teacher';
+    document.getElementById('edit-user-section').style.display = 'grid';
+    document.getElementById('edit-user-section').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.cancelEditUser = function () {
+    document.getElementById('edit-user-section').style.display = 'none';
+    document.getElementById('edit-user-form').reset();
+};
+
+window.deleteUserById = async function (id) {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    try {
+        const res = await adminAPI.deleteUser(id);
+        if (res.success) {
+            showSuccessAlert('User deleted successfully');
+            await loadUsers();
+        } else {
+            showErrorAlert(res.error || 'Failed to delete user');
+        }
+    } catch (err) {
+        showErrorAlert(err.message || 'Failed to delete user');
+    }
+};
+
+window.toggleUserStatusById = async function (id, isActive) {
+    try {
+        const res = await adminAPI.toggleUserStatus(id, isActive);
+        if (res.success) {
+            showSuccessAlert(isActive ? 'User enabled' : 'User disabled');
+            await loadUsers();
+        } else {
+            showErrorAlert(res.error || 'Failed to update status');
+        }
+    } catch (err) {
+        showErrorAlert(err.message || 'Failed to update status');
+    }
+};
 
 // =============================================
 // STUDENTS
@@ -592,6 +658,28 @@ function setupForms() {
             const res = await adminAPI.addUser(payload);
             if (res.success) { showSuccessAlert('User added!'); e.target.reset(); await loadUsers(); }
             else showErrorAlert(res.error || 'Failed to add user');
+        } catch (err) { showErrorAlert(err.message); }
+    });
+
+    document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-user-id')?.value;
+        const payload = {
+            phone: document.getElementById('edit-user-phone')?.value,
+            email: document.getElementById('edit-user-email')?.value,
+            role:  document.getElementById('edit-user-role')?.value
+        };
+        try {
+            showInfoAlert('Updating user...');
+            const res = await adminAPI.updateUser(id, payload);
+            if (res.success) {
+                showSuccessAlert('User updated!');
+                document.getElementById('edit-user-section').style.display = 'none';
+                e.target.reset();
+                await loadUsers();
+            } else {
+                showErrorAlert(res.error || 'Failed to update user');
+            }
         } catch (err) { showErrorAlert(err.message); }
     });
 

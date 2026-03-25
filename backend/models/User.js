@@ -8,7 +8,7 @@ export const userModel = {
       phone VARCHAR(15) UNIQUE NOT NULL,
       email VARCHAR(255),
       password VARCHAR(255) NOT NULL,
-      role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'admin')) NOT NULL,
+      role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'staff', 'admin')) NOT NULL,
       "isActive" BOOLEAN DEFAULT TRUE,
       "schoolId" VARCHAR(50) DEFAULT 'school-001',
       "createdAt" TIMESTAMP DEFAULT NOW()
@@ -33,4 +33,26 @@ export const createUser = async (pool, { phone, email, password, role, schoolId 
     [phone, email || null, password, role, schoolId]
   );
   return result.rows[0];
+};
+
+export const updateUser = async (pool, id, { name, phone, email, role }) => {
+  const result = await pool.query(
+    `UPDATE users SET phone = COALESCE($2, phone), email = COALESCE($3, email), role = COALESCE($4, role)
+     WHERE id = $1 RETURNING *`,
+    [id, phone, email, role]
+  );
+  return result.rows[0] || null;
+};
+
+export const deleteUser = async (pool, id) => {
+  const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+  return result.rows[0] || null;
+};
+
+export const toggleUserStatus = async (pool, id, isActive) => {
+  const result = await pool.query(
+    'UPDATE users SET "isActive" = $2 WHERE id = $1 RETURNING *',
+    [id, isActive]
+  );
+  return result.rows[0] || null;
 };

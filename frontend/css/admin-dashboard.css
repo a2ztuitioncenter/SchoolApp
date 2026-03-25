@@ -288,3 +288,63 @@ input:focus {
   background: #fef5e7;
   color: #7d6608;
 }
+
+.status-overdue {
+  background: #fadbd8;
+  color: #c0392b;
+}
+
+/* ============================================
+   ACTION BUTTONS (inline table)
+   ============================================ */
+
+.btn-sm {
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.btn-edit {
+  background: #d6eaf8;
+  color: #154360;
+}
+
+.btn-delete {
+  background: #fadbd8;
+  color: #c0392b;
+}
+
+.btn-warning {
+  background: #fef5e7;
+  color: #7d6608;
+}
+
+.btn-success {
+  background: #d5f4e6;
+  color: #1e8449;
+}
+
+.badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #eee;
+  color: #333;
+}
+
+.badge-green { background: #d5f4e6; color: #1e8449; }
+.badge-red { background: #fadbd8; color: #c0392b; }

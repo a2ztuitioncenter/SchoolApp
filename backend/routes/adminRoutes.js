@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserByPhone, createUser } from '../models/User.js';
+import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus } from '../models/User.js';
 import { createStudent, getStudentsBySchool } from '../models/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../models/Fee.js';
 
@@ -9,8 +9,8 @@ const router = express.Router();
 router.get('/users', async (req, res) => {
     try {
         const result = await req.db.query(
-            'SELECT id, phone, email, role, "isActive" FROM users WHERE role IN ($1, $2, $3)',
-            ['teacher', 'staff', 'admin']
+            'SELECT id, phone, email, role, "isActive", "createdAt" FROM users WHERE role IN ($1, $2, $3, $4)',
+            ['teacher', 'staff', 'admin', 'parent']
         );
         res.json({ success: true, users: result.rows });
     } catch (err) {
@@ -27,6 +27,41 @@ router.post('/users/create', async (req, res) => {
         
         const user = await createUser(req.db, { phone, email, password: 'password123', role, schoolId: 'school-001' });
         res.status(201).json({ success: true, user });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { phone, email, role } = req.body;
+    try {
+        const user = await updateUser(req.db, id, { phone, email, role });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json({ success: true, user });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const deleted = await deleteUser(req.db, id);
+        if (!deleted) return res.status(404).json({ error: 'User not found' });
+        res.json({ success: true, message: 'User deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.patch('/users/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    try {
+        const user = await toggleUserStatus(req.db, id, isActive);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.json({ success: true, user });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
