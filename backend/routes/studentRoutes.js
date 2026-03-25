@@ -48,8 +48,12 @@ router.get('/:userId/homework', async (req, res) => {
 
     const { classLevel, section } = studentResult.rows[0] || {};
 
-    // Get homework for this class
-    const homework = await getHomeworkByClass(pool, classLevel, section);
+    // Get homework matching the numeric portion of the student's classLevel
+    const homeworkResult = await pool.query(
+      'SELECT h.*, u.phone AS "teacherPhone" FROM homework h LEFT JOIN users u ON h."teacherId" = u.id WHERE substring(h."classLevel" FROM \'\\d+\') = substring($1 FROM \'\\d+\') ORDER BY h."createdAt" DESC',
+      [classLevel]
+    );
+    const homework = homeworkResult.rows;
 
     return res.json({
       success: true,
