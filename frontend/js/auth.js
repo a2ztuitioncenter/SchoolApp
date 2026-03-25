@@ -12,9 +12,16 @@ export async function handleStudentLogin(event) {
   event.preventDefault();
 
   const phoneInput = document.getElementById('phone-input');
+  const passwordInput = document.getElementById('password-input');
   const phone = phoneInput?.value?.trim();
+  const password = passwordInput?.value;
 
-  if (!phone || phone.length < 10) {
+  if (!phone || !password) {
+    showError('Phone number and password are required');
+    return;
+  }
+
+  if (phone.length < 10) {
     showError('Please enter a valid 10-digit phone number');
     return;
   }
@@ -28,7 +35,7 @@ export async function handleStudentLogin(event) {
     }
 
     // Call backend login endpoint
-    const response = await authAPI.login(phone, 'student');
+    const response = await authAPI.login(phone, password, 'student');
 
     if (response.success && response.userId) {
       // Store user data

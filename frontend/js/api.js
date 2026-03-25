@@ -171,11 +171,11 @@ export const authAPI = {
     });
   },
 
-  // Mock login endpoint (development)
-  login: async (phone, role = 'student') => {
+  // Login endpoint
+  login: async (phone, password, role = 'student') => {
     return apiCall('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ phone, role }),
+      body: JSON.stringify({ phone, password, role }),
     });
   },
 
