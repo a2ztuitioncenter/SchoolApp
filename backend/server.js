@@ -14,6 +14,7 @@ import feeRoutes        from './routes/feeRoutes.js';
 import materialsRoutes  from './routes/materialsRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
 import resultsRoutes    from './routes/resultsRoutes.js';
+import downloadRoutes   from './routes/downloadRoutes.js';
 
 import { initializeDatabase } from './database.js';
 
@@ -94,6 +95,7 @@ app.use('/api/admin/fees', feeRoutes);
 app.use('/api/admin/materials', materialsRoutes);
 app.use('/api/admin/notifications', notificationsRoutes);
 app.use('/api/admin/results', resultsRoutes);
+app.use('/api/download', downloadRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

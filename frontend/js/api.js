@@ -41,7 +41,11 @@ const apiCall = async (endpoint, options = {}) => {
       headers,
     });
 
-    // Handle non-JSON responses
+    // Handle binary or JSON responses
+    if (options.responseType === 'blob') {
+      return await response.blob();
+    }
+
     const contentType = response.headers.get('content-type');
     let data;
     if (contentType?.includes('application/json')) {
@@ -171,5 +175,38 @@ export const teacherAPI = {
   updateHomework: (homeworkId, homeworkData) => apiCall(`/teacher/homework/${homeworkId}`, { method: 'PUT', body: JSON.stringify(homeworkData) }),
   deleteHomework: (homeworkId) => apiCall(`/teacher/homework/${homeworkId}`, { method: 'DELETE' }),
 };
+
+/**
+ * Unified binary download utility
+ * Uses fetch + blob + objectURL to ensure no encoding corruption
+ */
+export const downloadFile = async (filePath, fileName = 'download') => {
+  try {
+    console.log(`📂 Downloading file: ${filePath}`);
+    const blob = await apiCall(`/download?filePath=${encodeURIComponent(filePath)}`, {
+      method: 'GET',
+      responseType: 'blob'
+    });
+
+    // Create a local URL for the blob
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = fileName; // Force download with original filename
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    console.log('✅ File download triggered successfully');
+  } catch (err) {
+    console.error('❌ Download failed:', err.message);
+    throw err;
+  }
+};
+
+window.downloadFile = downloadFile;
 
 export { attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };

@@ -3,7 +3,7 @@
  * Full-featured admin dashboard with all CRUD operations restored.
  */
 
-import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI } from './api.js';
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile } from './api.js';
 
 let currentTab = 'dashboard';
 let allHomeworkData = [];
@@ -659,7 +659,10 @@ async function loadMaterials() {
                 <td>${m.subject}</td>
                 <td>${m.classLevel || '-'}</td>
                 <td>${m.uploadedBy || '-'}</td>
-                <td><button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})">Delete</button></td>
+                <td>
+                    <button class="btn-sm" style="background:#667eea; color:white;" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')">Download</button>
+                    <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})">Delete</button>
+                </td>
             </tr>
         `).join('') : '<tr><td colspan="5" class="empty-state">No materials found</td></tr>';
     } catch (err) {
