@@ -28,6 +28,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     setupTabNavigation();
     setupForms();
+    
+    // Mobile Sidebar Toggle
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    if (mobileToggle && sidebar) {
+      mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+      });
+    }
+
     await loadTabContent('dashboard');
 });
 
@@ -40,6 +50,12 @@ function setupTabNavigation() {
             e.preventDefault();
             const tabName = tab.getAttribute('data-tab');
             if (tabName) showTab(tabName);
+            
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) sidebar.classList.remove('active');
+            }
         });
     });
 }

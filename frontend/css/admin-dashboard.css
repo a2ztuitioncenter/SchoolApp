@@ -348,3 +348,72 @@ input:focus {
 
 .badge-green { background: #d5f4e6; color: #1e8449; }
 .badge-red { background: #fadbd8; color: #c0392b; }
+
+/* ============================================
+   MOBILE RESPONSIVENESS
+   ============================================ */
+
+.mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #2c3e50;
+  cursor: pointer;
+  margin-right: 15px;
+  z-index: 1002;
+}
+
+@media (max-width: 768px) {
+  .mobile-toggle {
+    display: block;
+  }
+
+  .admin-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1001;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    padding-top: 5rem;
+  }
+
+  .sidebar.active {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 1.5rem;
+  }
+
+  .header {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .card-grid, .stats-row, .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .alert {
+    width: 90%;
+    min-width: auto;
+    right: 5%;
+    left: 5%;
+    top: 15px;
+    font-size: 0.95rem;
+  }
+}

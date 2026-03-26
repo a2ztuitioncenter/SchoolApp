@@ -253,6 +253,50 @@ body {
     .top-header {
         padding: 1rem;
     }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: 250px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1001;
+        padding-top: 5rem; /* Space for close button if needed or header */
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .main-wrapper {
+        margin-left: 0;
+        width: 100%;
+        transition: filter 0.3s ease;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+}
+
+/* Mobile Toggle Hamburger */
+.mobile-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-main);
+    cursor: pointer;
+    margin-right: 15px;
+    z-index: 1002;
+}
+
+@media (max-width: 768px) {
+    .mobile-toggle {
+        display: block;
+    }
 }
 /* Floating Alerts */
 .alert {

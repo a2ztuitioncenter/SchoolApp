@@ -22,6 +22,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // Mobile Sidebar Toggle
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    if (mobileToggle && sidebar) {
+      mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+      });
+      // Close sidebar when clicking a link on mobile
+      document.querySelectorAll('.sidebar nav a').forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            sidebar.classList.remove('active');
+          }
+        });
+      });
+    }
+
     // Fetch and populate dashboard data
     await loadDashboardData(userId);
   } catch (error) {
