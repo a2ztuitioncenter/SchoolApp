@@ -193,10 +193,14 @@ window.toggleUserStatusById = async function (id, isActive) {
 // =============================================
 // STUDENTS
 // =============================================
+let allStudentsData = [];
+
+
 async function loadStudents() {
     try {
         const res = await adminAPI.getStudents();
         const students = res.students || [];
+        allStudentsData = students;
         const tbody = document.getElementById('students-list');
         if (!tbody) return;
         tbody.innerHTML = students.length ? students.map(s => `
@@ -206,14 +210,63 @@ async function loadStudents() {
                 <td>${s.phone || 'N/A'}</td>
                 <td>${s.classLevel || 'N/A'}</td>
                 <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
+                <td>
+                    <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
+                    <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
+                        <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
+                    </button>
+                    <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
+                </td>
             </tr>
-        `).join('') : '<tr><td colspan="5" class="empty-state">No students found. Add one below.</td></tr>';
+        `).join('') : '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
     } catch (err) {
         showErrorAlert('Failed to load students');
     }
 }
 
+window.editStudent = function (id) {
+    const s = allStudentsData.find(st => st.id === id);
+    if (!s) return;
+    document.getElementById('edit-student-id').value = s.id;
+    document.getElementById('edit-student-name').value = s.name || '';
+    document.getElementById('edit-student-classLevel').value = s.classLevel || '';
+    document.getElementById('edit-student-section').value = s.section || '';
+    document.getElementById('edit-student-phone').value = s.phone || '';
+    document.getElementById('edit-student-email').value = s.email || '';
+    document.getElementById('edit-student-fatherName').value = s.fatherName || '';
+    const section = document.getElementById('edit-student-section');
+    if (section) { section.style.display = 'grid'; section.scrollIntoView({ behavior: 'smooth' }); }
+    document.getElementById('edit-student-section').style.display = 'grid';
+    document.getElementById('edit-student-section').scrollIntoView({ behavior: 'smooth' });
+};
 
+window.cancelEditStudent = function () {
+    document.getElementById('edit-student-section').style.display = 'none';
+    document.getElementById('edit-student-form').reset();
+};
+
+window.deleteStudentById = async function (id) {
+    if (!confirm('Delete this student? This will remove all their records.')) return;
+    try {
+        const res = await adminAPI.deleteStudent(id);
+        if (res.success) { showSuccessAlert('Student deleted'); await loadStudents(); }
+        else showErrorAlert(res.error || 'Failed to delete student');
+    } catch (err) {
+        showErrorAlert(err.message || 'Failed to delete student');
+    }
+};
+
+window.toggleStudentStatusById = async function (id, newStatus) {
+    try {
+        const res = await adminAPI.toggleStudentStatus(id, newStatus);
+        if (res.success) {
+            showSuccessAlert(newStatus === 'active' ? 'Student enabled' : 'Student disabled');
+            await loadStudents();
+        } else showErrorAlert(res.error || 'Failed to update status');
+    } catch (err) {
+        showErrorAlert(err.message || 'Failed to update status');
+    }
+};
 
 // =============================================
 // ATTENDANCE
@@ -688,6 +741,31 @@ function setupForms() {
             const res = await adminAPI.addStudent(payload);
             if (res.success) { showSuccessAlert('Student onboarded!'); e.target.reset(); await loadStudents(); }
             else showErrorAlert(res.error || 'Failed to onboard student');
+        } catch (err) { showErrorAlert(err.message); }
+    });
+
+    document.getElementById('edit-student-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-student-id')?.value;
+        const payload = {
+            name:        document.getElementById('edit-student-name')?.value,
+            classLevel:  document.getElementById('edit-student-classLevel')?.value,
+            section:     document.getElementById('edit-student-section')?.value,
+            phone:       document.getElementById('edit-student-phone')?.value,
+            email:       document.getElementById('edit-student-email')?.value,
+            fatherName:  document.getElementById('edit-student-fatherName')?.value,
+        };
+        try {
+            showInfoAlert('Updating student...');
+            const res = await adminAPI.updateStudent(id, payload);
+            if (res.success) {
+                showSuccessAlert('Student updated!');
+                document.getElementById('edit-student-section').style.display = 'none';
+                e.target.reset();
+                await loadStudents();
+            } else {
+                showErrorAlert(res.error || 'Failed to update student');
+            }
         } catch (err) { showErrorAlert(err.message); }
     });
 

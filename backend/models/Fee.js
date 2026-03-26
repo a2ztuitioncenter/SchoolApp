@@ -2,21 +2,6 @@ import db from '../pool.js';
 
 export const feeModel = {
   table: 'fees',
-  schema: `
-    CREATE TABLE IF NOT EXISTS fees (
-      id SERIAL PRIMARY KEY,
-      "studentId" INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-      "userId" INTEGER REFERENCES users(id),
-      amount DECIMAL(10, 2) NOT NULL,
-      description VARCHAR(200),
-      "dueDate" DATE NOT NULL,
-      "isPaid" BOOLEAN DEFAULT FALSE,
-      "paidDate" DATE,
-      status VARCHAR(20) DEFAULT 'pending',
-      "schoolId" VARCHAR(50) DEFAULT 'school-001',
-      "createdAt" TIMESTAMP DEFAULT NOW()
-    );
-  `,
 
   async addFee({ studentId, amount, description, dueDate }) {
     const result = await db.query(
@@ -29,7 +14,7 @@ export const feeModel = {
 
   async getAll() {
     const result = await db.query(
-      `SELECT f.*, f."isPaid" AS paid, f."studentId" AS student_id, f."dueDate" AS due_date,
+      `SELECT f.*, f.paid, f."studentId" AS student_id, f."dueDate" AS due_date,
               s.name AS "studentName", s."classLevel"
        FROM fees f JOIN students s ON f."studentId" = s.id
        ORDER BY f."dueDate" ASC`
@@ -39,10 +24,10 @@ export const feeModel = {
 
   async getUnpaid() {
     const result = await db.query(
-      `SELECT f.*, f."isPaid" AS paid, f."studentId" AS student_id, f."dueDate" AS due_date,
+      `SELECT f.*, f.paid, f."studentId" AS student_id, f."dueDate" AS due_date,
               s.name AS "studentName", s."classLevel"
        FROM fees f JOIN students s ON f."studentId" = s.id
-       WHERE f."isPaid" = FALSE
+       WHERE f.paid = FALSE
        ORDER BY f."dueDate" ASC`
     );
     return result.rows;
@@ -50,7 +35,7 @@ export const feeModel = {
 
   async getByStudent(studentId) {
     const result = await db.query(
-      `SELECT f.*, f."isPaid" AS paid, f."studentId" AS student_id, f."dueDate" AS due_date,
+      `SELECT f.*, f.paid, f."studentId" AS student_id, f."dueDate" AS due_date,
               s.name AS "studentName"
        FROM fees f JOIN students s ON f."studentId" = s.id
        WHERE f."studentId" = $1 ORDER BY f."createdAt" DESC`,
@@ -61,7 +46,7 @@ export const feeModel = {
 
   async markPaid(feeId) {
     const result = await db.query(
-      `UPDATE fees SET "isPaid"=TRUE, "paidDate"=CURRENT_DATE, status='paid' WHERE id=$1 RETURNING *`,
+      `UPDATE fees SET paid=TRUE, "paidDate"=CURRENT_DATE, status='paid' WHERE id=$1 RETURNING *`,
       [feeId]
     );
     return result.rows[0] || null;
@@ -69,7 +54,7 @@ export const feeModel = {
 
   async markUnpaid(feeId) {
     const result = await db.query(
-      `UPDATE fees SET "isPaid"=FALSE, "paidDate"=NULL, status='pending' WHERE id=$1 RETURNING *`,
+      `UPDATE fees SET paid=FALSE, "paidDate"=NULL, status='pending' WHERE id=$1 RETURNING *`,
       [feeId]
     );
     return result.rows[0] || null;
@@ -84,17 +69,17 @@ export const feeModel = {
     const result = await db.query(
       `SELECT
          COUNT(*) AS "totalFees",
-         COUNT(CASE WHEN "isPaid"=TRUE  THEN 1 END) AS "paidCount",
-         COUNT(CASE WHEN "isPaid"=FALSE THEN 1 END) AS "unpaidCount",
-         COALESCE(SUM(CASE WHEN "isPaid"=TRUE  THEN amount END), 0) AS "totalCollected",
-         COALESCE(SUM(CASE WHEN "isPaid"=FALSE THEN amount END), 0) AS "totalPending"
+         COUNT(CASE WHEN paid=TRUE  THEN 1 END) AS "paidCount",
+         COUNT(CASE WHEN paid=FALSE THEN 1 END) AS "unpaidCount",
+         COALESCE(SUM(CASE WHEN paid=TRUE  THEN amount END), 0) AS "totalCollected",
+         COALESCE(SUM(CASE WHEN paid=FALSE THEN amount END), 0) AS "totalPending"
        FROM fees`
     );
     return result.rows[0];
   }
 };
 
-// Legacy helper exports for dataController.js
+// Legacy helper exports for dataController.js / adminRoutes.js
 export const getAllStudentFees = async (pool, studentId) => {
   const result = await pool.query(
     `SELECT * FROM fees WHERE "studentId" = $1 ORDER BY "createdAt" DESC`,
@@ -107,10 +92,10 @@ export const getFeesSummary = async (pool, studentId) => {
   const result = await pool.query(
     `SELECT 
        COALESCE(SUM(amount), 0) AS "totalAmount",
-       COALESCE(SUM(CASE WHEN "isPaid"=TRUE THEN amount ELSE 0 END), 0) AS "totalPaid",
-       COALESCE(SUM(CASE WHEN "isPaid"=FALSE THEN amount ELSE 0 END), 0) AS "totalPending",
-       COUNT(CASE WHEN "isPaid"=FALSE THEN 1 END) AS "pendingCount",
-       COUNT(CASE WHEN "isPaid"=TRUE THEN 1 END) AS "paidCount"
+       COALESCE(SUM(CASE WHEN paid=TRUE THEN amount ELSE 0 END), 0) AS "totalPaid",
+       COALESCE(SUM(CASE WHEN paid=FALSE THEN amount ELSE 0 END), 0) AS "totalPending",
+       COUNT(CASE WHEN paid=FALSE THEN 1 END) AS "pendingCount",
+       COUNT(CASE WHEN paid=TRUE THEN 1 END) AS "paidCount"
      FROM fees WHERE "studentId" = $1`,
     [studentId]
   );
@@ -121,7 +106,7 @@ export const getPendingFees = async (pool) => {
   const result = await pool.query(
     `SELECT f.*, s.name AS "studentName", s."classLevel"
      FROM fees f JOIN students s ON f."studentId" = s.id
-     WHERE f."isPaid" = FALSE ORDER BY f."dueDate" ASC`
+     WHERE f.paid = FALSE ORDER BY f."dueDate" ASC`
   );
   return result.rows;
 };

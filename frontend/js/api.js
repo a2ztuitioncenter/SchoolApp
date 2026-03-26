@@ -146,6 +146,9 @@ export const adminAPI = {
   deleteUser: (id) => apiCall(`/admin/users/${id}`, { method: 'DELETE' }),
   toggleUserStatus: (id, isActive) => apiCall(`/admin/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
   addStudent: (studentData) => apiCall('/admin/students/create', { method: 'POST', body: JSON.stringify(studentData) }),
+  updateStudent: (id, data) => apiCall(`/admin/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteStudent: (id) => apiCall(`/admin/students/${id}`, { method: 'DELETE' }),
+  toggleStudentStatus: (id, status) => apiCall(`/admin/students/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getUnpaidFees: () => apiCall('/admin/financials/unpaid-fees', { method: 'GET' }),
   getFinancialSummary: () => apiCall('/admin/financials/report', { method: 'GET' }),
 };

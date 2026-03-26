@@ -101,14 +101,6 @@
                         <p style="color: #636E72; margin-top: 0.5rem;">Fees overdue</p>
                     </div>
                 </div>
-                <!-- Welcome Banner -->
-                <div class="card-grid" style="margin-top: 1rem;">
-                    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
-                        <i class="fas fa-tachometer-alt" style="font-size: 2.5rem; color: #667eea; margin-bottom: 1rem;"></i>
-                        <h2 style="color: #2D3436; margin-bottom: 0.5rem;">Admin Dashboard</h2>
-                        <p style="color: #636E72;">Use the sidebar to navigate between <strong>User Management</strong>, <strong>Attendance</strong>, <strong>Fees</strong>, and other modules.</p>
-                    </div>
-                </div>
             </div>
 
             <!-- User Management Tab -->
@@ -246,6 +238,46 @@
                     </div>
                 </div>
 
+                <!-- Edit Student Section (hidden by default) -->
+                <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-student-section">
+                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid #667eea;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3><i class="fas fa-user-edit"></i> Edit Student</h3>
+                            <button class="btn" style="background: #dfe6e9; color: #2d3436;" onclick="cancelEditStudent()">✕ Cancel</button>
+                        </div>
+                        <form id="edit-student-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
+                            <input type="hidden" id="edit-student-id">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="edit-student-name" placeholder="Full name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Class Level</label>
+                                    <input type="text" id="edit-student-classLevel" placeholder="e.g., 10A">
+                                </div>
+                                <div class="form-group">
+                                    <label>Section</label>
+                                    <input type="text" id="edit-student-section" placeholder="e.g., A">
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone</label>
+                                    <input type="tel" id="edit-student-phone" placeholder="10-digit number">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="edit-student-email" placeholder="student@a2z.local">
+                                </div>
+                                <div class="form-group">
+                                    <label>Father's Name</label>
+                                    <input type="text" id="edit-student-fatherName" placeholder="Father's full name">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+
                 <div class="table-container" style="margin-top: 2rem;">
                     <table>
                         <thead>
@@ -255,11 +287,12 @@
                                 <th>Phone</th>
                                 <th>Class</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="students-list">
                             <tr>
-                                <td colspan="5" class="empty-state">
+                                <td colspan="6" class="empty-state">
                                     <i class="fas fa-inbox"></i>
                                     <p>No students found. Onboard a student to get started.</p>
                                 </td>
