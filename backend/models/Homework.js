@@ -38,19 +38,19 @@ export const homeworkModel = {
     return result.rows[0] || null;
   },
 
-  async create({ title, description, classLevel, subject, dueDate, assignedBy }) {
+  async create({ title, description, classLevel, subject, dueDate, assignedBy, attachmentUrl }) {
     const result = await db.query(
-      `INSERT INTO homework (title, description, "classLevel", subject, "dueDate", "teacherId")
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description || null, classLevel, subject || null, dueDate || null, assignedBy || null]
+      `INSERT INTO homework (title, description, "classLevel", subject, "dueDate", "teacherId", "attachmentUrl")
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [title, description || null, classLevel, subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
     );
     return result.rows[0];
   },
 
-  async update(id, { title, description, classLevel, subject, dueDate }) {
+  async update(id, { title, description, classLevel, subject, dueDate, attachmentUrl }) {
     const result = await db.query(
-      `UPDATE homework SET title=$1, description=$2, "classLevel"=$3, subject=$4, "dueDate"=$5 WHERE id=$6 RETURNING *`,
-      [title, description || null, classLevel, subject || null, dueDate || null, id]
+      `UPDATE homework SET title=$1, description=$2, "classLevel"=$3, subject=$4, "dueDate"=$5, "attachmentUrl"=$6 WHERE id=$7 RETURNING *`,
+      [title, description || null, classLevel, subject || null, dueDate || null, attachmentUrl || null, id]
     );
     return result.rows[0] || null;
   },

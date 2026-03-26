@@ -119,6 +119,11 @@ function populateHomework(homework) {
       <div class="details">
         <p class="subject-title">${hw.subject || 'Homework'} - ${hw.title || 'Assignment'}</p>
         <p class="due-date"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
+        ${hw.attachmentUrl ? `
+          <a href="${hw.attachmentUrl}" target="_blank" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none;">
+            <i class="fas fa-download"></i> Download Attachment
+          </a>
+        ` : ''}
       </div>
     </div>
   `).join('');

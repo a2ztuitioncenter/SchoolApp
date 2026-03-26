@@ -74,6 +74,7 @@ app.get('/', (req, res) => {
 
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {

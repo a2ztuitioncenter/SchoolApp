@@ -446,11 +446,22 @@ window.saveHomework = async function () {
         return;
     }
 
-    const payload = { title, classLevel, subject, dueDate, description };
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('classLevel', classLevel);
+    formData.append('subject', subject);
+    formData.append('dueDate', dueDate);
+    formData.append('description', description);
+
+    const fileInput = document.getElementById('hw-attachment');
+    if (fileInput && fileInput.files[0]) {
+        formData.append('attachment', fileInput.files[0]);
+    }
+
     try {
         const res = id
-            ? await homeworkAPI.update(id, payload)
-            : await homeworkAPI.create(payload);
+            ? await homeworkAPI.update(id, formData)
+            : await homeworkAPI.create(formData);
         if (res.data) {
             showSuccessAlert(id ? 'Homework updated!' : 'Homework added!');
             resetHomeworkForm();
@@ -472,6 +483,18 @@ window.editHomework = function (id) {
     document.getElementById('hw-subject').value = hw.subject;
     document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
     document.getElementById('hw-description').value = hw.description || '';
+    
+    const attachInfo = document.getElementById('hw-current-attachment');
+    if (attachInfo) {
+        if (hw.attachmentUrl) {
+            const fileName = hw.attachmentUrl.split('/').pop();
+            attachInfo.textContent = `Current: ${fileName}`;
+            attachInfo.style.display = 'block';
+        } else {
+            attachInfo.style.display = 'none';
+        }
+    }
+
     const titleEl = document.getElementById('hw-form-title');
     if (titleEl) titleEl.textContent = 'Edit Homework';
     document.getElementById('hw-title').scrollIntoView({ behavior: 'smooth' });
@@ -494,10 +517,13 @@ window.deleteHomework = async function (id) {
 
 window.resetHomeworkForm = resetHomeworkForm;
 function resetHomeworkForm() {
-    ['hw-edit-id', 'hw-title', 'hw-class', 'hw-subject', 'hw-due-date', 'hw-description'].forEach(id => {
+    ['hw-edit-id', 'hw-title', 'hw-class', 'hw-subject', 'hw-due-date', 'hw-description', 'hw-attachment'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
+    const attachInfo = document.getElementById('hw-current-attachment');
+    if (attachInfo) attachInfo.style.display = 'none';
+
     const titleEl = document.getElementById('hw-form-title');
     if (titleEl) titleEl.textContent = 'Add Homework';
     currentEditHwId = null;

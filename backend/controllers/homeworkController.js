@@ -9,11 +9,16 @@ export const createHomework = async (req, res) => {
     const subject = req.body.subject;
     const dueDate = req.body.dueDate || req.body.due_date;
     const assignedBy = req.body.assignedBy || req.body.assigned_by || req.user?.id || null;
+    let attachmentUrl = null;
+
+    if (req.file) {
+      attachmentUrl = `/uploads/homework/${req.file.filename}`;
+    }
 
     if (!title || !classLevel || !subject)
       return res.status(400).json({ error: 'title, classLevel, subject required' });
 
-    const hw = await homeworkModel.create({ title, description, classLevel, subject, dueDate, assignedBy });
+    const hw = await homeworkModel.create({ title, description, classLevel, subject, dueDate, assignedBy, attachmentUrl });
     res.status(201).json({ message: 'Homework created', data: hw });
   } catch (err) {
     console.error('createHomework:', err);
@@ -50,11 +55,16 @@ export const updateHomework = async (req, res) => {
     const classLevel = req.body.classLevel || req.body.class_name;
     const subject = req.body.subject;
     const dueDate = req.body.dueDate || req.body.due_date;
+    let attachmentUrl = req.body.attachmentUrl || null;
+
+    if (req.file) {
+      attachmentUrl = `/uploads/homework/${req.file.filename}`;
+    }
 
     if (!title || !classLevel || !subject)
       return res.status(400).json({ error: 'title, classLevel, subject required' });
 
-    const hw = await homeworkModel.update(req.params.id, { title, description, classLevel, subject, dueDate });
+    const hw = await homeworkModel.update(req.params.id, { title, description, classLevel, subject, dueDate, attachmentUrl });
     if (!hw) return res.status(404).json({ error: 'Not found' });
     res.json({ message: 'Updated', data: hw });
   } catch (err) {

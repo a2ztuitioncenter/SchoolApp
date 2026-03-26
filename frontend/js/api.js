@@ -23,10 +23,12 @@ export const clearAuthToken = () => {
  */
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+  
+  // Conditionally set Content-Type
+  const headers = { ...options.headers };
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const token = getAuthToken();
   if (token) {
@@ -76,8 +78,14 @@ const attendanceAPI = {
  */
 const homeworkAPI = {
   getAll: (class_name = '') => apiCall(`/admin/homework${class_name ? '?class_name=' + encodeURIComponent(class_name) : ''}`, { method: 'GET' }),
-  create: (data) => apiCall('/admin/homework', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id, data) => apiCall(`/admin/homework/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  create: (formData) => apiCall('/admin/homework', { 
+    method: 'POST', 
+    body: formData 
+  }),
+  update: (id, formData) => apiCall(`/admin/homework/${id}`, { 
+    method: 'PUT', 
+    body: formData 
+  }),
   delete: (id) => apiCall(`/admin/homework/${id}`, { method: 'DELETE' }),
 };
 
