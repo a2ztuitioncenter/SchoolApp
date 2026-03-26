@@ -61,7 +61,7 @@ export const feeModel = {
 
   async markPaid(feeId) {
     const result = await db.query(
-      `UPDATE fees SET "isPaid"=TRUE, "paidDate"=CURRENT_DATE, status='paid' WHERE id=$1 RETURNING *`,
+      `UPDATE fees SET "isPaid"=TRUE, "paidDate"=CURRENT_DATE WHERE id=$1 RETURNING *`,
       [feeId]
     );
     return result.rows[0] || null;
@@ -69,7 +69,7 @@ export const feeModel = {
 
   async markUnpaid(feeId) {
     const result = await db.query(
-      `UPDATE fees SET "isPaid"=FALSE, "paidDate"=NULL, status='pending' WHERE id=$1 RETURNING *`,
+      `UPDATE fees SET "isPaid"=FALSE, "paidDate"=NULL WHERE id=$1 RETURNING *`,
       [feeId]
     );
     return result.rows[0] || null;
