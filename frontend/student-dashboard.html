@@ -17,10 +17,11 @@
                 <span>A2Z</span>
             </div>
             <nav>
-                <a href="#" class="active"><i class="fas fa-home"></i> Home</a>
-                <a href="#"><i class="fas fa-book"></i> Subjects</a>
-                <a href="#"><i class="fas fa-play-circle"></i> Videos</a>
-                <a href="#"><i class="fas fa-user"></i> Profile</a>
+                <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> Home</a>
+                <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> Subjects</a>
+                <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
+                <a href="#" class="nav-link" data-tab="videos"><i class="fas fa-play-circle"></i> Videos</a>
+                <a href="#" class="nav-link" data-tab="profile"><i class="fas fa-user"></i> Profile</a>
             </nav>
         </aside>
 
@@ -41,7 +42,21 @@
                 </div>
             </header>
 
-            <main class="content">
+            <!-- Materials Tab -->
+            <div id="tab-materials" class="tab-content" style="display:none;">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-folder-open"></i> Study Materials</h2>
+                    </div>
+                    <div class="materials-list" id="materials-container">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fees Tab -->
+
+            <main class="content" id="tab-home">
                 <div class="dashboard-grid">
                     
                     <section class="left-col">

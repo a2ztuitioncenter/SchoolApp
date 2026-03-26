@@ -16,13 +16,10 @@ function setupLoginCardHandlers() {
 
   loginCards.forEach(card => {
     card.addEventListener('click', (e) => {
-      // Prevent event bubbling if clicking on the arrow
-      if (e.target.closest('a')) {
-        e.preventDefault();
-      }
+      // If clicking the anchor directly, let it handle the navigation
+      if (e.target.closest('a')) return;
 
       const loginType = card.getAttribute('data-login-type');
-      console.log('Login card clicked:', loginType);
       handleLoginCardClick(loginType);
     });
   });

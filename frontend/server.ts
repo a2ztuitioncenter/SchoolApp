@@ -33,7 +33,7 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
-    // 🔥 REVERSE PROXY FOR API AND UPLOADS
+    //  REVERSE PROXY FOR API AND UPLOADS
     if (pathname.startsWith("/api") || pathname.startsWith("/uploads")) {
       const targetUrl = `http://127.0.0.1:3000${pathname}${url.search}`;
       console.log(`[PROXY] Forwarding ${req.method} ${pathname} -> ${targetUrl}`);
@@ -50,9 +50,9 @@ const server = Bun.serve({
           // @ts-ignore - duplex is required for streaming request bodies in some environments
           duplex: hasBody ? "half" : undefined,
         });
-        
+
         console.log(`[PROXY] Backend responded with ${proxyResponse.status}`);
-        
+
         // Returning the Response object directly enables streaming of the response body
         return proxyResponse;
       } catch (error) {
@@ -61,14 +61,14 @@ const server = Bun.serve({
       }
     }
 
-    // 🔥 FORCE ROOT → INDEX
+    //  FORCE ROOT → INDEX
     if (pathname === "/") {
       pathname = "/index.html";
     }
 
     const filePath = path.join(publicDir, pathname);
 
-    // ✅ Serve file if exists with Browser Caching
+    //  Serve file if exists with Browser Caching
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       return new Response(Bun.file(filePath), {
         headers: {
@@ -78,7 +78,7 @@ const server = Bun.serve({
       });
     }
 
-    // 🔥 FALLBACK → INDEX (NO DIRECTORY LISTING EVER)
+    //FALLBACK → INDEX (NO DIRECTORY LISTING EVER)
     const fallback = path.join(publicDir, "index.html");
 
     return new Response(Bun.file(fallback), {
@@ -90,4 +90,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`🚀 Server running at http://localhost:${PORT}`);
+console.log(`Server running at http://localhost:${PORT}`);

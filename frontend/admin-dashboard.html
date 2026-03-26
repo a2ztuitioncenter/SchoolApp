@@ -371,38 +371,40 @@
                 <div class="card-grid">
                     <div class="card" style="grid-column: 1 / -1;">
                         <h3 id="hw-form-title">➕ Add Homework</h3>
-                        <input type="hidden" id="hw-edit-id">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>Title *</label>
-                                <input type="text" id="hw-title" placeholder="e.g. Chapter 5 Exercise">
+                        <form id="homework-form">
+                            <input type="hidden" id="hw-edit-id">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Title *</label>
+                                    <input type="text" id="hw-title" placeholder="e.g. Chapter 5 Exercise" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Class *</label>
+                                    <input type="text" id="hw-class" placeholder="e.g. 10A" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Subject *</label>
+                                    <input type="text" id="hw-subject" placeholder="e.g. Mathematics" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Due Date</label>
+                                    <input type="date" id="hw-due-date">
+                                </div>
+                                <div class="form-group">
+                                    <label>Attachment (PDF/JPG/PNG)</label>
+                                    <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
+                                    <div id="hw-current-attachment" style="font-size: 0.8rem; color: #666; margin-top: 4px; display: none;"></div>
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label>Description</label>
+                                    <textarea id="hw-description" rows="1" placeholder="Describe the homework..."></textarea>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>Class *</label>
-                                <input type="text" id="hw-class" placeholder="e.g. 10A">
+                            <div style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary">💾 Save Homework</button>
+                                <button type="button" class="btn" style="background:#ddd; margin-left:10px;" onclick="resetHomeworkForm()">🔄 Reset</button>
                             </div>
-                            <div class="form-group">
-                                <label>Subject *</label>
-                                <input type="text" id="hw-subject" placeholder="e.g. Mathematics">
-                            </div>
-                            <div class="form-group">
-                                <label>Due Date</label>
-                                <input type="date" id="hw-due-date">
-                            </div>
-                            <div class="form-group" style="grid-column: span 1;">
-                                <label>Attachment (PDF/JPG/PNG)</label>
-                                <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
-                                <div id="hw-current-attachment" style="font-size: 0.8rem; color: #666; margin-top: 4px; display: none;"></div>
-                            </div>
-                            <div class="form-group" style="grid-column: span 2;">
-                                <label>Description</label>
-                                <textarea id="hw-description" rows="1" placeholder="Describe the homework..."></textarea>
-                            </div>
-                        </div>
-                        <div style="margin-top: 1rem;">
-                            <button class="btn btn-primary" onclick="saveHomework()">💾 Save Homework</button>
-                            <button class="btn" style="background:#ddd; margin-left:10px;" onclick="resetHomeworkForm()">🔄 Reset</button>
-                        </div>
+                        </form>
                     </div>
                 </div>
                 <div class="card-grid" style="margin-top:20px;">
@@ -507,22 +509,27 @@
             <!-- Study Materials Tab -->
             <div id="tab-materials" class="tab-content" style="display:none;">
                 <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h2>📁 Study Materials</h2>
-                            <button class="btn btn-primary" onclick="showAddMaterialModal()">➕ Upload Material</button>
-                        </div>
-                        <div class="table-container" style="margin-top:20px;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr><th>Title</th><th>Subject</th><th>Class</th><th>Uploaded By</th><th>Actions</th></tr>
-                                </thead>
-                                <tbody id="materials-list">
-                                    <tr><td colspan="5" class="empty-state">No materials found.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div class="tab-header">
+                    <h2><i class="fas fa-folder-open"></i> Study Materials</h2>
+                    <button class="btn btn-primary" onclick="openMaterialModal()">
+                        <i class="fas fa-plus"></i> Add Material
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Subject</th>
+                                <th>Class</th>
+                                <th>Uploaded By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="materials-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -593,6 +600,60 @@
             </div>
         </div>
     </div>
+    <!-- Study Material Modal -->
+    <div id="material-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="material-modal-title">Add Study Material</h2>
+                <span class="close" onclick="closeMaterialModal()">&times;</span>
+            </div>
+            <form id="material-form">
+                <input type="hidden" id="material-id">
+                <div class="form-group">
+                    <label>Title*</label>
+                    <input type="text" id="material-title" required placeholder="e.g. Chapter 1 Notes">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="material-description" rows="2" placeholder="Optional details..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Subject*</label>
+                        <select id="material-subject" required>
+                            <option value="">Select Subject</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="English">English</option>
+                            <option value="History">History</option>
+                            <option value="Geography">Geography</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Class Level*</label>
+                        <select id="material-class" required>
+                            <option value="">Select Class</option>
+                            <option value="8">Class 8</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>File (PDF, JPG, PNG)*</label>
+                    <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
+                    <small id="material-file-hint" style="display:none; color: #666;">Leave empty to keep current file</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Material</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script type="module" src="./js/admin-dashboard.js"></script>
 </body>
 </html>

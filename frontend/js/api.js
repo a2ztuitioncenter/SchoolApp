@@ -112,7 +112,9 @@ const feesAPI = {
  */
 const materialsAPI = {
   getAll: () => apiCall('/admin/materials', { method: 'GET' }),
-  create: (data) => apiCall('/admin/materials', { method: 'POST', body: JSON.stringify(data) }),
+  getByClass: (classLevel) => apiCall(`/admin/materials/class/${classLevel}`, { method: 'GET' }),
+  create: (formData) => apiCall('/admin/materials', { method: 'POST', body: formData }),
+  update: (id, formData) => apiCall(`/admin/materials/${id}`, { method: 'PUT', body: formData }),
   delete: (id) => apiCall(`/admin/materials/${id}`, { method: 'DELETE' }),
 };
 

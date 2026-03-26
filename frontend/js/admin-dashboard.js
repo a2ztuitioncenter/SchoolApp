@@ -433,7 +433,8 @@ window.filterHomework = function () {
     ) : allHomeworkData);
 };
 
-window.saveHomework = async function () {
+window.saveHomework = async function (e) {
+    if (e && e.preventDefault) e.preventDefault();
     const id          = document.getElementById('hw-edit-id')?.value;
     const title       = document.getElementById('hw-title')?.value.trim();
     const classLevel  = document.getElementById('hw-class')?.value.trim();
@@ -651,35 +652,124 @@ async function loadMaterials() {
     try {
         const res = await materialsAPI.getAll();
         const list = res.data || [];
-        const tbody = document.getElementById('materials-list');
+        const tbody = document.getElementById('materials-tbody');
         if (!tbody) return;
         tbody.innerHTML = list.length ? list.map(m => `
             <tr>
                 <td>${m.title}</td>
                 <td>${m.subject}</td>
-                <td>${m.classLevel || '-'}</td>
+                <td>Class ${m.classLevel}</td>
                 <td>${m.uploadedBy || '-'}</td>
                 <td>
-                    <button class="btn-sm" style="background:#667eea; color:white;" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')">Download</button>
-                    <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})">Delete</button>
+                    <button class="btn-sm" style="background:#667eea; color:white; margin-right:5px;" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn-sm" style="background:#48bb78; color:white; margin-right:5px;" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})'>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>
         `).join('') : '<tr><td colspan="5" class="empty-state">No materials found</td></tr>';
     } catch (err) {
-        showErrorAlert('Failed to load materials');
+        console.error('Error loading materials:', err);
     }
 }
 
-window.deleteMaterial = async function (id) {
-    if (!confirm('Delete this material?')) return;
+window.saveMaterial = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    console.log('📝 Saving material...');
+    
+    const id = document.getElementById('material-id').value;
+    const title = document.getElementById('material-title').value;
+    const description = document.getElementById('material-description').value;
+    const subject = document.getElementById('material-subject').value;
+    const classLevel = document.getElementById('material-class').value;
+    const fileInput = document.getElementById('material-file');
+
+    if (!title || !subject || !classLevel) {
+        showErrorAlert('Please fill in all required fields (Title, Subject, Class)');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('subject', subject);
+    formData.append('classLevel', classLevel);
+    formData.append('uploadedBy', sessionStorage.getItem('adminName') || 'Admin');
+
+    if (fileInput.files[0]) {
+        formData.append('materialFile', fileInput.files[0]);
+    } else if (!id) {
+        showErrorAlert('Please select a file to upload');
+        return;
+    }
+
     try {
-        const res = await materialsAPI.delete(id);
-        showSuccessAlert('Material deleted');
-        await loadMaterials();
+        let res;
+        if (id) {
+            console.log(`📤 Updating material ID: ${id}`);
+            res = await materialsAPI.update(id, formData);
+            showSuccessAlert('Material updated successfully');
+        } else {
+            console.log('📤 Creating new material...');
+            res = await materialsAPI.create(formData);
+            showSuccessAlert('Material uploaded successfully');
+        }
+        closeMaterialModal();
+        loadMaterials();
     } catch (err) {
-        showErrorAlert('Failed to delete material');
+        console.error('❌ Error saving material:', err);
+        showErrorAlert('Error saving material: ' + err.message);
     }
 };
+
+async function deleteMaterial(id) {
+    if (!confirm('Are you sure you want to delete this material?')) return;
+    try {
+        await materialsAPI.delete(id);
+        showSuccessAlert('Material deleted'); // Changed showToast to showSuccessAlert
+        loadMaterials();
+    } catch (err) {
+        showErrorAlert('Error deleting: ' + err.message); // Changed alert to showErrorAlert
+    }
+}
+
+window.openMaterialModal = function(material = null) {
+    const modal = document.getElementById('material-modal');
+    const titleObj = document.getElementById('material-modal-title');
+    const form = document.getElementById('material-form');
+    const fileHint = document.getElementById('material-file-hint');
+    const fileInput = document.getElementById('material-file');
+
+    form.reset();
+    fileHint.style.display = 'none';
+    fileInput.required = true;
+
+    if (material) {
+        titleObj.innerText = 'Edit Study Material';
+        document.getElementById('material-id').value = material.id;
+        document.getElementById('material-title').value = material.title;
+        document.getElementById('material-description').value = material.description || '';
+        document.getElementById('material-subject').value = material.subject;
+        document.getElementById('material-class').value = material.classLevel;
+        fileHint.style.display = 'block';
+        fileInput.required = false;
+    } else {
+        titleObj.innerText = 'Add Study Material';
+        document.getElementById('material-id').value = '';
+    }
+    modal.style.display = 'block';
+};
+
+window.closeMaterialModal = function() {
+    document.getElementById('material-modal').style.display = 'none';
+};
+
+window.deleteMaterial = deleteMaterial;
 
 // =============================================
 // NOTIFICATIONS
@@ -730,6 +820,11 @@ async function loadResults() {
 // FORM SETUP (Add User / Add Student / Logout)
 // =============================================
 function setupForms() {
+    const hwForm = document.getElementById('homework-form');
+    if (hwForm) hwForm.addEventListener('submit', saveHomework);
+    
+    const matForm = document.getElementById('material-form');
+    if (matForm) matForm.addEventListener('submit', saveMaterial);
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
