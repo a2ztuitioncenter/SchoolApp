@@ -4,6 +4,7 @@
  */
 
 import { studentAPI, downloadFile, materialsAPI } from './api.js';
+import { initTheme } from './theme.js';
 
 
 // ===========================
@@ -11,6 +12,7 @@ import { studentAPI, downloadFile, materialsAPI } from './api.js';
 // ===========================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('📄 Dashboard initializing...');
+  initTheme();
 
   try {
     // Get userId from sessionStorage (set during login)
@@ -114,6 +116,8 @@ async function loadDashboardData(userId) {
     if (data.fees) populateFees(data.fees);
     if (data.homework) populateHomework(data.homework);
     if (data.courseProgress) populateCourseProgress(data.courseProgress);
+    if (data.timetable) populateTimetable(data.timetable);
+    if (data.notifications) populateNotifications(data.notifications);
 
     console.log('✅ Dashboard loaded successfully');
     return data;
@@ -208,6 +212,119 @@ function populateCourseProgress(progress) {
     if (innerText) innerText.textContent = `${percent}%`;
   }
 }
+
+// ===========================
+// Timetable
+// ===========================
+const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  try {
+    const [h, m] = timeStr.split(':');
+    const date = new Date();
+    date.setHours(parseInt(h), parseInt(m));
+    return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch (e) { return timeStr; }
+}
+
+function populateTimetable(timetable) {
+  const containers = ['timetable-container', 'timetable-preview'].map(id => document.getElementById(id)).filter(Boolean);
+  if (!containers.length) return;
+
+  if (!Array.isArray(timetable) || timetable.length === 0) {
+    containers.forEach(c => { c.innerHTML = '<p class="empty-state">No timetable available for your class.</p>'; });
+    return;
+  }
+
+  // Group by day
+  const byDay = {};
+  timetable.forEach(entry => {
+    const day = entry.dayOfWeek || 'Other';
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push(entry);
+  });
+
+  const html = DAY_ORDER.filter(d => byDay[d])
+    .map(day => `
+      <div class="timetable-day">
+        <div class="timetable-day-label">${day}</div>
+        <div class="timetable-entries">
+          ${byDay[day].map(e => `
+            <div class="timetable-row">
+              <span class="timetable-time">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</span>
+              <span class="timetable-subject">${e.subject}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+  // Full timetable container — show all days
+  const full = document.getElementById('timetable-container');
+  if (full) full.innerHTML = html;
+
+  // Preview — show max 5 entries from the week
+  const preview = document.getElementById('timetable-preview');
+  if (preview) {
+    const previewEntries = timetable.slice(0, 5);
+    preview.innerHTML = previewEntries.map(e =>
+      `<p class="timetable-preview-item"><strong>${e.dayOfWeek}:</strong> ${formatTime(e.startTime)} – ${e.subject}</p>`
+    ).join('');
+    if (timetable.length > 5) {
+      preview.innerHTML += `<p style="font-size:0.8rem; color: var(--text-muted); margin-top: 4px;">+${timetable.length - 5} more…</p>`;
+    }
+  }
+}
+
+// ===========================
+// Notifications
+// ===========================
+
+function populateNotifications(notifications) {
+  const fullEl = document.getElementById('notifications-container');
+  const previewEl = document.getElementById('notifications-preview');
+  const dot = document.getElementById('notif-dot');
+
+  if (dot && notifications.length > 0) dot.style.display = 'block';
+
+  if (!Array.isArray(notifications) || notifications.length === 0) {
+    const empty = '<p class="empty-state">No announcements at this time.</p>';
+    if (fullEl) fullEl.innerHTML = empty;
+    if (previewEl) previewEl.innerHTML = empty;
+    return;
+  }
+
+  const fullHtml = notifications.map(n => `
+    <div class="notification-card">
+      <div class="notification-header">
+        <span class="notification-title">${n.title}</span>
+        <span class="notification-date">${formatDate(n.createdAt)}</span>
+      </div>
+      <p class="notification-message">${n.message}</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        ${n.classLevel ? `<span class="notification-badge">Class ${n.classLevel}</span>` : '<span class="notification-badge global">All Classes</span>'}
+        ${n.attachmentUrl ? `<a href="${n.attachmentUrl}" target="_blank" class="download-link" style="color:var(--accent-blue); font-size:0.85rem;"><i class="fas fa-file-download"></i> Attachment</a>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  if (fullEl) fullEl.innerHTML = fullHtml;
+
+  // Preview: show first 3
+  if (previewEl) {
+    previewEl.innerHTML = notifications.slice(0, 3).map(n => `
+      <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle);">
+        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${n.title}</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">${n.message.substring(0, 80)}${n.message.length > 80 ? '…' : ''}</p>
+      </div>
+    `).join('');
+    if (notifications.length > 3) {
+      previewEl.innerHTML += `<p style="font-size:0.8rem; color: var(--accent-blue);">View All →</p>`;
+    }
+  }
+}
+
 
 function getSubjectIcon(subject) {
   const s = (subject || '').toLowerCase();

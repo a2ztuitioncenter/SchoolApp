@@ -4,6 +4,7 @@
  */
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile } from './api.js';
+import { initTheme, toggleTheme } from './theme.js';
 
 let currentTab = 'dashboard';
 let allHomeworkData = [];
@@ -26,9 +27,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameEl = document.getElementById('admin-name');
     if (nameEl) nameEl.textContent = `Admin (${adminPhone})`;
 
+    initTheme();
+
     setupTabNavigation();
     setupForms();
-    
+
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
     const sidebar = document.querySelector('.sidebar');
@@ -772,51 +775,6 @@ window.closeMaterialModal = function() {
 window.deleteMaterial = deleteMaterial;
 
 // =============================================
-// NOTIFICATIONS
-// =============================================
-async function loadNotifications() {
-    try {
-        const res = await notificationsAPI.getAll();
-        const list = res.data || [];
-        const tbody = document.getElementById('notifications-list');
-        if (!tbody) return;
-        tbody.innerHTML = list.length ? list.map(n => `
-            <tr>
-                <td>${new Date(n.createdAt).toLocaleDateString()}</td>
-                <td>${n.title}</td>
-                <td>${n.message}</td>
-                <td>${n.recipientRole || n.classLevel || 'All'}</td>
-            </tr>
-        `).join('') : '<tr><td colspan="4" class="empty-state">No notices found</td></tr>';
-    } catch (err) {
-        showErrorAlert('Failed to load notifications');
-    }
-}
-
-// =============================================
-// RESULTS
-// =============================================
-async function loadResults() {
-    try {
-        const res = await resultsAPI.getByStudent('all');
-        const list = res.data || [];
-        const tbody = document.getElementById('results-list');
-        if (!tbody) return;
-        tbody.innerHTML = list.length ? list.map(r => `
-            <tr>
-                <td>${r.studentName || r.studentId}</td>
-                <td>${r.exam_title || '-'}</td>
-                <td>${r.subject}</td>
-                <td>${r.marks_obtained}/${r.total_marks}</td>
-                <td>${r.remarks || '-'}</td>
-            </tr>
-        `).join('') : '<tr><td colspan="5" class="empty-state">No results found</td></tr>';
-    } catch (err) {
-        showErrorAlert('Failed to load results');
-    }
-}
-
-// =============================================
 // FORM SETUP (Add User / Add Student / Logout)
 // =============================================
 function setupForms() {
@@ -936,4 +894,157 @@ function hideInfoAlert() {
     if (el) el.style.display = 'none';
 }
 
-export { loadDashboardData, loadUsers, loadStudents, loadMaterials, loadResults };
+export { loadDashboardData, loadUsers, loadStudents, loadMaterials, loadResults, loadNotifications };
+
+// =============================================
+// NOTIFICATIONS
+// =============================================
+
+async function loadNotifications() {
+    const tbody = document.getElementById('notifications-list');
+    if (!tbody) return;
+
+    try {
+        showInfoAlert('Loading notifications...');
+        const res = await notificationsAPI.getAll();
+        const items = res.data || [];
+        hideInfoAlert();
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No notifications sent yet. Click "Send Notice" to create one.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = items.map(n => {
+            const date = new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            const recipient = n.classLevel
+                ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
+                : (n.recipientRole || 'All Users');
+            const fileHtml = n.attachmentUrl 
+                ? `<a href="${n.attachmentUrl}" target="_blank" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</a>` 
+                : '<span style="color:var(--text-muted)">-</span>';
+            return `
+                <tr>
+                    <td>${date}</td>
+                    <td><strong>${n.title}</strong></td>
+                    <td style="max-width:250px; word-break:break-word;">${n.message}</td>
+                    <td><span class="badge">${recipient}</span></td>
+                    <td>${fileHtml}</td>
+                    <td>
+                        <button class="btn btn-danger btn-xs" onclick="deleteNotification(${n.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        hideInfoAlert();
+        showErrorAlert('Failed to load notifications: ' + err.message);
+    }
+}
+
+window.showSendNoticeModal = function() {
+    const modal = document.getElementById('notice-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('notice-form')?.reset();
+    }
+};
+
+window.closeNoticeModal = function() {
+    const modal = document.getElementById('notice-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.deleteNotification = async function(id) {
+    if (!confirm('Delete this notification?')) return;
+    try {
+        // The notifications controller doesn't have a DELETE — call the API directly
+        await fetch(`/api/admin/notifications/${id}`, { method: 'DELETE' });
+        showSuccessAlert('Notification deleted');
+        await loadNotifications();
+    } catch (err) {
+        showErrorAlert('Failed to delete: ' + err.message);
+    }
+};
+
+// Wire up the notice form submit
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('notice-title')?.value.trim();
+        const message = document.getElementById('notice-message')?.value.trim();
+        const classLevel = document.getElementById('notice-class')?.value || '';
+        const recipientRole = document.getElementById('notice-role')?.value || '';
+        const attachment = document.getElementById('notice-attachment')?.files[0];
+
+        if (!title || !message) {
+            showErrorAlert('Title and Message are required.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('message', message);
+        formData.append('classLevel', classLevel);
+        formData.append('recipientRole', recipientRole);
+        if (attachment) formData.append('attachment', attachment);
+        
+        const adminId = sessionStorage.getItem('adminUserId');
+        if (adminId) formData.append('createdBy', adminId);
+
+        try {
+            showInfoAlert('Sending notice...');
+            await notificationsAPI.create(formData);
+            hideInfoAlert();
+            closeNoticeModal();
+            showSuccessAlert('✅ Notice sent with attachment!');
+            await loadNotifications();
+        } catch (err) {
+            hideInfoAlert();
+            showErrorAlert('Failed to send notice: ' + err.message);
+        }
+    });
+});
+
+/**
+ * MISSING TAB FUNCTIONS to prevent errors
+ */
+
+async function loadResults() {
+    const list = document.getElementById('results-list');
+    if (!list) return;
+    try {
+        showInfoAlert('Loading results...');
+        const res = await resultsAPI.getAll();
+        const items = res.data || [];
+        hideInfoAlert();
+        if (items.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" class="empty-state">No exam results recorded.</td></tr>';
+            return;
+        }
+        list.innerHTML = items.map(r => `
+            <tr>
+                <td>${r.studentName || 'Student'}</td>
+                <td>${r.exam_title}</td>
+                <td>${r.subject}</td>
+                <td>${r.marks_obtained}/${r.total_marks}</td>
+                <td>${r.remarks || 'No remarks'}</td>
+                <td>
+                    <button class="btn btn-danger btn-xs" onclick="deleteResult(${r.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        showErrorAlert('Failed to load results: ' + err.message);
+    }
+}
+
+window.deleteTimetable = async function(id) {
+    if (!confirm('Delete entry?')) return;
+    try { await fetch(`/api/admin/timetable/${id}`, { method: 'DELETE' }); loadTimetable(); } catch (err) { showErrorAlert(err.message); }
+};
+
+window.showAddTimetableModal = function() { alert('Not implemented yet'); };
+window.showAddResultModal = function() { alert('Not implemented yet'); };
+

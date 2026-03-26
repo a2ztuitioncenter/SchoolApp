@@ -73,7 +73,9 @@ const server = Bun.serve({
       return new Response(Bun.file(filePath), {
         headers: {
           "Content-Type": getMimeType(filePath),
-          "Cache-Control": "public, max-age=86400", // Cache for 1 day
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0",
         },
       });
     }
@@ -84,7 +86,9 @@ const server = Bun.serve({
     return new Response(Bun.file(fallback), {
       headers: {
         "Content-Type": "text/html",
-        "Cache-Control": "public, max-age=3600", // Cache HTML for 1 hour
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
       },
     });
   },

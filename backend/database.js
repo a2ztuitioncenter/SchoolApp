@@ -6,6 +6,8 @@ import { feeModel } from './models/Fee.js';
 import { homeworkModel } from './models/Homework.js';
 import { attendanceModel } from './models/Attendance.js';
 import { materialModel } from './models/Material.js';
+import { notificationModel } from './models/Notification.js';
+import { timetableModel } from './models/Timetable.js';
 
 const { Pool } = pkg;
 dotenv.config();
@@ -27,6 +29,8 @@ export async function initializeDatabase() {
     await pool.query(homeworkModel.schema);
     await pool.query(attendanceModel.schema);
     await pool.query(materialModel.schema);
+    await pool.query(notificationModel.schema);
+    await pool.query(timetableModel.schema);
     console.log('✅ Tables checked/created.');
 
     await createDefaultAdmin();

@@ -120,7 +120,10 @@ const materialsAPI = {
 
 const notificationsAPI = {
   getAll: () => apiCall('/admin/notifications', { method: 'GET' }),
-  create: (data) => apiCall('/admin/notifications', { method: 'POST', body: JSON.stringify(data) }),
+  create: (data) => apiCall('/admin/notifications', { 
+    method: 'POST', 
+    body: data // Send data directly (JSON string or FormData)
+  }),
 };
 
 const resultsAPI = {

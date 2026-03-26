@@ -19,8 +19,15 @@ import downloadRoutes   from './routes/downloadRoutes.js';
 
 import { initializeDatabase } from './database.js';
 
+import fs from 'fs';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Ensure upload directories exist
+['uploads/materials', 'uploads/homework', 'uploads/notifications'].forEach(dir => {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
 const { Pool } = pkg;
 dotenv.config();

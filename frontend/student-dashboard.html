@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./css/student-dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 </head>
 <body>
 
@@ -16,10 +17,12 @@
                 <i class="fas fa-book-open"></i>
                 <span>A2Z</span>
             </div>
-            <nav>
+            <nav id = nav_left_sidebar>
                 <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> Home</a>
                 <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> Subjects</a>
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
+                <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
+                <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> Notifications</a>
                 <a href="#" class="nav-link" data-tab="videos"><i class="fas fa-play-circle"></i> Videos</a>
                 <a href="#" class="nav-link" data-tab="profile"><i class="fas fa-user"></i> Profile</a>
             </nav>
@@ -28,8 +31,7 @@
         <div class="main-wrapper">
             <header class="top-header">
                 <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
-                <div class="search-bar">
-                    </div>
+                <div class="search-bar"></div>
                 <div class="user-profile">
                     <div class="user-info">
                         <h3 id="student-name">Loading Profile...</h3>
@@ -37,7 +39,7 @@
                     </div>
                     <div class="notification">
                         <i class="fas fa-bell"></i>
-                        <span class="dot"></span>
+                        <span class="dot" id="notif-dot" style="display:none;"></span>
                     </div>
                 </div>
             </header>
@@ -54,8 +56,31 @@
                 </div>
             </div>
 
-            <!-- Fees Tab -->
+            <!-- Timetable Tab -->
+            <div id="tab-timetable" class="tab-content" style="display:none;">
+                <div class="section-container">
+                    <div class="section-header">
+                        <h3><i class="fas fa-calendar-alt"></i> Class Timetable</h3>
+                    </div>
+                    <div id="timetable-container">
+                        <p class="loading-text">Loading timetable...</p>
+                    </div>
+                </div>
+            </div>
 
+            <!-- Notifications Tab -->
+            <div id="tab-notifications" class="tab-content" style="display:none;">
+                <div class="section-container">
+                    <div class="section-header">
+                        <h3><i class="fas fa-bell"></i> Notifications & Announcements</h3>
+                    </div>
+                    <div id="notifications-container">
+                        <p class="loading-text">Loading notifications...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Home Tab -->
             <main class="content" id="tab-home">
                 <div class="dashboard-grid">
                     
@@ -86,6 +111,14 @@
                             </div>
                         </div>
 
+                        <!-- Timetable preview on home -->
+                        <div class="section-container">
+                            <div class="section-header">
+                                <h3>This Week's Timetable</h3>
+                            </div>
+                            <div id="timetable-preview"></div>
+                        </div>
+
                         <div class="holiday-banner">
                             <i class="fas fa-palmtree"></i>
                             <p>Upcoming Holidays: <strong>Diwali Break (Nov 1-7)</strong></p>
@@ -108,6 +141,12 @@
                         <div class="stats-card">
                             <h4>Fees Status</h4>
                             <p class="attendance-count" id="fees-display">Loading...</p>
+                        </div>
+
+                        <!-- Notifications preview on home -->
+                        <div class="stats-card" style="text-align:left; padding: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem;"><i class="fas fa-bell" style="color: var(--accent-blue); margin-right: 6px;"></i> Recent Announcements</h4>
+                            <div id="notifications-preview"></div>
                         </div>
                     </section>
 

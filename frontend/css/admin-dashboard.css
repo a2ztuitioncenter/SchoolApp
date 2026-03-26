@@ -4,27 +4,38 @@
    ========================================================================== */
 
 :root {
-  /* GitHub Dark Mode Color Palette */
+  /* GitHub Dark Mode (Default) */
   --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
   --bg-secondary: #161b22;
   --bg-hover: #21262d;
   --text-main: #c9d1d9;
   --text-muted: #8b949e;
   --border-subtle: #30363d;
-  --accent-blue: #1f6feb; /* GitHub Blue */
+  --accent-blue: #1f6feb;
   --accent-hover: #388bfd;
-  
-  /* Semantic Colors */
   --success: #238636;
   --danger: #da3633;
   --warning: #d29922;
   --info: #1f6feb;
   
-  /* Layout */
   --sidebar-width: 260px;
   --radius-sm: 6px;
   --transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+}
+
+:root[data-theme="light"] {
+  --bg-primary: #f6f8fa;
+  --bg-secondary: #ffffff;
+  --bg-hover: #f3f4f6;
+  --text-main: #24292f;
+  --text-muted: #57606a;
+  --border-subtle: #d0d7de;
+  --accent-blue: #0969da;
+  --accent-hover: #0860ca;
+  --success: #1a7f37;
+  --danger: #cf222e;
+  --warning: #9a6700;
+  --info: #0969da;
 }
 
 * {
@@ -111,7 +122,7 @@ body {
 
 .nav-link:hover {
   background-color: var(--bg-hover);
-  color: #ffffff;
+  color: var(--text-main);
 }
 
 .nav-link:hover i {
@@ -181,6 +192,35 @@ body {
 #admin-name {
   color: var(--text-main) !important;
   font-weight: 600;
+}
+
+/* ============================================
+   THEME TOGGLE
+   ============================================ */
+
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  font-size: 0.875rem;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+:root[data-theme="light"] .theme-toggle-btn i {
+  color: var(--warning);
 }
 
 /* ============================================
@@ -259,7 +299,7 @@ tr:last-child td {
 }
 
 tr:hover td {
-  background-color: rgba(139, 148, 158, 0.05);
+  background-color: var(--bg-hover);
 }
 
 /* ============================================
@@ -296,7 +336,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.3);
 }
 
 /* ============================================
@@ -543,3 +583,79 @@ textarea:focus {
   
   .admin-info { display: none; }
 }
+
+/* Utility Classes */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  height: auto;
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  filter: brightness(1.2);
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.close {
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

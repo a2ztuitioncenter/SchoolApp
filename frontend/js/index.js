@@ -1,12 +1,29 @@
-/**
- * master-dashboard.js - Master Dashboard navigation and login routing
- */
+import { initTheme, toggleTheme } from './theme.js';
+
 // alert("Welcome to master dashboard")
-document.addEventListener('DOMContentLoaded', () => {
+function init() {
+  console.log('✅ Index JS Init');
+  initTheme();
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
-  console.log(' Master dashboard initialized');
-});
+  
+  const themeToggle = document.getElementById('theme-toggle');
+  console.log('🔘 Theme Toggle Element:', themeToggle);
+  if (themeToggle) {
+    themeToggle.onclick = () => {
+      console.log('🌓 Toggle Clicked');
+      toggleTheme();
+    };
+  }
+  
+  console.log('🚀 Index Page Loaded');
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 // alert("Welcome")
 /**
  * Setup login card click handlers

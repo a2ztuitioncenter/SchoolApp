@@ -32,16 +32,22 @@ export const getStudentDashboard = async (req, res) => {
       student = await createStudentRecord(pool, userId, user);
     }
 
-    // Parallel fetch of attendance, fees, and homework (targeted by classLevel digits)
-    const [attendancePercentage, attendanceSummary, feesSummary, allFees, homeworkResult] = await Promise.all([
+    // Parallel fetch of attendance, fees, homework, timetable, and notifications
+    const [attendancePercentage, attendanceSummary, feesSummary, allFees, homeworkResult, timetableResult, notificationsResult] = await Promise.all([
       getAttendancePercentage(pool, student.id, 30),
       getAttendanceSummary(pool, student.id),
       getFeesSummary(pool, student.id),
       getAllStudentFees(pool, student.id),
-      pool.query('SELECT * FROM homework WHERE substring("classLevel" FROM \'\\d+\') = substring($1 FROM \'\\d+\') ORDER BY "dueDate" ASC LIMIT 5', [student.classLevel])
+      pool.query('SELECT * FROM homework WHERE substring("classLevel" FROM \'\\d+\') = substring($1 FROM \'\\d+\') ORDER BY "dueDate" ASC LIMIT 5', [student.classLevel]),
+      pool.query('SELECT * FROM timetable WHERE "classLevel" = $1 ORDER BY "dayOfWeek", "startTime" ASC', [student.classLevel]),
+      pool.query(
+        'SELECT * FROM notifications WHERE "classLevel" = $1 OR "classLevel" IS NULL OR "recipientRole" = \'student\' ORDER BY "createdAt" DESC LIMIT 10',
+        [student.classLevel]
+      ),
     ]);
 
     console.log(`[DEBUG] Dashboard fetched ${homeworkResult.rows.length} homework for student class: [${student.classLevel}]`);
+    console.log(`[DEBUG] Timetable: ${timetableResult.rows.length} entries. Notifications: ${notificationsResult.rows.length}.`);
 
     return res.json({
       success: true,
@@ -71,6 +77,8 @@ export const getStudentDashboard = async (req, res) => {
           fees: (allFees || []).slice(0, 5),
         },
         homework: homeworkResult.rows || [],
+        timetable: timetableResult.rows || [],
+        notifications: notificationsResult.rows || [],
         courseProgress: { percentage: 0, completedLessons: 0, totalLessons: 0 },
       },
     });
