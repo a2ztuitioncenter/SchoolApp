@@ -167,14 +167,14 @@ router.get('/financials/unpaid-fees', async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT 
-                f.id, f.amount, f."dueDate", f.paid,
+                f.id, f.amount, f."dueDate", f."isPaid" AS paid,
                 s.name as "studentName",
                 s."classLevel",
                 u.phone
              FROM fees f
              JOIN students s ON f."studentId" = s.id
              JOIN users u ON s."userId" = u.id
-             WHERE f.paid = FALSE
+             WHERE f."isPaid" = FALSE
              ORDER BY f."dueDate" ASC`
         );
         res.json({ success: true, fees: result.rows });
@@ -190,10 +190,10 @@ router.get('/financials/report', async (req, res) => {
             `SELECT 
                 COUNT(*) as "totalRecords",
                 COALESCE(SUM(amount), 0) as "totalAmount",
-                COALESCE(SUM(CASE WHEN paid = TRUE THEN amount ELSE 0 END), 0) as "totalPaid",
-                COALESCE(SUM(CASE WHEN paid = FALSE THEN amount ELSE 0 END), 0) as "totalPending",
-                SUM(CASE WHEN paid = TRUE THEN 1 ELSE 0 END) as "paidCount",
-                SUM(CASE WHEN paid = FALSE THEN 1 ELSE 0 END) as "pendingCount"
+                COALESCE(SUM(CASE WHEN "isPaid" = TRUE THEN amount ELSE 0 END), 0) as "totalPaid",
+                COALESCE(SUM(CASE WHEN "isPaid" = FALSE THEN amount ELSE 0 END), 0) as "totalPending",
+                SUM(CASE WHEN "isPaid" = TRUE THEN 1 ELSE 0 END) as "paidCount",
+                SUM(CASE WHEN "isPaid" = FALSE THEN 1 ELSE 0 END) as "pendingCount"
              FROM fees`
         );
         res.json({ success: true, report: feesResult.rows[0] });

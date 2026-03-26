@@ -38,10 +38,10 @@ const pool = new Pool({
 // Test the connection
 try {
   const client = await pool.connect();
-  console.log('✅ PostgreSQL Database connected successfully');
+  console.log('PostgreSQL Database connected successfully');
   client.release();
 } catch (error) {
-  console.error('❌ PostgreSQL connection error:', error.message);
+  console.error('PostgreSQL connection error:', error.message);
   console.error('Ensure PostgreSQL is running and your .env file is configured correctly.');
   process.exit(1);
 }
@@ -119,19 +119,19 @@ const startServer = async () => {
     const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
 
     if (shouldInitializeDB) {
-      console.log('📋 Initializing database tables and creating default admin...');
+      console.log('Initializing database tables and creating default admin...');
       await initializeDatabase(pool);
     }
 
     app.listen(PORT, () => {
-      console.log(`\n🚀 Server running at http://localhost:${PORT}`);
-      console.log(`📚 Master Portal: http://localhost:${PORT}/`);
-      console.log(`👤 Student Login: http://localhost:${PORT}/student-login.html`);
-      console.log(`👨‍💼 Admin Login: http://localhost:${PORT}/admin-login.html`);
-      console.log(`🎓 Teacher Login: http://localhost:${PORT}/teacher-login.html\n`);
+      console.log(`\nServer running at http://localhost:${PORT}`);
+      console.log(`Master Portal: http://localhost:${PORT}/`);
+      console.log(`Student Login: http://localhost:${PORT}/student-login.html`);
+      console.log(`Admin Login: http://localhost:${PORT}/admin-login.html`);
+      console.log(`Teacher Login: http://localhost:${PORT}/teacher-login.html\n`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };

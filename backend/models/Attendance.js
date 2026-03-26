@@ -21,14 +21,13 @@ export const attendanceModel = {
     for (const rec of records) {
       const studentId = rec.studentId || rec.student_id;
       const date = rec.date || rec.attendanceDate;
-      const classLevel = rec.classLevel || rec.class_name || '';
       const r = await db.query(
-        `INSERT INTO attendance ("studentId", "classLevel", date, status, "userId")
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT ("studentId", date)
-         DO UPDATE SET status = EXCLUDED.status, "userId" = EXCLUDED."userId"
+        `INSERT INTO attendance ("studentId", "attendanceDate", status, "userId")
+         VALUES ($1, $2, $3, (SELECT "userId" FROM students WHERE id = $1))
+         ON CONFLICT ON CONSTRAINT attendance_studentid_attendancedate_key
+         DO UPDATE SET status = EXCLUDED.status
          RETURNING *`,
-        [studentId, classLevel, date, rec.status, userId]
+        [studentId, date, rec.status]
       );
       results.push(r.rows[0]);
     }
