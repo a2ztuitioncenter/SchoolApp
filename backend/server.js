@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import pkg from 'pg';
 import path from 'path';
@@ -51,6 +52,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(compression());
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 

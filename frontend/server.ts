@@ -41,13 +41,19 @@ const server = Bun.serve({
         const newHeaders = new Headers(req.headers);
         newHeaders.delete("host");
 
+        // Use streaming for request body when possible
+        const hasBody = req.method !== "GET" && req.method !== "HEAD";
         const proxyResponse = await fetch(targetUrl, {
           method: req.method,
           headers: newHeaders,
-          body: req.method !== "GET" && req.method !== "HEAD" ? await req.blob() : undefined,
+          body: hasBody ? req.body : undefined,
+          // @ts-ignore - duplex is required for streaming request bodies in some environments
+          duplex: hasBody ? "half" : undefined,
         });
         
         console.log(`[PROXY] Backend responded with ${proxyResponse.status}`);
+        
+        // Returning the Response object directly enables streaming of the response body
         return proxyResponse;
       } catch (error) {
         console.error("[PROXY] Error:", error);
@@ -62,11 +68,12 @@ const server = Bun.serve({
 
     const filePath = path.join(publicDir, pathname);
 
-    // ✅ Serve file if exists
+    // ✅ Serve file if exists with Browser Caching
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       return new Response(Bun.file(filePath), {
         headers: {
           "Content-Type": getMimeType(filePath),
+          "Cache-Control": "public, max-age=86400", // Cache for 1 day
         },
       });
     }
@@ -77,6 +84,7 @@ const server = Bun.serve({
     return new Response(Bun.file(fallback), {
       headers: {
         "Content-Type": "text/html",
+        "Cache-Control": "public, max-age=3600", // Cache HTML for 1 hour
       },
     });
   },
