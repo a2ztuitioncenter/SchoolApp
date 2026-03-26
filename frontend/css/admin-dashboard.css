@@ -5,14 +5,14 @@
 
 :root {
   /* GitHub Dark Mode Color Palette */
-  --bg-main: #0d1117;
-  --bg-sidebar: #161b22;
-  --bg-card: #161b22;
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-secondary: #161b22;
   --bg-hover: #21262d;
-  --text-primary: #c9d1d9;
-  --text-secondary: #8b949e;
-  --border-color: #30363d;
-  --accent: #1f6feb; /* GitHub Blue */
+  --text-main: #c9d1d9;
+  --text-muted: #8b949e;
+  --border-subtle: #30363d;
+  --accent-blue: #1f6feb; /* GitHub Blue */
   --accent-hover: #388bfd;
   
   /* Semantic Colors */
@@ -23,7 +23,7 @@
   
   /* Layout */
   --sidebar-width: 260px;
-  --border-radius: 6px;
+  --radius-sm: 6px;
   --transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
 }
 
@@ -35,8 +35,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  background-color: var(--bg-main);
-  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -52,8 +52,8 @@ body {
 
 .sidebar {
   width: var(--sidebar-width);
-  background-color: var(--bg-sidebar);
-  border-right: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-subtle);
   position: fixed;
   height: 100vh;
   padding: 1.5rem 1rem;
@@ -82,19 +82,19 @@ body {
   font-weight: 600;
   margin-bottom: 2rem;
   padding: 0 0.5rem 1rem;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebar .logo i {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .nav-link {
-  color: var(--text-primary);
+  color: var(--text-main);
   text-decoration: none;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -104,7 +104,7 @@ body {
 }
 
 .nav-link i {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   width: 16px;
   text-align: center;
 }
@@ -125,16 +125,16 @@ body {
 }
 
 .nav-link.active i {
-  color: var(--accent);
+  color: var(--accent-blue);
 }
 
 .logout-btn {
   margin-top: auto;
   background-color: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
   padding: 0.5rem;
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
@@ -160,7 +160,7 @@ body {
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .header h1 {
@@ -175,11 +175,11 @@ body {
 }
 
 .admin-info i {
-  color: var(--text-secondary) !important;
+  color: var(--text-muted) !important;
 }
 
 #admin-name {
-  color: var(--text-primary) !important;
+  color: var(--text-main) !important;
   font-weight: 600;
 }
 
@@ -195,16 +195,16 @@ body {
 }
 
 .card {
-  background-color: var(--bg-card);
+  background-color: var(--bg-secondary);
   padding: 1rem 1.25rem;
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
 }
 
 .card h3 {
   font-size: 0.875rem;
   font-weight: 400;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
@@ -214,11 +214,11 @@ body {
 .card .stat-value {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 
 /* Override utility colors for specific stats */
-#total-students { color: var(--text-primary) !important; }
+#total-students { color: var(--text-main) !important; }
 #total-unpaid { color: var(--danger) !important; }
 #overdue-count { color: var(--warning) !important; }
 
@@ -227,9 +227,9 @@ body {
    ============================================ */
 
 .table-container {
-  background-color: var(--bg-main);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -244,14 +244,14 @@ th {
   padding: 0.75rem 1rem;
   text-align: left;
   font-weight: 600;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
 }
 
 tr:last-child td {
@@ -275,16 +275,16 @@ tr:hover td {
   margin-bottom: 0.375rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 
 input,
 select,
 textarea {
-  background-color: var(--bg-main);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   padding: 0.375rem 0.75rem;
   font-size: 0.875rem;
   width: 100%;
@@ -295,7 +295,7 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-blue);
   box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3);
 }
 
@@ -311,15 +311,15 @@ textarea:focus {
   padding: 0.375rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--transition), border-color var(--transition);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-subtle);
   user-select: none;
 }
 
 .btn-primary {
-  background-color: var(--accent);
+  background-color: var(--accent-blue);
   color: #ffffff;
   border-color: rgba(240, 246, 252, 0.1);
 }
@@ -330,7 +330,7 @@ textarea:focus {
 
 .btn-secondary {
   background-color: #21262d;
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 
 .btn-secondary:hover {
@@ -344,10 +344,10 @@ textarea:focus {
 }
 
 /* Button variants for status actions */
-.btn-edit { background-color: #21262d; border-color: var(--border-color); color: var(--text-primary); }
-.btn-delete { background-color: #21262d; border-color: var(--border-color); color: var(--danger); }
-.btn-warning { background-color: #21262d; border-color: var(--border-color); color: var(--warning); }
-.btn-success { background-color: #21262d; border-color: var(--border-color); color: var(--success); }
+.btn-edit { background-color: #21262d; border-color: var(--border-subtle); color: var(--text-main); }
+.btn-delete { background-color: #21262d; border-color: var(--border-subtle); color: var(--danger); }
+.btn-warning { background-color: #21262d; border-color: var(--border-subtle); color: var(--warning); }
+.btn-success { background-color: #21262d; border-color: var(--border-subtle); color: var(--success); }
 
 .btn-edit:hover, .btn-delete:hover, .btn-warning:hover, .btn-success:hover {
   background-color: var(--bg-hover);
@@ -395,14 +395,14 @@ textarea:focus {
   min-width: 300px;
   max-width: 400px;
   padding: 1rem;
-  border-radius: var(--border-radius);
-  background-color: var(--bg-sidebar);
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-left-width: 4px !important;
   display: none;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text-primary);
+  color: var(--text-main);
   font-size: 0.875rem;
   animation: slideIn 0.3s ease-out forwards;
 }
@@ -431,12 +431,12 @@ textarea:focus {
 }
 
 .modal-content {
-  background-color: var(--bg-sidebar);
+  background-color: var(--bg-secondary);
   margin: 10vh auto;
   width: 90%;
   max-width: 480px;
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
   animation: slideUp 0.2s ease-out;
 }
@@ -452,7 +452,7 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .modal-header h2 {
@@ -462,12 +462,12 @@ textarea:focus {
 
 .modal-header .close {
   cursor: pointer;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 1.25rem;
 }
 
 .modal-header .close:hover {
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 
 .modal-body {
@@ -477,7 +477,7 @@ textarea:focus {
 .modal-footer {
   padding: 1rem;
   background-color: #161b22;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -500,7 +500,7 @@ textarea:focus {
 .empty-state {
   padding: 3rem;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .empty-state i {
@@ -518,7 +518,7 @@ textarea:focus {
   display: none;
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: var(--text-main);
   font-size: 1.25rem;
   cursor: pointer;
 }

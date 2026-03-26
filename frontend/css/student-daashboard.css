@@ -1,24 +1,24 @@
 :root {
-    --bg-color: #EBF3F9;
-    --sidebar-color: #1A2E5A;
-    --card-bg: #FFFFFF;
+    --bg-primary: #EBF3F9;
+    --bg-secondary: #1A2E5A;
+    --bg-secondary: #FFFFFF;
     --text-main: #2D3436;
     --text-muted: #636E72;
-    --primary-blue: #3498DB;
+    --accent-blue: #3498DB;
     --accent-green: #2ECC71;
     --shadow: 0 4px 15px rgba(0,0,0,0.05);
-    --border-radius: 16px;
+    --radius-sm: 16px;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 body {
-    background-color: var(--bg-color);
+    background-color: var(--bg-primary);
     color: var(--text-main);
     overflow-x: hidden;
 }
@@ -31,7 +31,7 @@ body {
 /* Sidebar */
 .sidebar {
     width: 240px;
-    background-color: var(--sidebar-color);
+    background-color: var(--bg-secondary);
     color: white;
     padding: 2rem 1.5rem;
     display: flex;
@@ -123,9 +123,9 @@ body {
 .card {
     background: white;
     padding: 1.5rem;
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-sm);
     text-align: center;
-    box-shadow: var(--shadow);
+    border: 1px solid var(--border-subtle);
     transition: transform 0.2s;
 }
 
@@ -152,8 +152,8 @@ body {
 .section-container {
     background: white;
     padding: 1.5rem;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
     margin-bottom: 1.5rem;
 }
 
@@ -177,7 +177,7 @@ body {
     font-size: 0.8rem;
 }
 
-.math { background: var(--primary-blue); }
+.math { background: var(--accent-blue); }
 .science { background: #9B59B6; }
 
 .due-date { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
@@ -197,8 +197,8 @@ body {
 .stats-card {
     background: white;
     padding: 2rem;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
     text-align: center;
     margin-bottom: 1.5rem;
 }
@@ -207,7 +207,7 @@ body {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: conic-gradient(var(--primary-blue) calc(var(--percent) * 1%), #EBF3F9 0);
+    background: conic-gradient(var(--accent-blue) calc(var(--percent) * 1%), #EBF3F9 0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -307,7 +307,7 @@ body {
     min-width: 300px;
     padding: 1rem;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid var(--border-subtle);
     display: none;
     align-items: center;
     gap: 10px;

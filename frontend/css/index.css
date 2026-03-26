@@ -2,12 +2,13 @@
 
 /* Global Styles */
 :root {
-    --main-purple: #4a148c; /* Dark Purple from image */
-    --text-purple: #311b92; /* Slightly darker purple for headers */
-    --light-grey: #f5f5f5; /* Light background grey */
-    --grey-text: #555; /* Secondary text grey */
-    --white: #ffffff;
-    --accent-purple: #6200ea; /* Slightly brighter purple for highlights */
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --border-subtle: #30363d;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent-blue: #1f6feb;
+    --radius-sm: 6px;
 }
 
 * {
@@ -17,10 +18,11 @@
 }
 
 body {
-    font-family: 'Open Sans', sans-serif; /* Clean sans-serif like image */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: var(--white);
+    font-weight: 400;
+    color: var(--text-main);
+    background-color: var(--bg-primary);
 }
 
 /* Utility Classes */
@@ -47,10 +49,11 @@ header {
 
 /* Top Bar */
 .header-top {
-    background-color: var(--main-purple);
-    color: var(--white);
+    background-color: var(--bg-secondary);
+    color: var(--text-main);
     padding: 10px 0;
     font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .header-top .container {
@@ -60,7 +63,7 @@ header {
 }
 
 .header-top .logo {
-    font-weight: bold;
+    font-weight: 600;
     font-size: 1.2rem;
     display: flex;
     align-items: center;
@@ -78,7 +81,7 @@ header {
 }
 
 .header-top nav a {
-    color: var(--white);
+    color: var(--text-main);
     display: flex;
     align-items: center;
     gap: 5px;
@@ -86,15 +89,15 @@ header {
 }
 
 .header-top nav a:hover {
-    color: var(--accent-purple);
+    color: var(--accent-blue);
 }
 
 /* Bottom Bar */
 .header-bottom {
-    background-color: var(--white);
-    color: #555;
+    background-color: var(--bg-primary);
+    color: var(--text-muted);
     padding: 15px 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .header-bottom .container {
@@ -110,17 +113,22 @@ header {
 }
 
 .header-bottom nav a {
-    font-weight: bold;
-    color: #555;
+    font-weight: 600;
+    color: var(--text-muted);
     cursor: pointer;
+}
+
+.header-bottom nav a:hover {
+    color: var(--text-main);
 }
 
 /* Hero Section */
 .hero {
-    background-color: var(--main-purple);
-    color: var(--white);
+    background-color: var(--bg-secondary);
+    color: var(--text-main);
     padding-top: 140px;
     padding-bottom: 80px;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .hero .container {
@@ -138,29 +146,30 @@ header {
 .hero-text h1 {
     font-size: 2.8rem;
     margin-bottom: 20px;
-    font-weight: 800;
+    font-weight: 600;
+    color: var(--text-main);
 }
 
 .hero-text p {
     font-size: 1.1rem;
     margin-bottom: 30px;
-    color: #ccc;
+    color: var(--text-muted);
 }
 
 .btn-learn-more {
     display: inline-block;
-    background-color: var(--accent-purple);
-    color: var(--white);
+    background-color: var(--accent-blue);
+    color: #ffffff;
     padding: 12px 30px;
-    border-radius: 5px;
-    font-weight: bold;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
     transition: background 0.3s ease;
     cursor: pointer;
     border: none;
 }
 
 .btn-learn-more:hover {
-    background-color: #7c4dff;
+    background-color: #388bfd;
 }
 
 .hero-image {
@@ -171,7 +180,7 @@ header {
 .hero-image img {
     max-width: 100%;
     height: auto;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
 }
 
 /* Login Grid */
@@ -179,7 +188,7 @@ header {
     padding-top: 0px;
     padding-bottom: 80px;
     margin-top: -60px;
-    background-color: var(--light-grey);
+    background-color: var(--bg-primary);
 }
 
 .login-grid .container {
@@ -190,41 +199,41 @@ header {
 }
 
 .login-card {
-    background-color: var(--white);
+    background-color: var(--bg-secondary);
     padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
     text-align: left;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease;
     cursor: pointer;
 }
 
 .login-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
 }
 
 .login-card-icon {
     font-size: 2.5rem;
-    color: var(--main-purple);
+    color: var(--text-main);
     margin-bottom: 20px;
 }
 
 .login-card h3 {
     font-size: 1.4rem;
-    color: #333;
+    color: var(--text-main);
     margin-bottom: 20px;
+    font-weight: 600;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .login-card h3 a {
-    color: #ccc;
+    color: var(--text-muted);
 }
 
 .login-card p {
-    color: var(--grey-text);
+    color: var(--text-muted);
     font-size: 0.95rem;
 }
 
@@ -238,20 +247,29 @@ header {
 .login-card-row input[type="text"] {
     flex: 1;
     padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+}
+
+.login-card-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3);
 }
 
 /* About Us Sections */
 .about-us h2 {
     font-size: 2rem;
-    color: var(--text-purple);
+    color: var(--text-main);
     margin-bottom: 30px;
     text-align: center;
+    font-weight: 600;
 }
 
 .about-text {
-    color: var(--grey-text);
+    color: var(--text-muted);
     max-width: 1000px;
     margin: 0 auto;
     margin-bottom: 60px;
@@ -266,13 +284,14 @@ header {
 
 .about-more h2 {
     font-size: 2rem;
-    color: var(--text-purple);
+    color: var(--text-main);
     margin-bottom: 30px;
     text-align: center;
+    font-weight: 600;
 }
 
 .about-more-text {
-    color: var(--grey-text);
+    color: var(--text-muted);
     max-width: 1000px;
     margin: 0 auto;
     margin-bottom: 30px;
@@ -280,8 +299,10 @@ header {
 
 /* Final Column Section */
 .about-columns {
-    background-color: #fafafa;
+    background-color: var(--bg-secondary);
     padding-bottom: 100px;
+    padding-top: 60px;
+    border-top: 1px solid var(--border-subtle);
 }
 
 .about-columns .container {
@@ -291,15 +312,16 @@ header {
 }
 
 .column-content p {
-    color: var(--grey-text);
+    color: var(--text-muted);
     margin-bottom: 20px;
 }
 
 /* Footer */
 footer {
-    background-color: #eee;
+    background-color: var(--bg-secondary);
     padding: 60px 0;
-    color: var(--grey-text);
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
 }
 
 footer .container {
@@ -321,16 +343,16 @@ footer .container {
 
 .footer-logo span {
     font-size: 0.8rem;
-    color: #ccc;
+    color: var(--text-muted);
     margin-top: 10px;
 }
 
 .footer-logo span a {
-    color: #bbb;
+    color: var(--text-muted);
 }
 
 .footer-logo span a:hover {
-    color: #888;
+    color: var(--text-main);
 }
 
 .footer-links {
@@ -340,9 +362,9 @@ footer .container {
 }
 
 .footer-column h4 {
-    color: #333;
+    color: var(--text-main);
     margin-bottom: 20px;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .footer-column ul {
@@ -355,12 +377,12 @@ footer .container {
 }
 
 .footer-column ul li a {
-    color: #bbb;
+    color: var(--text-muted);
     cursor: pointer;
 }
 
 .footer-column ul li a:hover {
-    color: #555;
+    color: var(--accent-blue);
 }
 
 /* Basic Responsiveness */

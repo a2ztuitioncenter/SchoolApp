@@ -63,10 +63,10 @@
                                 <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
                                 <h1>Admin Dashboard</h1>
                                 <div class="admin-info">
-                                    <i class="fas fa-user-circle" style="font-size: 2rem; color: #667eea;"></i>
+                                    <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-muted);"></i>
                                     <div>
-                                        <div style="font-weight: 600; color: #2D3436;" id="admin-name">Administrator</div>
-                                        <div style="font-size: 0.85rem; color: #636E72;">Admin Panel</div>
+                                        <div style="font-weight: 600; color: var(--text-main);" id="admin-name">Administrator</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-muted);">Admin Panel</div>
                                     </div>
                                 </div>
                             </div>
@@ -88,18 +88,18 @@
                 <div class="card-grid">
                     <div class="card">
                         <h3><i class="fas fa-users"></i> Total Students</h3>
-                        <div style="font-size: 2.5rem; color: #667eea; font-weight: 700;" id="total-students">0</div>
-                        <p style="color: #636E72; margin-top: 0.5rem;">Active student accounts</p>
+                        <div class="stat-value" id="total-students">0</div>
+                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Active student accounts</p>
                     </div>
                     <div class="card">
                         <h3><i class="fas fa-money-bill-wave"></i> Unpaid Fees</h3>
-                        <div style="font-size: 2.5rem; color: #E74C3C; font-weight: 700;" id="total-unpaid">₹0</div>
-                        <p style="color: #636E72; margin-top: 0.5rem;">Outstanding fees</p>
+                        <div class="stat-value" id="total-unpaid">₹0</div>
+                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Outstanding fees</p>
                     </div>
                     <div class="card">
                         <h3><i class="fas fa-exclamation-triangle"></i> Overdue</h3>
-                        <div style="font-size: 2.5rem; color: #F39C12; font-weight: 700;" id="overdue-count">0</div>
-                        <p style="color: #636E72; margin-top: 0.5rem;">Fees overdue</p>
+                        <div class="stat-value" id="overdue-count">0</div>
+                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Fees overdue</p>
                     </div>
                 </div>
             </div>
@@ -140,10 +140,10 @@
 
                 <!-- Edit User Section (hidden by default) -->
                 <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-user-section">
-                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid #667eea;">
+                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid var(--accent-blue);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <h3><i class="fas fa-user-edit"></i> Edit User</h3>
-                            <button class="btn" style="background: #dfe6e9; color: #2d3436;" onclick="cancelEditUser()">✕ Cancel</button>
+                            <button class="btn" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main);" onclick="cancelEditUser()">✕ Cancel</button>
                         </div>
                         <form id="edit-user-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
                             <input type="hidden" id="edit-user-id">
@@ -241,10 +241,10 @@
 
                 <!-- Edit Student Section (hidden by default) -->
                 <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-student-section">
-                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid #667eea;">
+                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid var(--accent-blue);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <h3><i class="fas fa-user-edit"></i> Edit Student</h3>
-                            <button class="btn" style="background: #dfe6e9; color: #2d3436;" onclick="cancelEditStudent()">✕ Cancel</button>
+                            <button class="btn" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main);" onclick="cancelEditStudent()">✕ Cancel</button>
                         </div>
                         <form id="edit-student-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
                             <input type="hidden" id="edit-student-id">
@@ -402,7 +402,7 @@
                             </div>
                             <div style="margin-top: 1rem;">
                                 <button type="submit" class="btn btn-primary">💾 Save Homework</button>
-                                <button type="button" class="btn" style="background:#ddd; margin-left:10px;" onclick="resetHomeworkForm()">🔄 Reset</button>
+                                <button type="button" class="btn btn-secondary" style="margin-left:10px;" onclick="resetHomeworkForm()">🔄 Reset</button>
                             </div>
                         </form>
                     </div>
@@ -436,15 +436,15 @@
                 <div class="card-grid">
                     <div class="card">
                         <h3>Total Collected</h3>
-                        <div style="font-size: 2rem; color: #2ecc71; font-weight: 700;" id="fee-stat-collected">₹0</div>
+                        <div class="stat-value" style="color: #238636;" id="fee-stat-collected">₹0</div>
                     </div>
                     <div class="card">
                         <h3>Total Pending</h3>
-                        <div style="font-size: 2rem; color: #e74c3c; font-weight: 700;" id="fee-stat-pending">₹0</div>
+                        <div class="stat-value" style="color: #da3633;" id="fee-stat-pending">₹0</div>
                     </div>
                     <div class="card">
                         <h3>Paid / Unpaid</h3>
-                        <div style="font-size: 1.5rem; color: #3498db; font-weight: 700;">
+                        <div class="stat-value" style="color: var(--accent-blue);">
                             <span id="fee-stat-paid-count">0</span> / <span id="fee-stat-unpaid-count">0</span>
                         </div>
                     </div>
@@ -478,10 +478,10 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                             <div style="display: flex; gap: 0.5rem;">
                                 <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
-                                <button class="btn" style="background:#eee;" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                                <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
                             </div>
                             <div style="flex: 1; max-width: 400px; position: relative;">
-                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #636e72;"></i>
+                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
                                 <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="filterFeesTable()" style="padding-left: 2.5rem; width: 100%;">
                             </div>
                         </div>
@@ -644,7 +644,7 @@
                 <div class="form-group">
                     <label>File (PDF, JPG, PNG)*</label>
                     <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
-                    <small id="material-file-hint" style="display:none; color: #666;">Leave empty to keep current file</small>
+                    <small id="material-file-hint" style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current file</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>

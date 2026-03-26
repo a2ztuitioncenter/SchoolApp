@@ -1,11 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Login | A2Z Tuition App</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-        <style>
+const fs = require('fs');
+
+const unifiedStyle = `    <style>
         * {
             margin: 0;
             padding: 0;
@@ -184,50 +179,18 @@
                 font-size: 1.5rem;
             }
         }
-    </style>
-</head>
-<body>
+    </style>`;
 
-    <div class="login-container">
-        <div class="logo">👨‍🏫</div>
-        <div class="teacher-badge">Teacher Portal</div>
-        <h1>A2Z</h1>
-        <p class="subtitle">Educator Access Portal</p>
+const files = [
+    'admin-login.html',
+    'student-login.html',
+    'teacher-login.html',
+    'student-register.html'
+];
 
-        <div id="error-message" class="error-message"></div>
-        <div id="success-message" class="success-message"></div>
-
-        <form id="teacher-login-form" onsubmit="return false;">
-            <div class="form-group">
-                <label for="teacher-phone">Phone Number</label>
-                <input 
-                    type="tel" 
-                    id="teacher-phone" 
-                    placeholder="10-digit mobile number"
-                    pattern="[0-9]{10}"
-                    required
-                >
-            </div>
-
-            <div class="form-group">
-                <label for="teacher-password">Password</label>
-                <input 
-                    type="password" 
-                    id="teacher-password" 
-                    placeholder="Enter your password"
-                    required
-                >
-            </div>
-
-            <button type="button" id="teacher-login-btn">Login as Teacher</button>
-        </form>
-
-        <div class="footer">
-            <p><a href="/index.html">← Back to Student Login</a></p>
-            <p><a href="/admin-login.html">Admin Portal →</a></p>
-        </div>
-    </div>
-
-    <script type="module" src="./js/teacher-login.js"></script>
-</body>
-</html>
+files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    content = content.replace(/<style>[\s\S]*?<\/style>/i, unifiedStyle);
+    fs.writeFileSync(file, content);
+    console.log("Updated", file);
+});
