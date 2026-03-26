@@ -33,6 +33,33 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
+    // 🔥 REVERSE PROXY FOR API CALLS
+    if (pathname.startsWith("/api")) {
+      const targetUrl = `http://127.0.0.1:3000${pathname}${url.search}`;
+      console.log(`[PROXY] Forwarding ${req.method} ${pathname} -> ${targetUrl}`);
+      try {
+        // We need to create a new headers object and REMOVE the host header
+        // otherwise it causes issues with localhost routing
+        const newHeaders = new Headers(req.headers);
+        newHeaders.delete("host");
+
+        // Forward the exact request from the client to the Express backend
+        const proxyResponse = await fetch(targetUrl, {
+          method: req.method,
+          headers: newHeaders,
+          body: req.method !== "GET" && req.method !== "HEAD" ? await req.blob() : undefined,
+        });
+        
+        console.log(`[PROXY] Backend responded with ${proxyResponse.status}`);
+        
+        // Return the backend's response directly to the client
+        return proxyResponse;
+      } catch (error) {
+        console.error("[PROXY] Error:", error);
+        return new Response("API Gateway Error", { status: 502 });
+      }
+    }
+
     // 🔥 FORCE ROOT → INDEX
     if (pathname === "/") {
       pathname = "/index.html";

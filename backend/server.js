@@ -50,7 +50,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // Attach Database Pool to Request
@@ -59,6 +59,12 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.urlencoded({ extended: true }));
+
+// Global Request Logger
+app.use((req, res, next) => {
+  console.log(`[EXPRESS ${req.method}] ${req.url}`);
+  next();
+});
 
 // Serve index.html (master landing / login selector) on root route
 app.get('/', (req, res) => {
@@ -123,7 +129,7 @@ const startServer = async () => {
       await initializeDatabase(pool);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`\nServer running at http://localhost:${PORT}`);
       console.log(`Master Portal: http://localhost:${PORT}/`);
       console.log(`Student Login: http://localhost:${PORT}/student-login.html`);
