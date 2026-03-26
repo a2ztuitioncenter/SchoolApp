@@ -3,10 +3,8 @@
  * Fetches data on page load and populates DOM elements
  */
 
-if (window.dashboardLoaded) return;
-window.dashboardLoaded = true;
-
 import { studentAPI } from './api.js';
+
 
 // ===========================
 // Initialization on Page Load

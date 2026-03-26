@@ -8,7 +8,6 @@ import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
-import parentRoutes from './routes/parentRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import homeworkRoutes   from './routes/homeworkRoutes.js';
 import feeRoutes        from './routes/feeRoutes.js';
@@ -61,10 +60,10 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({ extended: true }));
 
-// Serve main-dashboard.html on root route
+// Serve index.html (master landing / login selector) on root route
 app.get('/', (req, res) => {
-  const mainDashboardPath = path.join(__dirname, '../frontend/main-dashboard.html');
-  res.sendFile(mainDashboardPath);
+  const indexPath = path.join(__dirname, '../frontend/index.html');
+  res.sendFile(indexPath);
 });
 
 // Serve static files from frontend
@@ -80,7 +79,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
-app.use('/api/parent', parentRoutes);
 
 // Admin Module Routes (from verification requirements)
 app.use('/api/admin/attendance', attendanceRoutes);
@@ -95,12 +93,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
 });
 
-// Serve main-dashboard.html for all other routes (SPA support)
+// Fallback: serve index.html for unknown routes
 app.use((req, res) => {
-  const mainDashboardPath = path.join(__dirname, '../frontend/main-dashboard.html');
-  res.sendFile(mainDashboardPath, (err) => {
+  const indexPath = path.join(__dirname, '../frontend/index.html');
+  res.sendFile(indexPath, (err) => {
     if (err) {
-      console.error('Error serving main-dashboard.html:', err.message);
+      console.error('Error serving index.html:', err.message);
       res.status(404).json({ error: 'Page not found' });
     }
   });
@@ -130,8 +128,7 @@ const startServer = async () => {
       console.log(`📚 Master Portal: http://localhost:${PORT}/`);
       console.log(`👤 Student Login: http://localhost:${PORT}/student-login.html`);
       console.log(`👨‍💼 Admin Login: http://localhost:${PORT}/admin-login.html`);
-      console.log(`🎓 Teacher Login: http://localhost:${PORT}/teacher-login.html`);
-      console.log(`👨‍👩‍👧‍👦 Parent Login: http://localhost:${PORT}/parent-login.html\n`);
+      console.log(`🎓 Teacher Login: http://localhost:${PORT}/teacher-login.html\n`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

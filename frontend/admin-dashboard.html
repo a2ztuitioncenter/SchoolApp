@@ -83,18 +83,7 @@
 
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-                        <i class="fas fa-tachometer-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
-                        <h2 style="color: #2D3436; margin-bottom: 0.5rem;">Welcome to Admin Dashboard</h2>
-                        <p style="color: #636E72;">Navigate to <strong>User Management</strong> for a full overview of stats and user controls.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- User Management Tab -->
-            <div id="users" class="tab-content">
-                <!-- Pinned Stats -->
+                <!-- Live Summary Stats -->
                 <div class="card-grid">
                     <div class="card">
                         <h3><i class="fas fa-users"></i> Total Students</h3>
@@ -112,7 +101,18 @@
                         <p style="color: #636E72; margin-top: 0.5rem;">Fees overdue</p>
                     </div>
                 </div>
+                <!-- Welcome Banner -->
+                <div class="card-grid" style="margin-top: 1rem;">
+                    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+                        <i class="fas fa-tachometer-alt" style="font-size: 2.5rem; color: #667eea; margin-bottom: 1rem;"></i>
+                        <h2 style="color: #2D3436; margin-bottom: 0.5rem;">Admin Dashboard</h2>
+                        <p style="color: #636E72;">Use the sidebar to navigate between <strong>User Management</strong>, <strong>Attendance</strong>, <strong>Fees</strong>, and other modules.</p>
+                    </div>
+                </div>
+            </div>
 
+            <!-- User Management Tab -->
+            <div id="users" class="tab-content">
                 <!-- Add New User Form -->
                 <div class="card-grid" style="margin-top: 2rem;">
                     <div class="card" style="grid-column: 1 / -1;">
@@ -169,7 +169,6 @@
                                         <option value="teacher">Teacher</option>
                                         <option value="staff">Staff</option>
                                         <option value="admin">Admin</option>
-                                        <option value="parent">Parent</option>
                                     </select>
                                 </div>
                             </div>

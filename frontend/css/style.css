@@ -254,3 +254,19 @@ body {
         padding: 1rem;
     }
 }
+/* Floating Alerts */
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    min-width: 300px;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: none;
+    align-items: center;
+    gap: 10px;
+}
+.alert-success { background: #D4EFDF; color: #196F3D; border-left: 5px solid #27AE60; }
+.alert-error { background: #FADBD8; color: #78281F; border-left: 5px solid #E74C3C; }

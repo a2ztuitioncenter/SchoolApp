@@ -56,9 +56,7 @@ function handleLoginCardClick(loginType) {
     case 'teacher':
       window.location.href = '/teacher-login.html';
       break;
-    case 'parent':
-      window.location.href = '/parent-login.html';
-      break;
+
     case 'admin':
       window.location.href = '/admin-login.html';
       break;

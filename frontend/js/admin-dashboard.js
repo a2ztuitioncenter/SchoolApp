@@ -113,9 +113,6 @@ let allUsersData = [];
 
 async function loadUsers() {
     try {
-        // Also load dashboard stats since they're pinned in users tab
-        await loadDashboardData();
-
         const res = await adminAPI.getUsers();
         const users = res.users || [];
         allUsersData = users;
@@ -126,7 +123,6 @@ async function loadUsers() {
                 teacher: 'background:#d6eaf8;color:#154360',
                 staff: 'background:#d5f5e3;color:#145a32',
                 admin: 'background:#fadbd8;color:#78281f',
-                parent: 'background:#fdebd0;color:#784212',
             };
             const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
             return `
