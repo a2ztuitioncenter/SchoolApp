@@ -202,4 +202,67 @@ router.get('/financials/report', async (req, res) => {
     }
 });
 
+// ============================================================
+// TIMETABLE
+// ============================================================
+
+router.get('/timetable', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            `SELECT t.*, u.phone as "teacherPhone" 
+             FROM timetable t
+             LEFT JOIN users u ON t."teacherId" = u.id
+             ORDER BY t."dayOfWeek", t."startTime" ASC`
+        );
+        res.json({ success: true, timetable: result.rows });
+    } catch (err) {
+        console.error('timetable fetch error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch timetable' });
+    }
+});
+
+router.post('/timetable', async (req, res) => {
+    const { dayOfWeek, startTime, endTime, subject, classLevel, teacherId } = req.body;
+    try {
+        if (!dayOfWeek || !startTime || !endTime || !subject || !classLevel || !teacherId) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Collision Check: Find any class for the SAME teacher on the SAME day that conflicts in time.
+        // A conflict occurs if (newStart < oldEnd AND newEnd > oldStart)
+        const conflictCheck = await req.db.query(
+            `SELECT * FROM timetable 
+             WHERE "teacherId" = $1 
+             AND "dayOfWeek" = $2 
+             AND ($3 < "endTime" AND $4 > "startTime")`,
+            [teacherId, dayOfWeek, startTime, endTime]
+        );
+
+        if (conflictCheck.rows.length > 0) {
+            return res.status(409).json({ error: 'Timetable overlap: The teacher is already scheduled for another class during this time.' });
+        }
+
+        const result = await req.db.query(
+            `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", "teacherId", "schoolId")
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+            [dayOfWeek, startTime, endTime, subject, classLevel, teacherId, 'school-001']
+        );
+        res.status(201).json({ success: true, timetable: result.rows[0] });
+    } catch (err) {
+        console.error('timetable create error:', err.message);
+        res.status(500).json({ error: 'Failed to create timetable entry' });
+    }
+});
+
+router.delete('/timetable/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await req.db.query('DELETE FROM timetable WHERE id = $1 RETURNING id', [id]);
+        if (!result.rows[0]) return res.status(404).json({ error: 'Timetable entry not found' });
+        res.json({ success: true, message: 'Timetable entry deleted' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete timetable entry' });
+    }
+});
+
 export default router;

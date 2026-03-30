@@ -89,6 +89,7 @@ async function loadTabContent(tabName) {
         case 'homework':      await loadAllHomework(); break;
         case 'fees':          await initFeesTab(); break;
         case 'materials':     await loadMaterials(); break;
+        case 'timetable':     await loadTimetable(); break;
         case 'notifications': await loadNotifications(); break;
         case 'results':       await loadResults(); break;
     }
@@ -1040,7 +1041,108 @@ async function loadResults() {
     }
 }
 
+// =============================================
+// TIMETABLE
+// =============================================
 
+async function loadTimetable() {
+    const list = document.getElementById('timetable-list');
+    if (!list) return;
 
+    try {
+        showInfoAlert('Loading timetable...');
+        // First load classes and teachers for the dropdown
+        const [ttRes, classesRes, usersRes] = await Promise.all([
+            adminAPI.getTimetable(),
+            attendanceAPI.getClasses(),
+            adminAPI.getUsers()
+        ]);
 
+        // Populate Class Dropdown
+        const classes = classesRes.data || [];
+        const classSel = document.getElementById('tt-class');
+        if (classSel && classSel.options.length <= 1) {
+            classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
 
+        // Populate Teacher Dropdown
+        const teachers = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
+        const teacherSel = document.getElementById('tt-teacher');
+        if (teacherSel && teacherSel.options.length <= 1) {
+            teacherSel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.id}">${t.phone}</option>`).join('');
+        }
+
+        const items = ttRes.timetable || [];
+        hideInfoAlert();
+
+        if (items.length === 0) {
+            list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
+            return;
+        }
+
+        function formatTime(t) {
+            try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
+            catch(e) { return t; }
+        }
+
+        list.innerHTML = items.map(t => `
+            <tr>
+                <td>${t.dayOfWeek}</td>
+                <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
+                <td>${t.subject}</td>
+                <td>${t.classLevel}</td>
+                <td>${t.teacherPhone || t.teacherId}</td>
+                <td>
+                    <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        hideInfoAlert();
+        showErrorAlert('Failed to load timetable: ' + err.message);
+    }
+}
+
+window.deleteTimetableRecord = async function(id) {
+    if (!confirm('Delete this timetable entry?')) return;
+    try {
+        await adminAPI.deleteTimetable(id);
+        showSuccessAlert('Timetable entry deleted!');
+        await loadTimetable();
+    } catch (err) {
+        showErrorAlert('Failed to delete timetable: ' + err.message);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            dayOfWeek: document.getElementById('tt-day')?.value,
+            startTime: document.getElementById('tt-start')?.value,
+            endTime: document.getElementById('tt-end')?.value,
+            subject: document.getElementById('tt-subject')?.value.trim(),
+            classLevel: document.getElementById('tt-class')?.value,
+            teacherId: document.getElementById('tt-teacher')?.value,
+        };
+
+        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
+            showErrorAlert('All fields are required.');
+            return;
+        }
+
+        try {
+            showInfoAlert('Saving timetable entry...');
+            await adminAPI.addTimetable(payload);
+            hideInfoAlert();
+            showSuccessAlert('Timetable entry saved successfully!');
+            document.getElementById('timetable-form').reset();
+            await loadTimetable();
+        } catch (err) {
+            hideInfoAlert();
+            showErrorAlert(err.message || 'Failed to save timetable entry');
+        }
+    });
+});

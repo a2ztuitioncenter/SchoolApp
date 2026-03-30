@@ -168,6 +168,9 @@ export const adminAPI = {
   toggleStudentStatus: (id, status) => apiCall(`/admin/students/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getUnpaidFees: () => apiCall('/admin/financials/unpaid-fees', { method: 'GET' }),
   getFinancialSummary: () => apiCall('/admin/financials/report', { method: 'GET' }),
+  getTimetable: () => apiCall('/admin/timetable', { method: 'GET' }),
+  addTimetable: (data) => apiCall('/admin/timetable', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTimetable: (id) => apiCall(`/admin/timetable/${id}`, { method: 'DELETE' }),
 };
 
 /**

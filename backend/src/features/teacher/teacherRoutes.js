@@ -52,23 +52,24 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized: Not a teacher' });
 
-    const [hwRes, ttRes, classRes, studRes] = await Promise.all([
+    // 1. Get Timetable (primary source of classes)
+    const ttRes = await pool.query(
+      'SELECT * FROM timetable WHERE "teacherId" = $1 ORDER BY "dayOfWeek", "startTime"',
+      [teacherId]
+    );
+
+    // 2. Identify distinct classes this teacher covers
+    const classes = [...new Set(ttRes.rows.map(r => r.classLevel))];
+
+    // 3. Get Homework & Student Count based on those classes
+    const [hwRes, studRes] = await Promise.all([
       pool.query(
         'SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC',
         [teacherId]
       ),
-      pool.query(
-        'SELECT * FROM timetable WHERE "classLevel" IN (SELECT DISTINCT "classLevel" FROM homework WHERE "teacherId" = $1) ORDER BY "dayOfWeek", "startTime"',
-        [teacherId]
-      ),
-      pool.query(
-        'SELECT DISTINCT "classLevel", section FROM homework WHERE "teacherId" = $1 ORDER BY "classLevel"',
-        [teacherId]
-      ),
-      pool.query(
-        `SELECT COUNT(DISTINCT s.id) AS "totalStudents" FROM students s WHERE s."classLevel" IN (SELECT DISTINCT "classLevel" FROM homework WHERE "teacherId" = $1)`,
-        [teacherId]
-      ),
+      classes.length > 0
+        ? pool.query(`SELECT COUNT(DISTINCT id) AS "totalStudents" FROM students WHERE "classLevel" = ANY($1)`, [classes])
+        : { rows: [{ totalStudents: 0 }] }
     ]);
 
     res.json({
@@ -76,10 +77,10 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       teacher: { id: teacher.id, phone: teacher.phone, role: teacher.role },
       stats: {
         totalHomework: hwRes.rows.length,
-        totalClasses: classRes.rows.length,
+        totalClasses: classes.length,
         totalStudents: parseInt(studRes.rows[0].totalStudents || 0),
       },
-      classes: classRes.rows,
+      classes: classes.map(c => ({ classLevel: c })),
       homework: hwRes.rows,
       timetable: ttRes.rows,
     });
@@ -89,9 +90,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
   }
 });
 
-// ============================================
-// TIMETABLE (teacher's own)
-// ============================================
+// GET /api/teacher/timetable/:teacherId
 router.get('/timetable/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
@@ -99,11 +98,8 @@ router.get('/timetable/:teacherId', async (req, res) => {
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    // Timetable rows that belong to teacher's classes
     const res2 = await pool.query(
-      `SELECT t.* FROM timetable t WHERE t."classLevel" IN
-       (SELECT DISTINCT "classLevel" FROM homework WHERE "teacherId" = $1)
-       ORDER BY t."dayOfWeek", t."startTime"`,
+      `SELECT * FROM timetable WHERE "teacherId" = $1 ORDER BY "dayOfWeek", "startTime"`,
       [teacherId]
     );
     res.json({ success: true, data: res2.rows });
@@ -125,7 +121,8 @@ router.get('/attendance/classes', async (req, res) => {
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const result = await pool.query(
-      `SELECT DISTINCT s."classLevel" FROM students s ORDER BY s."classLevel"`,
+      `SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"`,
+      [teacherId]
     );
     res.json({ success: true, data: result.rows.map(r => r.classLevel) });
   } catch (err) {
@@ -182,7 +179,7 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       await pool.query(
         `INSERT INTO attendance ("studentId", "attendanceDate", status)
          VALUES ($1, $2, $3)
-         ON CONFLICT ON CONSTRAINT attendance_studentid_attendancedate_key
+         ON CONFLICT ("studentId", "attendanceDate")
          DO UPDATE SET status = EXCLUDED.status`,
         [r.studentId, r.date, r.status]
       );
@@ -211,7 +208,7 @@ router.get('/attendance/summary', async (req, res) => {
            COUNT(CASE WHEN a.status = 'present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1
          ) AS "attendancePercent"
        FROM students s
-       LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $2
+       LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a."attendanceDate", 'YYYY-MM') = $2
        WHERE s."classLevel" = $1
        GROUP BY s.id, s.name
        ORDER BY s.name`,

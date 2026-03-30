@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
 </head>
+
 <body>
 
     <div class="dashboard-container">
@@ -17,7 +19,7 @@
                 <i class="fas fa-book-open"></i>
                 <span>A2Z</span>
             </div>
-            <nav id = nav_left_sidebar>
+            <nav id=nav_left_sidebar>
                 <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> Home</a>
                 <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> Subjects</a>
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
@@ -83,7 +85,7 @@
             <!-- Home Tab -->
             <main class="content" id="tab-home">
                 <div class="dashboard-grid">
-                    
+
                     <section class="left-col">
                         <div class="action-cards">
                             <div class="card">
@@ -107,7 +109,8 @@
                         <div class="section-container">
                             <h3>Today's Homework</h3>
                             <div id="homework-container">
-                                <p class="loading-text" style="color: var(--text-muted); font-size: 0.9rem;">Loading homework...</p>
+                                <p class="loading-text" style="color: var(--text-muted); font-size: 0.9rem;">Loading
+                                    homework...</p>
                             </div>
                         </div>
 
@@ -117,11 +120,6 @@
                                 <h3>This Week's Timetable</h3>
                             </div>
                             <div id="timetable-preview"></div>
-                        </div>
-
-                        <div class="holiday-banner">
-                            <i class="fas fa-palmtree"></i>
-                            <p>Upcoming Holidays: <strong>Diwali Break (Nov 1-7)</strong></p>
                         </div>
                     </section>
 
@@ -145,7 +143,8 @@
 
                         <!-- Notifications preview on home -->
                         <div class="stats-card" style="text-align:left; padding: 1.5rem;">
-                            <h4 style="margin-bottom: 0.75rem;"><i class="fas fa-bell" style="color: var(--accent-blue); margin-right: 6px;"></i> Recent Announcements</h4>
+                            <h4 style="margin-bottom: 0.75rem;"><i class="fas fa-bell"
+                                    style="color: var(--accent-blue); margin-right: 6px;"></i> Recent Announcements</h4>
                             <div id="notifications-preview"></div>
                         </div>
                     </section>
@@ -157,4 +156,5 @@
 
     <script type="module" src="./src/modules/student/student-dashboard.js"></script>
 </body>
+
 </html>
