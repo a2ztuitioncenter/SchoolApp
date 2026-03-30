@@ -1,9 +1,5 @@
-/**
- * teacher-dashboard.js — Full-featured teacher panel
- * Tabs: Dashboard (live timetable), Attendance, Homework, Materials, Syllabus, Summary
- */
-
 import { teacherAPI } from '../../core/api.js';
+import { initTheme } from '../../core/theme.js';
 
 // ─── Auth Guard ────────────────────────────────────────────────────────────────
 const teacherId   = sessionStorage.getItem('teacherId');
@@ -54,6 +50,7 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
+
 // ─── Tab Switching ────────────────────────────────────────────────────────────
 function setupTabs() {
   document.querySelectorAll('.nav-link[data-tab]').forEach(link => {
@@ -66,7 +63,7 @@ function setupTabs() {
       const el = document.getElementById(`tab-${tab}`);
       if (el) el.style.display = 'block';
 
-      if (tab === 'homework')  loadHomework();
+      if (tab === 'homework')  { loadHomework(); populateHwDropdowns(); }
       if (tab === 'materials') loadMaterials();
       if (tab === 'syllabus')  loadSyllabus();
       if (tab === 'attendance') initAttendanceTab();
@@ -82,6 +79,14 @@ function setupTabs() {
     window.location.href = '/teacher-login.html';
   });
 }
+
+function init() {
+  initTheme();
+  setupTabs();
+  loadDashboard();
+}
+
+document.addEventListener('DOMContentLoaded', init);
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 async function loadDashboard() {
@@ -300,6 +305,40 @@ function renderHomeworkTable() {
     }).join('');
 }
 
+async function populateHwDropdowns() {
+  const classSel = document.getElementById('hw-classLevel');
+  const secSel   = document.getElementById('hw-section');
+  if (!classSel || !secSel) return;
+  
+  if (classSel.options.length > 1 && secSel.options.length > 1) return;
+
+  try {
+    const res = await teacherAPI.getAttendanceClasses(teacherId);
+    const classes = res.data || [];
+    
+    // For now, these classes might be 10A, 12B. Let's try to split them if possible or just use them as classLevel.
+    // The user wants class and section dropdowns.
+    const classSet = new Set();
+    const secSet   = new Set();
+    
+    classes.forEach(c => {
+      // Simple heuristic: if it ends with a letter, that's the section.
+      const match = c.match(/^(\d+)([A-Z])$/i);
+      if (match) {
+        classSet.add(match[1]);
+        secSet.add(match[2]);
+      } else {
+        classSet.add(c);
+      }
+    });
+
+    classSel.innerHTML = '<option value="">Select Class</option>' + 
+      Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+    secSel.innerHTML = '<option value="">Select Section</option>' + 
+      Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+  } catch (err) { console.error('Populate HW dropdowns failed', err); }
+}
+
 function renderDppTable() {
   const tbody = document.getElementById('dpp-table-body');
   if(!tbody) return;
@@ -325,7 +364,8 @@ function renderDppTable() {
   }).join('');
 }
 
-window.openHwModal = function(typeOrHw = 'homework') {
+window.openHwModal = async function(typeOrHw = 'homework') {
+  await populateHwDropdowns();
   document.getElementById('hw-form').reset();
   const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
   const type = typeof typeOrHw === 'string' ? typeOrHw : (hw ? hw.type : 'homework');
@@ -334,6 +374,18 @@ window.openHwModal = function(typeOrHw = 'homework') {
   document.getElementById('hw-edit-id').value = hw?.id || '';
   document.getElementById('hw-modal-title').textContent = hw ? `Edit ${isDpp ? 'Practice' : 'Homework'}` : `Add ${isDpp ? 'Practice' : 'Homework'}`;
   document.getElementById('hw-type').value = type;
+
+  if (hw) {
+      document.getElementById('hw-classLevel').value = hw.classLevel || '';
+      document.getElementById('hw-section').value   = hw.section || '';
+      document.getElementById('hw-subject').value   = hw.subject || '';
+      document.getElementById('hw-title').value     = hw.title || '';
+      document.getElementById('hw-description').value = hw.description || '';
+      if (document.getElementById('hw-dueDate')) document.getElementById('hw-dueDate').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+  }
+
+  const modal = document.getElementById('hw-modal');
+  if (modal) modal.style.display = 'flex';
 
   const dueDateContainer = document.getElementById('hw-dueDate-container');
   const dueDateInput = document.getElementById('hw-dueDate');
@@ -644,6 +696,7 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   const nameEl = document.getElementById('teacher-name');
   if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
 

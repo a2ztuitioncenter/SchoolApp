@@ -27,10 +27,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameEl = document.getElementById('admin-name');
     if (nameEl) nameEl.textContent = `Admin (${adminPhone})`;
 
+    // Initialize Global Theme
     initTheme();
 
     setupTabNavigation();
-    setupForms();
 
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
@@ -41,7 +41,75 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    await loadTabContent('dashboard');
+    // Default tab
+    await showTab('dashboard');
+
+    // Wire up Timetable form
+    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            dayOfWeek: document.getElementById('tt-day')?.value,
+            startTime: document.getElementById('tt-start')?.value,
+            endTime: document.getElementById('tt-end')?.value,
+            subject: document.getElementById('tt-subject')?.value.trim(),
+            classLevel: document.getElementById('tt-class')?.value,
+            teacherId: document.getElementById('tt-teacher')?.value,
+        };
+
+        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
+            showErrorAlert('All fields are required.');
+            return;
+        }
+
+        try {
+            showInfoAlert('Saving timetable entry...');
+            await adminAPI.addTimetable(payload);
+            hideInfoAlert();
+            showSuccessAlert('Timetable entry saved successfully!');
+            document.getElementById('timetable-form').reset();
+            await loadTimetable();
+        } catch (err) {
+            hideInfoAlert();
+            showErrorAlert(err.message || 'Failed to save timetable entry');
+        }
+    });
+
+    // Wire up Notice form
+    document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('notice-title')?.value.trim();
+        const message = document.getElementById('notice-message')?.value.trim();
+        const classLevel = document.getElementById('notice-class')?.value || '';
+        const recipientRole = document.getElementById('notice-role')?.value || '';
+        const attachment = document.getElementById('notice-attachment')?.files[0];
+
+        if (!title || !message) {
+            showErrorAlert('Title and Message are required.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('message', message);
+        formData.append('classLevel', classLevel);
+        formData.append('recipientRole', recipientRole);
+        if (attachment) formData.append('attachment', attachment);
+        
+        const adminId = sessionStorage.getItem('adminUserId');
+        if (adminId) formData.append('createdBy', adminId);
+
+        try {
+            showInfoAlert('Sending notice...');
+            await notificationsAPI.create(formData);
+            hideInfoAlert();
+            closeNoticeModal();
+            showSuccessAlert('✅ Notice sent with attachment!');
+            await loadNotifications();
+        } catch (err) {
+            hideInfoAlert();
+            showErrorAlert('Failed to send notice: ' + err.message);
+        }
+    });
 });
 
 // =============================================
@@ -97,12 +165,12 @@ async function loadTabContent(tabName) {
 
 window.showTab = showTab;
 
+
 // =============================================
 // DASHBOARD
 // =============================================
 async function loadDashboardData() {
     try {
-        showInfoAlert('Loading dashboard...');
         const [studentsRes, feesRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
             adminAPI.getUnpaidFees().catch(() => ({ fees: [] }))
@@ -119,50 +187,100 @@ async function loadDashboardData() {
         const today = new Date();
         const overdue = unpaidList.filter(f => new Date(f.dueDate) < today).length;
         if (el('overdue-count')) el('overdue-count').textContent = overdue;
-
-        hideInfoAlert();
     } catch (err) {
-        showErrorAlert('Failed to load dashboard');
+        console.error('Failed to load dashboard data', err);
     }
 }
+
 
 // =============================================
 // USERS - with Edit, Delete, Toggle Access
 // =============================================
 let allUsersData = [];
+let showAllUsers = false;
 
 async function loadUsers() {
     try {
         const res = await adminAPI.getUsers();
-        const users = res.users || [];
-        allUsersData = users;
-        const tbody = document.getElementById('users-list');
-        if (!tbody) return;
-        tbody.innerHTML = users.length ? users.map(u => {
-            const roleColors = {
-                teacher: 'background:#d6eaf8;color:#154360',
-                staff: 'background:#d5f5e3;color:#145a32',
-                admin: 'background:#fadbd8;color:#78281f',
-            };
-            const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
-            return `
-            <tr>
-                <td>${u.phone}</td>
-                <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
-                <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
-                <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
-                <td>
-                    <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
-                    <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
-                        <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
-        }).join('') : '<tr><td colspan="5" class="empty-state">No users found</td></tr>';
+        allUsersData = res.users || [];
+        filterUsersTable();
     } catch (err) {
         showErrorAlert('Failed to load users');
     }
+}
+
+window.filterUsersTable = function() {
+    const roleQ = document.getElementById('user-role-filter')?.value || '';
+    const statQ = document.getElementById('user-status-filter')?.value || '';
+    const textQ = (document.getElementById('user-search')?.value || '').toLowerCase();
+    
+    const filtered = allUsersData.filter(u => {
+        const matchRole = roleQ ? u.role === roleQ : true;
+        const matchStat = statQ ? (statQ === 'active' ? u.isActive : !u.isActive) : true;
+        const matchText = textQ ? 
+            (u.phone?.includes(textQ) || u.email?.toLowerCase().includes(textQ) || (u.name||'').toLowerCase().includes(textQ)) : true;
+        return matchRole && matchStat && matchText;
+    });
+
+    renderUsersTable(filtered);
+};
+
+window.toggleShowAllUsers = function() {
+    showAllUsers = !showAllUsers;
+    filterUsersTable();
+};
+
+function renderUsersTable(users) {
+    const tbody = document.getElementById('users-list');
+    const toggleBtn = document.getElementById('btn-toggle-users');
+    const countText = document.getElementById('users-count-text');
+    if (!tbody) return;
+
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users matching criteria.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 5;
+    const toShow = showAllUsers ? users : users.slice(0, displayLimit);
+    
+    if (toggleBtn) {
+        if (users.length > displayLimit) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = showAllUsers ? 'Show Less' : `Show All Users (${users.length})`;
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+    }
+    
+    if (countText) {
+        countText.textContent = `Showing ${toShow.length} of ${users.length} user(s)`;
+    }
+
+    tbody.innerHTML = toShow.map(u => {
+        const roleColors = {
+            teacher: 'background:#d6eaf8;color:#154360',
+            staff: 'background:#d5f5e3;color:#145a32',
+            admin: 'background:#fadbd8;color:#78281f',
+        };
+        const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
+        return `
+        <tr>
+            <td>${u.phone}</td>
+            <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
+            <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
+            <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
+                <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                    <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 window.editUser = function (id) {
@@ -214,34 +332,110 @@ window.toggleUserStatusById = async function (id, isActive) {
 // STUDENTS
 // =============================================
 let allStudentsData = [];
-
+let showAllStudents = false;
 
 async function loadStudents() {
     try {
         const res = await adminAPI.getStudents();
-        const students = res.students || [];
-        allStudentsData = students;
-        const tbody = document.getElementById('students-list');
-        if (!tbody) return;
-        tbody.innerHTML = students.length ? students.map(s => `
-            <tr>
-                <td><strong>${s.id}</strong></td>
-                <td>${s.name}</td>
-                <td>${s.phone || 'N/A'}</td>
-                <td>${s.classLevel || 'N/A'}</td>
-                <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
-                <td>
-                    <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
-                    <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
-                        <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
+        allStudentsData = res.students || [];
+        populateStudentClassDropdowns();
+        filterStudentsTable();
     } catch (err) {
         showErrorAlert('Failed to load students');
     }
+}
+
+function populateStudentClassDropdowns() {
+    const classSet = new Set();
+    const secSet = new Set();
+    allStudentsData.forEach(s => {
+        if (s.classLevel) classSet.add(s.classLevel);
+        if (s.section) secSet.add(s.section);
+    });
+    
+    const classFilter = document.getElementById('student-class-filter');
+    const secFilter = document.getElementById('student-section-filter');
+    
+    if (classFilter) {
+        const currentVal = classFilter.value;
+        classFilter.innerHTML = '<option value="">All Classes</option>' + 
+            Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+        classFilter.value = currentVal || '';
+    }
+    if (secFilter) {
+        const currentVal = secFilter.value;
+        secFilter.innerHTML = '<option value="">All Sections</option>' + 
+            Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+        secFilter.value = currentVal || '';
+    }
+}
+
+window.filterStudentsTable = function() {
+    const classQ = document.getElementById('student-class-filter')?.value || '';
+    const secQ = document.getElementById('student-section-filter')?.value || '';
+    const textQ = (document.getElementById('student-search')?.value || '').toLowerCase();
+    
+    const filtered = allStudentsData.filter(s => {
+        const matchClass = classQ ? s.classLevel === classQ : true;
+        const matchSec = secQ ? s.section === secQ : true;
+        const matchText = textQ ? 
+            ((s.name||'').toLowerCase().includes(textQ) || (s.phone||'').includes(textQ) || (s.id?.toString()||'').includes(textQ)) : true;
+        return matchClass && matchSec && matchText;
+    });
+
+    renderStudentsTable(filtered);
+};
+
+window.toggleShowAllStudents = function() {
+    showAllStudents = !showAllStudents;
+    filterStudentsTable();
+};
+
+function renderStudentsTable(students) {
+    const tbody = document.getElementById('students-list');
+    const toggleBtn = document.getElementById('btn-toggle-students');
+    const countText = document.getElementById('students-count-text');
+    if (!tbody) return;
+
+    if (!students.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 5;
+    const toShow = showAllStudents ? students : students.slice(0, displayLimit);
+    
+    if (toggleBtn) {
+        if (students.length > displayLimit) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = showAllStudents ? 'Show Less' : `Show All Students (${students.length})`;
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+    }
+    
+    if (countText) {
+        countText.textContent = `Showing ${toShow.length} of ${students.length} student(s)`;
+    }
+
+    tbody.innerHTML = toShow.map(s => `
+        <tr>
+            <td><strong>${s.id}</strong></td>
+            <td>${s.name}</td>
+            <td>${s.phone || 'N/A'}</td>
+            <td>${s.classLevel || 'N/A'}${s.section ? ' - ' + s.section : ''}</td>
+            <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
+            <td>
+                <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
+                <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
+                    <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 window.editStudent = function (id) {
@@ -570,10 +764,43 @@ async function loadFees(mode = 'all') {
     }
 }
 
+let showAllFees = false;
+
+window.toggleShowAllFees = function() {
+    showAllFees = !showAllFees;
+    filterFeesTable(); // re-runs slicing logic
+};
+
 function renderFeesTable(fees) {
     const tbody = document.getElementById('fees-table-body');
+    const toggleBtn = document.getElementById('btn-toggle-fees');
+    const countText = document.getElementById('fees-count-text');
     if (!tbody) return;
-    tbody.innerHTML = fees.length ? fees.map((f, i) => `
+
+    if (!fees.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 5;
+    const toShow = showAllFees ? fees : fees.slice(0, displayLimit);
+    
+    if (toggleBtn) {
+        if (fees.length > displayLimit) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = showAllFees ? 'Show Less' : `Show All Fees (${fees.length})`;
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+    }
+    
+    if (countText) {
+        countText.textContent = `Showing ${toShow.length} of ${fees.length} record(s)`;
+    }
+
+    tbody.innerHTML = toShow.map((f, i) => `
         <tr>
             <td>${i + 1}</td>
             <td><strong>${f.studentName || f.studentId}</strong>${f.student_id ? `<br><small style="color:#636e72">ID: ${f.student_id}</small>` : ''}</td>
@@ -589,7 +816,7 @@ function renderFeesTable(fees) {
                 <button class="btn-sm btn-delete" onclick="deleteFeeRecord(${f.id})"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
-    `).join('') : '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+    `).join('');
 }
 
 window.filterFeesTable = function() {
@@ -969,44 +1196,6 @@ window.deleteNotification = async function(id) {
     }
 };
 
-// Wire up the notice form submit
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('notice-title')?.value.trim();
-        const message = document.getElementById('notice-message')?.value.trim();
-        const classLevel = document.getElementById('notice-class')?.value || '';
-        const recipientRole = document.getElementById('notice-role')?.value || '';
-        const attachment = document.getElementById('notice-attachment')?.files[0];
-
-        if (!title || !message) {
-            showErrorAlert('Title and Message are required.');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('message', message);
-        formData.append('classLevel', classLevel);
-        formData.append('recipientRole', recipientRole);
-        if (attachment) formData.append('attachment', attachment);
-        
-        const adminId = sessionStorage.getItem('adminUserId');
-        if (adminId) formData.append('createdBy', adminId);
-
-        try {
-            showInfoAlert('Sending notice...');
-            await notificationsAPI.create(formData);
-            hideInfoAlert();
-            closeNoticeModal();
-            showSuccessAlert('✅ Notice sent with attachment!');
-            await loadNotifications();
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert('Failed to send notice: ' + err.message);
-        }
-    });
-});
 
 /**
  * MISSING TAB FUNCTIONS to prevent errors
@@ -1116,33 +1305,3 @@ window.deleteTimetableRecord = async function(id) {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            dayOfWeek: document.getElementById('tt-day')?.value,
-            startTime: document.getElementById('tt-start')?.value,
-            endTime: document.getElementById('tt-end')?.value,
-            subject: document.getElementById('tt-subject')?.value.trim(),
-            classLevel: document.getElementById('tt-class')?.value,
-            teacherId: document.getElementById('tt-teacher')?.value,
-        };
-
-        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
-            showErrorAlert('All fields are required.');
-            return;
-        }
-
-        try {
-            showInfoAlert('Saving timetable entry...');
-            await adminAPI.addTimetable(payload);
-            hideInfoAlert();
-            showSuccessAlert('Timetable entry saved successfully!');
-            document.getElementById('timetable-form').reset();
-            await loadTimetable();
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message || 'Failed to save timetable entry');
-        }
-    });
-});

@@ -62,11 +62,16 @@
                             <div class="header">
                                 <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
                                 <h1>Admin Dashboard</h1>
-                                <div class="admin-info">
-                                    <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-muted);"></i>
-                                    <div>
-                                        <div style="font-weight: 600; color: var(--text-main);" id="admin-name">Administrator</div>
-                                        <div style="font-size: 0.85rem; color: var(--text-muted);">Admin Panel</div>
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <button id="theme-toggle" class="btn-icon" title="Toggle Theme" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                                        <i class="fas fa-moon"></i>
+                                    </button>
+                                    <div class="admin-info">
+                                        <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-muted);"></i>
+                                        <div>
+                                            <div style="font-weight: 600; color: var(--text-main);" id="admin-name">Administrator</div>
+                                            <div style="font-size: 0.85rem; color: var(--text-muted);">Admin Panel</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -171,7 +176,26 @@
                 </div>
 
                 <!-- Users Table -->
-                <div class="table-container" style="margin-top: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="user-role-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
+                            <option value="">All Roles</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <select id="user-status-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; max-width: 400px; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." oninput="filterUsersTable()" style="padding-left: 2.5rem; width: 100%;">
+                    </div>
+                </div>
+                <div class="table-container" style="margin-top: 1rem;">
                     <table>
                         <thead>
                             <tr>
@@ -191,6 +215,11 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Pagination / Show More for Users -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()" style="display: none;">Show All Users</button>
+                    <div id="users-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
@@ -279,7 +308,21 @@
                     </div>
                 </div>
 
-                <div class="table-container" style="margin-top: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="student-class-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterStudentsTable()">
+                            <option value="">All Classes</option>
+                        </select>
+                        <select id="student-section-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterStudentsTable()">
+                            <option value="">All Sections</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; max-width: 400px; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        <input type="text" id="student-search" placeholder="Search by Name, ID, or Phone..." oninput="filterStudentsTable()" style="padding-left: 2.5rem; width: 100%;">
+                    </div>
+                </div>
+                <div class="table-container" style="margin-top: 1rem;">
                     <table>
                         <thead>
                             <tr>
@@ -300,6 +343,11 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Pagination / Show More for Students -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-students" onclick="toggleShowAllStudents()" style="display: none;">Show All Students</button>
+                    <div id="students-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
@@ -501,6 +549,11 @@
                                 </thead>
                                 <tbody id="fees-table-body"></tbody>
                             </table>
+                        </div>
+                        <!-- Pagination / Show More for Fees -->
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()" style="display: none;">Show All Fees</button>
+                            <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                         </div>
                     </div>
                 </div>

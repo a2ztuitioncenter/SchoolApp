@@ -62,11 +62,16 @@
     <div class="main-content">
         <div class="header">
             <h1>Teacher Panel</h1>
-            <div class="admin-info">
-                <i class="fas fa-user-circle" style="font-size:2rem; color:var(--text-muted);"></i>
-                <div>
-                    <div style="font-weight:600; color:var(--text-main);" id="teacher-name">Teacher</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);" id="live-clock"></div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button id="theme-toggle" title="Toggle Theme" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div class="admin-info">
+                    <i class="fas fa-user-circle" style="font-size:2rem; color:var(--text-muted);"></i>
+                    <div>
+                        <div style="font-weight:600; color:var(--text-main);" id="teacher-name">Teacher</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);" id="live-clock"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -236,11 +241,15 @@
             <div class="form-row-2">
                 <div class="form-group">
                     <label>Class Level *</label>
-                    <input type="text" id="hw-classLevel" placeholder="e.g. 10A" required>
+                    <select id="hw-classLevel" required>
+                        <option value="">Select Class</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Section</label>
-                    <input type="text" id="hw-section" placeholder="e.g. A">
+                    <select id="hw-section">
+                        <option value="">Select Section</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Subject *</label>
