@@ -1,5 +1,5 @@
 import { teacherAPI } from '../../core/api.js';
-import { initTheme } from '../../core/theme.js';
+
 
 // ─── Auth Guard ────────────────────────────────────────────────────────────────
 const teacherId   = sessionStorage.getItem('teacherId');
@@ -81,7 +81,6 @@ function setupTabs() {
 }
 
 function init() {
-  initTheme();
   setupTabs();
   loadDashboard();
 }
@@ -696,12 +695,12 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  initTheme();
   const nameEl = document.getElementById('teacher-name');
   if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
 
   setupTabs();
   loadDashboard();
 });
+
 
 export { loadDashboard, loadHomework, loadMaterials, loadSyllabus };

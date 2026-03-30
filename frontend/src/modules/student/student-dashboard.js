@@ -4,15 +4,13 @@
  */
 
 import { studentAPI, downloadFile, materialsAPI } from '../../core/api.js';
-import { initTheme } from '../../core/theme.js';
-
 
 // ===========================
 // Initialization on Page Load
 // ===========================
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('📄 Dashboard initializing...');
-  initTheme();
+
 
   try {
     // Get userId from sessionStorage (set during login)

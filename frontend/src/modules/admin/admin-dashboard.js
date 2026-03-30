@@ -4,7 +4,7 @@
  */
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile } from '../../core/api.js';
-import { initTheme, toggleTheme } from '../../core/theme.js';
+
 
 let currentTab = 'dashboard';
 let allHomeworkData = [];
@@ -27,10 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameEl = document.getElementById('admin-name');
     if (nameEl) nameEl.textContent = `Admin (${adminPhone})`;
 
-    // Initialize Global Theme
-    initTheme();
-
     setupTabNavigation();
+
 
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');

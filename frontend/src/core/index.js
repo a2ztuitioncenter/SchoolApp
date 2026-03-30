@@ -1,21 +1,8 @@
-import { initTheme, toggleTheme } from './theme.js';
-
-// alert("Welcome to master dashboard")
+// Master portal init — theme is handled automatically by CSS prefers-color-scheme
 function init() {
   console.log('✅ Index JS Init');
-  initTheme();
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
-  
-  const themeToggle = document.getElementById('theme-toggle');
-  console.log('🔘 Theme Toggle Element:', themeToggle);
-  if (themeToggle) {
-    themeToggle.onclick = () => {
-      console.log('🌓 Toggle Clicked');
-      toggleTheme();
-    };
-  }
-  
   console.log('🚀 Index Page Loaded');
 }
 

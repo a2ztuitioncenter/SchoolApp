@@ -14,14 +14,17 @@
     --transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
 }
 
-:root[data-theme="light"] {
-    --bg-primary: #f6f8fa;
-    --bg-secondary: #ffffff;
-    --border-subtle: #d0d7de;
-    --text-main: #24292f;
-    --text-muted: #57606a;
-    --accent-blue: #0969da;
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-primary: #f6f8fa;
+        --bg-secondary: #ffffff;
+        --border-subtle: #d0d7de;
+        --text-main: #24292f;
+        --text-muted: #57606a;
+        --accent-blue: #0969da;
+    }
 }
+
 
 * {
     box-sizing: border-box;
