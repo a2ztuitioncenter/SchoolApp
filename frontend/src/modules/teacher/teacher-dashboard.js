@@ -1,122 +1,80 @@
 /**
- * teacher-dashboard.js - Teacher dashboard functionality
+ * teacher-dashboard.js — Full-featured teacher panel
+ * Tabs: Dashboard (live timetable), Attendance, Homework, Materials, Syllabus, Summary
  */
 
 import { teacherAPI } from '../../core/api.js';
 
-let currentTab = 'dashboard';
+// ─── Auth Guard ────────────────────────────────────────────────────────────────
+const teacherId   = sessionStorage.getItem('teacherId');
+const teacherRole = sessionStorage.getItem('teacherRole');
+const teacherPhone = sessionStorage.getItem('teacherPhone');
 
-/**
- * Initialize dashboard on page load
- */
-document.addEventListener('DOMContentLoaded', async () => {
-  // Check if user is logged in as teacher
-  const teacherId = sessionStorage.getItem('teacherId');
-  const teacherRole = sessionStorage.getItem('teacherRole');
-  
-  if (!teacherId || teacherRole !== 'teacher') {
-    window.location.href = '/teacher-login.html';
-    return;
-  }
-
-  // Display teacher info
-  const teacherPhone = sessionStorage.getItem('teacherPhone');
-  document.getElementById('teacher-name').textContent = `Teacher (${teacherPhone})`;
-
-  // Setup tab navigation
-  setupTabNavigation();
-
-  // Setup forms
-  setupForms();
-
-  // Load initial data
-  await loadDashboardData();
-});
-
-/**
- * Setup tab navigation
- */
-function setupTabNavigation() {
-  const navLinks = document.querySelectorAll('.nav-link');
-  const tabButtons = document.querySelectorAll('[data-tab]');
-
-  const switchTab = (tabName) => {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-      tab.classList.remove('active');
-    });
-
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-button, .nav-link').forEach(btn => {
-      btn.classList.remove('active');
-    });
-
-    // Show selected tab
-    const selectedTab = document.getElementById(tabName);
-    if (selectedTab) {
-      selectedTab.classList.add('active');
-    }
-
-    // Update active class
-    document.querySelectorAll('[data-tab="' + tabName + '"]').forEach(btn => {
-      btn.classList.add('active');
-    });
-
-    currentTab = tabName;
-
-    // Load data based on tab
-    if (tabName === 'homework') {
-      loadHomework();
-    }
-  };
-
-  // Sidebar nav links
-  navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tabName = link.getAttribute('data-tab');
-      switchTab(tabName);
-    });
-  });
+if (!teacherId || teacherRole !== 'teacher') {
+  window.location.href = '/teacher-login.html';
 }
 
-/**
- * Setup form submission handlers
- */
-function setupForms() {
-  // Add homework form
-  document.getElementById('add-homework-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+// ─── State ────────────────────────────────────────────────────────────────────
+let allHomework  = [];
+let allMaterials = [];
+let allSyllabus  = [];
+let allTimetable = [];
+let availableClasses = [];
 
-    const teacherId = sessionStorage.getItem('teacherId');
-    const homeworkData = {
-      teacherId: parseInt(teacherId),
-      classLevel: document.getElementById('class-level').value,
-      section: document.getElementById('section').value,
-      subject: document.getElementById('subject').value,
-      title: document.getElementById('title').value,
-      description: document.getElementById('description').value,
-      dueDate: document.getElementById('due-date').value,
-    };
+// ─── Day helpers ──────────────────────────────────────────────────────────────
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-    try {
-      showInfoAlert('Adding homework...');
-      const response = await teacherAPI.addHomework(homeworkData);
-      
-      if (response.success) {
-        showSuccessAlert('Homework added successfully!');
-        document.getElementById('add-homework-form').reset();
-        await loadHomework();
-      } else {
-        showErrorAlert(response.error || 'Failed to add homework');
-      }
-    } catch (error) {
-      console.error('Error adding homework:', error);
-      showErrorAlert(error.message);
-    }
+function todayName() { return DAY_NAMES[new Date().getDay()]; }
+
+function formatTime(t) {
+  if (!t) return '';
+  try {
+    const [h, m] = t.split(':');
+    const d = new Date(); d.setHours(+h, +m);
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch { return t; }
+}
+
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':');
+  return +h * 60 + +m;
+}
+
+function nowMinutes() {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+}
+
+// ─── Live clock ───────────────────────────────────────────────────────────────
+function updateClock() {
+  const el = document.getElementById('live-clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── Tab Switching ────────────────────────────────────────────────────────────
+function setupTabs() {
+  document.querySelectorAll('.nav-link[data-tab]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const tab = link.getAttribute('data-tab');
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+      link.classList.add('active');
+      const el = document.getElementById(`tab-${tab}`);
+      if (el) el.style.display = 'block';
+
+      if (tab === 'homework')  loadHomework();
+      if (tab === 'materials') loadMaterials();
+      if (tab === 'syllabus')  loadSyllabus();
+      if (tab === 'attendance') initAttendanceTab();
+      if (tab === 'summary')   initSummaryTab();
+    });
   });
 
-  // Logout button
+  // Logout
   document.getElementById('logout-btn')?.addEventListener('click', () => {
     sessionStorage.removeItem('teacherId');
     sessionStorage.removeItem('teacherRole');
@@ -125,171 +83,526 @@ function setupForms() {
   });
 }
 
-/**
- * Load dashboard summary data
- */
-async function loadDashboardData() {
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+async function loadDashboard() {
   try {
-    console.log('📊 Loading teacher dashboard data...');
-    const teacherId = sessionStorage.getItem('teacherId');
-    
-    if (!teacherId) {
-      console.error('No teacherId found in session');
-      return;
+    showInfo('Loading dashboard...');
+    const [dashRes, matRes] = await Promise.all([
+      teacherAPI.getDashboard(teacherId),
+      teacherAPI.getMaterials(teacherId),
+    ]);
+    hideInfo();
+
+    if (dashRes.success) {
+      setText('stat-students', dashRes.stats?.totalStudents ?? '–');
+      setText('stat-homework', dashRes.homework?.length ?? 0);
+      allTimetable = dashRes.timetable || [];
+      allHomework  = dashRes.homework  || [];
+    }
+    if (matRes.success) {
+      allMaterials = matRes.data || [];
+      setText('stat-materials', allMaterials.length);
     }
 
-    const response = await teacherAPI.getDashboard(teacherId);
-
-    console.log('✅ Dashboard response:', response);
-
-    if (response.success) {
-      // Display stats
-      const totalClassesEl = document.getElementById('total-classes');
-      const totalStudentsEl = document.getElementById('total-students');
-      const totalHomeworkEl = document.getElementById('total-homework');
-
-      if (totalClassesEl) totalClassesEl.textContent = response.stats?.totalClasses || 0;
-      if (totalStudentsEl) totalStudentsEl.textContent = response.stats?.totalStudents || 0;
-      if (totalHomeworkEl) totalHomeworkEl.textContent = response.stats?.totalHomework || 0;
-
-      // Display classes
-      const classesList = document.getElementById('classes-list');
-      const classes = response.classes || [];
-
-      if (classes.length === 0) {
-        classesList.innerHTML = `
-          <tr>
-            <td colspan="4" class="empty-state">
-              <i class="fas fa-inbox"></i>
-              <p>No classes assigned yet.</p>
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      classesList.innerHTML = classes.map(cls => {
-        const homeworkCount = (response.homework || []).filter(
-          hw => hw.classLevel === cls.classLevel && hw.section === cls.section
-        ).length;
-
-        return `
-          <tr>
-            <td>${cls.classLevel}</td>
-            <td>${cls.section || 'N/A'}</td>
-            <td>${response.stats?.totalStudents || 0}</td>
-            <td><span class="status-badge status-active">${homeworkCount}</span></td>
-          </tr>
-        `;
-      }).join('');
-    }
-  } catch (error) {
-    console.error('Error loading dashboard data:', error);
-    showErrorAlert('Failed to load dashboard data: ' + error.message);
+    renderTodayTimetable();
+    renderWeeklyTimetable();
+  } catch (err) {
+    hideInfo();
+    showError('Failed to load dashboard: ' + err.message);
   }
 }
 
-/**
- * Load and display homework
- */
+// Timetable — today
+function renderTodayTimetable() {
+  const today = todayName();
+  document.getElementById('today-label').textContent = `— ${today}`;
+  const tbody = document.getElementById('today-timetable-body');
+  const todayEntries = allTimetable.filter(e => e.dayOfWeek === today);
+
+  if (!todayEntries.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-state"><i class="fas fa-calendar-times"></i><p>No classes today.</p></td></tr>`;
+    return;
+  }
+
+  const now = nowMinutes();
+  tbody.innerHTML = todayEntries
+    .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+    .map(e => {
+      const start = timeToMinutes(e.startTime);
+      const end   = timeToMinutes(e.endTime);
+      const isNow  = now >= start && now < end;
+      const isPast = now >= end;
+      const cls    = isNow ? 'timetable-now' : (isPast ? 'timetable-upcoming' : '');
+      const chip   = isNow ? '<span class="now-chip">IN SESSION</span>' : '';
+      const status = isNow ? '<span class="badge badge-complete">Now</span>' : (isPast ? '<span style="color:var(--text-muted)">Done</span>' : '<span class="badge">Upcoming</span>');
+      return `<tr class="${cls}">
+        <td>${e.classLevel || '–'}</td>
+        <td>${e.subject || '–'}${chip}</td>
+        <td class="time-block">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+}
+
+// Re-render today highlight every minute
+setInterval(() => {
+  if (allTimetable.length) renderTodayTimetable();
+}, 60000);
+
+// Full weekly timetable
+function renderWeeklyTimetable() {
+  const container = document.getElementById('weekly-timetable');
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const grouped = {};
+  days.forEach(d => { grouped[d] = []; });
+  allTimetable.forEach(e => { if (grouped[e.dayOfWeek]) grouped[e.dayOfWeek].push(e); });
+
+  const today = todayName();
+  const html = days.map(day => {
+    const entries = grouped[day];
+    if (!entries.length) return '';
+    return `<div style="margin-bottom:1rem;">
+      <div class="syllabus-subject-header" style="${day === today ? 'color:#3fb950;' : ''}">${day}${day === today ? ' 📍 Today' : ''}</div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Class</th><th>Subject</th><th>Time</th></tr></thead>
+          <tbody>
+            ${entries.sort((a,b) => timeToMinutes(a.startTime)-timeToMinutes(b.startTime)).map(e => `
+              <tr>
+                <td>${e.classLevel || '–'}</td>
+                <td>${e.subject || '–'}</td>
+                <td>${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+  container.innerHTML = html || '<p style="color:var(--text-muted);">No timetable entries found. Ask admin to configure your timetable.</p>';
+}
+
+// ─── ATTENDANCE ───────────────────────────────────────────────────────────────
+async function initAttendanceTab() {
+  const sel = document.getElementById('att-class-select');
+  if (sel.options.length > 1) return; // already loaded
+  try {
+    const res = await teacherAPI.getAttendanceClasses(teacherId);
+    availableClasses = res.data || [];
+    sel.innerHTML = '<option value="">-- Select Class --</option>' +
+      availableClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const attDate = document.getElementById('att-date');
+    if (!attDate.value) attDate.value = new Date().toISOString().split('T')[0];
+  } catch (err) {
+    showError('Failed to load classes: ' + err.message);
+  }
+}
+
+window.onAttClassChange = function() {};
+
+window.loadAttendanceSheet = async function() {
+  const classLevel = document.getElementById('att-class-select').value;
+  const date       = document.getElementById('att-date').value;
+  if (!classLevel || !date) { showError('Select a class and date.'); return; }
+
+  try {
+    showInfo('Loading students...');
+    const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
+    hideInfo();
+
+    const container = document.getElementById('att-sheet-container');
+    const label     = document.getElementById('att-sheet-label');
+    const tbody     = document.getElementById('att-sheet-body');
+
+    label.textContent = `Class ${classLevel} — ${date}`;
+    const students  = res.students || [];
+    const existingMap = res.existing || {};
+
+    if (!students.length) {
+      container.style.display = 'block';
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No students found in this class.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = students.map(s => {
+      const cur = existingMap[s.id] || 'present';
+      return `<tr>
+        <td><strong>${s.name}</strong></td>
+        <td><label class="att-radio-group"><input type="radio" name="att_${s.id}" value="present" ${cur==='present'?'checked':''}> Present</label></td>
+        <td><label class="att-radio-group"><input type="radio" name="att_${s.id}" value="absent"  ${cur==='absent' ?'checked':''}> Absent</label></td>
+        <td><label class="att-radio-group"><input type="radio" name="att_${s.id}" value="late"    ${cur==='late'   ?'checked':''}> Late</label></td>
+      </tr>`;
+    }).join('');
+    container.style.display = 'block';
+  } catch (err) {
+    hideInfo();
+    showError('Failed to load attendance: ' + err.message);
+  }
+};
+
+window.saveAttendance = async function() {
+  const classLevel = document.getElementById('att-class-select').value;
+  const date       = document.getElementById('att-date').value;
+  const radios     = document.querySelectorAll('#att-sheet-body input[type=radio]:checked');
+  const records    = [];
+
+  radios.forEach(r => {
+    const studentId = parseInt(r.name.replace('att_', ''));
+    records.push({ studentId, classLevel, date, status: r.value });
+  });
+
+  if (!records.length) { showError('No data to save.'); return; }
+
+  try {
+    showInfo('Saving attendance...');
+    await teacherAPI.markBulkAttendance(teacherId, records);
+    hideInfo();
+    showSuccess(`Attendance saved for ${records.length} students.`);
+  } catch (err) {
+    hideInfo();
+    showError('Failed to save attendance: ' + err.message);
+  }
+};
+
+// ─── HOMEWORK ─────────────────────────────────────────────────────────────────
 async function loadHomework() {
   try {
-    console.log('📝 Loading homework data...');
-    const teacherId = sessionStorage.getItem('teacherId');
-    
-    if (!teacherId) {
-      console.error('No teacherId found in session');
-      return;
-    }
-
-    const response = await teacherAPI.getDashboard(teacherId);
-    console.log('✅ Homework response:', response);
-
-    if (response.success) {
-      const homeworkList = document.getElementById('homework-list');
-      const homework = response.homework || [];
-
-      if (homework.length === 0) {
-        homeworkList.innerHTML = `
-          <tr>
-            <td colspan="4" class="empty-state">
-              <i class="fas fa-clipboard"></i>
-              <p>No homework assignments yet.</p>
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      homeworkList.innerHTML = homework.map(hw => {
-        const today = new Date();
-        const dueDate = new Date(hw.dueDate || hw.duedate);
-        const isOverdue = dueDate < today;
-        const statusClass = isOverdue ? 'status-pending' : 'status-active';
-        const statusText = isOverdue ? 'Overdue' : 'Active';
-
-        return `
-          <tr>
-            <td>${hw.classLevel}${hw.section ? '-' + hw.section : ''}</td>
-            <td>${hw.title}</td>
-            <td>${new Date(hw.dueDate || hw.duedate).toLocaleDateString()}</td>
-            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-          </tr>
-        `;
-      }).join('');
-    } else {
-      console.error('API returned success: false', response);
-      showErrorAlert('Failed to load homework: ' + (response.message || 'Unknown error'));
-    }
-  } catch (error) {
-    console.error('Error loading homework:', error);
-    showErrorAlert('Failed to load homework: ' + error.message);
-    
-    // Display empty state on error
-    const homeworkList = document.getElementById('homework-list');
-    if (homeworkList) {
-      homeworkList.innerHTML = `
-        <tr>
-          <td colspan="4" class="empty-state">
-            <i class="fas fa-exclamation-circle"></i>
-            <p>Error loading homework data</p>
-          </td>
-        </tr>
-      `;
-    }
-  }
-}
+    const res = await teacherAPI.getHomework(teacherId);
+    allHomework = res.data || [];
+    renderHomeworkTable();
+  } catch (err) {
+    showError('Failed to load homework: ' + err.message);
   }
 }
 
-/**
- * Alert helper functions
- */
-function showSuccessAlert(message) {
-  const alert = document.getElementById('success-alert');
-  if (alert) {
-    document.getElementById('success-text').textContent = message;
-    alert.style.display = 'block';
-    setTimeout(() => alert.style.display = 'none', 4000);
+function renderHomeworkTable() {
+  const tbody = document.getElementById('hw-table-body');
+  if (!allHomework.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No homework yet. Add one!</p></td></tr>`;
+    return;
   }
+  tbody.innerHTML = allHomework.map(hw => {
+    const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
+    const att = hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-paperclip"></i></a>` : '';
+    return `<tr>
+      <td><span class="badge">${hw.classLevel || '–'}</span></td>
+      <td>${hw.subject || '–'}</td>
+      <td>${hw.title}</td>
+      <td>${due}</td>
+      <td>
+        ${att}
+        <button class="btn-sm btn-edit"   onclick="editHomework(${hw.id})"><i class="fas fa-pen"></i></button>
+        <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
-function showErrorAlert(message) {
-  const alert = document.getElementById('error-alert');
-  if (alert) {
-    document.getElementById('error-text').textContent = message;
-    alert.style.display = 'block';
-    setTimeout(() => alert.style.display = 'none', 4000);
+window.openHwModal = function(hw = null) {
+  document.getElementById('hw-form').reset();
+  document.getElementById('hw-edit-id').value = hw?.id || '';
+  document.getElementById('hw-modal-title').textContent = hw ? 'Edit Homework' : 'Add Homework';
+  if (hw) {
+    document.getElementById('hw-classLevel').value   = hw.classLevel || '';
+    document.getElementById('hw-section').value      = hw.section    || '';
+    document.getElementById('hw-subject').value      = hw.subject    || '';
+    document.getElementById('hw-title').value        = hw.title      || '';
+    document.getElementById('hw-description').value  = hw.description|| '';
+    document.getElementById('hw-dueDate').value      = hw.dueDate ? hw.dueDate.split('T')[0] : '';
   }
+  document.getElementById('hw-modal').classList.add('open');
+};
+
+window.closeHwModal = function() {
+  document.getElementById('hw-modal').classList.remove('open');
+};
+
+window.editHomework = function(id) {
+  const hw = allHomework.find(h => h.id === id);
+  if (hw) openHwModal(hw);
+};
+
+window.deleteHomework = async function(id) {
+  if (!confirm('Delete this homework?')) return;
+  try {
+    await teacherAPI.deleteHomework(id, parseInt(teacherId));
+    showSuccess('Homework deleted.');
+    await loadHomework();
+  } catch (err) { showError(err.message); }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('hw-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('hw-edit-id').value;
+    const fd = new FormData();
+    fd.append('teacherId',   teacherId);
+    fd.append('classLevel',  document.getElementById('hw-classLevel').value);
+    fd.append('section',     document.getElementById('hw-section').value);
+    fd.append('subject',     document.getElementById('hw-subject').value);
+    fd.append('title',       document.getElementById('hw-title').value);
+    fd.append('description', document.getElementById('hw-description').value);
+    fd.append('dueDate',     document.getElementById('hw-dueDate').value);
+    const file = document.getElementById('hw-file').files[0];
+    if (file) fd.append('attachment', file);
+
+    try {
+      showInfo(id ? 'Updating homework...' : 'Adding homework...');
+      if (id) await teacherAPI.updateHomework(id, fd);
+      else    await teacherAPI.createHomework(fd);
+      hideInfo();
+      showSuccess(id ? 'Homework updated!' : 'Homework added!');
+      closeHwModal();
+      await loadHomework();
+    } catch (err) { hideInfo(); showError(err.message); }
+  });
+
+  // ─── MATERIALS FORM ─────────────────────────────────────────────────────────
+  document.getElementById('mat-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('mat-edit-id').value;
+    const fd = new FormData();
+    fd.append('teacherId',    teacherId);
+    fd.append('classLevel',   document.getElementById('mat-classLevel').value);
+    fd.append('subject',      document.getElementById('mat-subject').value);
+    fd.append('title',        document.getElementById('mat-title').value);
+    fd.append('description',  document.getElementById('mat-description').value);
+    if (id) fd.append('currentFileUrl', document.getElementById('mat-current-file').value);
+    const file = document.getElementById('mat-file').files[0];
+    if (file) fd.append('materialFile', file);
+
+    try {
+      showInfo(id ? 'Updating material...' : 'Uploading material...');
+      if (id) await teacherAPI.updateMaterial(id, fd);
+      else    await teacherAPI.createMaterial(fd);
+      hideInfo();
+      showSuccess(id ? 'Material updated!' : 'Material uploaded!');
+      closeMatModal();
+      await loadMaterials();
+    } catch (err) { hideInfo(); showError(err.message); }
+  });
+
+  // ─── SYLLABUS FORM ───────────────────────────────────────────────────────────
+  document.getElementById('syl-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      teacherId: parseInt(teacherId),
+      classLevel:  document.getElementById('syl-classLevel').value,
+      section:     document.getElementById('syl-section').value,
+      subject:     document.getElementById('syl-subject').value,
+      chapter:     document.getElementById('syl-chapter').value,
+      description: document.getElementById('syl-description').value,
+    };
+    try {
+      showInfo('Adding chapter...');
+      await teacherAPI.createSyllabus(data);
+      hideInfo();
+      showSuccess('Chapter added!');
+      closeSyllabusModal();
+      await loadSyllabus();
+    } catch (err) { hideInfo(); showError(err.message); }
+  });
+});
+
+// ─── MATERIALS ────────────────────────────────────────────────────────────────
+async function loadMaterials() {
+  try {
+    const res = await teacherAPI.getMaterials(teacherId);
+    allMaterials = res.data || [];
+    renderMaterialsTable();
+    setText('stat-materials', allMaterials.length);
+  } catch (err) { showError('Failed to load materials: ' + err.message); }
 }
 
-function showInfoAlert(message) {
-  const alert = document.getElementById('info-alert');
-  if (alert) {
-    document.getElementById('info-text').textContent = message;
-    alert.style.display = 'block';
+function renderMaterialsTable() {
+  const tbody = document.getElementById('mat-table-body');
+  if (!allMaterials.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No materials yet.</p></td></tr>`;
+    return;
   }
+  tbody.innerHTML = allMaterials.map(m => `
+    <tr>
+      <td>${m.title}</td>
+      <td>${m.subject}</td>
+      <td><span class="badge">Class ${m.classLevel}</span></td>
+      <td><a href="${m.fileUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-download"></i></a></td>
+      <td>
+        <button class="btn-sm btn-edit"   onclick="editMaterial(${m.id})"><i class="fas fa-pen"></i></button>
+        <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`).join('');
 }
 
-// Export functions for debugging
-export { loadDashboardData, loadHomework };
+window.openMatModal = function(m = null) {
+  document.getElementById('mat-form').reset();
+  document.getElementById('mat-edit-id').value = m?.id || '';
+  document.getElementById('mat-current-file').value = m?.fileUrl || '';
+  document.getElementById('mat-modal-title').textContent = m ? 'Edit Material' : 'Upload Study Material';
+  document.getElementById('mat-file-hint').style.display = m ? 'inline' : 'none';
+  if (m) {
+    document.getElementById('mat-classLevel').value  = m.classLevel   || '';
+    document.getElementById('mat-subject').value     = m.subject      || '';
+    document.getElementById('mat-title').value       = m.title        || '';
+    document.getElementById('mat-description').value = m.description  || '';
+  }
+  document.getElementById('mat-modal').classList.add('open');
+};
+window.closeMatModal  = () => document.getElementById('mat-modal').classList.remove('open');
+window.editMaterial   = id => { const m = allMaterials.find(x => x.id === id); if (m) openMatModal(m); };
+window.deleteMaterial = async id => {
+  if (!confirm('Delete this material?')) return;
+  try {
+    await teacherAPI.deleteMaterial(id, parseInt(teacherId));
+    showSuccess('Material deleted.');
+    await loadMaterials();
+  } catch (err) { showError(err.message); }
+};
+
+// ─── SYLLABUS ─────────────────────────────────────────────────────────────────
+async function loadSyllabus() {
+  try {
+    const res = await teacherAPI.getSyllabus(teacherId);
+    allSyllabus = res.data || [];
+    renderSyllabus();
+  } catch (err) { showError('Failed to load syllabus: ' + err.message); }
+}
+
+function renderSyllabus() {
+  const container = document.getElementById('syllabus-container');
+  if (!allSyllabus.length) {
+    container.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No chapters added yet. Click "Add Chapter" to begin.</p>';
+    return;
+  }
+
+  // Group by subject
+  const bySubject = {};
+  allSyllabus.forEach(s => {
+    const key = `${s.subject} — Class ${s.classLevel}`;
+    if (!bySubject[key]) bySubject[key] = [];
+    bySubject[key].push(s);
+  });
+
+  const total    = allSyllabus.length;
+  const done     = allSyllabus.filter(s => s.completed).length;
+  const pct      = total ? Math.round(done * 100 / total) : 0;
+
+  container.innerHTML = `
+    <div style="margin-bottom:1.5rem;">
+      <div style="display:flex; justify-content:space-between; font-size:0.9rem; color:var(--text-muted); margin-bottom:4px;">
+        <span>Overall Progress</span><span>${done}/${total} chapters</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+    </div>
+    ${Object.entries(bySubject).map(([subj, chapters]) => `
+      <div class="syllabus-subject-header">${subj}</div>
+      ${chapters.map(c => `
+        <div class="chapter-row ${c.completed ? 'done' : ''}" style="padding:0.6rem 0; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <input type="checkbox" ${c.completed ? 'checked' : ''} onchange="toggleChapter(${c.id}, this.checked)" style="width:16px; height:16px; cursor:pointer;">
+            <div>
+              <span class="chapter-text" style="font-size:0.9rem;">${c.chapter}</span>
+              ${c.description ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${c.description}</div>` : ''}
+            </div>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <span class="badge ${c.completed ? 'badge-complete' : 'badge-pending'}">${c.completed ? 'Done' : 'Pending'}</span>
+            <button class="btn-sm btn-delete" onclick="deleteChapter(${c.id})"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>`).join('')}
+    `).join('')}`;
+}
+
+window.openSyllabusModal  = () => { document.getElementById('syl-form').reset(); document.getElementById('syl-modal').classList.add('open'); };
+window.closeSyllabusModal = () => document.getElementById('syl-modal').classList.remove('open');
+
+window.toggleChapter = async function(id, completed) {
+  try {
+    await teacherAPI.updateSyllabus(id, { teacherId: parseInt(teacherId), completed });
+    await loadSyllabus();
+  } catch (err) { showError(err.message); }
+};
+
+window.deleteChapter = async function(id) {
+  if (!confirm('Delete this chapter?')) return;
+  try {
+    await teacherAPI.deleteSyllabus(id, parseInt(teacherId));
+    showSuccess('Chapter deleted.');
+    await loadSyllabus();
+  } catch (err) { showError(err.message); }
+};
+
+// ─── ATTENDANCE SUMMARY ───────────────────────────────────────────────────────
+async function initSummaryTab() {
+  const sel = document.getElementById('sum-class-select');
+  if (sel.options.length > 1) return;
+  try {
+    const res = await teacherAPI.getAttendanceClasses(teacherId);
+    const classes = res.data || [];
+    sel.innerHTML = '<option value="">-- Select Class --</option>' +
+      classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    const monthEl = document.getElementById('sum-month');
+    if (!monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
+  } catch { /* silent */ }
+}
+
+window.loadAttendanceSummary = async function() {
+  const classLevel = document.getElementById('sum-class-select').value;
+  const month      = document.getElementById('sum-month').value;
+  if (!classLevel || !month) { showError('Select class and month.'); return; }
+
+  try {
+    showInfo('Loading summary...');
+    const res = await teacherAPI.getAttendanceSummary(teacherId, classLevel, month);
+    hideInfo();
+    const data = res.data || [];
+    const container = document.getElementById('summary-container');
+
+    if (!data.length) { container.innerHTML = '<p style="color:var(--text-muted);">No attendance data for this period.</p>'; return; }
+
+    container.innerHTML = `
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>%</th></tr></thead>
+          <tbody>
+            ${data.map(r => {
+              const pct = r.attendancePercent || 0;
+              const color = pct >= 75 ? '#3fb950' : pct >= 50 ? '#f0883e' : '#f85149';
+              return `<tr>
+                <td>${r.name}</td>
+                <td>${r.presentCount}</td>
+                <td>${r.absentCount}</td>
+                <td>${r.lateCount}</td>
+                <td>${r.totalDays}</td>
+                <td><strong style="color:${color}">${pct}%</strong></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch (err) { hideInfo(); showError('Failed: ' + err.message); }
+};
+
+// ─── Alerts ───────────────────────────────────────────────────────────────────
+function showSuccess(msg) { showAlert('success-alert', 'success-text', msg); }
+function showError(msg)   { showAlert('error-alert', 'error-text', msg); }
+function showInfo(msg)    { const el = document.getElementById('info-alert'); if (el) { document.getElementById('info-text').textContent = msg; el.style.display = 'flex'; } }
+function hideInfo()       { const el = document.getElementById('info-alert'); if (el) el.style.display = 'none'; }
+function showAlert(id, tid, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  document.getElementById(tid).textContent = msg;
+  el.style.display = 'flex';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const nameEl = document.getElementById('teacher-name');
+  if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
+
+  setupTabs();
+  loadDashboard();
+});
+
+export { loadDashboard, loadHomework, loadMaterials, loadSyllabus };

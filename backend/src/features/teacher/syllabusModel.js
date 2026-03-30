@@ -1,0 +1,49 @@
+// syllabusModel.js - Syllabus DB schema and query helpers
+
+export const syllabusModel = {
+  table: 'syllabus',
+  schema: `
+    CREATE TABLE IF NOT EXISTS syllabus (
+      id SERIAL PRIMARY KEY,
+      "teacherId" INT REFERENCES users(id) ON DELETE CASCADE,
+      "classLevel" VARCHAR(20) NOT NULL,
+      section VARCHAR(10),
+      subject VARCHAR(100) NOT NULL,
+      chapter VARCHAR(200) NOT NULL,
+      description TEXT,
+      completed BOOLEAN DEFAULT FALSE,
+      "createdAt" TIMESTAMP DEFAULT NOW()
+    );
+  `,
+};
+
+export const getSyllabusByTeacher = async (pool, teacherId) => {
+  const res = await pool.query(
+    `SELECT * FROM syllabus WHERE "teacherId" = $1 ORDER BY subject, "createdAt" ASC`,
+    [teacherId]
+  );
+  return res.rows;
+};
+
+export const createSyllabusEntry = async (pool, { teacherId, classLevel, section, subject, chapter, description }) => {
+  const res = await pool.query(
+    `INSERT INTO syllabus ("teacherId", "classLevel", section, subject, chapter, description)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [teacherId, classLevel, section || null, subject, chapter, description || null]
+  );
+  return res.rows[0];
+};
+
+export const updateSyllabusEntry = async (pool, id, { chapter, description, completed }) => {
+  const res = await pool.query(
+    `UPDATE syllabus SET chapter = COALESCE($2, chapter), description = COALESCE($3, description),
+     completed = COALESCE($4, completed) WHERE id = $1 RETURNING *`,
+    [id, chapter, description, completed]
+  );
+  return res.rows[0];
+};
+
+export const deleteSyllabusEntry = async (pool, id) => {
+  const res = await pool.query('DELETE FROM syllabus WHERE id = $1 RETURNING id', [id]);
+  return res.rows[0];
+};

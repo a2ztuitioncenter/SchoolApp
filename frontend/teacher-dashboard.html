@@ -6,506 +6,328 @@
     <title>Teacher Dashboard | A2Z</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
+    <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
+        /* Teacher-specific overrides */
+        .timetable-now {
+            background: rgba(35,134,54,0.15);
+            border-left: 3px solid #238636;
         }
-
-        body {
-            background: #F5F7FA;
-        }
-
-        .teacher-container {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            min-height: 100vh;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem 1.5rem;
-            position: fixed;
-            height: 100vh;
-            width: 250px;
-            overflow-y: auto;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .sidebar .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-weight: 700;
-            font-size: 1.3rem;
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .sidebar nav {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .sidebar nav a {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            transition: all 0.3s;
-            font-size: 0.95rem;
-        }
-
-        .sidebar nav a:hover,
-        .sidebar nav a.active {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-        }
-
-        .sidebar .logout-btn {
-            margin-top: 2rem;
-            padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-
-        .sidebar .logout-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 250px;
-            padding: 2rem;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .header h1 {
-            color: #2D3436;
-            font-size: 2rem;
-        }
-
-        .teacher-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #667eea;
-        }
-
-        .stat-card h3 {
-            color: #636E72;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .stat-value {
-            color: #2D3436;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 2px solid #DDE4E9;
-            flex-wrap: wrap;
-        }
-
-        .tab-button {
-            background: none;
-            border: none;
-            padding: 1rem;
-            font-size: 1rem;
-            color: #636E72;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Table */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        th {
-            background: #F8FAFC;
-            padding: 1rem;
-            text-align: left;
-            color: #2D3436;
-            font-weight: 600;
-            font-size: 0.9rem;
-            border-bottom: 2px solid #DDE4E9;
-        }
-
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid #DDE4E9;
-            color: #636E72;
-        }
-
-        tr:hover {
-            background: #F8FAFC;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 2rem !important;
-            color: #95A5A6;
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .status-active {
-            background: #D5F4E6;
-            color: #186A3B;
-        }
-
-        .status-pending {
-            background: #FEF5E7;
-            color: #7D6608;
-        }
-
-        /* Form */
-        .form-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            max-width: 600px;
-            margin-bottom: 2rem;
-        }
-
-        .form-container h3 {
-            color: #2D3436;
-            margin-bottom: 1.5rem;
-            font-size: 1.3rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            color: #2D3436;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #DDE4E9;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-        }
-
-        button:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            display: none;
-            border-left: 4px solid;
-        }
-
-        .alert.success {
-            background: #D5F4E6;
-            color: #186A3B;
-            border-left-color: #27AE60;
-        }
-
-        .alert.error {
-            background: #FADBD8;
-            color: #78281F;
-            border-left-color: #E74C3C;
-        }
-
-        .alert.info {
-            background: #D6EAF8;
-            color: #154360;
-            border-left-color: #3498DB;
-        }
-
-        @media (max-width: 768px) {
-            .teacher-container {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: relative;
-                height: auto;
-                width: 100%;
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .header {
-                flex-direction: column;
-                gap: 1rem;
-            }
-        }
+        .timetable-now td { color: #3fb950; font-weight: 600; }
+        .timetable-upcoming { opacity: 0.6; }
+        .progress-bar-wrap { background: var(--bg-secondary); border-radius: 4px; height: 8px; overflow: hidden; margin-top: 4px; }
+        .progress-bar-fill  { height: 100%; background: #238636; border-radius: 4px; transition: width 0.5s; }
+        .badge-complete     { background: rgba(35,134,54,0.2); color: #3fb950; }
+        .badge-pending      { background: rgba(188,74,22,0.15); color: #f0883e; }
+        .class-clock { font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
+        .now-chip { display: inline-block; background: #238636; color: #fff; font-size: 0.72rem; padding: 1px 7px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+        .time-block { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; }
+        .att-radio-group { display: flex; gap: 1rem; }
+        .att-radio-group label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.9rem; }
+        .chapter-row { display: flex; align-items: center; gap: 0.5rem; }
+        .chapter-row.done .chapter-text { text-decoration: line-through; opacity: 0.55; }
+        .syllabus-subject-header { font-weight: 600; color: var(--text-main); margin: 1rem 0 0.4rem; font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 2rem; width: min(520px, 90vw); max-height: 90vh; overflow-y: auto; }
+        .modal-box h3 { margin-bottom: 1.5rem; font-size: 1.1rem; }
+        .modal-close { float: right; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); padding: 0; }
+        .modal-close:hover { color: var(--text-main); transform: none; }
+        .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     </style>
 </head>
 <body>
+<div class="admin-container">
 
-    <div class="teacher-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <i class="fas fa-graduation-cap"></i>
-                A2Z
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <span>TEACHER</span>
+        </div>
+        <nav>
+            <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a>
+            <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book"></i> Homework</a>
+            <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
+            <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-ol"></i> Syllabus</a>
+            <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-chart-bar"></i> Att. Summary</a>
+        </nav>
+        <button class="logout-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </aside>
+
+    <!-- Main -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Teacher Panel</h1>
+            <div class="admin-info">
+                <i class="fas fa-user-circle" style="font-size:2rem; color:var(--text-muted);"></i>
+                <div>
+                    <div style="font-weight:600; color:var(--text-main);" id="teacher-name">Teacher</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);" id="live-clock"></div>
+                </div>
             </div>
-            <nav>
-                <a href="#" class="nav-link active" data-tab="dashboard">
-                    <i class="fas fa-home"></i> Dashboard
-                </a>
-                <a href="#" class="nav-link" data-tab="homework">
-                    <i class="fas fa-tasks"></i> My Classes
-                </a>
-                <a href="#" class="nav-link" data-tab="manage">
-                    <i class="fas fa-plus-circle"></i> Add Homework
-                </a>
-            </nav>
-            <button class="logout-btn" id="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="header">
-                <h1>Teacher Dashboard</h1>
-                <div class="teacher-info">
-                    <i class="fas fa-user-circle" style="font-size: 2rem; color: #667eea;"></i>
-                    <div>
-                        <div style="color: #2D3436; font-weight: 600;" id="teacher-name">Teacher</div>
-                        <div style="color: #636E72; font-size: 0.9rem;">Educator</div>
-                    </div>
+        <!-- Alerts -->
+        <div id="success-alert" class="alert alert-success"><i class="fas fa-check-circle"></i> <span id="success-text"></span></div>
+        <div id="error-alert"   class="alert alert-error"><i class="fas fa-exclamation-circle"></i> <span id="error-text"></span></div>
+        <div id="info-alert"    class="alert alert-info"><i class="fas fa-info-circle"></i> <span id="info-text"></span></div>
+
+        <!-- =================== DASHBOARD TAB =================== -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="card-grid">
+                <div class="card">
+                    <h3><i class="fas fa-users"></i> My Students</h3>
+                    <div class="stat-value" id="stat-students">–</div>
+                </div>
+                <div class="card">
+                    <h3><i class="fas fa-book"></i> Active Homework</h3>
+                    <div class="stat-value" id="stat-homework">–</div>
+                </div>
+                <div class="card">
+                    <h3><i class="fas fa-folder"></i> Materials</h3>
+                    <div class="stat-value" id="stat-materials">–</div>
                 </div>
             </div>
 
-            <!-- Alerts -->
-            <div id="success-alert" class="alert success">
-                <span id="success-text"></span>
-            </div>
-            <div id="error-alert" class="alert error">
-                <span id="error-text"></span>
-            </div>
-            <div id="info-alert" class="alert info">
-                <span id="info-text"></span>
+            <div class="card" style="margin-top:1.5rem;">
+                <h3><i class="fas fa-clock"></i> Today's Timetable <span id="today-label" style="font-weight:400; color:var(--text-muted); font-size:0.85rem;"></span></h3>
+                <div class="table-container" style="margin-top:1rem;">
+                    <table>
+                        <thead><tr><th>Class</th><th>Subject</th><th>Time</th><th>Status</th></tr></thead>
+                        <tbody id="today-timetable-body">
+                            <tr><td colspan="4" class="empty-state"><i class="fas fa-calendar-times"></i><p>No classes today.</p></td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- Dashboard Tab -->
-            <div id="dashboard" class="tab-content active">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total Classes</h3>
-                        <div class="stat-value" id="total-classes">0</div>
+            <div class="card" style="margin-top:1.5rem;">
+                <h3><i class="fas fa-calendar-week"></i> Full Weekly Timetable</h3>
+                <div id="weekly-timetable" style="margin-top:1rem;"></div>
+            </div>
+        </div>
+
+        <!-- =================== ATTENDANCE TAB =================== -->
+        <div id="tab-attendance" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3><i class="fas fa-clipboard-check"></i> Mark Attendance</h3>
+                <div class="form-row-2" style="margin-top:1rem;">
+                    <div class="form-group">
+                        <label>Class</label>
+                        <select id="att-class-select" onchange="onAttClassChange()">
+                            <option value="">-- Select Class --</option>
+                        </select>
                     </div>
-                    <div class="stat-card">
-                        <h3>Total Students</h3>
-                        <div class="stat-value" id="total-students">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Active Homework</h3>
-                        <div class="stat-value" id="total-homework">0</div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="att-date">
                     </div>
                 </div>
-
-                <h2 style="color: #2D3436; margin-bottom: 1.5rem;">My Classes</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Class Level</th>
-                            <th>Section</th>
-                            <th>Students</th>
-                            <th>Active Homework</th>
-                        </tr>
-                    </thead>
-                    <tbody id="classes-list">
-                        <tr>
-                            <td colspan="4" class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <p>No classes assigned yet.</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <button class="btn btn-primary" onclick="loadAttendanceSheet()"><i class="fas fa-search"></i> Load Students</button>
             </div>
 
-            <!-- Homework Tab -->
-            <div id="homework" class="tab-content">
-                <div class="tabs" style="border-bottom: 1px solid #DDE4E9;">
-                    <button class="tab-button active" data-tab="homework-active">Active Homework</button>
+            <div id="att-sheet-container" style="display:none; margin-top:1.5rem;">
+                <div class="card">
+                    <h3>Attendance Sheet — <span id="att-sheet-label"></span></h3>
+                    <div class="table-container" style="margin-top:1rem;">
+                        <table>
+                            <thead><tr><th>Name</th><th>Present</th><th>Absent</th><th>Late</th></tr></thead>
+                            <tbody id="att-sheet-body"></tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:1rem;" onclick="saveAttendance()"><i class="fas fa-save"></i> Save Attendance</button>
                 </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Class</th>
-                            <th>Title</th>
-                            <th>Due Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="homework-list">
-                        <tr>
-                            <td colspan="4" class="empty-state">
-                                <i class="fas fa-clipboard"></i>
-                                <p>No homework assignments yet.</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
+        </div>
 
-            <!-- Manage Tab -->
-            <div id="manage" class="tab-content">
-                <div class="form-container">
-                    <h3>Add New Homework</h3>
-                    <form id="add-homework-form">
-                        <div class="form-group">
-                            <label for="class-level">Class Level</label>
-                            <input type="text" id="class-level" placeholder="e.g., 9A, 10B" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="section">Section</label>
-                            <input type="text" id="section" placeholder="e.g., A, B, C" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="subject">Subject</label>
-                            <input type="text" id="subject" placeholder="e.g., Mathematics" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="title">Homework Title</label>
-                            <input type="text" id="title" placeholder="Title of homework" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="description">Description</label>
-                            <textarea id="description" placeholder="Homework description" rows="4" required></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="due-date">Due Date</label>
-                            <input type="date" id="due-date" required>
-                        </div>
-
-                        <button type="submit">Add Homework</button>
-                    </form>
+        <!-- =================== HOMEWORK TAB =================== -->
+        <div id="tab-homework" class="tab-content" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3><i class="fas fa-book"></i> Homework</h3>
+                    <button class="btn btn-primary" onclick="openHwModal()"><i class="fas fa-plus"></i> Add Homework</button>
                 </div>
+                <div class="table-container" style="margin-top:1rem;">
+                    <table>
+                        <thead><tr><th>Class</th><th>Subject</th><th>Title</th><th>Due</th><th>Actions</th></tr></thead>
+                        <tbody id="hw-table-body"><tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No homework yet.</p></td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== MATERIALS TAB =================== -->
+        <div id="tab-materials" class="tab-content" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3><i class="fas fa-folder-open"></i> Study Materials</h3>
+                    <button class="btn btn-primary" onclick="openMatModal()"><i class="fas fa-upload"></i> Upload Material</button>
+                </div>
+                <div class="table-container" style="margin-top:1rem;">
+                    <table>
+                        <thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>File</th><th>Actions</th></tr></thead>
+                        <tbody id="mat-table-body"><tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No materials yet.</p></td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== SYLLABUS TAB =================== -->
+        <div id="tab-syllabus" class="tab-content" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3><i class="fas fa-list-ol"></i> Syllabus Tracker</h3>
+                    <button class="btn btn-primary" onclick="openSyllabusModal()"><i class="fas fa-plus"></i> Add Chapter</button>
+                </div>
+                <div id="syllabus-container" style="margin-top:1rem;"></div>
+            </div>
+        </div>
+
+        <!-- =================== SUMMARY TAB =================== -->
+        <div id="tab-summary" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3><i class="fas fa-chart-bar"></i> Monthly Attendance Summary</h3>
+                <div class="form-row-2" style="margin-top:1rem;">
+                    <div class="form-group">
+                        <label>Class</label>
+                        <select id="sum-class-select">
+                            <option value="">-- Select Class --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Month</label>
+                        <input type="month" id="sum-month">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="loadAttendanceSummary()"><i class="fas fa-search"></i> View Summary</button>
+                <div id="summary-container" style="margin-top:1.5rem;"></div>
             </div>
         </div>
     </div>
+</div>
 
-    <script type="module" src="./src/modules/teacher/teacher-dashboard.js"></script>
+<!-- =================== HOMEWORK MODAL =================== -->
+<div id="hw-modal" class="modal-overlay">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeHwModal()">&times;</button>
+        <h3 id="hw-modal-title">Add Homework</h3>
+        <form id="hw-form" enctype="multipart/form-data">
+            <input type="hidden" id="hw-edit-id">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Class Level *</label>
+                    <input type="text" id="hw-classLevel" placeholder="e.g. 10A" required>
+                </div>
+                <div class="form-group">
+                    <label>Section</label>
+                    <input type="text" id="hw-section" placeholder="e.g. A">
+                </div>
+                <div class="form-group">
+                    <label>Subject *</label>
+                    <input type="text" id="hw-subject" placeholder="e.g. Mathematics" required>
+                </div>
+                <div class="form-group">
+                    <label>Due Date *</label>
+                    <input type="date" id="hw-dueDate" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="hw-title" placeholder="Homework title" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="hw-description" rows="3" placeholder="Details..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Attachment (PDF/JPG/PNG)</label>
+                <input type="file" id="hw-file" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <div style="display:flex; gap:1rem; justify-content:flex-end;">
+                <button type="button" class="btn" style="background:var(--bg-secondary); border:1px solid var(--border-subtle); color:var(--text-main);" onclick="closeHwModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Homework</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =================== MATERIAL MODAL =================== -->
+<div id="mat-modal" class="modal-overlay">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeMatModal()">&times;</button>
+        <h3 id="mat-modal-title">Upload Study Material</h3>
+        <form id="mat-form" enctype="multipart/form-data">
+            <input type="hidden" id="mat-edit-id">
+            <input type="hidden" id="mat-current-file">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Class Level *</label>
+                    <input type="text" id="mat-classLevel" placeholder="e.g. 10" required>
+                </div>
+                <div class="form-group">
+                    <label>Subject *</label>
+                    <input type="text" id="mat-subject" placeholder="e.g. Physics" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="mat-title" placeholder="Material title" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="mat-description" rows="2" placeholder="Optional..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>File (PDF/JPG/PNG) <span id="mat-file-hint" style="display:none; color:var(--text-muted); font-size:0.8rem;">— leave blank to keep current</span></label>
+                <input type="file" id="mat-file" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+            <div style="display:flex; gap:1rem; justify-content:flex-end;">
+                <button type="button" class="btn" style="background:var(--bg-secondary); border:1px solid var(--border-subtle); color:var(--text-main);" onclick="closeMatModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Material</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =================== SYLLABUS MODAL =================== -->
+<div id="syl-modal" class="modal-overlay">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closeSyllabusModal()">&times;</button>
+        <h3>Add Chapter</h3>
+        <form id="syl-form">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Class Level *</label>
+                    <input type="text" id="syl-classLevel" placeholder="e.g. 10" required>
+                </div>
+                <div class="form-group">
+                    <label>Section</label>
+                    <input type="text" id="syl-section" placeholder="e.g. A">
+                </div>
+                <div class="form-group">
+                    <label>Subject *</label>
+                    <input type="text" id="syl-subject" placeholder="e.g. Mathematics" required>
+                </div>
+                <div class="form-group">
+                    <label>Chapter Name *</label>
+                    <input type="text" id="syl-chapter" placeholder="e.g. Chapter 3: Trigonometry" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="syl-description" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+            <div style="display:flex; gap:1rem; justify-content:flex-end;">
+                <button type="button" class="btn" style="background:var(--bg-secondary); border:1px solid var(--border-subtle); color:var(--text-main);" onclick="closeSyllabusModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Chapter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="module" src="./src/modules/teacher/teacher-dashboard.js"></script>
 </body>
 </html>

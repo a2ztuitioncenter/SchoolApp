@@ -8,6 +8,7 @@ import { attendanceModel } from '../features/attendance/Attendance.js';
 import { materialModel } from '../features/materials/Material.js';
 import { notificationModel } from '../features/notifications/Notification.js';
 import { timetableModel } from '../features/student/Timetable.js';
+import { syllabusModel } from '../features/teacher/syllabusModel.js';
 
 const { Pool } = pkg;
 import path from 'path';
@@ -37,6 +38,7 @@ export async function initializeDatabase() {
     await pool.query(materialModel.schema);
     await pool.query(notificationModel.schema);
     await pool.query(timetableModel.schema);
+    await pool.query(syllabusModel.schema);
     console.log('✅ Tables checked/created.');
 
     await createDefaultAdmin();

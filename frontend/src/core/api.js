@@ -174,11 +174,33 @@ export const adminAPI = {
  * Teacher APIs
  */
 export const teacherAPI = {
+  // Dashboard
   getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId}`, { method: 'GET' }),
-  getClassHomework: (classLevel, section) => apiCall(`/teacher/class/${classLevel}?section=${section}`, { method: 'GET' }),
-  addHomework: (homeworkData) => apiCall('/teacher/homework/add', { method: 'POST', body: JSON.stringify(homeworkData) }),
-  updateHomework: (homeworkId, homeworkData) => apiCall(`/teacher/homework/${homeworkId}`, { method: 'PUT', body: JSON.stringify(homeworkData) }),
-  deleteHomework: (homeworkId) => apiCall(`/teacher/homework/${homeworkId}`, { method: 'DELETE' }),
+  getTimetable:  (teacherId) => apiCall(`/teacher/timetable/${teacherId}`, { method: 'GET' }),
+
+  // Attendance
+  getAttendanceClasses: (teacherId) => apiCall(`/teacher/attendance/classes?teacherId=${teacherId}`, { method: 'GET' }),
+  getAttendanceSheet:   (teacherId, classLevel, date) => apiCall(`/teacher/attendance/sheet?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&date=${date}`, { method: 'GET' }),
+  markBulkAttendance:   (teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }) }),
+  getAttendanceSummary: (teacherId, classLevel, month) => apiCall(`/teacher/attendance/summary?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&month=${month}`, { method: 'GET' }),
+
+  // Homework
+  getHomework:    (teacherId) => apiCall(`/teacher/homework?teacherId=${teacherId}`, { method: 'GET' }),
+  createHomework: (formData)  => apiCall('/teacher/homework', { method: 'POST', body: formData }),
+  updateHomework: (id, formData) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData }),
+  deleteHomework: (id, teacherId) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
+
+  // Study Materials
+  getMaterials:    (teacherId) => apiCall(`/teacher/materials?teacherId=${teacherId}`, { method: 'GET' }),
+  createMaterial:  (formData)  => apiCall('/teacher/materials', { method: 'POST', body: formData }),
+  updateMaterial:  (id, formData) => apiCall(`/teacher/materials/${id}`, { method: 'PUT', body: formData }),
+  deleteMaterial:  (id, teacherId) => apiCall(`/teacher/materials/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
+
+  // Syllabus
+  getSyllabus:    (teacherId) => apiCall(`/teacher/syllabus?teacherId=${teacherId}`, { method: 'GET' }),
+  createSyllabus: (data)      => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
+  updateSyllabus: (id, data)  => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSyllabus: (id, teacherId) => apiCall(`/teacher/syllabus/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
 };
 
 /**

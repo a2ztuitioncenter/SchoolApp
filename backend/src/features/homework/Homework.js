@@ -82,19 +82,20 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
   return result.rows;
 };
 
-export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject }) => {
+export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl }) => {
   const result = await pool.query(
-    `INSERT INTO homework (title, description, "classLevel", section, subject, "dueDate", "teacherId")
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null]
+    `INSERT INTO homework (title, description, "classLevel", section, subject, "dueDate", "teacherId", "attachmentUrl")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null, attachmentUrl || null]
   );
   return result.rows[0];
 };
 
-export const updateHomework = async (pool, id, { title, description, dueDate, subject }) => {
+export const updateHomework = async (pool, id, { title, description, dueDate, subject, attachmentUrl }) => {
   const result = await pool.query(
-    `UPDATE homework SET title=$1, description=$2, "dueDate"=$3, subject=$4 WHERE id=$5 RETURNING *`,
-    [title, description || null, dueDate || null, subject || null, id]
+    `UPDATE homework SET title=$1, description=$2, "dueDate"=$3, subject=$4,
+     "attachmentUrl" = COALESCE($5, "attachmentUrl") WHERE id=$6 RETURNING *`,
+    [title, description || null, dueDate || null, subject || null, attachmentUrl || null, id]
   );
   return result.rows[0] || null;
 };
