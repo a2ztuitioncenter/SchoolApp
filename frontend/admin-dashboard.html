@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Styles -->
-    <link rel="stylesheet" href="./css/admin-dashboard.css">
+    <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
 
 </head>
 <body>
@@ -540,7 +540,6 @@
                     <div class="card" style="grid-column: 1 / -1;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h2>⏰ Timetable</h2>
-                            <button class="btn btn-primary" onclick="showAddTimetableModal()">➕ Add Class</button>
                         </div>
                         <div class="table-container" style="margin-top:20px;">
                             <table class="data-table">
@@ -584,7 +583,6 @@
                     <div class="card" style="grid-column: 1 / -1;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h2>📊 Exam Results</h2>
-                            <button class="btn btn-primary" onclick="showAddResultModal()">➕ Add Result</button>
                         </div>
                         <div class="table-container" style="margin-top:20px;">
                             <table class="data-table">
@@ -710,6 +708,6 @@
             document.documentElement.setAttribute('data-theme', saved);
         })();
     </script>
-    <script type="module" src="./js/admin-dashboard.js"></script>
+    <script type="module" src="./src/modules/admin/admin-dashboard.js"></script>
 </body>
 </html>

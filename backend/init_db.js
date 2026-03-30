@@ -1,5 +1,5 @@
-import pool from './database.js'; // Ensure your connection pool is imported
-import { initializeDatabase } from './database.js';
+import pool from './src/config/database.js'; // Ensure your connection pool is imported
+import { initializeDatabase } from './src/config/database.js';
 
 async function setupDatabase() {
   try {
