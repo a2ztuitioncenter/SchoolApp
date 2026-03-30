@@ -242,14 +242,16 @@ router.get('/homework', async (req, res) => {
 // POST /api/teacher/homework  (multipart)
 router.post('/homework', uploadHomework.single('attachment'), async (req, res) => {
   try {
-    const { teacherId, classLevel, section, subject, title, description, dueDate } = req.body;
+    const { teacherId, classLevel, section, subject, title, description, dueDate, type } = req.body;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
-    if (!classLevel || !title || !dueDate) return res.status(400).json({ error: 'classLevel, title and dueDate required' });
+    if (!classLevel || !title) return res.status(400).json({ error: 'classLevel and title required' });
+    if (type !== 'daily_practice' && !dueDate) return res.status(400).json({ error: 'dueDate required' });
 
     const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : null;
-    const hw = await createHomework(pool, { teacherId, classLevel, section, subject, title, description, dueDate, attachmentUrl });
+    const finalDueDate = type === 'daily_practice' ? null : dueDate;
+    const hw = await createHomework(pool, { teacherId, classLevel, section, subject, title, description, dueDate: finalDueDate, attachmentUrl, type });
     res.status(201).json({ success: true, data: hw });
   } catch (err) {
     res.status(500).json({ error: 'Failed to create homework', detail: err.message });
@@ -260,7 +262,7 @@ router.post('/homework', uploadHomework.single('attachment'), async (req, res) =
 router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { teacherId, title, description, dueDate, subject } = req.body;
+    const { teacherId, title, description, dueDate, subject, type } = req.body;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
@@ -270,7 +272,8 @@ router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res
     if (own.rows[0].teacherId !== parseInt(teacherId)) return res.status(403).json({ error: 'Not your homework' });
 
     const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : undefined;
-    const updated = await updateHomework(pool, id, { title, description, dueDate, subject, attachmentUrl });
+    const finalDueDate = type === 'daily_practice' ? null : dueDate;
+    const updated = await updateHomework(pool, id, { title, description, dueDate: finalDueDate, subject, attachmentUrl, type });
     res.json({ success: true, data: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update homework', detail: err.message });

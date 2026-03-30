@@ -50,6 +50,7 @@
             <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-home"></i> Dashboard</a>
             <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-clipboard-check"></i> Attendance</a>
             <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book"></i> Homework</a>
+            <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-edit"></i> Daily Practice</a>
             <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
             <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-ol"></i> Syllabus</a>
             <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-chart-bar"></i> Att. Summary</a>
@@ -148,12 +149,28 @@
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3><i class="fas fa-book"></i> Homework</h3>
-                    <button class="btn btn-primary" onclick="openHwModal()"><i class="fas fa-plus"></i> Add Homework</button>
+                    <button class="btn btn-primary" onclick="openHwModal('homework')"><i class="fas fa-plus"></i> Add Homework</button>
                 </div>
                 <div class="table-container" style="margin-top:1rem;">
                     <table>
-                        <thead><tr><th>Class</th><th>Subject</th><th>Title</th><th>Due</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>Class</th><th>Subject</th><th>Title</th><th>Due Date</th><th>Actions</th></tr></thead>
                         <tbody id="hw-table-body"><tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No homework yet.</p></td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== DAILY PRACTICE TAB =================== -->
+        <div id="tab-dpp" class="tab-content" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3><i class="fas fa-edit"></i> Daily Practice Problems</h3>
+                    <button class="btn btn-primary" onclick="openHwModal('daily_practice')"><i class="fas fa-plus"></i> Add Daily Practice</button>
+                </div>
+                <div class="table-container" style="margin-top:1rem;">
+                    <table>
+                        <thead><tr><th>Class</th><th>Subject</th><th>Title</th><th>Posted Date</th><th>Actions</th></tr></thead>
+                        <tbody id="dpp-table-body"><tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No practice problems yet.</p></td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -229,10 +246,11 @@
                     <label>Subject *</label>
                     <input type="text" id="hw-subject" placeholder="e.g. Mathematics" required>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="hw-dueDate-container">
                     <label>Due Date *</label>
                     <input type="date" id="hw-dueDate" required>
                 </div>
+                <input type="hidden" id="hw-type" value="homework">
             </div>
             <div class="form-group">
                 <label>Title *</label>

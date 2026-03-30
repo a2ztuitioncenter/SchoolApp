@@ -21,8 +21,10 @@
             </div>
             <nav id=nav_left_sidebar>
                 <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> Home</a>
+                <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-edit"></i> Daily Practice</a>
                 <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> Subjects</a>
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
+                <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-alt"></i> Syllabus</a>
                 <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
                 <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> Notifications</a>
                 <a href="#" class="nav-link" data-tab="videos"><i class="fas fa-play-circle"></i> Videos</a>
@@ -45,6 +47,30 @@
                     </div>
                 </div>
             </header>
+
+            <!-- Syllabus Tab -->
+            <div id="tab-syllabus" class="tab-content" style="display:none;">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-list-alt"></i> Class Syllabus</h2>
+                    </div>
+                    <div id="syllabus-container">
+                        <p class="loading-text">Loading syllabus...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Practice (DPP) Tab -->
+            <div id="tab-dpp" class="tab-content" style="display:none;">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-edit"></i> Daily Practice Problems</h2>
+                    </div>
+                    <div id="daily-practice-container" style="margin-top:20px; padding: 0 20px;">
+                        <p class="loading-text">Loading daily practice...</p>
+                    </div>
+                </div>
+            </div>
 
             <!-- Materials Tab -->
             <div id="tab-materials" class="tab-content" style="display:none;">
@@ -95,14 +121,6 @@
                             <div class="card">
                                 <div class="icon-box green"><i class="fas fa-question-circle"></i></div>
                                 <h4>Daily Practice</h4>
-                            </div>
-                            <div class="card">
-                                <div class="icon-box light-blue"><i class="fas fa-video"></i></div>
-                                <h4>Chapter Videos</h4>
-                            </div>
-                            <div class="card">
-                                <div class="icon-box orange"><i class="fas fa-bullhorn"></i></div>
-                                <h4>Notices</h4>
                             </div>
                         </div>
 

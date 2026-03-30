@@ -270,6 +270,7 @@ async function loadHomework() {
     const res = await teacherAPI.getHomework(teacherId);
     allHomework = res.data || [];
     renderHomeworkTable();
+    renderDppTable();
   } catch (err) {
     showError('Failed to load homework: ' + err.message);
   }
@@ -277,18 +278,44 @@ async function loadHomework() {
 
 function renderHomeworkTable() {
   const tbody = document.getElementById('hw-table-body');
-  if (!allHomework.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No homework yet. Add one!</p></td></tr>`;
+    const onlyHws = allHomework.filter(h => h.type === 'homework');
+    if (!onlyHws.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No homework yet. Add one!</p></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = onlyHws.map(hw => {
+      const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
+      const att = hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-paperclip"></i></a>` : '';
+      return `<tr>
+        <td><span class="badge">${hw.classLevel || '–'}</span></td>
+        <td>${hw.subject || '–'}</td>
+        <td>${hw.title}</td>
+        <td>${due}</td>
+        <td>
+          ${att}
+          <button class="btn-sm btn-edit"   onclick="editHomework(${hw.id})"><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`;
+    }).join('');
+}
+
+function renderDppTable() {
+  const tbody = document.getElementById('dpp-table-body');
+  if(!tbody) return;
+  const onlyDpps = allHomework.filter(h => h.type === 'daily_practice');
+  if (!onlyDpps.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No practice problems yet.</p></td></tr>`;
     return;
   }
-  tbody.innerHTML = allHomework.map(hw => {
-    const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
+  tbody.innerHTML = onlyDpps.map(hw => {
+    const posted = `Posted: ${new Date(hw.createdAt).toLocaleDateString('en-IN')}`;
     const att = hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-paperclip"></i></a>` : '';
     return `<tr>
       <td><span class="badge">${hw.classLevel || '–'}</span></td>
       <td>${hw.subject || '–'}</td>
       <td>${hw.title}</td>
-      <td>${due}</td>
+      <td>${posted}</td>
       <td>
         ${att}
         <button class="btn-sm btn-edit"   onclick="editHomework(${hw.id})"><i class="fas fa-pen"></i></button>
@@ -298,17 +325,35 @@ function renderHomeworkTable() {
   }).join('');
 }
 
-window.openHwModal = function(hw = null) {
+window.openHwModal = function(typeOrHw = 'homework') {
   document.getElementById('hw-form').reset();
+  const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
+  const type = typeof typeOrHw === 'string' ? typeOrHw : (hw ? hw.type : 'homework');
+  const isDpp = type === 'daily_practice';
+
   document.getElementById('hw-edit-id').value = hw?.id || '';
-  document.getElementById('hw-modal-title').textContent = hw ? 'Edit Homework' : 'Add Homework';
+  document.getElementById('hw-modal-title').textContent = hw ? `Edit ${isDpp ? 'Practice' : 'Homework'}` : `Add ${isDpp ? 'Practice' : 'Homework'}`;
+  document.getElementById('hw-type').value = type;
+
+  const dueDateContainer = document.getElementById('hw-dueDate-container');
+  const dueDateInput = document.getElementById('hw-dueDate');
+  if (dueDateContainer && dueDateInput) {
+      if (isDpp) {
+          dueDateContainer.style.display = 'none';
+          dueDateInput.required = false;
+      } else {
+          dueDateContainer.style.display = 'block';
+          dueDateInput.required = true;
+      }
+  }
+
   if (hw) {
     document.getElementById('hw-classLevel').value   = hw.classLevel || '';
     document.getElementById('hw-section').value      = hw.section    || '';
     document.getElementById('hw-subject').value      = hw.subject    || '';
     document.getElementById('hw-title').value        = hw.title      || '';
     document.getElementById('hw-description').value  = hw.description|| '';
-    document.getElementById('hw-dueDate').value      = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+    if (!isDpp && dueDateInput) dueDateInput.value      = hw.dueDate ? hw.dueDate.split('T')[0] : '';
   }
   document.getElementById('hw-modal').classList.add('open');
 };
@@ -340,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fd.append('classLevel',  document.getElementById('hw-classLevel').value);
     fd.append('section',     document.getElementById('hw-section').value);
     fd.append('subject',     document.getElementById('hw-subject').value);
+    fd.append('type',        document.getElementById('hw-type')?.value || 'homework');
     fd.append('title',       document.getElementById('hw-title').value);
     fd.append('description', document.getElementById('hw-description').value);
     fd.append('dueDate',     document.getElementById('hw-dueDate').value);

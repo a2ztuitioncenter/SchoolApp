@@ -38,7 +38,7 @@ export const getStudentDashboard = async (req, res) => {
       getAttendanceSummary(pool, student.id),
       getFeesSummary(pool, student.id),
       getAllStudentFees(pool, student.id),
-      pool.query('SELECT * FROM homework WHERE substring("classLevel" FROM \'\\d+\') = substring($1 FROM \'\\d+\') ORDER BY "dueDate" ASC LIMIT 5', [student.classLevel]),
+      pool.query('SELECT * FROM homework WHERE substring("classLevel" FROM \'\\d+\') = substring($1 FROM \'\\d+\') ORDER BY "dueDate" ASC, "createdAt" DESC LIMIT 15', [student.classLevel]),
       pool.query('SELECT * FROM timetable WHERE "classLevel" = $1 ORDER BY "dayOfWeek", "startTime" ASC', [student.classLevel]),
       pool.query(
         'SELECT * FROM notifications WHERE "classLevel" = $1 OR "classLevel" IS NULL OR "recipientRole" = \'student\' ORDER BY "createdAt" DESC LIMIT 10',
@@ -46,7 +46,19 @@ export const getStudentDashboard = async (req, res) => {
       ),
     ]);
 
-    console.log(`[DEBUG] Dashboard fetched ${homeworkResult.rows.length} homework for student class: [${student.classLevel}]`);
+    const allHomework = homeworkResult.rows || [];
+    const homework = allHomework.filter(h => h.type === 'homework').slice(0, 5);
+    
+    // Daily practice valid for 24 hours
+    const now = new Date();
+    const dailyPractice = allHomework.filter(h => {
+        if (h.type !== 'daily_practice') return false;
+        const created = new Date(h.createdAt);
+        const hoursDiff = (now - created) / (1000 * 60 * 60);
+        return hoursDiff <= 24;
+    });
+
+    console.log(`[DEBUG] Dashboard fetched ${homework.length} homework, ${dailyPractice.length} daily practice for student class: [${student.classLevel}]`);
     console.log(`[DEBUG] Timetable: ${timetableResult.rows.length} entries. Notifications: ${notificationsResult.rows.length}.`);
 
     return res.json({
@@ -76,7 +88,8 @@ export const getStudentDashboard = async (req, res) => {
           paidCount: parseInt(feesSummary.paidCount) || 0,
           fees: (allFees || []).slice(0, 5),
         },
-        homework: homeworkResult.rows || [],
+        homework,
+        dailyPractice,
         timetable: timetableResult.rows || [],
         notifications: notificationsResult.rows || [],
         courseProgress: { percentage: 0, completedLessons: 0, totalLessons: 0 },

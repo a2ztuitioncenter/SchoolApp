@@ -85,6 +85,11 @@ function setupTabSwitching() {
         console.log(`📚 Fetching materials for Class: ${studentClass}`);
         loadMaterials(studentClass);
       }
+
+      if (tabId === 'syllabus') {
+          const userId = sessionStorage.getItem('studentUserId');
+          if (userId) loadSyllabus(userId);
+      }
     });
   });
 }
@@ -115,6 +120,7 @@ async function loadDashboardData(userId) {
     if (data.attendance) populateAttendance(data.attendance);
     if (data.fees) populateFees(data.fees);
     if (data.homework) populateHomework(data.homework);
+    if (data.dailyPractice) populateDailyPractice(data.dailyPractice);
     if (data.courseProgress) populateCourseProgress(data.courseProgress);
     if (data.timetable) populateTimetable(data.timetable);
     if (data.notifications) populateNotifications(data.notifications);
@@ -153,6 +159,51 @@ async function loadMaterials(classLevel) {
     } catch (err) {
         console.error('Error loading materials:', err);
         container.innerHTML = '<p class="error" style="color:#e53e3e;">Failed to load materials.</p>';
+    }
+}
+
+async function loadSyllabus(userId) {
+    const container = document.getElementById('syllabus-container');
+    if (!container) return;
+
+    try {
+        container.innerHTML = '<p class="loading-text">Loading syllabus...</p>';
+        const response = await studentAPI.getSyllabus(userId);
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to fetch syllabus');
+        }
+
+        const items = response.syllabus || [];
+        
+        if (items.length === 0) {
+            container.innerHTML = '<p class="empty-state">No syllabus assigned yet.</p>';
+            return;
+        }
+
+        container.innerHTML = items.map(item => `
+            <div class="dashboard-card" style="margin-bottom: 15px; border-left: 4px solid #667eea; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${item.subject} - Chapter ${item.chapter}</h4>
+                        <p style="margin:5px 0; color:#718096; font-size:0.9rem;">
+                           ${item.description || 'No description provided.'}
+                        </p>
+                        <small style="color:#a0aec0; display:block; margin-top:8px;">
+                            ${item.teacherPhone ? 'Teacher Contact: ' + item.teacherPhone : 'Teacher: Unknown'}
+                        </small>
+                    </div>
+                    <div>
+                        ${item.completed 
+                           ? '<span class="badge" style="background:#c6f6d5; color:#22543d; padding:4px 8px; border-radius:12px; font-size:0.8rem;">Completed</span>' 
+                           : '<span class="badge" style="background:#fefcbf; color:#744210; padding:4px 8px; border-radius:12px; font-size:0.8rem;">Pending</span>'}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading syllabus:', err);
+        container.innerHTML = '<p class="error" style="color:#e53e3e;">Failed to load syllabus. Please try again.</p>';
     }
 }
 
@@ -195,6 +246,29 @@ function populateHomework(homework) {
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
         ${hw.attachmentUrl ? `
           <button onclick="downloadFile('${hw.attachmentUrl}', '${hw.title || 'homework'}.pdf')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
+            <i class="fas fa-download"></i> Download Attachment
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function populateDailyPractice(practiceList) {
+  const container = document.getElementById('daily-practice-container');
+  if (!container) return;
+  if (!Array.isArray(practiceList) || practiceList.length === 0) {
+    container.innerHTML = '<p class="no-data">No daily practice assigned for today</p>';
+    return;
+  }
+  container.innerHTML = practiceList.map((hw, idx) => `
+    <div class="homework-item" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
+      <div class="details" style="flex: 1;">
+        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${hw.subject || 'Practice'} - ${hw.title || 'Assignment'}</p>
+        <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Posted: ${new Date(hw.createdAt).toLocaleDateString()}</p>
+        ${hw.attachmentUrl ? `
+          <button onclick="downloadFile('${hw.attachmentUrl}', '${hw.title || 'practice'}.pdf')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#48bb78; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
             <i class="fas fa-download"></i> Download Attachment
           </button>
         ` : ''}

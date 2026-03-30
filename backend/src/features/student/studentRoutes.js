@@ -68,4 +68,45 @@ router.get('/:userId/homework', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/student/:userId/syllabus
+ * Returns: Syllabus items targeted at student's class
+ */
+router.get('/:userId/syllabus', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pool = req.db;
+
+    // Get student info to find their class
+    const studentResult = await pool.query(
+      'SELECT "classLevel", section FROM students WHERE "userId" = $1',
+      [userId]
+    );
+
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    const { classLevel } = studentResult.rows[0] || {};
+
+    // Get syllabus matching the numeric portion of the student's classLevel
+    const syllabusResult = await pool.query(
+      `SELECT s.*, u.phone AS "teacherPhone" 
+       FROM syllabus s 
+       LEFT JOIN users u ON s."teacherId" = u.id 
+       WHERE substring(s."classLevel" FROM '\\d+') = substring($1 FROM '\\d+') 
+       ORDER BY s.subject ASC, s."createdAt" ASC`,
+      [classLevel]
+    );
+
+    return res.json({
+      success: true,
+      syllabus: syllabusResult.rows
+    });
+  } catch (error) {
+    console.error('Error fetching student syllabus:', error);
+    return res.status(500).json({ error: 'Failed to fetch syllabus' });
+  }
+});
+
 export default router;

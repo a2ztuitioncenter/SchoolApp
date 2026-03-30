@@ -150,6 +150,7 @@ export const studentAPI = {
   getDashboard: (userId) => apiCall(`/student/${userId}/dashboard`, { method: 'GET' }),
   getAttendance: (userId) => apiCall(`/student/${userId}/attendance`, { method: 'GET' }),
   getFees: (userId) => apiCall(`/student/${userId}/fees`, { method: 'GET' }),
+  getSyllabus: (userId) => apiCall(`/student/${userId}/syllabus`, { method: 'GET' }),
 };
 
 /**
