@@ -8,6 +8,11 @@ dist/
 build/
 .vscode/
 .idea/
+postman*
+.postman*
+uploads*
+.uploads*
+
 
 # Environment Variables
 .env
@@ -27,3 +32,5 @@ coverage/
 # Misc
 .cache/
 *.swp
+Tuition_App.pdf
+Week_Plan.md
