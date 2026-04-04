@@ -3,7 +3,7 @@
  * Full-featured admin dashboard with all CRUD operations restored.
  */
 
-import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile } from '../../core/api.js';
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
 
 
 let currentTab = 'dashboard';
@@ -26,6 +26,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const adminPhone = sessionStorage.getItem('adminPhone');
     const nameEl = document.getElementById('admin-name');
     if (nameEl) nameEl.textContent = `Admin (${adminPhone})`;
+
+    // Check backend health before loading dashboard
+    showInfoAlert('Checking backend connection...');
+    const isBackendReady = await waitForBackend(3, 1000);
+    
+    if (!isBackendReady) {
+        hideInfoAlert();
+        showErrorAlert('❌ Backend server is not responding. Please ensure the backend server is running on port 3000.');
+        console.error('Backend not available on localhost:3000');
+        return;
+    }
+    
+    hideInfoAlert();
 
     setupTabNavigation();
 

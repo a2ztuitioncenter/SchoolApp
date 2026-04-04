@@ -59,7 +59,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(compression());
+// IMPORTANT: Disable compression to prevent ERR_CONTENT_DECODING_FAILED errors
+// Comment out if you need it for large files
+// app.use(compression());
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
@@ -107,8 +110,26 @@ app.use('/api/admin/results', resultsRoutes);
 app.use('/api/download', downloadRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW()');
+    client.release();
+    res.json({ 
+      status: 'Healthy',
+      server: 'Running',
+      database: 'Connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'Unhealthy',
+      server: 'Running',
+      database: 'Disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Fallback: serve index.html for unknown routes
@@ -142,11 +163,18 @@ const startServer = async () => {
     }
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`\nServer running at http://localhost:${PORT}`);
-      console.log(`Master Portal: http://localhost:${PORT}/`);
-      console.log(`Student Login: http://localhost:${PORT}/student-login.html`);
-      console.log(`Admin Login: http://localhost:${PORT}/admin-login.html`);
-      console.log(`Teacher Login: http://localhost:${PORT}/teacher-login.html\n`);
+      console.log('\n╔═══════════════════════════════════════════════════════════╗');
+      console.log('║               BACKEND SERVER STARTED                      ║');
+      console.log('╚═══════════════════════════════════════════════════════════╝\n');
+      console.log(`Backend API Server: http://localhost:${PORT}`);
+      console.log(`  • Local: http://localhost:${PORT}/health`);
+      console.log(`  • Network: http://0.0.0.0:${PORT}/health`);
+      console.log(`  • Database: Connected ✓\n`);
+      console.log(`Quick Links:`);
+      console.log(`  • Student Login: http://localhost:${PORT}/student-login.html`);
+      console.log(`  • Admin Login: http://localhost:${PORT}/admin-login.html`);
+      console.log(`  • Teacher Login: http://localhost:${PORT}/teacher-login.html`);
+      console.log(`  • Health Check: http://localhost:${PORT}/health\n`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

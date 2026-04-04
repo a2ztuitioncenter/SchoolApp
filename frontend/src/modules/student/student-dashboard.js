@@ -3,7 +3,7 @@
  * Fetches data on page load and populates DOM elements
  */
 
-import { studentAPI, downloadFile, materialsAPI } from '../../core/api.js';
+import { studentAPI, downloadFile, materialsAPI, waitForBackend } from '../../core/api.js';
 
 // ===========================
 // Initialization on Page Load
@@ -11,8 +11,30 @@ import { studentAPI, downloadFile, materialsAPI } from '../../core/api.js';
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('📄 Dashboard initializing...');
 
-
   try {
+    // Check backend health before loading dashboard
+    console.log('⏳ Checking backend connection...');
+    const isBackendReady = await waitForBackend(3, 1000);
+    
+    if (!isBackendReady) {
+      console.error('❌ Backend server is not responding');
+      const errorDiv = document.querySelector('.dashboard-card');
+      if (errorDiv) {
+        errorDiv.innerHTML = `
+          <div style="padding: 2rem; text-align: center; color: #cf222e;">
+            <h2>⚠️ Connection Error</h2>
+            <p>Backend server is not responding. Please ensure:</p>
+            <ul style="text-align: left; display: inline-block;">
+              <li>Backend server is running on port 3000</li>
+              <li>PostgreSQL database is connected</li>
+              <li>Run: <code>node backend/src/server.js</code></li>
+            </ul>
+          </div>
+        `;
+      }
+      return;
+    }
+
     // Get userId from sessionStorage (set during login)
     let userId = sessionStorage.getItem('studentUserId');
 
