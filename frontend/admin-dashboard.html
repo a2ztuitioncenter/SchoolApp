@@ -896,12 +896,9 @@
         </div>
     </div>
 
-    <!-- Theme init: apply saved theme instantly -->
+    <!-- Light mode only: no theme toggling -->
     <script>
-        (function() {
-            var saved = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', saved);
-        })();
+        document.documentElement.setAttribute('data-theme', 'light');
     </script>
     <script type="module" src="./src/modules/admin/admin-dashboard.js"></script>
 </body>

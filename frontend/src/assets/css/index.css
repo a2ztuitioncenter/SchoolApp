@@ -4,25 +4,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 :root {
-    --bg-primary: #0d1117;
-    --bg-secondary: #161b22;
-    --border-subtle: #30363d;
-    --text-main: #c9d1d9;
-    --text-muted: #8b949e;
-    --accent-blue: #1f6feb;
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --border-subtle: #e5e7eb;
+    --text-main: #1a1a1a;
+    --text-muted: #666666;
+    --accent-blue: #0052cc;
     --radius-sm: 6px;
     --transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
-}
-
-@media (prefers-color-scheme: light) {
-    :root {
-        --bg-primary: #f6f8fa;
-        --bg-secondary: #ffffff;
-        --border-subtle: #d0d7de;
-        --text-main: #24292f;
-        --text-muted: #57606a;
-        --accent-blue: #0969da;
-    }
 }
 
 
@@ -107,30 +96,6 @@ header {
     color: var(--accent-blue);
 }
 
-.theme-toggle-btn {
-    background: transparent;
-    border: 1px solid var(--border-subtle);
-    color: var(--text-muted);
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all var(--transition);
-    font-size: 0.8rem;
-}
-
-.theme-toggle-btn:hover {
-    background-color: rgba(139, 148, 158, 0.1);
-    color: var(--text-main);
-}
-
-:root[data-theme="light"] .theme-toggle-btn i {
-    color: #9a6700;
-}
-
 /* Bottom Bar */
 .header-bottom {
     background-color: var(--bg-primary);
@@ -208,7 +173,7 @@ header {
 }
 
 .btn-learn-more:hover {
-    background-color: #388bfd;
+    background-color: #0043a8;
 }
 
 .hero-image {
