@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS fees (
     amount DECIMAL(10, 2) NOT NULL,
     description VARCHAR(200),
     "dueDate" DATE NOT NULL,
-    paid BOOLEAN DEFAULT FALSE,
+    "isPaid" BOOLEAN DEFAULT FALSE,
     "paidDate" DATE,
     status VARCHAR(20) DEFAULT 'pending',
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
