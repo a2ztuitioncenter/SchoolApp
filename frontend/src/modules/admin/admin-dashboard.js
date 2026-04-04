@@ -590,8 +590,11 @@ window.loadAttendanceSummary = async function () {
 // =============================================
 // HOMEWORK - FULL CRUD
 // =============================================
+let showAllHomework = false;
+
 async function loadAllHomework() {
     try {
+        showAllHomework = false; // Reset pagination when loading fresh data
         const res = await homeworkAPI.getAll();
         allHomeworkData = res.data || [];
         renderHomeworkTable(allHomeworkData);
@@ -602,8 +605,21 @@ async function loadAllHomework() {
 
 function renderHomeworkTable(list) {
     const tbody = document.getElementById('homework-table-body');
+    const toggleBtn = document.getElementById('btn-toggle-homework');
+    const countText = document.getElementById('homework-count-text');
     if (!tbody) return;
-    tbody.innerHTML = list.length ? list.map((hw, i) => {
+
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No homework found. Add one below.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 10;
+    const toShow = showAllHomework ? list : list.slice(0, displayLimit);
+    
+    tbody.innerHTML = toShow.map((hw, i) => {
         const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
         return `<tr>
             <td>${i + 1}</td>
@@ -617,8 +633,22 @@ function renderHomeworkTable(list) {
                 <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})">Delete</button>
             </td>
         </tr>`;
-    }).join('') : '<tr><td colspan="7" class="empty-state">No homework found. Add one below.</td></tr>';
+    }).join('');
+
+    // Show toggle button if more items exist
+    if(toggleBtn) {
+        toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
+        toggleBtn.textContent = showAllHomework ? 'Show Less Homework' : `Show More Homework (${list.length})`;
+    }
+    if(countText) {
+        countText.textContent = showAllHomework ? '' : `Showing ${toShow.length} of ${list.length}`;
+    }
 }
+
+window.toggleShowAllHomework = function() {
+    showAllHomework = !showAllHomework;
+    filterHomework();
+};
 
 window.filterHomework = function () {
     const q = (document.getElementById('hw-filter-class')?.value || '').toLowerCase();
@@ -877,34 +907,186 @@ window.deleteFeeRecord = async function (id) {
 // =============================================
 // MATERIALS
 // =============================================
+
+let allMaterialsData = [];
+let showAllMaterials = false;
+
 async function loadMaterials() {
     try {
+        showAllMaterials = false; // Reset pagination when loading fresh data
         const res = await materialsAPI.getAll();
-        const list = res.data || [];
-        const tbody = document.getElementById('materials-tbody');
-        if (!tbody) return;
-        tbody.innerHTML = list.length ? list.map(m => `
-            <tr>
-                <td>${m.title}</td>
-                <td>${m.subject}</td>
-                <td>Class ${m.classLevel}</td>
-                <td>${m.uploadedBy || '-'}</td>
-                <td>
-                    <button class="btn-sm" style="background:#667eea; color:white; margin-right:5px;" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="btn-sm" style="background:#48bb78; color:white; margin-right:5px;" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})'>
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="5" class="empty-state">No materials found</td></tr>';
+        allMaterialsData = res.data || [];
+        
+        // Update stats
+        updateMaterialsStats();
+        
+        // Render table and mobile view
+        renderMaterialsTable();
     } catch (err) {
         console.error('Error loading materials:', err);
+        showErrorAlert('Failed to load materials');
     }
+}
+
+function updateMaterialsStats() {
+    const totalCount = allMaterialsData.length;
+    const uniqueClasses = new Set(allMaterialsData.map(m => m.classLevel)).size;
+    const uniqueSubjects = new Set(allMaterialsData.map(m => m.subject)).size;
+    
+    // Count materials uploaded this week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const thisWeekCount = allMaterialsData.filter(m => {
+        const uploadDate = new Date(m.createdAt);
+        return uploadDate >= oneWeekAgo;
+    }).length;
+
+    document.getElementById('material-total-count').textContent = totalCount;
+    document.getElementById('material-classes-count').textContent = uniqueClasses;
+    document.getElementById('material-subjects-count').textContent = uniqueSubjects;
+    document.getElementById('material-week-count').textContent = thisWeekCount;
+}
+
+function renderMaterialsTable() {
+    const tbody = document.getElementById('materials-tbody');
+    const toggleBtn = document.getElementById('btn-toggle-materials');
+    const countText = document.getElementById('materials-count-text');
+    const list = getFilteredMaterials();
+    
+    if (!tbody) return;
+
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i> No materials found</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 10;
+    const toShow = showAllMaterials ? list : list.slice(0, displayLimit);
+    
+    tbody.innerHTML = toShow.map(m => `
+        <tr>
+            <td>
+                <strong>${escapeHtml(m.title)}</strong>
+                ${m.description ? `<br><small style="color: var(--text-muted);">${escapeHtml(m.description.substring(0, 50))}</small>` : ''}
+            </td>
+            <td>${escapeHtml(m.subject)}</td>
+            <td><span class="badge">Class ${escapeHtml(m.classLevel)}</span></td>
+            <td>${escapeHtml(m.uploadedBy || '-')}</td>
+            <td>
+                <small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    // Show toggle button if more items exist
+    if(toggleBtn) {
+        toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
+        toggleBtn.textContent = showAllMaterials ? 'Show Less Materials' : `Show More Materials (${list.length})`;
+    }
+    if(countText) {
+        countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
+    }
+
+    // Render mobile cards
+    renderMaterialsCards(toShow);
+}
+
+window.toggleShowAllMaterials = function() {
+    showAllMaterials = !showAllMaterials;
+    renderMaterialsTable();
+};
+
+function renderMaterialsCards(list) {
+    const cardsContainer = document.getElementById('materials-cards');
+    if (!cardsContainer) return;
+
+    cardsContainer.innerHTML = list.length ? list.map(m => `
+        <div class="material-card">
+            <div class="material-card-header">
+                <h3 class="material-card-title">${escapeHtml(m.title)}</h3>
+            </div>
+            <div class="material-card-content">
+                ${m.description ? `<p style="margin: 0 0 0.75rem; font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(m.description)}</p>` : ''}
+                <div class="material-card-meta">
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-book-open" style="color: var(--accent-blue);"></i>
+                        <span><strong>${escapeHtml(m.subject)}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-chalkboard" style="color: var(--success);"></i>
+                        <span>Class <strong>${escapeHtml(m.classLevel)}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
+                        <i class="fas fa-user" style="color: var(--warning);"></i>
+                        <span><strong>${escapeHtml(m.uploadedBy || 'Unknown')}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
+                        <i class="fas fa-calendar" style="color: var(--text-muted);"></i>
+                        <span>${formatDate(m.createdAt)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="material-card-actions">
+                <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('') : '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No materials found</p>';
+}
+
+function getFilteredMaterials() {
+    const searchTerm = document.getElementById('material-search')?.value.toLowerCase() || '';
+    const classFilter = document.getElementById('material-class-filter')?.value || '';
+    const subjectFilter = document.getElementById('material-subject-filter')?.value || '';
+
+    return allMaterialsData.filter(m => {
+        const matchesSearch = !searchTerm || 
+            m.title.toLowerCase().includes(searchTerm) || 
+            m.subject.toLowerCase().includes(searchTerm) ||
+            (m.description && m.description.toLowerCase().includes(searchTerm));
+        
+        const matchesClass = !classFilter || m.classLevel === classFilter;
+        const matchesSubject = !subjectFilter || m.subject === subjectFilter;
+
+        return matchesSearch && matchesClass && matchesSubject;
+    });
+}
+
+window.filterMaterials = function() {
+    renderMaterialsTable();
+};
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 window.saveMaterial = async function(e) {
@@ -1237,6 +1419,7 @@ async function loadTimetable() {
     if (!list) return;
 
     try {
+        showAllTimetable = false; // Reset pagination when loading fresh data
         showInfoAlert('Loading timetable...');
         // First load classes and teachers for the dropdown
         const [ttRes, classesRes, usersRes] = await Promise.all([
@@ -1259,38 +1442,70 @@ async function loadTimetable() {
             teacherSel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.id}">${t.phone}</option>`).join('');
         }
 
-        const items = ttRes.timetable || [];
+        allTimetableData = ttRes.timetable || [];
         hideInfoAlert();
 
-        if (items.length === 0) {
-            list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
-            return;
-        }
-
-        function formatTime(t) {
-            try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
-            catch(e) { return t; }
-        }
-
-        list.innerHTML = items.map(t => `
-            <tr>
-                <td>${t.dayOfWeek}</td>
-                <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
-                <td>${t.subject}</td>
-                <td>${t.classLevel}</td>
-                <td>${t.teacherPhone || t.teacherId}</td>
-                <td>
-                    <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        renderTimetableTable(allTimetableData);
     } catch (err) {
         hideInfoAlert();
         showErrorAlert('Failed to load timetable: ' + err.message);
     }
 }
+
+let allTimetableData = [];
+let showAllTimetable = false;
+
+function renderTimetableTable(items) {
+    const list = document.getElementById('timetable-list');
+    const toggleBtn = document.getElementById('btn-toggle-timetable');
+    const countText = document.getElementById('timetable-count-text');
+    
+    if (!list) return;
+
+    if (items.length === 0) {
+        list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 10;
+    const toShow = showAllTimetable ? items : items.slice(0, displayLimit);
+
+    function formatTime(t) {
+        try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
+        catch(e) { return t; }
+    }
+
+    list.innerHTML = toShow.map(t => `
+        <tr>
+            <td>${t.dayOfWeek}</td>
+            <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
+            <td>${t.subject}</td>
+            <td>${t.classLevel}</td>
+            <td>${t.teacherPhone || t.teacherId}</td>
+            <td>
+                <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    // Show toggle button if more items exist
+    if(toggleBtn) {
+        toggleBtn.style.display = items.length > displayLimit ? 'block' : 'none';
+        toggleBtn.textContent = showAllTimetable ? 'Show Less Timetable' : `Show More Timetable (${items.length})`;
+    }
+    if(countText) {
+        countText.textContent = showAllTimetable ? '' : `Showing ${toShow.length} of ${items.length}`;
+    }
+}
+
+window.toggleShowAllTimetable = function() {
+    showAllTimetable = !showAllTimetable;
+    renderTimetableTable(allTimetableData);
+};
 
 window.deleteTimetableRecord = async function(id) {
     if (!confirm('Delete this timetable entry?')) return;

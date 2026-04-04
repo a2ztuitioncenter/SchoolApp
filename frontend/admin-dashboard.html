@@ -472,6 +472,12 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Pagination / Show More for Homework -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()" style="display: none;">Show More Homework</button>
+                    <div id="homework-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
             </div>
 
             <!-- Fees & Financials Tab -->
@@ -556,29 +562,113 @@
 
             <!-- Study Materials Tab -->
             <div id="tab-materials" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                <div class="tab-header">
-                    <h2><i class="fas fa-folder-open"></i> Study Materials</h2>
-                    <button class="btn btn-primary" onclick="openMaterialModal()">
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-folder-open"></i> Study Materials</h2>
+                        <p class="section-subtitle">Manage and distribute study materials to students</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openMaterialModal()">
                         <i class="fas fa-plus"></i> Add Material
                     </button>
                 </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Subject</th>
-                                <th>Class</th>
-                                <th>Uploaded By</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="materials-tbody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(31, 111, 235, 0.1); color: var(--accent-blue);">
+                            <i class="fas fa-file"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Materials</div>
+                            <div class="stat-number" id="material-total-count">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(36, 134, 54, 0.1); color: var(--success);">
+                            <i class="fas fa-chalkboard"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Classes Covered</div>
+                            <div class="stat-number" id="material-classes-count">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(217, 153, 34, 0.1); color: var(--warning);">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Subjects</div>
+                            <div class="stat-number" id="material-subjects-count">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(31, 111, 235, 0.1); color: var(--accent-blue);">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">This Week</div>
+                            <div class="stat-number" id="material-week-count">0</div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Search & Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="material-search" placeholder="Search by title or subject..." onkeyup="filterMaterials()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="material-class-filter" onchange="filterMaterials()">
+                            <option value="">All Classes</option>
+                            <option value="8">Class 8</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                        <select id="material-subject-filter" onchange="filterMaterials()">
+                            <option value="">All Subjects</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="English">English</option>
+                            <option value="History">History</option>
+                            <option value="Geography">Geography</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Materials Table -->
+                <div class="table-wrapper">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Subject</th>
+                                    <th>Class</th>
+                                    <th>Uploaded By</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materials-tbody">
+                                <tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i> No materials found</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination / Show More for Materials -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-materials" onclick="toggleShowAllMaterials()" style="display: none;">Show More Materials</button>
+                    <div id="materials-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
+
+                <!-- Mobile Card View (Hidden on Desktop) -->
+                <div id="materials-mobile-list" style="display: none; margin-top: 1rem;">
+                    <div id="materials-cards" class="materials-cards"></div>
                 </div>
             </div>
 
@@ -651,6 +741,12 @@
                             </table>
                         </div>
                     </div>
+                </div>
+
+                <!-- Pagination / Show More for Timetable -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-timetable" onclick="toggleShowAllTimetable()" style="display: none;">Show More Timetable</button>
+                    <div id="timetable-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
