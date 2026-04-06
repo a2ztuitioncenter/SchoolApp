@@ -52,3 +52,8 @@ export const getStudentByUserId = async (pool, userId) => {
   );
   return result.rows[0] || null;
 };
+
+export const getStudentById = async (pool, id) => {
+  const result = await pool.query('SELECT * FROM students WHERE id = $1', [id]);
+  return result.rows[0] || null;
+};

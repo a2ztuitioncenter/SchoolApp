@@ -1,4 +1,5 @@
 import { feeModel } from './Fee.js';
+import { getStudentById } from '../student/Student.js';
 
 export const addFee = async (req, res) => {
   try {
@@ -6,8 +7,16 @@ export const addFee = async (req, res) => {
     const studentId = req.body.studentId || req.body.student_id;
     const dueDate = req.body.dueDate || req.body.due_date;
     const { amount, description } = req.body;
+    
     if (!studentId || !amount || !dueDate)
       return res.status(400).json({ error: 'studentId, amount, dueDate required' });
+
+    // Validate student exists to prevent foreign key violation
+    const student = await getStudentById(req.db, studentId);
+    if (!student) {
+      return res.status(404).json({ error: `Student with ID ${studentId} does not exist.` });
+    }
+
     const fee = await feeModel.addFee({ studentId, amount, description, dueDate });
     res.status(201).json({ message: 'Fee added', data: fee });
   } catch (err) {
