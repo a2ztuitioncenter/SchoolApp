@@ -72,11 +72,20 @@ function setupTabs() {
   });
 
   // Logout
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
+  document.getElementById('header-logout-btn')?.addEventListener('click', () => {
     sessionStorage.removeItem('teacherId');
     sessionStorage.removeItem('teacherRole');
     sessionStorage.removeItem('teacherPhone');
     window.location.href = '/teacher-login.html';
+  });
+
+  // Close profile dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+      const profileContainer = document.querySelector('.admin-profile-container');
+      const dropdown = document.getElementById('profile-dropdown');
+      if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
+          dropdown.classList.remove('active');
+      }
   });
 }
 

@@ -467,10 +467,107 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
-
 .notification-badge.global {
     background: rgba(46, 204, 113, 0.1);
     color: #1a7f37;
     border-color: rgba(46, 204, 113, 0.3);
 }
+
+/* ============================================
+   PROFILE DROPDOWN
+   ============================================ */
+.admin-profile-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.profile-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #f6f8fa;
+    color: var(--accent-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.profile-avatar:hover {
+    background-color: var(--border-subtle);
+    transform: scale(1.05);
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 220px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+    z-index: 1050;
+}
+
+.profile-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.profile-dropdown .dropdown-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-dropdown .dropdown-header .user-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.profile-dropdown .dropdown-header .user-role {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.profile-dropdown .dropdown-divider {
+    height: 1px;
+    background-color: var(--border-subtle);
+    margin: 0;
+}
+
+.profile-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    color: #E74C3C;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+}
+
+.profile-dropdown .dropdown-item:hover {
+    background-color: rgba(231, 76, 60, 0.05);
+}
+
+.profile-dropdown .dropdown-item i {
+    font-size: 1rem;
+}
+
 

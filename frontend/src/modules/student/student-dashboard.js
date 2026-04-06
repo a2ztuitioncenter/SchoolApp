@@ -71,6 +71,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Tab Switching Logic
     setupTabSwitching();
+
+    // Header Logout
+    const logoutBtn = document.getElementById('header-logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', logout);
+    }
+
+    // Close profile dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const profileContainer = document.querySelector('.admin-profile-container');
+        const dropdown = document.getElementById('profile-dropdown');
+        if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+
   } catch (error) {
     console.error('❌ Dashboard initialization failed:', error);
     showErrorMessage('Failed to load dashboard. Please refresh the page.');
@@ -451,5 +467,5 @@ function showErrorMessage(message) {
 export function logout() {
   sessionStorage.removeItem('studentUserId');
   sessionStorage.removeItem('authToken');
-  window.location.href = '/';
+  window.location.href = '/student-login.html';
 }

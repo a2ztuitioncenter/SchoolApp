@@ -52,6 +52,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    // Header Logout
+    const logoutBtn = document.getElementById('header-logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('adminUserId');
+            sessionStorage.removeItem('adminRole');
+            sessionStorage.removeItem('adminPhone');
+            window.location.href = '/admin-login.html';
+        });
+    }
+
+    // Close profile dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const profileContainer = document.querySelector('.admin-profile-container');
+        const dropdown = document.getElementById('profile-dropdown');
+        if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+
     // Default tab
     await showTab('dashboard');
 
