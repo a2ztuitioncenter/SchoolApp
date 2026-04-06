@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://schoolapp-kwkb.onrender.com/api/:match*"
+    },
+    {
+      "source": "/uploads/:match*",
+      "destination": "https://schoolapp-kwkb.onrender.com/uploads/:match*"
+    }
+  ]
+}
