@@ -17,7 +17,7 @@ import notificationsRoutes from './features/notifications/notificationsRoutes.js
 import resultsRoutes    from './features/results/resultsRoutes.js';
 import downloadRoutes   from './features/download/downloadRoutes.js';
 
-import { initializeDatabase } from './config/database.js';
+import pool, { initializeDatabase } from './config/database.js';
 
 import fs from 'fs';
 
@@ -29,20 +29,7 @@ const __dirname = path.dirname(__filename);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-const { Pool } = pkg;
 dotenv.config({ path: path.join(__dirname, '../.env') });
-
-// PostgreSQL Connection Pool Setup
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'tuition_app',
-  max: process.env.DB_CONNECTION_LIMIT || 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
 
 // Test the connection
 try {
