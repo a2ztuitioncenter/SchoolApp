@@ -111,10 +111,37 @@
 
             <!-- User Management Tab -->
             <div id="users" class="tab-content">
+                <!-- Filter Bar & Add User Button -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex: 1; flex-wrap: wrap;">
+                        <select id="user-role-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
+                            <option value="">All Roles</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <select id="user-status-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                        <div style="flex: 1; max-width: 400px; position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                            <input type="text" id="user-search" placeholder="Search by name, phone or email..." oninput="filterUsersTable()" style="padding-left: 2.5rem; width: 100%;">
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" id="btn-toggle-add-user" onclick="toggleAddUserForm()">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Add New User Form -->
-                <div class="card-grid" style="margin-top: 2rem;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3><i class="fas fa-user-plus"></i> Add New User</h3>
+                <div id="add-user-container" style="max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.4s ease-in-out, opacity 0.4s ease, margin 0.4s ease;">
+                    <div class="card-grid" style="margin-top: 1rem; margin-bottom: 2rem;">
+                        <div class="card" style="grid-column: 1 / -1; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); border: 1px solid var(--border-subtle);">
+                            <h3><i class="fas fa-user-plus"></i> Add New User</h3>
                         <form id="add-user-form" style="display: grid; gap: 1rem;">
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
@@ -141,6 +168,7 @@
                             <button type="submit" class="btn btn-primary">Add User</button>
                         </form>
                     </div>
+                </div>
                 </div>
 
                 <!-- Edit User Section (hidden by default) -->
@@ -176,25 +204,6 @@
                 </div>
 
                 <!-- Users Table -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <select id="user-role-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
-                            <option value="">All Roles</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                        <select id="user-status-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div style="flex: 1; max-width: 400px; position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." oninput="filterUsersTable()" style="padding-left: 2.5rem; width: 100%;">
-                    </div>
-                </div>
                 <div class="table-container" style="margin-top: 1rem;">
                     <table>
                         <thead>

@@ -1167,3 +1167,79 @@ textarea:focus {
 .profile-dropdown .dropdown-item i {
     font-size: 1rem;
 }
+
+/* ============================================
+   TABLE ROW OVERFLOW MENU
+   ============================================ */
+.table-actions {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-actions-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-actions-toggle:hover {
+    background-color: var(--border-subtle);
+    color: var(--text-main);
+}
+
+.actions-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 160px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+    z-index: 100;
+}
+
+.actions-dropdown-menu.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.actions-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    border: none;
+    background: none;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+}
+
+.actions-dropdown-item:hover {
+    background-color: var(--bg-hover);
+}
+
+.actions-dropdown-item.danger {
+    color: var(--danger);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.actions-dropdown-item.danger:hover {
+    background-color: rgba(207, 34, 46, 0.05); /* light red hover */
+}
+

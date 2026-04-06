@@ -261,6 +261,56 @@ window.toggleShowAllUsers = function() {
     filterUsersTable();
 };
 
+window.toggleAddUserForm = function() {
+    const container = document.getElementById('add-user-container');
+    const btn = document.getElementById('btn-toggle-add-user');
+    
+    if (!container || !btn) return;
+    
+    if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
+        // Open
+        container.style.maxHeight = '800px'; 
+        container.style.opacity = '1';
+        container.style.marginBottom = '2rem';
+        btn.innerHTML = '<i class="fas fa-times"></i> Close Form';
+        btn.style.backgroundColor = 'var(--text-muted)';
+        btn.style.borderColor = 'var(--text-muted)';
+    } else {
+        // Close
+        container.style.maxHeight = '0px';
+        container.style.opacity = '0';
+        container.style.marginBottom = '0';
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add User';
+        btn.style.backgroundColor = '';
+        btn.style.borderColor = '';
+    }
+};
+
+window.toggleUserActionsMenu = function(id, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    // close others
+    document.querySelectorAll('.actions-dropdown-menu.active').forEach(menu => {
+        if (menu.id !== `user-actions-${id}`) {
+            menu.classList.remove('active');
+        }
+    });
+    const menu = document.getElementById(`user-actions-${id}`);
+    if (menu) {
+        menu.classList.toggle('active');
+    }
+};
+
+// Global click to close open dropdowns
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.table-actions')) {
+        document.querySelectorAll('.actions-dropdown-menu.active').forEach(menu => {
+            menu.classList.remove('active');
+        });
+    }
+});
+
 function renderUsersTable(users) {
     const tbody = document.getElementById('users-list');
     const toggleBtn = document.getElementById('btn-toggle-users');
@@ -304,11 +354,20 @@ function renderUsersTable(users) {
             <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
             <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
             <td>
-                <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
-                <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
-                    <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
-                </button>
-                <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
+                <div class="table-actions">
+                    <button class="btn-actions-toggle" onclick="toggleUserActionsMenu(${u.id}, event)">⋮</button>
+                    <div class="actions-dropdown-menu" id="user-actions-${u.id}">
+                        <button class="actions-dropdown-item" onclick="editUser(${u.id})">
+                            <i class="fas fa-pen"></i> Edit User
+                        </button>
+                        <button class="actions-dropdown-item" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                            <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable User' : 'Enable User'}
+                        </button>
+                        <button class="actions-dropdown-item danger" onclick="deleteUserById(${u.id})">
+                            <i class="fas fa-trash"></i> Delete User
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>`;
     }).join('');
