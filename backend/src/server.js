@@ -66,15 +66,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve index.html (master landing / login selector) on root route
+// API Root Status
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, '../frontend/index.html');
-  res.sendFile(indexPath);
+  res.json({ message: "Tuition App Backend API is running perfectly." });
 });
 
-// Serve static files from frontend
-app.use(express.static(path.join(__dirname, '../../frontend')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
@@ -119,15 +116,9 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Fallback: serve index.html for unknown routes
+// Fallback: API 404 for unknown routes
 app.use((req, res) => {
-  const indexPath = path.join(__dirname, '../frontend/index.html');
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error('Error serving index.html:', err.message);
-      res.status(404).json({ error: 'Page not found' });
-    }
-  });
+  res.status(404).json({ error: 'API Endpoint not found' });
 });
 
 // Error Handling
