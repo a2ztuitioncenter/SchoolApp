@@ -19,19 +19,22 @@ export const attendanceModel = {
 
   async markBulk(records, userId) {
     const results = [];
+    console.log(`markBulk: Processing ${records.length} records`);
     for (const rec of records) {
+      console.log(`Processing studentId: ${rec.studentId}, class: ${rec.classLevel}, date: ${rec.date}, status: ${rec.status}`);
       const studentId = rec.studentId || rec.student_id;
       const date = rec.date || rec.attendanceDate;
       const r = await db.query(
         `INSERT INTO attendance ("studentId", "classLevel", date, status, "userId")
          VALUES ($1, $2, $3, $4, (SELECT "userId" FROM students WHERE id = $1))
-         ON CONFLICT ON CONSTRAINT attendance_studentId_date_key
+         ON CONFLICT ("studentId", date)
          DO UPDATE SET status = EXCLUDED.status, "classLevel" = EXCLUDED."classLevel"
          RETURNING *`,
         [studentId, rec.classLevel, date, rec.status]
       );
       results.push(r.rows[0]);
     }
+    console.log(`markBulk: Successfully processed ${results.length} records`);
     return results;
   },
 
