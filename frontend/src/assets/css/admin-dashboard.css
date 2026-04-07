@@ -992,7 +992,13 @@ textarea:focus {
 
 .material-card-actions .btn-table {
   flex: 1;
-  min-width: 80px;
+  min-width: calc(33.33% - 0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 4px;
+  font-size: 0.85rem;
 }
 
 /* Responsive Design */
@@ -1034,11 +1040,13 @@ textarea:focus {
     display: none;
   }
 
-  #materials-mobile-list {
+  #materials-mobile-list,
+  #users-mobile-list {
     display: block !important;
   }
 
-  .materials-cards {
+  .materials-cards,
+  .users-cards {
     grid-template-columns: 1fr;
   }
 
@@ -1227,4 +1235,96 @@ textarea:focus {
 
 .dropdown-item.text-danger i {
   color: var(--danger);
+}
+
+/* ============================================
+   USER MANAGEMENT (ERP STYLE)
+   ============================================ */
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--accent-blue-faded);
+  color: var(--accent-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name-text {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.user-email-text {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* 3-Dot Context Menu */
+.action-menu-container {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-icon-only {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon-only:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.action-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 160px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.action-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(4px);
+}
+
+.action-dropdown .dropdown-item {
+  padding: 8px 16px;
+  font-size: 13px;
 }

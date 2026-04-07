@@ -284,13 +284,13 @@ function renderUsersTable(users) {
     if (!tbody) return;
 
     if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users matching criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No users matching criteria.</td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 5;
+    const displayLimit = 10;
     const toShow = showAllUsers ? users : users.slice(0, displayLimit);
     
     if (toggleBtn) {
@@ -307,27 +307,99 @@ function renderUsersTable(users) {
     }
 
     tbody.innerHTML = toShow.map(u => {
-        const roleColors = {
-            teacher: 'background:#d6eaf8;color:#154360',
-            staff: 'background:#d5f5e3;color:#145a32',
-            admin: 'background:#fadbd8;color:#78281f',
-        };
-        const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
+        const initials = (u.name || (u.phone+'') || '?').charAt(0).toUpperCase();
         return `
         <tr>
-            <td>${u.phone}</td>
-            <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
-            <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
-            <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
             <td>
-                <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
-                <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
-                    <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
-                </button>
-                <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
+                <div class="user-cell">
+                    <div class="user-avatar">${initials}</div>
+                    <div class="user-info">
+                        <span class="user-name-text">${u.name || 'User'}</span>
+                        <span class="user-email-text">${u.email || u.phone}</span>
+                    </div>
+                </div>
+            </td>
+            <td><span class="badge" style="text-transform: capitalize;">${u.role}</span></td>
+            <td>
+                <span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">
+                    ${u.isActive ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td style="text-align:right;">
+                <div class="action-menu-container">
+                    <button class="btn-icon-only action-menu-btn" onclick="toggleUserActionMenu(event, ${u.id})">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <div id="user-actions-${u.id}" class="action-dropdown">
+                        <button class="dropdown-item" onclick="editUser(${u.id})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="dropdown-item" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                            <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item text-danger" onclick="deleteUserById(${u.id})">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>`;
     }).join('');
+
+    // Render mobile cards
+    renderUsersCards(toShow);
+}
+
+function renderUsersCards(list) {
+    const cardsContainer = document.getElementById('users-cards');
+    if (!cardsContainer) return;
+
+    cardsContainer.innerHTML = list.length ? list.map(u => {
+        // Use name if it exists and isn't "User" (default), else initials of email or phone
+        let initials = '?';
+        if (u.name && u.name !== 'User') {
+            initials = u.name.charAt(0).toUpperCase();
+        } else if (u.email) {
+            initials = u.email.charAt(0).toUpperCase();
+        } else if (u.phone) {
+            initials = (u.phone + '').charAt(0);
+        }
+
+        return `
+        <div class="material-card">
+            <div class="material-card-header" style="display:flex; align-items:center; gap:12px;">
+                <div class="user-avatar" style="flex-shrink:0;">${initials}</div>
+                <div class="user-info">
+                    <h3 class="material-card-title" style="margin:0;">${u.name || 'User'}</h3>
+                    <p class="user-email-text" style="font-size: 0.8rem;">${u.email || u.phone}</p>
+                </div>
+            </div>
+            <div class="material-card-content" style="margin: 1rem 0;">
+                <div class="material-card-meta">
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-user-tag" style="color: var(--accent-blue);"></i>
+                        <span>Role: <strong>${u.role}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-circle" style="color: ${u.isActive ? 'var(--success)' : 'var(--warning)'}; font-size:8px;"></i>
+                        <span>Status: <strong>${u.isActive ? 'Active' : 'Inactive'}</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div class="material-card-actions">
+                <button class="btn-table btn-edit" onclick="editUser(${u.id})">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn-table ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                    <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-table btn-delete" onclick="deleteUserById(${u.id})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>`;
+    }).join('') : '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No users found</p>';
 }
 
 window.editUser = function (id) {
@@ -337,13 +409,11 @@ window.editUser = function (id) {
     document.getElementById('edit-user-phone').value = user.phone || '';
     document.getElementById('edit-user-email').value = user.email || '';
     document.getElementById('edit-user-role').value = user.role || 'teacher';
-    document.getElementById('edit-user-section').style.display = 'grid';
-    document.getElementById('edit-user-section').scrollIntoView({ behavior: 'smooth' });
+    openEditUserModal();
 };
 
 window.cancelEditUser = function () {
-    document.getElementById('edit-user-section').style.display = 'none';
-    document.getElementById('edit-user-form').reset();
+    closeEditUserModal();
 };
 
 window.deleteUserById = async function (id) {
@@ -1251,23 +1321,22 @@ function setupForms() {
             password: document.getElementById('user-password')?.value
         };
         if (!payload.name || !payload.phone || !payload.role || !payload.password) {
-            showErrorAlert('Name, Phone, Role, and Password are required');
+            showErrorAlert('All required fields (*) must be filled');
             return;
         }
         try {
-            console.log('📤 Adding user:', payload.phone);
             showInfoAlert('Adding user...');
             const res = await adminAPI.addUser(payload);
             hideInfoAlert();
             if (res.success) { 
-                showSuccessAlert('User added!'); 
+                showSuccessAlert('User added successfully!'); 
                 document.getElementById('add-user-form').reset();
+                closeAddUserModal();
                 await loadUsers(); 
             }
             else showErrorAlert(res.error || 'Failed to add user');
         } catch (err) { 
             hideInfoAlert();
-            console.error('Error adding user:', err);
             showErrorAlert(err.message || 'Failed to add user'); 
         }
     });
@@ -1284,8 +1353,8 @@ function setupForms() {
             showInfoAlert('Updating user...');
             const res = await adminAPI.updateUser(id, payload);
             if (res.success) {
-                showSuccessAlert('User updated!');
-                document.getElementById('edit-user-section').style.display = 'none';
+                showSuccessAlert('User updated successfully!');
+                closeEditUserModal();
                 e.target.reset();
                 await loadUsers();
             } else {
@@ -1583,3 +1652,39 @@ window.deleteTimetableRecord = async function(id) {
     }
 };
 
+window.openAddUserModal = function() {
+    const modal = document.getElementById('addUserModal');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.closeAddUserModal = function() {
+    const modal = document.getElementById('addUserModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.openEditUserModal = function() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.closeEditUserModal = function() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleUserActionMenu = function(event, id) {
+    event.stopPropagation();
+    const dropdown = document.getElementById(`user-actions-${id}`);
+    
+    // Close other open dropdowns
+    document.querySelectorAll('.action-dropdown.open').forEach(d => {
+        if (d !== dropdown) d.classList.remove('open');
+    });
+
+    dropdown?.classList.toggle('open');
+};
+
+// Global click listener to close dropdowns
+document.addEventListener('click', () => {
+    document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
+});

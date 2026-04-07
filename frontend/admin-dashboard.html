@@ -117,16 +117,86 @@
 
             <!-- User Management Tab -->
             <div id="users" class="tab-content">
-                <!-- Add New User Form -->
-                <div class="card-grid" style="margin-top: 2rem;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3><i class="fas fa-user-plus"></i> Add New User</h3>
-                        <form id="add-user-form" style="display: grid; gap: 1rem;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Full Name *</label>
-                                    <input type="text" id="user-name" placeholder="Enter full name" required>
-                                </div>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-users"></i> User Management</h2>
+                        <p class="section-subtitle">Manage staff, teachers, and system administrators.</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddUserModal()">
+                        <i class="fas fa-plus"></i> Add User
+                    </button>
+                </div>
+
+                <!-- Search & Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." onkeyup="filterUsersTable()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="user-role-filter" onchange="filterUsersTable()">
+                            <option value="">All Roles</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <select id="user-status-filter" onchange="filterUsersTable()">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-wrapper">
+                    <div class="table-container list-view-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-list">
+                                <tr>
+                                    <td colspan="4" class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No users found. Add a new user to get started.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mobile Card View (Hidden on Desktop) -->
+                <div id="users-mobile-list" style="display: none; margin-top: 1rem;">
+                    <div id="users-cards" class="users-cards"></div>
+                </div>
+
+                <!-- Pagination / Show More for Users -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()" style="display: none;">Show All Users</button>
+                    <div id="users-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
+
+                <!-- Add User Modal -->
+                <div id="addUserModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-user-plus"></i> Add New User</h2>
+                            <span class="close" onclick="closeAddUserModal()">&times;</span>
+                        </div>
+                        <form id="add-user-form">
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" id="user-name" placeholder="Enter full name" required>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number *</label>
                                     <input type="tel" id="user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
@@ -135,6 +205,8 @@
                                     <label>Email</label>
                                     <input type="email" id="user-email" placeholder="user@a2z.local">
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Role *</label>
                                     <select id="user-role" required>
@@ -143,26 +215,28 @@
                                         <option value="staff">Staff</option>
                                     </select>
                                 </div>
-                                <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="form-group">
                                     <label>Login Password *</label>
                                     <input type="password" id="user-password" placeholder="Enter login password" required>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Add User</button>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">Create User</button>
+                            </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Edit User Section (hidden by default) -->
-                <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-user-section">
-                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid var(--accent-blue);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3><i class="fas fa-user-edit"></i> Edit User</h3>
-                            <button class="btn" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main);" onclick="cancelEditUser()">✕ Cancel</button>
+                <!-- Edit User Modal -->
+                <div id="editUserModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-user-edit"></i> Edit User</h2>
+                            <span class="close" onclick="closeEditUserModal()">&times;</span>
                         </div>
-                        <form id="edit-user-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
+                        <form id="edit-user-form">
                             <input type="hidden" id="edit-user-id">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number</label>
                                     <input type="tel" id="edit-user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
@@ -171,65 +245,20 @@
                                     <label>Email</label>
                                     <input type="email" id="edit-user-email" placeholder="user@a2z.local">
                                 </div>
-                                <div class="form-group">
-                                    <label>Role</label>
-                                    <select id="edit-user-role" required>
-                                        <option value="teacher">Teacher</option>
-                                        <option value="staff">Staff</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <div class="form-group">
+                                <label>Role</label>
+                                <select id="edit-user-role" required>
+                                    <option value="teacher">Teacher</option>
+                                    <option value="staff">Staff</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+                            </div>
                         </form>
                     </div>
-                </div>
-
-                <!-- Users Table -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <select id="user-role-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
-                            <option value="">All Roles</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                        <select id="user-status-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div style="flex: 1; max-width: 400px; position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." oninput="filterUsersTable()" style="padding-left: 2.5rem; width: 100%;">
-                    </div>
-                </div>
-                <div class="table-container" style="margin-top: 1rem;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Phone</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-list">
-                            <tr>
-                                <td colspan="5" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No users found. Add a new user to get started.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination / Show More for Users -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()" style="display: none;">Show All Users</button>
-                    <div id="users-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
