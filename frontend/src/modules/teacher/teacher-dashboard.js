@@ -81,7 +81,11 @@ function setupTabs() {
 }
 
 function init() {
+  const nameEl = document.getElementById('teacher-name');
+  if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
+  
   setupTabs();
+  setupFormListeners();
   loadDashboard();
 }
 
@@ -124,7 +128,7 @@ function renderTodayTimetable() {
   const todayEntries = allTimetable.filter(e => e.dayOfWeek === today);
 
   if (!todayEntries.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty-state"><i class="fas fa-calendar-times"></i><p>No classes today.</p></td></tr>`;
+    tbody.innerHTML = renderEmptyState(4, 'No classes today.', 'fa-calendar-times');
     return;
   }
 
@@ -224,7 +228,7 @@ window.loadAttendanceSheet = async function() {
 
     if (!students.length) {
       container.style.display = 'block';
-      tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No students found in this class.</td></tr>`;
+      tbody.innerHTML = renderEmptyState(4, 'No students found in this class.');
       return;
     }
 
@@ -284,7 +288,7 @@ function renderHomeworkTable() {
   const tbody = document.getElementById('hw-table-body');
     const onlyHws = allHomework.filter(h => h.type === 'homework');
     if (!onlyHws.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No homework yet. Add one!</p></td></tr>`;
+      tbody.innerHTML = renderEmptyState(5, 'No homework yet. Add one!');
       return;
     }
     tbody.innerHTML = onlyHws.map(hw => {
@@ -343,7 +347,7 @@ function renderDppTable() {
   if(!tbody) return;
   const onlyDpps = allHomework.filter(h => h.type === 'daily_practice');
   if (!onlyDpps.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No practice problems yet.</p></td></tr>`;
+    tbody.innerHTML = renderEmptyState(5, 'No practice problems yet.');
     return;
   }
   tbody.innerHTML = onlyDpps.map(hw => {
@@ -373,30 +377,7 @@ window.openHwModal = async function(typeOrHw = 'homework') {
   document.getElementById('hw-edit-id').value = hw?.id || '';
   document.getElementById('hw-modal-title').textContent = hw ? `Edit ${isDpp ? 'Practice' : 'Homework'}` : `Add ${isDpp ? 'Practice' : 'Homework'}`;
   document.getElementById('hw-type').value = type;
-
-  if (hw) {
-      document.getElementById('hw-classLevel').value = hw.classLevel || '';
-      document.getElementById('hw-section').value   = hw.section || '';
-      document.getElementById('hw-subject').value   = hw.subject || '';
-      document.getElementById('hw-title').value     = hw.title || '';
-      document.getElementById('hw-description').value = hw.description || '';
-      if (document.getElementById('hw-dueDate')) document.getElementById('hw-dueDate').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
-  }
-
-  const modal = document.getElementById('hw-modal');
-  if (modal) modal.style.display = 'flex';
-
-  const dueDateContainer = document.getElementById('hw-dueDate-container');
   const dueDateInput = document.getElementById('hw-dueDate');
-  if (dueDateContainer && dueDateInput) {
-      if (isDpp) {
-          dueDateContainer.style.display = 'none';
-          dueDateInput.required = false;
-      } else {
-          dueDateContainer.style.display = 'block';
-          dueDateInput.required = true;
-      }
-  }
 
   if (hw) {
     document.getElementById('hw-classLevel').value   = hw.classLevel || '';
@@ -404,13 +385,35 @@ window.openHwModal = async function(typeOrHw = 'homework') {
     document.getElementById('hw-subject').value      = hw.subject    || '';
     document.getElementById('hw-title').value        = hw.title      || '';
     document.getElementById('hw-description').value  = hw.description|| '';
-    if (!isDpp && dueDateInput) dueDateInput.value      = hw.dueDate ? hw.dueDate.split('T')[0] : '';
   }
-  document.getElementById('hw-modal').classList.add('open');
+
+  if (dueDateInput) {
+    dueDateInput.required = !isDpp;
+    if (isDpp) {
+      dueDateInput.value = '';
+    } else if (hw) {
+      dueDateInput.value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+    }
+  }
+
+  const modal = document.getElementById('hw-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+  }
+
+  const dueDateContainer = document.getElementById('hw-dueDate-container');
+  if (dueDateContainer) {
+    dueDateContainer.style.display = isDpp ? 'none' : 'block';
+  }
 };
 
 window.closeHwModal = function() {
-  document.getElementById('hw-modal').classList.remove('open');
+  const modal = document.getElementById('hw-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
+  }
 };
 
 window.editHomework = function(id) {
@@ -427,7 +430,7 @@ window.deleteHomework = async function(id) {
   } catch (err) { showError(err.message); }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+function setupFormListeners() {
   document.getElementById('hw-form')?.addEventListener('submit', async e => {
     e.preventDefault();
     const id = document.getElementById('hw-edit-id').value;
@@ -454,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) { hideInfo(); showError(err.message); }
   });
 
-  // ─── MATERIALS FORM ─────────────────────────────────────────────────────────
   document.getElementById('mat-form')?.addEventListener('submit', async e => {
     e.preventDefault();
     const id = document.getElementById('mat-edit-id').value;
@@ -479,7 +481,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) { hideInfo(); showError(err.message); }
   });
 
-  // ─── SYLLABUS FORM ───────────────────────────────────────────────────────────
   document.getElementById('syl-form')?.addEventListener('submit', async e => {
     e.preventDefault();
     const data = {
@@ -499,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadSyllabus();
     } catch (err) { hideInfo(); showError(err.message); }
   });
-});
+}
 
 // ─── MATERIALS ────────────────────────────────────────────────────────────────
 async function loadMaterials() {
@@ -514,7 +515,7 @@ async function loadMaterials() {
 function renderMaterialsTable() {
   const tbody = document.getElementById('mat-table-body');
   if (!allMaterials.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No materials yet.</p></td></tr>`;
+    tbody.innerHTML = renderEmptyState(5, 'No materials yet.');
     return;
   }
   tbody.innerHTML = allMaterials.map(m => `
@@ -692,15 +693,8 @@ function showAlert(id, tid, msg) {
   setTimeout(() => el.style.display = 'none', 4000);
 }
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-
-// ─── Boot ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const nameEl = document.getElementById('teacher-name');
-  if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
-
-  setupTabs();
-  loadDashboard();
-});
-
+function renderEmptyState(colspan, message, icon = 'fa-inbox') {
+  return `<tr><td colspan="${colspan}" class="empty-state"><i class="fas ${icon}"></i><p>${message}</p></td></tr>`;
+}
 
 export { loadDashboard, loadHomework, loadMaterials, loadSyllabus };

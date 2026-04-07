@@ -121,8 +121,7 @@ router.get('/attendance/classes', async (req, res) => {
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const result = await pool.query(
-      `SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"`,
-      [teacherId]
+      `SELECT DISTINCT "classLevel" FROM students WHERE "classLevel" IS NOT NULL ORDER BY "classLevel"`
     );
     res.json({ success: true, data: result.rows.map(r => r.classLevel) });
   } catch (err) {
@@ -147,7 +146,7 @@ router.get('/attendance/sheet', async (req, res) => {
       pool.query(
         `SELECT a."studentId", a.status FROM attendance a
          JOIN students s ON a."studentId" = s.id
-         WHERE s."classLevel" = $1 AND a."attendanceDate" = $2`,
+         WHERE s."classLevel" = $1 AND a.date = $2`,
         [classLevel, date]
       ),
     ]);
@@ -177,11 +176,11 @@ router.post('/attendance/mark-bulk', async (req, res) => {
 
     for (const r of records) {
       await pool.query(
-        `INSERT INTO attendance ("studentId", "attendanceDate", status)
-         VALUES ($1, $2, $3)
-         ON CONFLICT ("studentId", "attendanceDate")
-         DO UPDATE SET status = EXCLUDED.status`,
-        [r.studentId, r.date, r.status]
+        `INSERT INTO attendance ("studentId", "classLevel", date, status)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT ("studentId", date)
+         DO UPDATE SET status = EXCLUDED.status, "classLevel" = EXCLUDED."classLevel"`,
+        [r.studentId, r.classLevel, r.date, r.status]
       );
     }
     res.json({ success: true, message: `Saved ${records.length} attendance records` });
@@ -208,7 +207,7 @@ router.get('/attendance/summary', async (req, res) => {
            COUNT(CASE WHEN a.status = 'present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1
          ) AS "attendancePercent"
        FROM students s
-       LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a."attendanceDate", 'YYYY-MM') = $2
+       LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $2
        WHERE s."classLevel" = $1
        GROUP BY s.id, s.name
        ORDER BY s.name`,
