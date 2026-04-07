@@ -231,6 +231,34 @@ async function migrateDatabase() {
       }
     }
 
+    // Check notifications table and add attachmentUrl column if needed
+    const notificationsTableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'notifications'
+      );
+    `);
+
+    if (notificationsTableCheck.rows[0].exists) {
+      console.log('✓ Notifications table exists');
+
+      // Add 'attachmentUrl' column if missing
+      const attachmentUrlExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'notifications' AND column_name = 'attachmentUrl'
+        );
+      `);
+
+      if (!attachmentUrlExists.rows[0].exists) {
+        console.log('→ Adding "attachmentUrl" column...');
+        await pool.query(`ALTER TABLE notifications ADD COLUMN "attachmentUrl" TEXT`);
+        console.log('✓ Added attachmentUrl column');
+      } else {
+        console.log('✓ attachmentUrl column already exists');
+      }
+    }
+
     console.log('\n✅ Database migration completed successfully!');
     process.exit(0);
   } catch (err) {
