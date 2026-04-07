@@ -66,6 +66,82 @@ async function migrateDatabase() {
       }
     }
 
+    // Check homework table and migrate columns if needed
+    const homeworkTableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'homework'
+      );
+    `);
+
+    if (homeworkTableCheck.rows[0].exists) {
+      console.log('✓ Homework table exists');
+
+      // Rename 'assignedBy' to 'teacherId' if it exists
+      const assignedByColumnExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'homework' AND column_name = 'assignedBy'
+        );
+      `);
+
+      if (assignedByColumnExists.rows[0].exists) {
+        console.log('→ Renaming "assignedBy" column to "teacherId"...');
+        await pool.query(`ALTER TABLE homework RENAME COLUMN "assignedBy" TO "teacherId"`);
+        console.log('✓ Renamed assignedBy → teacherId');
+      } else {
+        console.log('✓ teacherId column already exists');
+      }
+
+      // Add 'attachmentUrl' column if missing
+      const attachmentUrlExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'homework' AND column_name = 'attachmentUrl'
+        );
+      `);
+
+      if (!attachmentUrlExists.rows[0].exists) {
+        console.log('→ Adding "attachmentUrl" column...');
+        await pool.query(`ALTER TABLE homework ADD COLUMN "attachmentUrl" VARCHAR(500)`);
+        console.log('✓ Added attachmentUrl column');
+      } else {
+        console.log('✓ attachmentUrl column already exists');
+      }
+
+      // Add 'section' column if missing
+      const sectionExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'homework' AND column_name = 'section'
+        );
+      `);
+
+      if (!sectionExists.rows[0].exists) {
+        console.log('→ Adding "section" column...');
+        await pool.query(`ALTER TABLE homework ADD COLUMN section VARCHAR(10)`);
+        console.log('✓ Added section column');
+      } else {
+        console.log('✓ section column already exists');
+      }
+
+      // Add 'type' column if missing
+      const typeExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'homework' AND column_name = 'type'
+        );
+      `);
+
+      if (!typeExists.rows[0].exists) {
+        console.log('→ Adding "type" column with default...');
+        await pool.query(`ALTER TABLE homework ADD COLUMN type VARCHAR(50) DEFAULT 'homework'`);
+        console.log('✓ Added type column');
+      } else {
+        console.log('✓ type column already exists');
+      }
+    }
+
     console.log('\n✅ Database migration completed successfully!');
     process.exit(0);
   } catch (err) {

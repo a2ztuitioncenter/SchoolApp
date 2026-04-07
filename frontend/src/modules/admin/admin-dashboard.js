@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     hideInfoAlert();
 
     setupTabNavigation();
-
+    setupForms();
 
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
@@ -692,6 +692,7 @@ window.saveHomework = async function (e) {
     formData.append('subject', subject);
     formData.append('dueDate', dueDate);
     formData.append('description', description);
+    formData.append('assignedBy', sessionStorage.getItem('adminUserId') || '');
 
     const fileInput = document.getElementById('hw-attachment');
     if (fileInput && fileInput.files[0]) {
