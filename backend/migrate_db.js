@@ -142,6 +142,95 @@ async function migrateDatabase() {
       }
     }
 
+    // Check materials table and migrate columns if needed
+    const materialsTableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'materials'
+      );
+    `);
+
+    if (materialsTableCheck.rows[0].exists) {
+      console.log('✓ Materials table exists');
+
+      // Check if uploadedBy is INTEGER (old schema) and convert to VARCHAR
+      const uploadedByColInfo = await pool.query(`
+        SELECT data_type FROM information_schema.columns 
+        WHERE table_name = 'materials' AND column_name = 'uploadedBy'
+      `);
+
+      if (uploadedByColInfo.rows.length > 0 && uploadedByColInfo.rows[0].data_type === 'integer') {
+        console.log('→ Fixing "uploadedBy" column type from integer to varchar...');
+        try {
+          // First, remove the foreign key constraint
+          const constraints = await pool.query(`
+            SELECT constraint_name 
+            FROM information_schema.table_constraints 
+            WHERE table_name='materials' AND constraint_type='FOREIGN KEY'
+          `);
+          
+          for (const constraint of constraints.rows) {
+            await pool.query(`ALTER TABLE materials DROP CONSTRAINT "${constraint.constraint_name}"`);
+          }
+          
+          // Change column type to VARCHAR
+          await pool.query(`
+            ALTER TABLE materials 
+            ALTER COLUMN "uploadedBy" TYPE VARCHAR(100)
+          `);
+          console.log('✓ Fixed uploadedBy column type to VARCHAR(100)');
+        } catch (e) {
+          console.log('⚠️  Error fixing uploadedBy:', e.message);
+        }
+      } else {
+        console.log('✓ uploadedBy column already correct');
+      }
+
+      // Add 'updatedAt' column if missing
+      const updatedAtExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'materials' AND column_name = 'updatedAt'
+        );
+      `);
+
+      if (!updatedAtExists.rows[0].exists) {
+        console.log('→ Adding "updatedAt" column...');
+        await pool.query(`ALTER TABLE materials ADD COLUMN "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        console.log('✓ Added updatedAt column');
+      } else {
+        console.log('✓ updatedAt column already exists');
+      }
+    }
+
+    // Check users table and add name column if needed
+    const usersTableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_name = 'users'
+      );
+    `);
+
+    if (usersTableCheck.rows[0].exists) {
+      console.log('✓ Users table exists');
+
+      // Add 'name' column if missing
+      const nameExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'users' AND column_name = 'name'
+        );
+      `);
+
+      if (!nameExists.rows[0].exists) {
+        console.log('→ Adding "name" column...');
+        await pool.query(`ALTER TABLE users ADD COLUMN name VARCHAR(100)`);
+        console.log('✓ Added name column');
+      } else {
+        console.log('✓ name column already exists');
+      }
+    }
+
     console.log('\n✅ Database migration completed successfully!');
     process.exit(0);
   } catch (err) {

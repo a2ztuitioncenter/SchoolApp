@@ -1208,17 +1208,32 @@ function setupForms() {
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
-            name:  document.getElementById('user-name')?.value,
-            phone: document.getElementById('user-phone')?.value,
-            email: document.getElementById('user-email')?.value,
-            role:  document.getElementById('user-role')?.value
+            name:  document.getElementById('user-name')?.value.trim(),
+            phone: document.getElementById('user-phone')?.value.trim(),
+            email: document.getElementById('user-email')?.value.trim(),
+            role:  document.getElementById('user-role')?.value,
+            password: document.getElementById('user-password')?.value
         };
+        if (!payload.name || !payload.phone || !payload.role || !payload.password) {
+            showErrorAlert('Name, Phone, Role, and Password are required');
+            return;
+        }
         try {
+            console.log('📤 Adding user:', payload.phone);
             showInfoAlert('Adding user...');
             const res = await adminAPI.addUser(payload);
-            if (res.success) { showSuccessAlert('User added!'); e.target.reset(); await loadUsers(); }
+            hideInfoAlert();
+            if (res.success) { 
+                showSuccessAlert('User added!'); 
+                document.getElementById('add-user-form').reset();
+                await loadUsers(); 
+            }
             else showErrorAlert(res.error || 'Failed to add user');
-        } catch (err) { showErrorAlert(err.message); }
+        } catch (err) { 
+            hideInfoAlert();
+            console.error('Error adding user:', err);
+            showErrorAlert(err.message || 'Failed to add user'); 
+        }
     });
 
     document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {

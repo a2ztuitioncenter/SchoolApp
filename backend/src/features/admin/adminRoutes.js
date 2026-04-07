@@ -22,14 +22,20 @@ router.get('/users', async (req, res) => {
 });
 
 router.post('/users/create', async (req, res) => {
-    const { name, phone, email, role } = req.body;
+    const { name, phone, email, role, password } = req.body;
     try {
-        if (!name || !phone || !role) return res.status(400).json({ error: 'Missing fields' });
+        console.log('[USER CREATE] Processing:', { name, phone, role });
+        if (!name || !phone || !role || !password) {
+            return res.status(400).json({ error: 'Missing required fields: name, phone, role, password' });
+        }
         const exists = await getUserByPhone(req.db, phone);
         if (exists) return res.status(409).json({ error: 'Phone already registered' });
-        const user = await createUser(req.db, { phone, email, password: 'password123', role, schoolId: 'school-001' });
+        console.log('[USER CREATE] Calling createUser...');
+        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001' });
+        console.log('[USER CREATE] User created:', { id: user.id, name: user.name, phone: user.phone });
         res.status(201).json({ success: true, user });
     } catch (err) {
+        console.error('[USER CREATE] Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -88,12 +94,13 @@ router.get('/students', async (req, res) => {
 });
 
 router.post('/students/create', async (req, res) => {
-    const { name, phone, email, classLevel, section, fatherName, motherName, joiningDate, status } = req.body;
+    const { name, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, password } = req.body;
     try {
         if (!name || !phone || !classLevel) return res.status(400).json({ error: 'Missing fields' });
         let user = await getUserByPhone(req.db, phone);
         if (!user) {
-            user = await createUser(req.db, { phone, email, password: 'student123', role: 'student' });
+            const studentPassword = password || 'student123';
+            user = await createUser(req.db, { name, phone, email, password: studentPassword, role: 'student' });
         }
         const student = await createStudent(req.db, {
             userId: user.id, name, classLevel, section, fatherName, motherName, phone, email,

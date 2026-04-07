@@ -3,6 +3,7 @@
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
     phone VARCHAR(15) UNIQUE NOT NULL,
     email VARCHAR(255),
     password VARCHAR(255) NOT NULL,
@@ -95,9 +96,10 @@ CREATE TABLE IF NOT EXISTS materials (
     "classLevel" VARCHAR(50) NOT NULL,
     subject VARCHAR(100) NOT NULL,
     "fileUrl" VARCHAR(500) NOT NULL,
-    "uploadedBy" INTEGER REFERENCES users(id),
+    "uploadedBy" VARCHAR(100),
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Notifications Table
