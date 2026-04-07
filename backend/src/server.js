@@ -68,7 +68,7 @@ app.use((req, res, next) => {
 
 // Serve index.html (master landing / login selector) on root route
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, '../frontend/index.html');
+  const indexPath = path.join(__dirname, '../../frontend/index.html');
   res.sendFile(indexPath);
 });
 
@@ -121,7 +121,7 @@ app.get('/health', async (req, res) => {
 
 // Fallback: serve index.html for unknown routes
 app.use((req, res) => {
-  const indexPath = path.join(__dirname, '../frontend/index.html');
+  const indexPath = path.join(__dirname, '../../frontend/index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
       console.error('Error serving index.html:', err.message);

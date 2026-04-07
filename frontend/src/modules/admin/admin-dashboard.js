@@ -24,8 +24,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const adminPhone = sessionStorage.getItem('adminPhone');
-    const nameEl = document.getElementById('admin-name');
-    if (nameEl) nameEl.textContent = `Admin (${adminPhone})`;
+    
+    // Set up GitHub-style profile menu
+    const nameStr = `Admin`;
+    const nameEls = document.querySelectorAll('#admin-name, #dropdown-admin-name');
+    nameEls.forEach(el => el.textContent = nameStr);
+    
+    const initialEl = document.getElementById('admin-avatar-initial');
+    if (initialEl) initialEl.textContent = nameStr.charAt(0).toUpperCase();
+    
+    const ddEmail = document.getElementById('dropdown-admin-email');
+    if (ddEmail) ddEmail.textContent = sessionStorage.getItem('adminEmail') || `${adminPhone}@admin.local`;
+
+    const profileBtn = document.getElementById('admin-profile-btn');
+    const profileMenu = document.getElementById('admin-profile-dropdown');
+    
+    if (profileBtn && profileMenu) {
+        profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
+            profileBtn.setAttribute('aria-expanded', !isExpanded);
+            profileMenu.classList.toggle('open');
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+                profileBtn.setAttribute('aria-expanded', 'false');
+                profileMenu.classList.remove('open');
+            }
+        });
+    }
+
+    const dropLogoutBtn = document.getElementById('dropdown-logout-btn');
+    if (dropLogoutBtn) {
+        dropLogoutBtn.addEventListener('click', () => {
+            sessionStorage.clear();
+            window.location.href = '/admin-login.html';
+        });
+    }
 
     // Check backend health before loading dashboard
     showInfoAlert('Checking backend connection...');
