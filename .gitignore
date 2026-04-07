@@ -1,29 +1,114 @@
+# Dependencies
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Environment Variables (SECURITY CRITICAL - NEVER COMMIT)
+.env
+.env.local
+.env.*.local
 .myenv
 .myenv.local
 .myenv.*.local
-*.log
-.DS_Store
-dist/
-build/
-.vscode/
-.idea/
-
-# Environment Variables
-.env
-.env.*
 !.env.example
 
-# Logs
+# Logs and Debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+debug.log
+server_out.txt
+
+# Build and Distribution
+dist/
+build/
+.next/
+out/
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.sublime-workspace
+.venv
+
+# Backup and Temporary Files
+*.bak
+*.backup
+*.tmp
+*.temp
+*.old
+*_backup
+*_old
+*.swp
+*~
+.#*
+
+# Database Backups
+*.sql.bak
+*.sql.backup
+*.dump
+*.backup.sql
+postgres_backup/
+db_backup/
+
+# Upload Directories (keep structure but ignore content)
+uploads/
+uploads/homework/*
+uploads/materials/*
+uploads/notifications/*
+backend/uploads/*
+backend/uploads/homework/*
+backend/uploads/materials/*
+backend/uploads/notifications/*
+!uploads/.gitkeep
+!uploads/homework/.gitkeep
+!uploads/materials/.gitkeep
+!uploads/notifications/.gitkeep
+!backend/uploads/.gitkeep
+!backend/uploads/homework/.gitkeep
+!backend/uploads/materials/.gitkeep
+!backend/uploads/notifications/.gitkeep
+
+# Postman Files
+postman/collections/*/*.request.yaml
+postman/collections/*/*.json
+postman/globals/*.globals.yaml
+postman/globals/*.json
+.postman*
+
+# Documentation (optional - uncomment if needed)
+# Tuition_App.pdf
+# Week_Plan.md
 
 # Testing
 coverage/
+.nyc_output/
+
+# Cache Directories
+.cache/
+.eslintcache
+.tsc-cache
 
 # Misc
-.cache/
-*.swp
+.awcache
+.turbo
+dist/css/
+dist/js/

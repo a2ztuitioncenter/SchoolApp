@@ -3,6 +3,7 @@
 -- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
     phone VARCHAR(15) UNIQUE NOT NULL,
     email VARCHAR(255),
     password VARCHAR(255) NOT NULL,
@@ -46,13 +47,16 @@ CREATE TABLE IF NOT EXISTS attendance (
 -- Homework Table
 CREATE TABLE IF NOT EXISTS homework (
     id SERIAL PRIMARY KEY,
+    "teacherId" INTEGER REFERENCES users(id),
+    "classLevel" VARCHAR(50) NOT NULL,
+    section VARCHAR(10),
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    "classLevel" VARCHAR(50) NOT NULL,
-    subject VARCHAR(100) NOT NULL,
     "dueDate" DATE,
-    "assignedBy" INTEGER REFERENCES users(id),
+    subject VARCHAR(100),
+    "attachmentUrl" VARCHAR(500),
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
+    type VARCHAR(50) DEFAULT 'homework',
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -64,7 +68,7 @@ CREATE TABLE IF NOT EXISTS fees (
     amount DECIMAL(10, 2) NOT NULL,
     description VARCHAR(200),
     "dueDate" DATE NOT NULL,
-    paid BOOLEAN DEFAULT FALSE,
+    "isPaid" BOOLEAN DEFAULT FALSE,
     "paidDate" DATE,
     status VARCHAR(20) DEFAULT 'pending',
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
@@ -92,9 +96,10 @@ CREATE TABLE IF NOT EXISTS materials (
     "classLevel" VARCHAR(50) NOT NULL,
     subject VARCHAR(100) NOT NULL,
     "fileUrl" VARCHAR(500) NOT NULL,
-    "uploadedBy" INTEGER REFERENCES users(id),
+    "uploadedBy" VARCHAR(100),
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
-    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Notifications Table
@@ -102,6 +107,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     message TEXT NOT NULL,
+    "attachmentUrl" TEXT,
     "recipientRole" VARCHAR(50),
     "classLevel" VARCHAR(50),
     "createdBy" INTEGER REFERENCES users(id),

@@ -5,6 +5,45 @@
 
 const API_BASE_URL = '/api';
 
+// Health check flag
+let isBackendHealthy = false;
+
+/**
+ * Check if backend is available
+ */
+export const checkBackendHealth = async () => {
+  try {
+    const response = await fetch('/health', { 
+      method: 'GET',
+      timeout: 5000 
+    });
+    isBackendHealthy = response.ok;
+    return isBackendHealthy;
+  } catch (error) {
+    console.error('❌ Backend health check failed:', error.message);
+    isBackendHealthy = false;
+    return false;
+  }
+};
+
+/**
+ * Wait for backend to be ready (with timeout)
+ */
+export const waitForBackend = async (maxAttempts = 3, delayMs = 1000) => {
+  for (let i = 0; i < maxAttempts; i++) {
+    if (await checkBackendHealth()) {
+      console.log('✅ Backend is ready');
+      return true;
+    }
+    if (i < maxAttempts - 1) {
+      console.log(`⏳ Backend not ready, retrying in ${delayMs}ms... (${i + 1}/${maxAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+  console.error('❌ Backend failed to respond after multiple attempts');
+  return false;
+};
+
 // Store auth token in sessionStorage
 export const setAuthToken = (token) => {
   sessionStorage.setItem('authToken', token);
@@ -29,6 +68,8 @@ const apiCall = async (endpoint, options = {}) => {
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
+  // Disable gzip to avoid decoding issues
+  headers['Accept-Encoding'] = 'identity';
 
   const token = getAuthToken();
   if (token) {
@@ -46,16 +87,23 @@ const apiCall = async (endpoint, options = {}) => {
       return await response.blob();
     }
 
-    const contentType = response.headers.get('content-type');
+    // Try to parse response
     let data;
-    if (contentType?.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } else {
+        data = await response.text();
+      }
+    } catch (parseError) {
+      console.error(`⚠️ Response parse error [${endpoint}]:`, parseError.message);
+      data = { error: 'Invalid response format' };
     }
 
     if (!response.ok) {
-      const errorMsg = data?.error || `HTTP ${response.status}`;
+      const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
       throw new Error(errorMsg);
     }
 

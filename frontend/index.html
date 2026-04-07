@@ -6,7 +6,7 @@
     <title>A2Z Tuition - Premier Online Learning</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="./src/assets/css/index.css">
-    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
+    <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
 </head>
 <body>
 
@@ -21,9 +21,6 @@
                         <li><a id="header-login" href="#"><i class="fa fa-user"></i> Log in</a></li>
                         <li><a href="student-register.html"><i class="fa fa-plus-square"></i> Sign up</a></li>
                     </ul>
-                    <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Theme">
-                        <i class="fas fa-moon"></i>
-                    </button>
                 </nav>
             </div>
         </div>
@@ -130,20 +127,9 @@
         </div>
     </footer>
 
+    <!-- Light mode only: Force light theme -->
     <script>
-        document.getElementById('theme-toggle').addEventListener('click', function() {
-            var current = document.documentElement.getAttribute('data-theme') || 'dark';
-            var next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('theme', next);
-            this.querySelector('i').className = next === 'light' ? 'fas fa-sun' : 'fas fa-moon';
-        });
-        // Set correct icon on load
-        (function() {
-            var t = localStorage.getItem('theme') || 'dark';
-            var icon = document.querySelector('#theme-toggle i');
-            if (icon) icon.className = t === 'light' ? 'fas fa-sun' : 'fas fa-moon';
-        })();
+        document.documentElement.setAttribute('data-theme', 'light');
     </script>
     <script type="module" src="./src/core/index.js"></script>
 </body>

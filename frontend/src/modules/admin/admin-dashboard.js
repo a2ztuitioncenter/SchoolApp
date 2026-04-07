@@ -3,8 +3,8 @@
  * Full-featured admin dashboard with all CRUD operations restored.
  */
 
-import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile } from '../../core/api.js';
-import { initTheme, toggleTheme } from '../../core/theme.js';
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
+
 
 let currentTab = 'dashboard';
 let allHomeworkData = [];
@@ -27,7 +27,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameEl = document.getElementById('admin-name');
     if (nameEl) nameEl.textContent = `Admin (${adminPhone})`;
 
-    initTheme();
+    // Check backend health before loading dashboard
+    showInfoAlert('Checking backend connection...');
+    const isBackendReady = await waitForBackend(3, 1000);
+    
+    if (!isBackendReady) {
+        hideInfoAlert();
+        showErrorAlert('❌ Backend server is not responding. Please ensure the backend server is running on port 3000.');
+        console.error('Backend not available on localhost:3000');
+        return;
+    }
+    
+    hideInfoAlert();
 
     setupTabNavigation();
     setupForms();
@@ -41,7 +52,75 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    await loadTabContent('dashboard');
+    // Default tab
+    await showTab('dashboard');
+
+    // Wire up Timetable form
+    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            dayOfWeek: document.getElementById('tt-day')?.value,
+            startTime: document.getElementById('tt-start')?.value,
+            endTime: document.getElementById('tt-end')?.value,
+            subject: document.getElementById('tt-subject')?.value.trim(),
+            classLevel: document.getElementById('tt-class')?.value,
+            teacherId: document.getElementById('tt-teacher')?.value,
+        };
+
+        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
+            showErrorAlert('All fields are required.');
+            return;
+        }
+
+        try {
+            showInfoAlert('Saving timetable entry...');
+            await adminAPI.addTimetable(payload);
+            hideInfoAlert();
+            showSuccessAlert('Timetable entry saved successfully!');
+            document.getElementById('timetable-form').reset();
+            await loadTimetable();
+        } catch (err) {
+            hideInfoAlert();
+            showErrorAlert(err.message || 'Failed to save timetable entry');
+        }
+    });
+
+    // Wire up Notice form
+    document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('notice-title')?.value.trim();
+        const message = document.getElementById('notice-message')?.value.trim();
+        const classLevel = document.getElementById('notice-class')?.value || '';
+        const recipientRole = document.getElementById('notice-role')?.value || '';
+        const attachment = document.getElementById('notice-attachment')?.files[0];
+
+        if (!title || !message) {
+            showErrorAlert('Title and Message are required.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('message', message);
+        formData.append('classLevel', classLevel);
+        formData.append('recipientRole', recipientRole);
+        if (attachment) formData.append('attachment', attachment);
+        
+        const adminId = sessionStorage.getItem('adminUserId');
+        if (adminId) formData.append('createdBy', adminId);
+
+        try {
+            showInfoAlert('Sending notice...');
+            await notificationsAPI.create(formData);
+            hideInfoAlert();
+            closeNoticeModal();
+            showSuccessAlert('✅ Notice sent with attachment!');
+            await loadNotifications();
+        } catch (err) {
+            hideInfoAlert();
+            showErrorAlert('Failed to send notice: ' + err.message);
+        }
+    });
 });
 
 // =============================================
@@ -97,12 +176,12 @@ async function loadTabContent(tabName) {
 
 window.showTab = showTab;
 
+
 // =============================================
 // DASHBOARD
 // =============================================
 async function loadDashboardData() {
     try {
-        showInfoAlert('Loading dashboard...');
         const [studentsRes, feesRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
             adminAPI.getUnpaidFees().catch(() => ({ fees: [] }))
@@ -119,50 +198,100 @@ async function loadDashboardData() {
         const today = new Date();
         const overdue = unpaidList.filter(f => new Date(f.dueDate) < today).length;
         if (el('overdue-count')) el('overdue-count').textContent = overdue;
-
-        hideInfoAlert();
     } catch (err) {
-        showErrorAlert('Failed to load dashboard');
+        console.error('Failed to load dashboard data', err);
     }
 }
+
 
 // =============================================
 // USERS - with Edit, Delete, Toggle Access
 // =============================================
 let allUsersData = [];
+let showAllUsers = false;
 
 async function loadUsers() {
     try {
         const res = await adminAPI.getUsers();
-        const users = res.users || [];
-        allUsersData = users;
-        const tbody = document.getElementById('users-list');
-        if (!tbody) return;
-        tbody.innerHTML = users.length ? users.map(u => {
-            const roleColors = {
-                teacher: 'background:#d6eaf8;color:#154360',
-                staff: 'background:#d5f5e3;color:#145a32',
-                admin: 'background:#fadbd8;color:#78281f',
-            };
-            const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
-            return `
-            <tr>
-                <td>${u.phone}</td>
-                <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
-                <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
-                <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
-                <td>
-                    <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
-                    <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
-                        <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
-        }).join('') : '<tr><td colspan="5" class="empty-state">No users found</td></tr>';
+        allUsersData = res.users || [];
+        filterUsersTable();
     } catch (err) {
         showErrorAlert('Failed to load users');
     }
+}
+
+window.filterUsersTable = function() {
+    const roleQ = document.getElementById('user-role-filter')?.value || '';
+    const statQ = document.getElementById('user-status-filter')?.value || '';
+    const textQ = (document.getElementById('user-search')?.value || '').toLowerCase();
+    
+    const filtered = allUsersData.filter(u => {
+        const matchRole = roleQ ? u.role === roleQ : true;
+        const matchStat = statQ ? (statQ === 'active' ? u.isActive : !u.isActive) : true;
+        const matchText = textQ ? 
+            (u.phone?.includes(textQ) || u.email?.toLowerCase().includes(textQ) || (u.name||'').toLowerCase().includes(textQ)) : true;
+        return matchRole && matchStat && matchText;
+    });
+
+    renderUsersTable(filtered);
+};
+
+window.toggleShowAllUsers = function() {
+    showAllUsers = !showAllUsers;
+    filterUsersTable();
+};
+
+function renderUsersTable(users) {
+    const tbody = document.getElementById('users-list');
+    const toggleBtn = document.getElementById('btn-toggle-users');
+    const countText = document.getElementById('users-count-text');
+    if (!tbody) return;
+
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users matching criteria.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 5;
+    const toShow = showAllUsers ? users : users.slice(0, displayLimit);
+    
+    if (toggleBtn) {
+        if (users.length > displayLimit) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = showAllUsers ? 'Show Less' : `Show All Users (${users.length})`;
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+    }
+    
+    if (countText) {
+        countText.textContent = `Showing ${toShow.length} of ${users.length} user(s)`;
+    }
+
+    tbody.innerHTML = toShow.map(u => {
+        const roleColors = {
+            teacher: 'background:#d6eaf8;color:#154360',
+            staff: 'background:#d5f5e3;color:#145a32',
+            admin: 'background:#fadbd8;color:#78281f',
+        };
+        const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
+        return `
+        <tr>
+            <td>${u.phone}</td>
+            <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
+            <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
+            <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
+            <td>
+                <button class="btn-sm btn-edit" onclick="editUser(${u.id})"><i class="fas fa-pen"></i> Edit</button>
+                <button class="btn-sm ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                    <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-sm btn-delete" onclick="deleteUserById(${u.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
 }
 
 window.editUser = function (id) {
@@ -214,34 +343,110 @@ window.toggleUserStatusById = async function (id, isActive) {
 // STUDENTS
 // =============================================
 let allStudentsData = [];
-
+let showAllStudents = false;
 
 async function loadStudents() {
     try {
         const res = await adminAPI.getStudents();
-        const students = res.students || [];
-        allStudentsData = students;
-        const tbody = document.getElementById('students-list');
-        if (!tbody) return;
-        tbody.innerHTML = students.length ? students.map(s => `
-            <tr>
-                <td><strong>${s.id}</strong></td>
-                <td>${s.name}</td>
-                <td>${s.phone || 'N/A'}</td>
-                <td>${s.classLevel || 'N/A'}</td>
-                <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
-                <td>
-                    <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
-                    <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
-                        <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
+        allStudentsData = res.students || [];
+        populateStudentClassDropdowns();
+        filterStudentsTable();
     } catch (err) {
         showErrorAlert('Failed to load students');
     }
+}
+
+function populateStudentClassDropdowns() {
+    const classSet = new Set();
+    const secSet = new Set();
+    allStudentsData.forEach(s => {
+        if (s.classLevel) classSet.add(s.classLevel);
+        if (s.section) secSet.add(s.section);
+    });
+    
+    const classFilter = document.getElementById('student-class-filter');
+    const secFilter = document.getElementById('student-section-filter');
+    
+    if (classFilter) {
+        const currentVal = classFilter.value;
+        classFilter.innerHTML = '<option value="">All Classes</option>' + 
+            Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+        classFilter.value = currentVal || '';
+    }
+    if (secFilter) {
+        const currentVal = secFilter.value;
+        secFilter.innerHTML = '<option value="">All Sections</option>' + 
+            Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+        secFilter.value = currentVal || '';
+    }
+}
+
+window.filterStudentsTable = function() {
+    const classQ = document.getElementById('student-class-filter')?.value || '';
+    const secQ = document.getElementById('student-section-filter')?.value || '';
+    const textQ = (document.getElementById('student-search')?.value || '').toLowerCase();
+    
+    const filtered = allStudentsData.filter(s => {
+        const matchClass = classQ ? s.classLevel === classQ : true;
+        const matchSec = secQ ? s.section === secQ : true;
+        const matchText = textQ ? 
+            ((s.name||'').toLowerCase().includes(textQ) || (s.phone||'').includes(textQ) || (s.id?.toString()||'').includes(textQ)) : true;
+        return matchClass && matchSec && matchText;
+    });
+
+    renderStudentsTable(filtered);
+};
+
+window.toggleShowAllStudents = function() {
+    showAllStudents = !showAllStudents;
+    filterStudentsTable();
+};
+
+function renderStudentsTable(students) {
+    const tbody = document.getElementById('students-list');
+    const toggleBtn = document.getElementById('btn-toggle-students');
+    const countText = document.getElementById('students-count-text');
+    if (!tbody) return;
+
+    if (!students.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 5;
+    const toShow = showAllStudents ? students : students.slice(0, displayLimit);
+    
+    if (toggleBtn) {
+        if (students.length > displayLimit) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = showAllStudents ? 'Show Less' : `Show All Students (${students.length})`;
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+    }
+    
+    if (countText) {
+        countText.textContent = `Showing ${toShow.length} of ${students.length} student(s)`;
+    }
+
+    tbody.innerHTML = toShow.map(s => `
+        <tr>
+            <td><strong>${s.id}</strong></td>
+            <td>${s.name}</td>
+            <td>${s.phone || 'N/A'}</td>
+            <td>${s.classLevel || 'N/A'}${s.section ? ' - ' + s.section : ''}</td>
+            <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
+            <td>
+                <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
+                <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
+                    <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 window.editStudent = function (id) {
@@ -398,8 +603,11 @@ window.loadAttendanceSummary = async function () {
 // =============================================
 // HOMEWORK - FULL CRUD
 // =============================================
+let showAllHomework = false;
+
 async function loadAllHomework() {
     try {
+        showAllHomework = false; // Reset pagination when loading fresh data
         const res = await homeworkAPI.getAll();
         allHomeworkData = res.data || [];
         renderHomeworkTable(allHomeworkData);
@@ -410,8 +618,21 @@ async function loadAllHomework() {
 
 function renderHomeworkTable(list) {
     const tbody = document.getElementById('homework-table-body');
+    const toggleBtn = document.getElementById('btn-toggle-homework');
+    const countText = document.getElementById('homework-count-text');
     if (!tbody) return;
-    tbody.innerHTML = list.length ? list.map((hw, i) => {
+
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No homework found. Add one below.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 10;
+    const toShow = showAllHomework ? list : list.slice(0, displayLimit);
+    
+    tbody.innerHTML = toShow.map((hw, i) => {
         const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
         return `<tr>
             <td>${i + 1}</td>
@@ -425,8 +646,22 @@ function renderHomeworkTable(list) {
                 <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})">Delete</button>
             </td>
         </tr>`;
-    }).join('') : '<tr><td colspan="7" class="empty-state">No homework found. Add one below.</td></tr>';
+    }).join('');
+
+    // Show toggle button if more items exist
+    if(toggleBtn) {
+        toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
+        toggleBtn.textContent = showAllHomework ? 'Show Less Homework' : `Show More Homework (${list.length})`;
+    }
+    if(countText) {
+        countText.textContent = showAllHomework ? '' : `Showing ${toShow.length} of ${list.length}`;
+    }
 }
+
+window.toggleShowAllHomework = function() {
+    showAllHomework = !showAllHomework;
+    filterHomework();
+};
 
 window.filterHomework = function () {
     const q = (document.getElementById('hw-filter-class')?.value || '').toLowerCase();
@@ -457,6 +692,7 @@ window.saveHomework = async function (e) {
     formData.append('subject', subject);
     formData.append('dueDate', dueDate);
     formData.append('description', description);
+    formData.append('assignedBy', sessionStorage.getItem('adminUserId') || '');
 
     const fileInput = document.getElementById('hw-attachment');
     if (fileInput && fileInput.files[0]) {
@@ -570,10 +806,43 @@ async function loadFees(mode = 'all') {
     }
 }
 
+let showAllFees = false;
+
+window.toggleShowAllFees = function() {
+    showAllFees = !showAllFees;
+    filterFeesTable(); // re-runs slicing logic
+};
+
 function renderFeesTable(fees) {
     const tbody = document.getElementById('fees-table-body');
+    const toggleBtn = document.getElementById('btn-toggle-fees');
+    const countText = document.getElementById('fees-count-text');
     if (!tbody) return;
-    tbody.innerHTML = fees.length ? fees.map((f, i) => `
+
+    if (!fees.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 5;
+    const toShow = showAllFees ? fees : fees.slice(0, displayLimit);
+    
+    if (toggleBtn) {
+        if (fees.length > displayLimit) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = showAllFees ? 'Show Less' : `Show All Fees (${fees.length})`;
+        } else {
+            toggleBtn.style.display = 'none';
+        }
+    }
+    
+    if (countText) {
+        countText.textContent = `Showing ${toShow.length} of ${fees.length} record(s)`;
+    }
+
+    tbody.innerHTML = toShow.map((f, i) => `
         <tr>
             <td>${i + 1}</td>
             <td><strong>${f.studentName || f.studentId}</strong>${f.student_id ? `<br><small style="color:#636e72">ID: ${f.student_id}</small>` : ''}</td>
@@ -589,7 +858,7 @@ function renderFeesTable(fees) {
                 <button class="btn-sm btn-delete" onclick="deleteFeeRecord(${f.id})"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
-    `).join('') : '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+    `).join('');
 }
 
 window.filterFeesTable = function() {
@@ -652,34 +921,186 @@ window.deleteFeeRecord = async function (id) {
 // =============================================
 // MATERIALS
 // =============================================
+
+let allMaterialsData = [];
+let showAllMaterials = false;
+
 async function loadMaterials() {
     try {
+        showAllMaterials = false; // Reset pagination when loading fresh data
         const res = await materialsAPI.getAll();
-        const list = res.data || [];
-        const tbody = document.getElementById('materials-tbody');
-        if (!tbody) return;
-        tbody.innerHTML = list.length ? list.map(m => `
-            <tr>
-                <td>${m.title}</td>
-                <td>${m.subject}</td>
-                <td>Class ${m.classLevel}</td>
-                <td>${m.uploadedBy || '-'}</td>
-                <td>
-                    <button class="btn-sm" style="background:#667eea; color:white; margin-right:5px;" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="btn-sm" style="background:#48bb78; color:white; margin-right:5px;" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})'>
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('') : '<tr><td colspan="5" class="empty-state">No materials found</td></tr>';
+        allMaterialsData = res.data || [];
+        
+        // Update stats
+        updateMaterialsStats();
+        
+        // Render table and mobile view
+        renderMaterialsTable();
     } catch (err) {
         console.error('Error loading materials:', err);
+        showErrorAlert('Failed to load materials');
     }
+}
+
+function updateMaterialsStats() {
+    const totalCount = allMaterialsData.length;
+    const uniqueClasses = new Set(allMaterialsData.map(m => m.classLevel)).size;
+    const uniqueSubjects = new Set(allMaterialsData.map(m => m.subject)).size;
+    
+    // Count materials uploaded this week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const thisWeekCount = allMaterialsData.filter(m => {
+        const uploadDate = new Date(m.createdAt);
+        return uploadDate >= oneWeekAgo;
+    }).length;
+
+    document.getElementById('material-total-count').textContent = totalCount;
+    document.getElementById('material-classes-count').textContent = uniqueClasses;
+    document.getElementById('material-subjects-count').textContent = uniqueSubjects;
+    document.getElementById('material-week-count').textContent = thisWeekCount;
+}
+
+function renderMaterialsTable() {
+    const tbody = document.getElementById('materials-tbody');
+    const toggleBtn = document.getElementById('btn-toggle-materials');
+    const countText = document.getElementById('materials-count-text');
+    const list = getFilteredMaterials();
+    
+    if (!tbody) return;
+
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i> No materials found</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 10;
+    const toShow = showAllMaterials ? list : list.slice(0, displayLimit);
+    
+    tbody.innerHTML = toShow.map(m => `
+        <tr>
+            <td>
+                <strong>${escapeHtml(m.title)}</strong>
+                ${m.description ? `<br><small style="color: var(--text-muted);">${escapeHtml(m.description.substring(0, 50))}</small>` : ''}
+            </td>
+            <td>${escapeHtml(m.subject)}</td>
+            <td><span class="badge">Class ${escapeHtml(m.classLevel)}</span></td>
+            <td>${escapeHtml(m.uploadedBy || '-')}</td>
+            <td>
+                <small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    // Show toggle button if more items exist
+    if(toggleBtn) {
+        toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
+        toggleBtn.textContent = showAllMaterials ? 'Show Less Materials' : `Show More Materials (${list.length})`;
+    }
+    if(countText) {
+        countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
+    }
+
+    // Render mobile cards
+    renderMaterialsCards(toShow);
+}
+
+window.toggleShowAllMaterials = function() {
+    showAllMaterials = !showAllMaterials;
+    renderMaterialsTable();
+};
+
+function renderMaterialsCards(list) {
+    const cardsContainer = document.getElementById('materials-cards');
+    if (!cardsContainer) return;
+
+    cardsContainer.innerHTML = list.length ? list.map(m => `
+        <div class="material-card">
+            <div class="material-card-header">
+                <h3 class="material-card-title">${escapeHtml(m.title)}</h3>
+            </div>
+            <div class="material-card-content">
+                ${m.description ? `<p style="margin: 0 0 0.75rem; font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(m.description)}</p>` : ''}
+                <div class="material-card-meta">
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-book-open" style="color: var(--accent-blue);"></i>
+                        <span><strong>${escapeHtml(m.subject)}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-chalkboard" style="color: var(--success);"></i>
+                        <span>Class <strong>${escapeHtml(m.classLevel)}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
+                        <i class="fas fa-user" style="color: var(--warning);"></i>
+                        <span><strong>${escapeHtml(m.uploadedBy || 'Unknown')}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
+                        <i class="fas fa-calendar" style="color: var(--text-muted);"></i>
+                        <span>${formatDate(m.createdAt)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="material-card-actions">
+                <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('') : '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No materials found</p>';
+}
+
+function getFilteredMaterials() {
+    const searchTerm = document.getElementById('material-search')?.value.toLowerCase() || '';
+    const classFilter = document.getElementById('material-class-filter')?.value || '';
+    const subjectFilter = document.getElementById('material-subject-filter')?.value || '';
+
+    return allMaterialsData.filter(m => {
+        const matchesSearch = !searchTerm || 
+            m.title.toLowerCase().includes(searchTerm) || 
+            m.subject.toLowerCase().includes(searchTerm) ||
+            (m.description && m.description.toLowerCase().includes(searchTerm));
+        
+        const matchesClass = !classFilter || m.classLevel === classFilter;
+        const matchesSubject = !subjectFilter || m.subject === subjectFilter;
+
+        return matchesSearch && matchesClass && matchesSubject;
+    });
+}
+
+window.filterMaterials = function() {
+    renderMaterialsTable();
+};
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 window.saveMaterial = async function(e) {
@@ -787,17 +1208,32 @@ function setupForms() {
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
-            name:  document.getElementById('user-name')?.value,
-            phone: document.getElementById('user-phone')?.value,
-            email: document.getElementById('user-email')?.value,
-            role:  document.getElementById('user-role')?.value
+            name:  document.getElementById('user-name')?.value.trim(),
+            phone: document.getElementById('user-phone')?.value.trim(),
+            email: document.getElementById('user-email')?.value.trim(),
+            role:  document.getElementById('user-role')?.value,
+            password: document.getElementById('user-password')?.value
         };
+        if (!payload.name || !payload.phone || !payload.role || !payload.password) {
+            showErrorAlert('Name, Phone, Role, and Password are required');
+            return;
+        }
         try {
+            console.log('📤 Adding user:', payload.phone);
             showInfoAlert('Adding user...');
             const res = await adminAPI.addUser(payload);
-            if (res.success) { showSuccessAlert('User added!'); e.target.reset(); await loadUsers(); }
+            hideInfoAlert();
+            if (res.success) { 
+                showSuccessAlert('User added!'); 
+                document.getElementById('add-user-form').reset();
+                await loadUsers(); 
+            }
             else showErrorAlert(res.error || 'Failed to add user');
-        } catch (err) { showErrorAlert(err.message); }
+        } catch (err) { 
+            hideInfoAlert();
+            console.error('Error adding user:', err);
+            showErrorAlert(err.message || 'Failed to add user'); 
+        }
     });
 
     document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {
@@ -969,44 +1405,6 @@ window.deleteNotification = async function(id) {
     }
 };
 
-// Wire up the notice form submit
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = document.getElementById('notice-title')?.value.trim();
-        const message = document.getElementById('notice-message')?.value.trim();
-        const classLevel = document.getElementById('notice-class')?.value || '';
-        const recipientRole = document.getElementById('notice-role')?.value || '';
-        const attachment = document.getElementById('notice-attachment')?.files[0];
-
-        if (!title || !message) {
-            showErrorAlert('Title and Message are required.');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('message', message);
-        formData.append('classLevel', classLevel);
-        formData.append('recipientRole', recipientRole);
-        if (attachment) formData.append('attachment', attachment);
-        
-        const adminId = sessionStorage.getItem('adminUserId');
-        if (adminId) formData.append('createdBy', adminId);
-
-        try {
-            showInfoAlert('Sending notice...');
-            await notificationsAPI.create(formData);
-            hideInfoAlert();
-            closeNoticeModal();
-            showSuccessAlert('✅ Notice sent with attachment!');
-            await loadNotifications();
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert('Failed to send notice: ' + err.message);
-        }
-    });
-});
 
 /**
  * MISSING TAB FUNCTIONS to prevent errors
@@ -1050,6 +1448,7 @@ async function loadTimetable() {
     if (!list) return;
 
     try {
+        showAllTimetable = false; // Reset pagination when loading fresh data
         showInfoAlert('Loading timetable...');
         // First load classes and teachers for the dropdown
         const [ttRes, classesRes, usersRes] = await Promise.all([
@@ -1072,38 +1471,70 @@ async function loadTimetable() {
             teacherSel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.id}">${t.phone}</option>`).join('');
         }
 
-        const items = ttRes.timetable || [];
+        allTimetableData = ttRes.timetable || [];
         hideInfoAlert();
 
-        if (items.length === 0) {
-            list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
-            return;
-        }
-
-        function formatTime(t) {
-            try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
-            catch(e) { return t; }
-        }
-
-        list.innerHTML = items.map(t => `
-            <tr>
-                <td>${t.dayOfWeek}</td>
-                <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
-                <td>${t.subject}</td>
-                <td>${t.classLevel}</td>
-                <td>${t.teacherPhone || t.teacherId}</td>
-                <td>
-                    <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        renderTimetableTable(allTimetableData);
     } catch (err) {
         hideInfoAlert();
         showErrorAlert('Failed to load timetable: ' + err.message);
     }
 }
+
+let allTimetableData = [];
+let showAllTimetable = false;
+
+function renderTimetableTable(items) {
+    const list = document.getElementById('timetable-list');
+    const toggleBtn = document.getElementById('btn-toggle-timetable');
+    const countText = document.getElementById('timetable-count-text');
+    
+    if (!list) return;
+
+    if (items.length === 0) {
+        list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
+        if(toggleBtn) toggleBtn.style.display = 'none';
+        if(countText) countText.textContent = '';
+        return;
+    }
+
+    const displayLimit = 10;
+    const toShow = showAllTimetable ? items : items.slice(0, displayLimit);
+
+    function formatTime(t) {
+        try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
+        catch(e) { return t; }
+    }
+
+    list.innerHTML = toShow.map(t => `
+        <tr>
+            <td>${t.dayOfWeek}</td>
+            <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
+            <td>${t.subject}</td>
+            <td>${t.classLevel}</td>
+            <td>${t.teacherPhone || t.teacherId}</td>
+            <td>
+                <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    // Show toggle button if more items exist
+    if(toggleBtn) {
+        toggleBtn.style.display = items.length > displayLimit ? 'block' : 'none';
+        toggleBtn.textContent = showAllTimetable ? 'Show Less Timetable' : `Show More Timetable (${items.length})`;
+    }
+    if(countText) {
+        countText.textContent = showAllTimetable ? '' : `Showing ${toShow.length} of ${items.length}`;
+    }
+}
+
+window.toggleShowAllTimetable = function() {
+    showAllTimetable = !showAllTimetable;
+    renderTimetableTable(allTimetableData);
+};
 
 window.deleteTimetableRecord = async function(id) {
     if (!confirm('Delete this timetable entry?')) return;
@@ -1116,33 +1547,3 @@ window.deleteTimetableRecord = async function(id) {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            dayOfWeek: document.getElementById('tt-day')?.value,
-            startTime: document.getElementById('tt-start')?.value,
-            endTime: document.getElementById('tt-end')?.value,
-            subject: document.getElementById('tt-subject')?.value.trim(),
-            classLevel: document.getElementById('tt-class')?.value,
-            teacherId: document.getElementById('tt-teacher')?.value,
-        };
-
-        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
-            showErrorAlert('All fields are required.');
-            return;
-        }
-
-        try {
-            showInfoAlert('Saving timetable entry...');
-            await adminAPI.addTimetable(payload);
-            hideInfoAlert();
-            showSuccessAlert('Timetable entry saved successfully!');
-            document.getElementById('timetable-form').reset();
-            await loadTimetable();
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message || 'Failed to save timetable entry');
-        }
-    });
-});

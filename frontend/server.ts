@@ -27,6 +27,7 @@ function getMimeType(filePath: string) {
 }
 
 const server = Bun.serve({
+  hostname: "0.0.0.0",
   port: PORT,
 
   async fetch(req) {
@@ -35,7 +36,7 @@ const server = Bun.serve({
 
     //  REVERSE PROXY FOR API AND UPLOADS
     if (pathname.startsWith("/api") || pathname.startsWith("/uploads")) {
-      const targetUrl = `http://127.0.0.1:3000${pathname}${url.search}`;
+      const targetUrl = `http://localhost:3000${pathname}${url.search}`;
       console.log(`[PROXY] Forwarding ${req.method} ${pathname} -> ${targetUrl}`);
       try {
         const newHeaders = new Headers(req.headers);
@@ -94,4 +95,7 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Server running at http://localhost:${PORT}`);
+console.log(`\nFrontend server running on port ${PORT}`);
+console.log(`  Local: http://localhost:${PORT}`);
+console.log(`  Network: http://0.0.0.0:${PORT}`);
+console.log(`  Tunnel: Use your cloudflared tunnel URL\n`);

@@ -29,20 +29,7 @@ const __dirname = path.dirname(__filename);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-const { Pool } = pkg;
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
-// PostgreSQL Connection Pool Setup
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'tuition_app',
-  max: process.env.DB_CONNECTION_LIMIT || 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+import pool from './config/pool.js';
 
 // Test the connection
 try {
@@ -59,7 +46,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(compression());
+// IMPORTANT: Disable compression to prevent ERR_CONTENT_DECODING_FAILED errors
+// Comment out if you need it for large files
+// app.use(compression());
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
@@ -107,8 +97,26 @@ app.use('/api/admin/results', resultsRoutes);
 app.use('/api/download', downloadRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW()');
+    client.release();
+    res.json({ 
+      status: 'Healthy',
+      server: 'Running',
+      database: 'Connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'Unhealthy',
+      server: 'Running',
+      database: 'Disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Fallback: serve index.html for unknown routes
@@ -142,11 +150,18 @@ const startServer = async () => {
     }
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`\nServer running at http://localhost:${PORT}`);
-      console.log(`Master Portal: http://localhost:${PORT}/`);
-      console.log(`Student Login: http://localhost:${PORT}/student-login.html`);
-      console.log(`Admin Login: http://localhost:${PORT}/admin-login.html`);
-      console.log(`Teacher Login: http://localhost:${PORT}/teacher-login.html\n`);
+      console.log('\n╔═══════════════════════════════════════════════════════════╗');
+      console.log('║               BACKEND SERVER STARTED                      ║');
+      console.log('╚═══════════════════════════════════════════════════════════╝\n');
+      console.log(`Backend API Server: http://localhost:${PORT}`);
+      console.log(`  • Local: http://localhost:${PORT}/health`);
+      console.log(`  • Network: http://0.0.0.0:${PORT}/health`);
+      console.log(`  • Database: Connected ✓\n`);
+      console.log(`Quick Links:`);
+      console.log(`  • Student Login: http://localhost:${PORT}/student-login.html`);
+      console.log(`  • Admin Login: http://localhost:${PORT}/admin-login.html`);
+      console.log(`  • Teacher Login: http://localhost:${PORT}/teacher-login.html`);
+      console.log(`  • Health Check: http://localhost:${PORT}/health\n`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

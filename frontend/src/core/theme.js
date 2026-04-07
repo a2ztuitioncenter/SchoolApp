@@ -1,29 +1,16 @@
+/**
+ * theme.js — Light mode only theme.
+ * Forces light theme across entire application.
+ */
 
-export function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateToggleIcon(savedTheme);
+function applyLightTheme() {
+    document.body.classList.remove('dark-mode');
+    document.documentElement.setAttribute('data-theme', 'light');
 }
 
-export function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateToggleIcon(newTheme);
-    return newTheme;
-}
+// Apply light theme immediately on script execution
+applyLightTheme();
 
-function updateToggleIcon(theme) {
-    const icon = document.querySelector('#theme-toggle i');
-    if (icon) {
-        if (theme === 'light') {
-            icon.classList.remove('fa-moon');
-            icon.classList.add('fa-sun');
-        } else {
-            icon.classList.remove('fa-sun');
-            icon.classList.add('fa-moon');
-        }
-    }
-}
+// Legacy exports kept so existing imports don't throw errors
+export function initTheme() { applyLightTheme(); }
+export function toggleTheme() { applyLightTheme(); }

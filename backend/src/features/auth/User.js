@@ -1,10 +1,12 @@
 import db from '../../config/database.js';
+import bcrypt from 'bcryptjs';
 
 export const userModel = {
   table: 'users',
   schema: `
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
+      name VARCHAR(100),
       phone VARCHAR(15) UNIQUE NOT NULL,
       email VARCHAR(255),
       password VARCHAR(255) NOT NULL,
@@ -26,20 +28,23 @@ export const getUserById = async (pool, id) => {
   return result.rows[0] || null;
 };
 
-export const createUser = async (pool, { phone, email, password, role, schoolId = 'school-001' }) => {
+export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001' }) => {
+  // Hash the password before storing
+  const hashedPassword = await bcrypt.hash(password, 10);
+  
   const result = await pool.query(
-    `INSERT INTO users (phone, email, password, role, "schoolId")
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [phone, email || null, password, role, schoolId]
+    `INSERT INTO users (name, phone, email, password, role, "schoolId")
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, phone, email, role, "isActive", "createdAt"`,
+    [name || null, phone, email || null, hashedPassword, role, schoolId]
   );
   return result.rows[0];
 };
 
 export const updateUser = async (pool, id, { name, phone, email, role }) => {
   const result = await pool.query(
-    `UPDATE users SET phone = COALESCE($2, phone), email = COALESCE($3, email), role = COALESCE($4, role)
+    `UPDATE users SET name = COALESCE($2, name), phone = COALESCE($3, phone), email = COALESCE($4, email), role = COALESCE($5, role)
      WHERE id = $1 RETURNING *`,
-    [id, phone, email, role]
+    [id, name, phone, email, role]
   );
   return result.rows[0] || null;
 };

@@ -10,22 +10,7 @@ import { notificationModel } from '../features/notifications/Notification.js';
 import { timetableModel } from '../features/student/Timetable.js';
 import { syllabusModel } from '../features/teacher/syllabusModel.js';
 
-const { Pool } = pkg;
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.join(__dirname, '../../.env') });
-
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'tuition_app'
-});
+import pool from './pool.js';
 
 export async function initializeDatabase() {
   try {
@@ -39,14 +24,14 @@ export async function initializeDatabase() {
     await pool.query(notificationModel.schema);
     await pool.query(timetableModel.schema);
     await pool.query(syllabusModel.schema);
-    console.log('✅ Tables checked/created.');
+    console.log('Tables checked/created.');
 
     await createDefaultAdmin();
     if (process.env.SEED_DB === 'true') {
       await seedDatabase();
     }
   } catch (err) {
-    console.error('❌ Database Initialization Error:', err.message);
+    console.error('Database Initialization Error:', err.message);
   }
 }
 
@@ -58,7 +43,7 @@ async function createDefaultAdmin() {
             `INSERT INTO users (phone, email, password, role) VALUES ($1, $2, $3, $4)`,
             [phone, 'admin@a2z.local', 'admin123', 'admin']
         );
-        console.log('✅ Default admin created.');
+        console.log('Default admin created.');
     }
 }
 
@@ -84,9 +69,9 @@ async function seedDatabase() {
         [userId, s.name, s.classLevel, s.phone, `${s.phone}@student.local`]
       );
     }
-    console.log('🌱 Database seeded.');
+    console.log('Database seeded.');
   } catch (err) {
-    console.error('❌ Seeding Error:', err.message);
+    console.error('Seeding Error:', err.message);
   }
 }
 
