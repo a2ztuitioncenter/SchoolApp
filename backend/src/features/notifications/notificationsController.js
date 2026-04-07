@@ -15,15 +15,21 @@ export const createNotification = async (req, res) => {
       return res.status(400).json({ error: 'title and message required' });
 
     const attachmentUrl = req.file ? `/uploads/notifications/${req.file.filename}` : null;
+    const createdByInt = createdBy ? parseInt(createdBy, 10) : null;
+
+    console.log('Creating notification with:', { title, message, attachmentUrl, recipientRole, classLevel, createdByInt });
 
     const result = await req.db.query(
       `INSERT INTO notifications (title, message, "attachmentUrl", "recipientRole", "classLevel", "createdBy")
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, message, attachmentUrl, recipientRole || null, classLevel || null, createdBy || null]
+      [title, message, attachmentUrl, recipientRole || null, classLevel || null, createdByInt]
     );
+    console.log('Notification created successfully:', result.rows[0].id);
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
-    console.error('createNotification:', err);
+    console.error('createNotification ERROR:', err.message);
+    console.error('SQL State:', err.code);
+    console.error('Detail:', err.detail);
     res.status(500).json({ error: 'Server error', detail: err.message });
   }
 };

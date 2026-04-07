@@ -17,7 +17,7 @@ import notificationsRoutes from './features/notifications/notificationsRoutes.js
 import resultsRoutes    from './features/results/resultsRoutes.js';
 import downloadRoutes   from './features/download/downloadRoutes.js';
 
-import pool, { initializeDatabase } from './config/database.js';
+import { initializeDatabase } from './config/database.js';
 
 import fs from 'fs';
 
@@ -29,7 +29,7 @@ const __dirname = path.dirname(__filename);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+import pool from './config/pool.js';
 
 // Test the connection
 try {
@@ -66,12 +66,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// API Root Status
+// Serve index.html (master landing / login selector) on root route
 app.get('/', (req, res) => {
-  res.json({ message: "Tuition App Backend API is running perfectly." });
+  const indexPath = path.join(__dirname, '../frontend/index.html');
+  res.sendFile(indexPath);
 });
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve static files from frontend
+app.use(express.static(path.join(__dirname, '../../frontend')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
@@ -116,9 +119,15 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Fallback: API 404 for unknown routes
+// Fallback: serve index.html for unknown routes
 app.use((req, res) => {
-  res.status(404).json({ error: 'API Endpoint not found' });
+  const indexPath = path.join(__dirname, '../frontend/index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error('Error serving index.html:', err.message);
+      res.status(404).json({ error: 'Page not found' });
+    }
+  });
 });
 
 // Error Handling
