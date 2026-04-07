@@ -67,9 +67,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
         'SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC',
         [teacherId]
       ),
-      classes.length > 0
-        ? pool.query(`SELECT COUNT(DISTINCT id) AS "totalStudents" FROM students WHERE "classLevel" = ANY($1)`, [classes])
-        : { rows: [{ totalStudents: 0 }] }
+      pool.query(`SELECT COUNT(id) AS "totalStudents" FROM students`)
     ]);
 
     res.json({

@@ -1070,3 +1070,161 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================
+   GITHUB STYLE PROFILE MENU
+   ============================================ */
+.admin-profile-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-btn:hover, .profile-btn[aria-expanded="true"] {
+  background: var(--bg-hover);
+  border-color: var(--border-subtle);
+}
+
+.avatar-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--text-main);
+  position: relative;
+  font-size: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.online-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background-color: var(--success);
+  border: 2px solid var(--bg-secondary);
+  border-radius: 50%;
+}
+
+.profile-btn i {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.profile-dropdown.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.profile-dropdown .dropdown-header {
+  padding: 12px 16px;
+  background: var(--bg-primary);
+  border-radius: 8px 8px 0 0;
+}
+
+.profile-dropdown .user-name {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-dropdown .user-email {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dropdown-item i {
+  width: 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.dropdown-item:hover, .dropdown-item:focus {
+  background-color: var(--accent-blue);
+  color: var(--text-on-accent);
+  outline: none;
+}
+
+.dropdown-item:hover i, .dropdown-item:focus i {
+  color: var(--text-on-accent);
+}
+
+.dropdown-item.text-danger:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+.dropdown-item.text-danger:hover i {
+  color: white;
+}
+
+.dropdown-item.text-danger {
+  color: var(--danger);
+}
+
+.dropdown-item.text-danger i {
+  color: var(--danger);
+}

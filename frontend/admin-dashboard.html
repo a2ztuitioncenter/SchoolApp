@@ -62,11 +62,25 @@
                             <div class="header">
                                 <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
                                 <h1>Admin Dashboard</h1>
-                                <div class="admin-info">
-                                    <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--text-muted);"></i>
-                                    <div>
-                                        <div style="font-weight: 600; color: var(--text-main);" id="admin-name">Administrator</div>
-                                        <div style="font-size: 0.85rem; color: var(--text-muted);">Admin Panel</div>
+                                <div class="admin-profile-menu" id="admin-profile-menu">
+                                    <button id="admin-profile-btn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
+                                        <div class="avatar-circle">
+                                            <span id="admin-avatar-initial">A</span>
+                                            <span class="online-indicator"></span>
+                                        </div>
+                                        <i class="fas fa-caret-down"></i>
+                                    </button>
+                                    
+                                    <div id="admin-profile-dropdown" class="profile-dropdown">
+                                        <div class="dropdown-header">
+                                            <div class="user-name" id="dropdown-admin-name">Administrator</div>
+                                            <div class="user-email" id="dropdown-admin-email">admin@a2z.local</div>
+                                        </div>
+                                        <div class="dropdown-divider"></div>
+                                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> View Profile</a>
+                                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
+                                        <div class="dropdown-divider"></div>
+                                        <button id="dropdown-logout-btn" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
                                     </div>
                                 </div>
                             </div>
