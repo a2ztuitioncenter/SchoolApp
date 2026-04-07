@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { getUserByPhone, createUser } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 
@@ -153,8 +154,9 @@ router.post('/admin-login', async (req, res) => {
       });
     }
 
-    // For development: Simple password check
-    if (password !== 'admin123') { 
+    // Verify password using bcryptjs
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -202,8 +204,9 @@ router.post('/teacher-login', async (req, res) => {
       });
     }
 
-    // For development: Simple password check
-    if (password !== 'teacher123') { 
+    // Verify password using bcryptjs
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
