@@ -7,12 +7,13 @@ export const attendanceModel = {
       id SERIAL PRIMARY KEY,
       "studentId" INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
       "userId" INTEGER REFERENCES users(id),
-      "attendanceDate" DATE NOT NULL,
+      "classLevel" VARCHAR(50) NOT NULL,
+      date DATE NOT NULL,
       status VARCHAR(10) NOT NULL CHECK (status IN ('present', 'absent', 'late')),
       remarks TEXT,
       "schoolId" VARCHAR(50) DEFAULT 'school-001',
       "createdAt" TIMESTAMP DEFAULT NOW(),
-      UNIQUE("studentId", "attendanceDate")
+      UNIQUE("studentId", date)
     );
   `,
 
@@ -22,12 +23,12 @@ export const attendanceModel = {
       const studentId = rec.studentId || rec.student_id;
       const date = rec.date || rec.attendanceDate;
       const r = await db.query(
-        `INSERT INTO attendance ("studentId", "attendanceDate", status, "userId")
-         VALUES ($1, $2, $3, (SELECT "userId" FROM students WHERE id = $1))
-         ON CONFLICT ON CONSTRAINT attendance_studentid_attendancedate_key
-         DO UPDATE SET status = EXCLUDED.status
+        `INSERT INTO attendance ("studentId", "classLevel", date, status, "userId")
+         VALUES ($1, $2, $3, $4, (SELECT "userId" FROM students WHERE id = $1))
+         ON CONFLICT ON CONSTRAINT attendance_studentId_date_key
+         DO UPDATE SET status = EXCLUDED.status, "classLevel" = EXCLUDED."classLevel"
          RETURNING *`,
-        [studentId, date, rec.status]
+        [studentId, rec.classLevel, date, rec.status]
       );
       results.push(r.rows[0]);
     }
@@ -40,7 +41,7 @@ export const attendanceModel = {
       `SELECT a.*, s.name AS "studentName", s."rollNumber"
        FROM attendance a
        JOIN students s ON a."studentId" = s.id
-       WHERE s."classLevel" = $1 AND a."attendanceDate" = $2
+       WHERE s."classLevel" = $1 AND a.date = $2
        ORDER BY s.name`,
       [classLevel, date]
     );
@@ -57,7 +58,7 @@ export const attendanceModel = {
 
   async getByStudent(studentId) {
     const result = await db.query(
-      `SELECT * FROM attendance WHERE "studentId" = $1 ORDER BY "attendanceDate" DESC`,
+      `SELECT * FROM attendance WHERE "studentId" = $1 ORDER BY date DESC`,
       [studentId]
     );
     return result.rows;
@@ -75,7 +76,7 @@ export const attendanceModel = {
        FROM students s
        LEFT JOIN attendance a
          ON s.id = a."studentId"
-         AND TO_CHAR(a."attendanceDate", 'YYYY-MM') = $2
+         AND TO_CHAR(a.date, 'YYYY-MM') = $2
        WHERE s."classLevel" = $1
        GROUP BY s.id, s.name, s."rollNumber"
        ORDER BY s.name`,
@@ -101,8 +102,8 @@ export const getAttendancePercentage = async (pool, studentId, days = 30) => {
          COUNT(CASE WHEN status = 'absent' THEN 1 END) AS "absentDays",
          COUNT(*) AS "totalWorkingDays",
          ROUND(COUNT(CASE WHEN status = 'present' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS percentage
-       FROM attendance
-       WHERE "studentId" = $1 AND "attendanceDate" >= NOW() - INTERVAL '${days} days'`,
+        FROM attendance
+        WHERE "studentId" = $1 AND date >= NOW() - INTERVAL '${days} days'`,
       [studentId]
     );
     return result.rows[0] || { presentDays: 0, absentDays: 0, totalWorkingDays: 0, percentage: 0 };
@@ -132,9 +133,9 @@ export const getAttendanceByStudentId = async (pool, studentId, startDate = null
   try {
     let query = `SELECT * FROM attendance WHERE "studentId" = $1`;
     const params = [studentId];
-    if (startDate) { query += ` AND "attendanceDate" >= $${params.length + 1}`; params.push(startDate); }
-    if (endDate) { query += ` AND "attendanceDate" <= $${params.length + 1}`; params.push(endDate); }
-    query += ` ORDER BY "attendanceDate" DESC`;
+    if (startDate) { query += ` AND date >= $${params.length + 1}`; params.push(startDate); }
+    if (endDate) { query += ` AND date <= $${params.length + 1}`; params.push(endDate); }
+    query += ` ORDER BY date DESC`;
     const result = await pool.query(query, params);
     return result.rows;
   } catch (err) {

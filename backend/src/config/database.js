@@ -24,7 +24,8 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'postgres',
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'tuition_app'
+  database: process.env.DB_NAME || 'tuition_app',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
 export async function initializeDatabase() {
