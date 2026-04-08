@@ -1,6 +1,7 @@
 // Master portal init — theme is handled automatically by CSS prefers-color-scheme
 function init() {
   console.log('✅ Index JS Init');
+  setupGetStartedHandler();
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
   console.log('🚀 Index Page Loaded');
@@ -11,6 +12,62 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
+
+/**
+ * Setup Get Started button handler to reveal login modal
+ */
+function setupGetStartedHandler() {
+  const getStartedBtn = document.getElementById('btn-get-started');
+  const loginModal = document.getElementById('login-modal');
+
+  if (getStartedBtn && loginModal) {
+    getStartedBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Get Started clicked');
+      const isHidden = loginModal.classList.contains('login-modal--hidden');
+      
+      if (isHidden) {
+        loginModal.classList.remove('login-modal--hidden');
+        loginModal.classList.add('login-modal--visible');
+        document.body.style.overflow = 'hidden';
+      } else {
+        loginModal.classList.add('login-modal--hidden');
+        loginModal.classList.remove('login-modal--visible');
+        document.body.style.overflow = 'auto';
+      }
+    });
+  }
+
+  // Close modal when clicking overlay or close button
+  const modalOverlay = loginModal.querySelector('.login-modal-overlay');
+  const closeBtn = document.getElementById('login-modal-close');
+
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', () => {
+      loginModal.classList.add('login-modal--hidden');
+      loginModal.classList.remove('login-modal--visible');
+      document.body.style.overflow = 'auto';
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      loginModal.classList.add('login-modal--hidden');
+      loginModal.classList.remove('login-modal--visible');
+      document.body.style.overflow = 'auto';
+    });
+  }
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && loginModal.classList.contains('login-modal--visible')) {
+      loginModal.classList.add('login-modal--hidden');
+      loginModal.classList.remove('login-modal--visible');
+      document.body.style.overflow = 'auto';
+    }
+  });
+}
+
 // alert("Welcome")
 /**
  * Setup login card click handlers
