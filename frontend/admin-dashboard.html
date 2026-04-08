@@ -689,79 +689,116 @@
 
             <!-- Fees & Financials Tab -->
             <div id="tab-fees" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card">
-                        <h3>Total Collected</h3>
-                        <div class="stat-value" style="color: #238636;" id="fee-stat-collected">₹0</div>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-receipt"></i> Fees & Financials</h2>
+                        <p class="section-subtitle">Manage fee records and payment status</p>
                     </div>
-                    <div class="card">
-                        <h3>Total Pending</h3>
-                        <div class="stat-value" style="color: #da3633;" id="fee-stat-pending">₹0</div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddFeeModal()">
+                        <i class="fas fa-plus"></i> Add Fee
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(36, 134, 54, 0.1); color: var(--success);">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Collected</div>
+                            <div class="stat-number" id="fee-stat-collected">₹0</div>
+                        </div>
                     </div>
-                    <div class="card">
-                        <h3>Paid / Unpaid</h3>
-                        <div class="stat-value" style="color: var(--accent-blue);">
-                            <span id="fee-stat-paid-count">0</span> / <span id="fee-stat-unpaid-count">0</span>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(218, 54, 51, 0.1); color: #da3633;">
+                            <i class="fas fa-hourglass-end"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Pending</div>
+                            <div class="stat-number" id="fee-stat-pending">₹0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(31, 111, 235, 0.1); color: var(--accent-blue);">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Paid / Unpaid</div>
+                            <div class="stat-number"><span id="fee-stat-paid-count">0</span> / <span id="fee-stat-unpaid-count">0</span></div>
                         </div>
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>➕ Add Fee Record</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>Student ID *</label>
-                                <input type="number" id="fee-student-id" placeholder="Student ID">
-                            </div>
-                            <div class="form-group">
-                                <label>Amount (₹) *</label>
-                                <input type="number" id="fee-amount" placeholder="e.g. 2000" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>Due Date *</label>
-                                <input type="date" id="fee-due-date">
-                            </div>
-                            <div class="form-group">
-                                <label>Description</label>
-                                <input type="text" id="fee-description" placeholder="e.g. Monthly Tuition Fee">
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" style="margin-top:1rem;" onclick="addFeeRecord()">➕ Add Fee</button>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
+                        <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                    </div>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="debouncedFilterFees()">
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
-                                <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
-                            </div>
-                            <div style="flex: 1; max-width: 400px; position: relative;">
-                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                                <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="filterFeesTable()" style="padding-left: 2.5rem; width: 100%;">
-                            </div>
+
+                <!-- Fees Table -->
+                <div class="table-container">
+                    <table class="fees-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student</th>
+                                <th>Class</th>
+                                <th>Amount</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fees-table-body"></tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()" style="display: none;">Show All Fees</button>
+                    <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
+
+                <!-- Add Fee Modal -->
+                <div id="add-fee-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Add Fee Record</h2>
+                            <span class="close" onclick="closeAddFeeModal()">&times;</span>
                         </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Student</th>
-                                        <th>Class</th>
-                                        <th>Amount</th>
-                                        <th>Description</th>
-                                        <th>Due Date</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="fees-table-body"></tbody>
-                            </table>
-                        </div>
-                        <!-- Pagination / Show More for Fees -->
-                        <div style="text-align: center; margin-top: 1rem;">
-                            <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()" style="display: none;">Show All Fees</button>
-                            <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                        <form id="add-fee-form" class="modal-body">
+                            <div class="form-section-title">Fee Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Student ID *</label>
+                                    <input type="number" id="fee-student-id" placeholder="e.g. 1001" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Amount (₹) *</label>
+                                    <input type="number" id="fee-amount" placeholder="e.g. 2000" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Due Date *</label>
+                                    <input type="date" id="fee-due-date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input type="text" id="fee-description" placeholder="e.g. Monthly Tuition Fee">
+                                </div>
+                            </div>
+                        </form>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeAddFeeModal()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveFee()">Add Fee</button>
                         </div>
                     </div>
                 </div>

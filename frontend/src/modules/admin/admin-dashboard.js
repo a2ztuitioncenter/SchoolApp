@@ -46,13 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             profileBtn.setAttribute('aria-expanded', !isExpanded);
             profileMenu.classList.toggle('open');
         });
-        
-        document.addEventListener('click', (e) => {
-            if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
-                profileBtn.setAttribute('aria-expanded', 'false');
-                profileMenu.classList.remove('open');
-            }
-        });
     }
 
     const dropLogoutBtn = document.getElementById('dropdown-logout-btn');
@@ -79,22 +72,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupTabNavigation();
     setupForms();
 
-    // ===== UNIFIED EVENT HANDLER FOR ALL MENUS & MODALS =====
-    // Close all dropdowns when clicking outside
+    // ===== UNIFIED GLOBAL EVENT HANDLER =====
+    // Single consolidated click handler for all UI interactions
     document.addEventListener('click', (e) => {
-        // Close any open action menu dropdowns
+        // Close profile menu if clicking outside
+        const profileBtn = document.getElementById('profile-btn');
+        const profileMenu = document.getElementById('profile-menu');
+        if (profileBtn && profileMenu) {
+            if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+                profileBtn.setAttribute('aria-expanded', 'false');
+                profileMenu.classList.remove('open');
+            }
+        }
+        
+        // Close any open action menu dropdowns if clicking outside
         if (!e.target.closest('.action-menu')) {
             document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
         }
     });
 
-    // Close modals when clicking backdrop
+    // Close modals when clicking on modal background (deprecated - use proper modal handlers)
     window.addEventListener('click', (e) => {
         const addStudentModal = document.getElementById('add-student-modal');
         const addHomeworkModal = document.getElementById('add-homework-modal');
+        const addFeeModal = document.getElementById('add-fee-modal');
         
         if (addStudentModal === e.target) closeAddStudentModal();
         if (addHomeworkModal === e.target) closeAddHomeworkModal();
+        if (addFeeModal === e.target) closeAddFeeModal();
     });
 
     // Mobile Sidebar Toggle
@@ -924,8 +929,42 @@ window.deleteHomework = async function (id) {
 };
 
 // =============================================
-// FEES - FULL CRUD
+// FEES - FULL CRUD WITH LAZYLOADING & DEBOUNCE
 // =============================================
+let showAllFees = false;
+let feesFilterTimeout;
+
+window.openAddFeeModal = function() {
+    const modal = document.getElementById('add-fee-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('fee-student-id')?.focus();
+    }
+};
+
+window.closeAddFeeModal = function() {
+    const modal = document.getElementById('add-fee-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleShowAllFees = function() {
+    showAllFees = !showAllFees;
+    debouncedFilterFees();
+};
+
+window.debouncedFilterFees = function() {
+    clearTimeout(feesFilterTimeout);
+    feesFilterTimeout = setTimeout(() => {
+        const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
+        const filtered = allFeesData.filter(f => 
+            (f.studentName || '').toLowerCase().includes(query) || 
+            (f.student_id?.toString() || '').includes(query) ||
+            (f.description || '').toLowerCase().includes(query)
+        );
+        renderFeesTable(filtered);
+    }, 300);
+};
+
 async function initFeesTab() {
     try {
         await loadFeeStats();
@@ -945,8 +984,7 @@ async function loadFeeStats() {
     set('fee-stat-unpaid-count', s.unpaidCount || 0);
 }
 
-window.loadFees = loadFees;
-async function loadFees(mode = 'all') {
+window.loadFees = async function(mode = 'all') {
     document.getElementById('fee-tab-all')?.classList.toggle('active',   mode === 'all');
     document.getElementById('fee-tab-unpaid')?.classList.toggle('active', mode === 'unpaid');
 
@@ -957,13 +995,6 @@ async function loadFees(mode = 'all') {
     } catch (err) {
         showErrorAlert('Failed to load fees');
     }
-}
-
-let showAllFees = false;
-
-window.toggleShowAllFees = function() {
-    showAllFees = !showAllFees;
-    filterFeesTable(); // re-runs slicing logic
 };
 
 function renderFeesTable(fees) {
@@ -973,13 +1004,13 @@ function renderFeesTable(fees) {
     if (!tbody) return;
 
     if (!fees.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No fee records found</td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 5;
+    const displayLimit = 15;
     const toShow = showAllFees ? fees : fees.slice(0, displayLimit);
     
     if (toggleBtn) {
@@ -995,78 +1026,113 @@ function renderFeesTable(fees) {
         countText.textContent = `Showing ${toShow.length} of ${fees.length} record(s)`;
     }
 
-    tbody.innerHTML = toShow.map((f, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td><strong>${f.studentName || f.studentId}</strong>${f.student_id ? `<br><small style="color:#636e72">ID: ${f.student_id}</small>` : ''}</td>
-            <td>${f.classLevel || '-'}</td>
-            <td>₹${parseFloat(f.amount).toFixed(2)}</td>
-            <td>${f.description || '-'}</td>
-            <td>${new Date(f.dueDate).toLocaleDateString('en-IN')}</td>
-            <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
-            <td>
-                <button class="btn-sm ${f.paid ? 'btn-warning' : 'btn-success'}" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
-                    ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
-                </button>
-                <button class="btn-sm btn-delete" onclick="deleteFeeRecord(${f.id})"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = toShow.map((f, i) => {
+        return `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${f.studentName || f.studentId}</strong></td>
+                <td>${f.classLevel || '-'}</td>
+                <td>₹${parseFloat(f.amount).toFixed(2)}</td>
+                <td>${new Date(f.dueDate).toLocaleDateString('en-IN')}</td>
+                <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
+                <td>
+                    <div class="action-menu">
+                        <button class="action-menu-btn" onclick="toggleFeeMenu(event);">⋮</button>
+                        <div class="action-menu-dropdown" data-fee-id="${f.id}">
+                            <button class="action-menu-item" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
+                                <i class="fas fa-${f.paid ? 'times-circle' : 'check-circle'}" style="width: 16px;"></i> ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
+                            </button>
+                            <div class="action-menu-divider"></div>
+                            <button class="action-menu-item danger" onclick="deleteFeeRecord(${f.id})">
+                                <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-window.filterFeesTable = function() {
-    const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
-    const filtered = allFeesData.filter(f => 
-        (f.studentName || '').toLowerCase().includes(query) || 
-        (f.student_id?.toString() || '').includes(query) ||
-        (f.description || '').toLowerCase().includes(query)
-    );
-    renderFeesTable(filtered);
+window.toggleFeeMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllFeeMenus();
+    
+    // Toggle current menu
+    dropdown.classList.add('open');
 };
 
+window.closeAllFeeMenus = function() {
+    document.querySelectorAll('.fees-table .action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
 
-window.addFeeRecord = async function () {
+window.saveFee = async function () {
     const studentId  = document.getElementById('fee-student-id')?.value;
     const amount     = document.getElementById('fee-amount')?.value;
     const dueDate    = document.getElementById('fee-due-date')?.value;
     const description = document.getElementById('fee-description')?.value.trim();
 
     if (!studentId || !amount || !dueDate) { showErrorAlert('Student ID, Amount and Due Date are required'); return; }
+    
+    showInfoAlert('Adding fee...');
     try {
         const res = await feesAPI.add({ studentId, amount, dueDate, description });
         if (res.data) {
+            hideInfoAlert();
             showSuccessAlert('Fee record added!');
+            closeAddFeeModal();
             ['fee-student-id', 'fee-amount', 'fee-due-date', 'fee-description'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
             await initFeesTab();
         } else {
+            hideInfoAlert();
             showErrorAlert(res.error || 'Failed to add fee');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to add fee');
     }
 };
 
 window.toggleFeePaid = async function (id, markAsPaid) {
+    showInfoAlert(markAsPaid ? 'Marking as paid...' : 'Marking as unpaid...');
     try {
         const res = markAsPaid ? await feesAPI.markPaid(id) : await feesAPI.markUnpaid(id);
         if (res.data) {
+            hideInfoAlert();
             showSuccessAlert(markAsPaid ? 'Marked as Paid' : 'Marked as Unpaid');
             await initFeesTab();
+        } else {
+            hideInfoAlert();
+            showErrorAlert('Failed to update status');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert('Failed to update fee status');
     }
 };
 
 window.deleteFeeRecord = async function (id) {
     if (!confirm('Delete this fee record?')) return;
+    showInfoAlert('Deleting fee...');
     try {
         const res = await feesAPI.delete(id);
-        if (res.message) { showSuccessAlert('Fee deleted'); await initFeesTab(); }
-        else showErrorAlert('Failed to delete');
+        if (res.message || res.data) { 
+            hideInfoAlert();
+            showSuccessAlert('Fee deleted'); 
+            await initFeesTab(); 
+        }
+        else { 
+            hideInfoAlert();
+            showErrorAlert('Failed to delete'); 
+        }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to delete');
     }
 };
