@@ -218,19 +218,25 @@ let dashboardData = {
     students: [],
     unpaidFees: [],
     financialSummary: {},
-    timetable: []
+    timetable: [],
+    trends: [],
+    latestStudents: [],
+    latestPayments: [],
+    latestHomework: []
 };
 
 async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
         
-        // Load all data in parallel
-        const [studentsRes, unpaidFeesRes, financialRes, timetableRes] = await Promise.all([
+        // Load all data in parallel (including new trend data)
+        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
             adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
             adminAPI.getFinancialSummary ? adminAPI.getFinancialSummary().catch(() => ({})) : Promise.resolve({}),
-            adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] })
+            adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] }),
+            // New: Fetch 30-day trend data
+            fetchTrendData().catch(() => ({ trends: [], summary: {} }))
         ]);
 
         // Store data
@@ -238,20 +244,41 @@ async function loadDashboardData() {
         dashboardData.unpaidFees = unpaidFeesRes.fees || [];
         dashboardData.financialSummary = financialRes || {};
         dashboardData.timetable = timetableRes.timetable || [];
+        dashboardData.trends = trendsRes.trends || [];
+
+        // Fetch additional data for activity panel (non-critical, can fail silently)
+        const [latestStudents, latestPayments, latestHomework] = await Promise.all([
+            fetchLatestStudents().catch(() => []),
+            fetchLatestPayments().catch(() => []),
+            fetchLatestHomework().catch(() => [])
+        ]);
+
+        dashboardData.latestStudents = latestStudents;
+        dashboardData.latestPayments = latestPayments;
+        dashboardData.latestHomework = latestHomework;
 
         // Render all sections
-        renderDashboardSummaryCards();
+        // Key Metrics - Now chart-based (4 visualizations)
+        renderStudentsOverviewChart();
+        renderFeesOverviewChart();
+        renderGrowthTrendChart();
+        renderClassDistributionChart();
+        
+        // Detailed breakdown charts
         renderFeesChart();
         renderStudentsChart();
+        renderTrendChart();
+        
+        // Activity & snapshot panels
+        renderActivityPanel();
+        renderTodaySnapshot();
+        
+        // Tables
         renderUnpaidFeesTable();
         renderRecentStudents();
         renderTodayTimetable();
 
         hideInfoAlert();
-        // Lazy load non-critical sections after 500ms
-        setTimeout(() => {
-            // Charts are already rendering above
-        }, 500);
 
     } catch (err) {
         hideInfoAlert();
@@ -260,10 +287,75 @@ async function loadDashboardData() {
     }
 }
 
+/**
+ * Fetch 30-day trend data from backend
+ */
+async function fetchTrendData() {
+    const res = await fetch('/api/admin/financials/trends', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+        }
+    });
+    
+    if (!res.ok) throw new Error('Failed to fetch trend data');
+    return await res.json();
+}
+
+/**
+ * Fetch latest students
+ */
+async function fetchLatestStudents() {
+    const res = await adminAPI.getStudents();
+    if (res.students && res.students.length > 0) {
+        return res.students.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
+    }
+    return [];
+}
+
+/**
+ * Fetch latest payments (from unpaid fees, but find paid ones)
+ */
+async function fetchLatestPayments() {
+    try {
+        // Fetch all fees and filter for paid ones
+        const feesRes = await feesAPI.getAll();
+        const fees = feesRes.fees || [];
+        
+        // Filter paid fees and get latest 3
+        return fees
+            .filter(f => f.isPaid === true)
+            .sort((a, b) => new Date(b.paidDate || b.createdAt) - new Date(a.paidDate || a.createdAt))
+            .slice(0, 3);
+    } catch (err) {
+        console.error('Error fetching latest payments:', err);
+        return [];
+    }
+}
+
+/**
+ * Fetch latest homework
+ */
+async function fetchLatestHomework() {
+    try {
+        const res = await homeworkAPI.getAll();
+        const homework = res.homework || [];
+        
+        // Get latest 3
+        return homework
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 3);
+    } catch (err) {
+        console.error('Error fetching latest homework:', err);
+        return [];
+    }
+}
+
 // ===== RENDER FUNCTIONS =====
 
 /**
- * Render the 6 summary stat cards with color-coded calculations
+ * Render the 6 summary stat cards with color-coded calculations and click handlers
  */
 function renderDashboardSummaryCards() {
     const el = id => document.getElementById(id);
@@ -292,10 +384,30 @@ function renderDashboardSummaryCards() {
     if (el('total-collected')) el('total-collected').textContent = `₹${totalCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
     if (el('total-pending')) el('total-pending').textContent = `₹${totalPending.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
     if (el('overdue-count')) el('overdue-count').textContent = overdueCount;
+
+    // Add click handlers to metric cards for navigation
+    const cardMap = {
+        'total-students': 'users',
+        'active-students': 'students',
+        'inactive-students': 'students',
+        'total-collected': 'fees',
+        'total-pending': 'fees',
+        'overdue-count': 'fees'
+    };
+
+    // Find all stat cards and add click handlers
+    const cards = document.querySelectorAll('.stat-card');
+    cards.forEach(card => {
+        const valueEl = card.querySelector('.stat-card-value');
+        if (valueEl && cardMap[valueEl.id]) {
+            card.style.cursor = 'pointer';
+            card.onclick = () => showTab(cardMap[valueEl.id]);
+        }
+    });
 }
 
 /**
- * Render fees distribution pie chart (paid vs pending)
+ * Render fees distribution pie chart (paid vs pending) with percentage labels
  */
 function renderFeesChart() {
     const canvas = document.getElementById('fees-chart');
@@ -323,11 +435,15 @@ function renderFeesChart() {
             window.feesChartInstance.destroy();
         }
 
+        // Calculate percentages
+        const paidPercent = ((paid / total) * 100).toFixed(1);
+        const pendingPercent = ((pending / total) * 100).toFixed(1);
+
         const ctx = canvas.getContext('2d');
         window.feesChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Paid', 'Pending'],
+                labels: [`Paid (${paidPercent}%)`, `Pending (${pendingPercent}%)`],
                 datasets: [{
                     data: [paid, pending],
                     backgroundColor: ['#22c55e', '#fb923c'],
@@ -347,9 +463,27 @@ function renderFeesChart() {
                             usePointStyle: true,
                             color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()
                         }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#ffffff',
+                        font: { weight: 'bold', size: 14 },
+                        formatter: (value, ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${percentage}%`;
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `₹${context.parsed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+                            }
+                        }
                     }
                 }
-            }
+            },
+            plugins: [ChartDataLabels]
         });
     } catch (err) {
         console.error('Error rendering fees chart:', err);
@@ -358,7 +492,7 @@ function renderFeesChart() {
 }
 
 /**
- * Render students distribution bar chart (by class)
+ * Render students distribution bar chart (by class) with enhanced tooltips
  */
 function renderStudentsChart() {
     const canvas = document.getElementById('students-chart');
@@ -411,7 +545,234 @@ function renderStudentsChart() {
                 responsive: true,
                 maintainAspectRatio: true,
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return context[0].label;
+                            },
+                            label: function(context) {
+                                return `Students: ${context.parsed.y}`;
+                            },
+                            afterLabel: function(context) {
+                                const total = dashboardData.students.length || 1;
+                                const percentage = ((context.parsed.y / total) * 100).toFixed(1);
+                                return `Percentage: ${percentage}%`;
+                            }
+                        },
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 12, weight: '600' },
+                        bodyFont: { size: 12 }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#ffffff',
+                        anchor: 'end',
+                        align: 'top',
+                        font: { weight: 'bold', size: 12 },
+                        formatter: (value) => value
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering students chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render Students Overview Chart (Active vs Inactive donut)
+ */
+function renderStudentsOverviewChart() {
+    const canvas = document.getElementById('students-overview-chart');
+    const container = document.getElementById('students-overview-loading');
+    
+    if (!canvas) return;
+
+    const totalStudents = dashboardData.students.length;
+    const activeStudents = dashboardData.students.filter(s => s.status === 'active').length;
+    const inactiveStudents = totalStudents - activeStudents;
+
+    if (totalStudents === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No student data</p></div>';
+        return;
+    }
+
+    if (container) container.style.display = 'none';
+
+    try {
+        if (window.studentsOverviewChart) window.studentsOverviewChart.destroy();
+
+        const ctx = canvas.getContext('2d');
+        window.studentsOverviewChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [`Active (${activeStudents})`, `Inactive (${inactiveStudents})`],
+                datasets: [{
+                    data: [activeStudents, inactiveStudents],
+                    backgroundColor: ['#22c55e', '#fb923c'],
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
+                    datalabels: {
+                        font: { weight: 'bold', size: 14 },
+                        color: '#ffffff',
+                        formatter: (value) => `${((value / totalStudents) * 100).toFixed(1)}%`
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering students overview chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render Fees Overview Chart (Collected vs Pending vs Overdue donut)
+ */
+function renderFeesOverviewChart() {
+    const canvas = document.getElementById('fees-overview-chart');
+    const container = document.getElementById('fees-overview-loading');
+    
+    if (!canvas) return;
+
+    const financials = dashboardData.financialSummary;
+    const collected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+    const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+    
+    // Calculate overdue
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdue = dashboardData.unpaidFees.filter(f => {
+        const dueDate = new Date(f.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+    }).reduce((sum, f) => sum + parseFloat(f.amount), 0);
+
+    const total = collected + pending + overdue;
+    if (total === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No fees data</p></div>';
+        return;
+    }
+
+    if (container) container.style.display = 'none';
+
+    try {
+        if (window.feesOverviewChart) window.feesOverviewChart.destroy();
+
+        const ctx = canvas.getContext('2d');
+        window.feesOverviewChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    `Collected (₹${(collected / 100000).toFixed(1)}L)`,
+                    `Pending (₹${(pending / 100000).toFixed(1)}L)`,
+                    `Overdue (₹${(overdue / 100000).toFixed(1)}L)`
+                ],
+                datasets: [{
+                    data: [collected, pending, overdue],
+                    backgroundColor: ['#22c55e', '#fb923c', '#ef4444'],
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
+                    datalabels: {
+                        font: { weight: 'bold', size: 14 },
+                        color: '#ffffff',
+                        formatter: (value) => `${((value / total) * 100).toFixed(1)}%`
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering fees overview chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render Growth Trend Chart (Cumulative student enrollment over time)
+ */
+function renderGrowthTrendChart() {
+    const canvas = document.getElementById('growth-trend-chart');
+    const container = document.getElementById('growth-trend-loading');
+    
+    if (!canvas) return;
+
+    // Group students by enrollment month
+    const enrollmentByMonth = {};
+    dashboardData.students.forEach(student => {
+        const date = new Date(student.createdAt || new Date());
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        enrollmentByMonth[monthKey] = (enrollmentByMonth[monthKey] || 0) + 1;
+    });
+
+    const sortedMonths = Object.keys(enrollmentByMonth).sort();
+    if (sortedMonths.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No enrollment history</p></div>';
+        return;
+    }
+
+    if (container) container.style.display = 'none';
+
+    try {
+        if (window.growthTrendChart) window.growthTrendChart.destroy();
+
+        // Calculate cumulative enrollment
+        let cumulative = 0;
+        const cumulativeData = sortedMonths.map(month => {
+            cumulative += enrollmentByMonth[month];
+            return cumulative;
+        });
+
+        const ctx = canvas.getContext('2d');
+        window.growthTrendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedMonths.map(m => m.substring(5) + '/' + m.substring(0, 4)),
+                datasets: [{
+                    label: 'Total Enrolled Students',
+                    data: cumulativeData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 12, weight: '600' } } },
+                    tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12, titleFont: { size: 12 } }
                 },
                 scales: {
                     y: {
@@ -422,7 +783,79 @@ function renderStudentsChart() {
             }
         });
     } catch (err) {
-        console.error('Error rendering students chart:', err);
+        console.error('Error rendering growth trend chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render Class Distribution Chart (Bar chart of students per class)
+ */
+function renderClassDistributionChart() {
+    const canvas = document.getElementById('class-distribution-chart');
+    const container = document.getElementById('class-distribution-loading');
+    
+    if (!canvas) return;
+
+    // Group students by class
+    const classCounts = {};
+    dashboardData.students.forEach(student => {
+        const cls = student.classLevel || 'Other';
+        classCounts[cls] = (classCounts[cls] || 0) + 1;
+    });
+
+    const sortedClasses = Object.keys(classCounts).sort();
+    if (sortedClasses.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No class data</p></div>';
+        return;
+    }
+
+    if (container) container.style.display = 'none';
+
+    try {
+        if (window.classDistributionChart) window.classDistributionChart.destroy();
+
+        const counts = sortedClasses.map(cls => classCounts[cls]);
+        const colors = ['#3b82f6', '#22c55e', '#fb923c', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#10b981'];
+
+        const ctx = canvas.getContext('2d');
+        window.classDistributionChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedClasses.map(cls => `Class ${cls}`),
+                datasets: [{
+                    label: 'Number of Students',
+                    data: counts,
+                    backgroundColor: colors.slice(0, sortedClasses.length),
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                indexAxis: 'x',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12 },
+                    datalabels: {
+                        font: { weight: 'bold', size: 12 },
+                        color: '#ffffff',
+                        anchor: 'end',
+                        align: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering class distribution chart:', err);
         if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
     }
 }
@@ -572,6 +1005,245 @@ function renderTodayTimetable() {
     container.innerHTML = html;
 }
 
+/**
+ * Render trend chart (30-day fees collected)
+ */
+function renderTrendChart() {
+    const canvas = document.getElementById('trend-chart');
+    const container = document.getElementById('trend-chart-loading');
+    
+    if (!canvas) return;
+
+    const trendData = dashboardData.trends || [];
+    if (trendData.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No trend data available for the last 30 days</p></div>';
+        return;
+    }
+
+    // Hide loading indicator
+    if (container) container.style.display = 'none';
+
+    try {
+        // Destroy existing chart if present
+        if (window.trendChartInstance) {
+            window.trendChartInstance.destroy();
+        }
+
+        // Format dates (group by week if too many data points)
+        const labels = trendData.map(d => {
+            const date = new Date(d.date);
+            return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        });
+
+        const amounts = trendData.map(d => parseFloat(d.amount) || 0);
+
+        const ctx = canvas.getContext('2d');
+        window.trendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Fees Collected (₹)',
+                    data: amounts,
+                    borderColor: '#0052cc',
+                    backgroundColor: 'rgba(0, 82, 204, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#0052cc',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: { size: 12, weight: '600' },
+                            padding: 15,
+                            usePointStyle: true,
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 12, weight: '600' },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            label: function(context) {
+                                return `₹${context.parsed.y.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + (value / 1000).toFixed(0) + 'K';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error rendering trend chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render recent activity panel (latest student, payment, homework)
+ */
+function renderActivityPanel() {
+    const container = document.getElementById('recent-activity-list');
+    if (!container) return;
+
+    const activities = [];
+
+    // Add latest student if available
+    if (dashboardData.latestStudents && dashboardData.latestStudents.length > 0) {
+        const student = dashboardData.latestStudents[0];
+        const date = new Date(student.createdAt || new Date());
+        activities.push({
+            type: 'recent-student',
+            icon: 'fas fa-user-plus',
+            title: student.name || 'New Student',
+            subtitle: `Class ${student.classLevel || '-'}`,
+            time: getRelativeTime(date),
+            link: 'showTab("students")'
+        });
+    }
+
+    // Add latest payment if available
+    if (dashboardData.latestPayments && dashboardData.latestPayments.length > 0) {
+        const payment = dashboardData.latestPayments[0];
+        const date = new Date(payment.createdAt || new Date());
+        activities.push({
+            type: 'recent-payment',
+            icon: 'fas fa-money-bill-wave',
+            title: `Payment: ${payment.studentName || 'Unknown'}`,
+            subtitle: `₹${parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+            time: getRelativeTime(date),
+            link: 'showTab("fees")'
+        });
+    }
+
+    // Add latest homework if available
+    if (dashboardData.latestHomework && dashboardData.latestHomework.length > 0) {
+        const hw = dashboardData.latestHomework[0];
+        const date = new Date(hw.createdAt || new Date());
+        activities.push({
+            type: 'recent-homework',
+            icon: 'fas fa-book',
+            title: hw.title || 'New Homework',
+            subtitle: `Class ${hw.classLevel || '-'} • ${hw.subject || '-'}`,
+            time: getRelativeTime(date),
+            link: 'showTab("homework")'
+        });
+    }
+
+    if (activities.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox empty-state-icon"></i><p class="empty-state-text">No recent activity</p></div>';
+        return;
+    }
+
+    let html = '';
+    activities.forEach(activity => {
+        html += `
+            <div class="activity-item ${activity.type}">
+                <div class="activity-icon"><i class="${activity.icon}"></i></div>
+                <div class="activity-content">
+                    <div class="activity-title">${activity.title}</div>
+                    <div class="activity-subtitle">${activity.subtitle}</div>
+                    <div class="activity-time">${activity.time}</div>
+                    <a class="activity-link" href="#" onclick="${activity.link}; return false;">View →</a>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render today's snapshot (next classes)
+ */
+function renderTodaySnapshot() {
+    const container = document.getElementById('today-snapshot-list');
+    const dateEl = document.getElementById('today-date-snapshot');
+    
+    if (!container) return;
+
+    // Get current day name
+    const today = new Date();
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    if (dateEl) dateEl.textContent = today.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    const timetable = dashboardData.timetable || [];
+    
+    // Filter by today's day
+    const todayClasses = timetable.filter(t => {
+        const normalizedDay = t.dayOfWeek 
+            ? t.dayOfWeek.charAt(0).toUpperCase() + t.dayOfWeek.slice(1).toLowerCase()
+            : '';
+        return normalizedDay === dayName;
+    });
+
+    if (todayClasses.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check empty-state-icon"></i><p class="empty-state-text">No classes today</p></div>';
+        return;
+    }
+
+    // Sort by start time and take next 5 classes
+    const sorted = [...todayClasses].sort((a, b) => {
+        const timeA = a.startTime || '';
+        const timeB = b.startTime || '';
+        return timeA.localeCompare(timeB);
+    }).slice(0, 5);
+
+    let html = '';
+    sorted.forEach(cls => {
+        const displayTime = (cls.startTime || '').substring(0, 5);
+        html += `
+            <div class="snapshot-item">
+                <div class="snapshot-time">${displayTime}</div>
+                <div class="snapshot-details">
+                    <div class="snapshot-subject">${cls.subject || '-'}</div>
+                    <div class="snapshot-meta">Class ${cls.classLevel || '-'} • ${cls.teacherName || 'Unassigned'}</div>
+                </div>
+                <div class="snapshot-badge">Today</div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Helper: Convert date to relative time string (e.g., "2 hours ago")
+ */
+function getRelativeTime(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
 
 // =============================================
 // USERS - with Edit, Delete, Toggle Access

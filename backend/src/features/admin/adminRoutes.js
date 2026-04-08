@@ -209,6 +209,45 @@ router.get('/financials/report', async (req, res) => {
     }
 });
 
+// Get fees trend data for last 30 days (aggregated by date)
+router.get('/financials/trends', async (req, res) => {
+    try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const result = await req.db.query(
+            `SELECT 
+                DATE("createdAt") as date,
+                COALESCE(SUM(amount), 0) as amount,
+                COUNT(*) as "transactionCount"
+             FROM fees
+             WHERE "isPaid" = TRUE AND "createdAt" >= $1
+             GROUP BY DATE("createdAt")
+             ORDER BY date ASC`,
+            [thirtyDaysAgo]
+        );
+        
+        // Calculate summary stats
+        const totalCollected = result.rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
+        const average = result.rows.length > 0 ? totalCollected / result.rows.length : 0;
+        const peak = result.rows.length > 0 ? Math.max(...result.rows.map(r => parseFloat(r.amount))) : 0;
+        
+        res.json({ 
+            success: true, 
+            trends: result.rows,
+            summary: {
+                totalCollected,
+                average,
+                peak,
+                daysWithData: result.rows.length
+            }
+        });
+    } catch (err) {
+        console.error('trends error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch trends', detail: err.message });
+    }
+});
+
 // ============================================================
 // TIMETABLE
 // ============================================================
