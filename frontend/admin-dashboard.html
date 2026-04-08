@@ -517,14 +517,72 @@
                 </div>
             </div>
 
-            <!-- Homework Tab -->
+            <!-- Homework Tab - Refactored ERP Style -->
             <div id="tab-homework" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3 id="hw-form-title">➕ Add Homework</h3>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-book"></i> Homework Management</h2>
+                        <p class="section-subtitle">Manage and assign homework to classes.</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddHomeworkModal()">
+                        <i class="fas fa-plus"></i> Add Homework
+                    </button>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="hw-filter-class" placeholder="Search by title, class or subject..." onkeyup="filterHomework()">
+                    </div>
+                </div>
+
+                <!-- Homework List Table -->
+                <div class="table-container">
+                    <table class="homework-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Class</th>
+                                <th>Subject</th>
+                                <th>Due Date</th>
+                                <th>Assigned By</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="homework-table-body">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No homework found. Click "Add Homework" to get started.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-footer">
+                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()" style="display: none;">Show All Homework</button>
+                    <div id="homework-count-text" style="font-size: 0.85rem; color: var(--text-muted);"></div>
+                </div>
+            </div>
+
+            <!-- Add Homework Modal -->
+            <div id="add-homework-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-plus-circle"></i> Add New Homework</h2>
+                        <span class="close" onclick="closeAddHomeworkModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
                         <form id="homework-form">
                             <input type="hidden" id="hw-edit-id">
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+
+                            <!-- Basic Information -->
+                            <div class="form-section-title">Basic Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Title *</label>
                                     <input type="text" id="hw-title" placeholder="e.g. Chapter 5 Exercise" required>
@@ -533,6 +591,11 @@
                                     <label>Class *</label>
                                     <input type="text" id="hw-class" placeholder="e.g. 10A" required>
                                 </div>
+                            </div>
+
+                            <!-- Subject & Due Date -->
+                            <div class="form-section-title">Details</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Subject *</label>
                                     <input type="text" id="hw-subject" placeholder="e.g. Mathematics" required>
@@ -541,50 +604,86 @@
                                     <label>Due Date</label>
                                     <input type="date" id="hw-due-date">
                                 </div>
-                                <div class="form-group">
-                                    <label>Attachment (PDF/JPG/PNG)</label>
-                                    <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
-                                    <div id="hw-current-attachment" style="font-size: 0.8rem; color: #666; margin-top: 4px; display: none;"></div>
-                                </div>
-                                <div class="form-group" style="grid-column: span 2;">
-                                    <label>Description</label>
-                                    <textarea id="hw-description" rows="1" placeholder="Describe the homework..."></textarea>
-                                </div>
                             </div>
-                            <div style="margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary">💾 Save Homework</button>
-                                <button type="button" class="btn btn-secondary" style="margin-left:10px;" onclick="resetHomeworkForm()">🔄 Reset</button>
+
+                            <!-- Description & Attachment -->
+                            <div class="form-section-title">Additional Information</div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="hw-description" rows="3" placeholder="Describe the homework..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Attachment (PDF/JPG/PNG)</label>
+                                <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
+                                <div id="hw-current-attachment" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;"></div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeAddHomeworkModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Homework</button>
                             </div>
                         </form>
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>All Homework</h3>
-                        <input type="text" id="hw-filter-class" placeholder="Filter by class..." oninput="filterHomework()" style="margin-bottom:1rem; padding:0.5rem; width:100%; max-width:300px;">
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Title</th>
-                                        <th>Class</th>
-                                        <th>Subject</th>
-                                        <th>Due Date</th>
-                                        <th>Assigned By</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="homework-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            </div>
 
-                <!-- Pagination / Show More for Homework -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()" style="display: none;">Show More Homework</button>
-                    <div id="homework-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+            <!-- Edit Homework Modal -->
+            <div id="edit-homework-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Edit Homework</h2>
+                        <span class="close" onclick="closeEditHomeworkModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="homework-form-edit">
+                            <input type="hidden" id="hw-edit-id-modal">
+
+                            <!-- Basic Information -->
+                            <div class="form-section-title">Basic Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Title *</label>
+                                    <input type="text" id="hw-edit-title" placeholder="e.g. Chapter 5 Exercise" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Class *</label>
+                                    <input type="text" id="hw-edit-class" placeholder="e.g. 10A" required>
+                                </div>
+                            </div>
+
+                            <!-- Subject & Due Date -->
+                            <div class="form-section-title">Details</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Subject *</label>
+                                    <input type="text" id="hw-edit-subject" placeholder="e.g. Mathematics" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Due Date</label>
+                                    <input type="date" id="hw-edit-due-date">
+                                </div>
+                            </div>
+
+                            <!-- Description & Attachment -->
+                            <div class="form-section-title">Additional Information</div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="hw-edit-description" rows="3" placeholder="Describe the homework..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Attachment (PDF/JPG/PNG)</label>
+                                <input type="file" id="hw-edit-attachment" accept=".pdf,.jpg,.jpeg,.png">
+                                <div id="hw-edit-current-attachment" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;"></div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeEditHomeworkModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 

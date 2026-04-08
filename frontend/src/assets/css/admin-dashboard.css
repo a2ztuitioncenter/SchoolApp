@@ -668,6 +668,62 @@ textarea:focus {
 }
 
 /* ============================================
+   HOMEWORK TABLE - COMPACT PROFESSIONAL
+   ============================================ */
+
+.homework-table {
+  font-size: 0.875rem;
+}
+
+.homework-table thead th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 1rem;
+}
+
+.homework-table tbody tr {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--transition);
+}
+
+.homework-table tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.homework-table tbody tr:hover .action-menu-btn {
+  opacity: 1;
+}
+
+.homework-table td {
+  padding: 0.75rem 1rem;
+  color: var(--text-main);
+}
+
+.homework-table td:first-child {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.homework-table td:nth-child(2) {
+  color: var(--text-main);
+}
+
+.homework-table td:nth-child(3),
+.homework-table td:nth-child(4),
+.homework-table td:nth-child(5) {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.homework-table td:last-child {
+  text-align: right;
+  padding-right: 0.75rem;
+}
+
+/* ============================================
    FORM SECTIONS - MODAL ORGANIZATION
    ============================================ */
 
@@ -966,6 +1022,28 @@ textarea:focus {
   }
   
   .students-table td:last-child {
+    padding-right: 0.5rem;
+  }
+
+  /* Homework table mobile responsiveness */
+  .homework-table {
+    font-size: 0.8rem;
+  }
+  
+  .homework-table thead th {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  .homework-table td {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .homework-table td:first-child {
+    font-size: 0.85rem;
+  }
+  
+  .homework-table td:last-child {
     padding-right: 0.5rem;
   }
   

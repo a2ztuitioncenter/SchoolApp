@@ -79,6 +79,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupTabNavigation();
     setupForms();
 
+    // ===== UNIFIED EVENT HANDLER FOR ALL MENUS & MODALS =====
+    // Close all dropdowns when clicking outside
+    document.addEventListener('click', (e) => {
+        // Close any open action menu dropdowns
+        if (!e.target.closest('.action-menu')) {
+            document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+        }
+    });
+
+    // Close modals when clicking backdrop
+    window.addEventListener('click', (e) => {
+        const addStudentModal = document.getElementById('add-student-modal');
+        const addHomeworkModal = document.getElementById('add-homework-modal');
+        
+        if (addStudentModal === e.target) closeAddStudentModal();
+        if (addHomeworkModal === e.target) closeAddHomeworkModal();
+    });
+
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
     const sidebar = document.querySelector('.sidebar');
@@ -615,26 +633,6 @@ window.closeAllStudentMenus = function() {
     document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
 };
 
-// Close menus when clicking outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.action-menu')) {
-        closeAllStudentMenus();
-    }
-});
-
-// Close modals when clicking on backdrop
-window.addEventListener('click', function(e) {
-    const addModal = document.getElementById('add-student-modal');
-    const editModal = document.getElementById('edit-student-modal');
-    
-    if (addModal && e.target === addModal) {
-        closeAddStudentModal();
-    }
-    if (editModal && e.target === editModal) {
-        closeEditStudentModal();
-    }
-});
-
 window.editStudent = function (id) {
     openEditStudentModal(id);
 };
@@ -796,7 +794,7 @@ function renderHomeworkTable(list) {
     if (!tbody) return;
 
     if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No homework found. Add one below.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>No homework found. Click "Add Homework" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
@@ -808,15 +806,24 @@ function renderHomeworkTable(list) {
     tbody.innerHTML = toShow.map((hw, i) => {
         const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
         return `<tr>
-            <td>${i + 1}</td>
-            <td>${hw.title}</td>
-            <td><span class="badge">${hw.classLevel || hw.class_name}</span></td>
+            <td><strong>${hw.title}</strong></td>
+            <td><span class="status-badge status-active">${hw.classLevel || hw.class_name}</span></td>
             <td>${hw.subject}</td>
             <td>${due}</td>
             <td>${hw.teacherPhone || '-'}</td>
             <td>
-                <button class="btn-sm btn-edit" onclick="editHomework(${hw.id})">Edit</button>
-                <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})">Delete</button>
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-hw-id="${hw.id}">
+                        <button class="action-menu-item" onclick="openEditHomeworkModal(${hw.id})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
+                        </button>
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>`;
     }).join('');
@@ -824,10 +831,10 @@ function renderHomeworkTable(list) {
     // Show toggle button if more items exist
     if(toggleBtn) {
         toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllHomework ? 'Show Less Homework' : `Show More Homework (${list.length})`;
+        toggleBtn.textContent = showAllHomework ? 'Show Less' : `Show All Homework (${list.length})`;
     }
     if(countText) {
-        countText.textContent = showAllHomework ? '' : `Showing ${toShow.length} of ${list.length}`;
+        countText.textContent = `Showing ${toShow.length} of ${list.length} homework items`;
     }
 }
 
@@ -873,75 +880,48 @@ window.saveHomework = async function (e) {
     }
 
     try {
+        showInfoAlert(id ? 'Updating homework...' : 'Adding homework...');
         const res = id
             ? await homeworkAPI.update(id, formData)
             : await homeworkAPI.create(formData);
         if (res.data) {
-            showSuccessAlert(id ? 'Homework updated!' : 'Homework added!');
-            resetHomeworkForm();
+            hideInfoAlert();
+            showSuccessAlert(id ? 'Homework updated successfully!' : 'Homework added successfully!');
+            closeAddHomeworkModal();
+            document.getElementById('homework-form').reset();
             await loadAllHomework();
         } else {
+            hideInfoAlert();
             showErrorAlert(res.error || 'Failed to save homework');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to save homework');
     }
 };
 
 window.editHomework = function (id) {
-    const hw = allHomeworkData.find(h => h.id === id);
-    if (!hw) return;
-    document.getElementById('hw-edit-id').value = hw.id;
-    document.getElementById('hw-title').value   = hw.title;
-    document.getElementById('hw-class').value   = hw.classLevel || hw.class_name;
-    document.getElementById('hw-subject').value = hw.subject;
-    document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
-    document.getElementById('hw-description').value = hw.description || '';
-    
-    const attachInfo = document.getElementById('hw-current-attachment');
-    if (attachInfo) {
-        if (hw.attachmentUrl) {
-            const fileName = hw.attachmentUrl.split('/').pop();
-            attachInfo.textContent = `Current: ${fileName}`;
-            attachInfo.style.display = 'block';
-        } else {
-            attachInfo.style.display = 'none';
-        }
-    }
-
-    const titleEl = document.getElementById('hw-form-title');
-    if (titleEl) titleEl.textContent = 'Edit Homework';
-    document.getElementById('hw-title').scrollIntoView({ behavior: 'smooth' });
+    openEditHomeworkModal(id);
 };
 
 window.deleteHomework = async function (id) {
-    if (!confirm('Delete this homework?')) return;
+    if (!confirm('Delete this homework? This action cannot be undone.')) return;
     try {
+        showInfoAlert('Deleting homework...');
         const res = await homeworkAPI.delete(id);
         if (res.message) {
-            showSuccessAlert('Homework deleted');
+            hideInfoAlert();
+            showSuccessAlert('Homework deleted successfully');
             await loadAllHomework();
         } else {
-            showErrorAlert('Failed to delete');
+            hideInfoAlert();
+            showErrorAlert('Failed to delete homework');
         }
     } catch (err) {
-        showErrorAlert(err.message || 'Failed to delete');
+        hideInfoAlert();
+        showErrorAlert(err.message || 'Failed to delete homework');
     }
 };
-
-window.resetHomeworkForm = resetHomeworkForm;
-function resetHomeworkForm() {
-    ['hw-edit-id', 'hw-title', 'hw-class', 'hw-subject', 'hw-due-date', 'hw-description', 'hw-attachment'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-    const attachInfo = document.getElementById('hw-current-attachment');
-    if (attachInfo) attachInfo.style.display = 'none';
-
-    const titleEl = document.getElementById('hw-form-title');
-    if (titleEl) titleEl.textContent = 'Add Homework';
-    currentEditHwId = null;
-}
 
 // =============================================
 // FEES - FULL CRUD
@@ -1370,8 +1350,73 @@ window.closeMaterialModal = function() {
 window.deleteMaterial = deleteMaterial;
 
 // =============================================
-// FORM SETUP (Add User / Add Student / Logout)
+// HOMEWORK - MODAL FUNCTIONS
 // =============================================
+window.openAddHomeworkModal = function() {
+    document.getElementById('add-homework-modal').style.display = 'block';
+    document.getElementById('homework-form').reset();
+    document.getElementById('hw-edit-id').value = '';
+    document.getElementById('hw-current-attachment').style.display = 'none';
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeAddHomeworkModal = function() {
+    document.getElementById('add-homework-modal').style.display = 'none';
+    document.getElementById('homework-form').reset();
+    document.body.style.overflow = '';
+};
+
+window.openEditHomeworkModal = function(id) {
+    const hw = allHomeworkData.find(h => h.id === id);
+    if (!hw) return;
+    
+    // Populate form with homework data
+    document.getElementById('hw-edit-id').value = hw.id;
+    document.getElementById('hw-title').value = hw.title || '';
+    document.getElementById('hw-class').value = hw.classLevel || '';
+    document.getElementById('hw-subject').value = hw.subject || '';
+    document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+    document.getElementById('hw-description').value = hw.description || '';
+    
+    const attachInfo = document.getElementById('hw-current-attachment');
+    if (attachInfo) {
+        if (hw.attachmentUrl) {
+            const fileName = hw.attachmentUrl.split('/').pop();
+            attachInfo.textContent = `Current: ${fileName}`;
+            attachInfo.style.display = 'block';
+        } else {
+            attachInfo.style.display = 'none';
+        }
+    }
+    
+    document.getElementById('add-homework-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    closeAllHomeworkMenus();
+};
+
+window.closeEditHomeworkModal = function() {
+    document.getElementById('add-homework-modal').style.display = 'none';
+    document.getElementById('homework-form').reset();
+    document.getElementById('hw-edit-id').value = '';
+    document.body.style.overflow = '';
+};
+
+window.toggleHomeworkMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllHomeworkMenus();
+    
+    // Toggle current menu
+    dropdown.classList.add('open');
+};
+
+window.closeAllHomeworkMenus = function() {
+    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
+
 function setupForms() {
     const hwForm = document.getElementById('homework-form');
     if (hwForm) hwForm.addEventListener('submit', saveHomework);
@@ -1767,8 +1812,3 @@ window.toggleUserActionMenu = function(event, id) {
 
     dropdown?.classList.toggle('open');
 };
-
-// Global click listener to close dropdowns
-document.addEventListener('click', () => {
-    document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
-});
