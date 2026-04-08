@@ -886,18 +886,15 @@ textarea:focus {
 }
 
 .action-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: 100%;
+  position: fixed;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 160px;
-  z-index: 1000;
+  z-index: 10000;
   display: none;
   overflow: hidden;
-  margin-top: 0.25rem;
 }
 
 .action-menu-dropdown.open {
@@ -1803,15 +1800,13 @@ textarea:focus {
 }
 
 .action-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
   min-width: 160px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-5px);

@@ -86,8 +86,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Close any open action menu dropdowns if clicking outside
-        if (!e.target.closest('.action-menu')) {
+        if (!e.target.closest('.action-menu') && !e.target.closest('.action-menu-dropdown')) {
             document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+        }
+        
+        // Close any open action dropdowns if clicking outside
+        if (!e.target.closest('.action-menu') && !e.target.closest('.action-dropdown')) {
+            document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
         }
     });
 
@@ -1472,7 +1477,8 @@ window.toggleStudentMenu = function(event) {
     // Close other menus
     closeAllStudentMenus();
     
-    // Toggle current menu
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
     dropdown.classList.add('open');
 };
 
@@ -1904,8 +1910,44 @@ window.toggleFeeMenu = function(event) {
     // Close other menus
     closeAllFeeMenus();
     
-    // Toggle current menu
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
     dropdown.classList.add('open');
+};
+
+/**
+ * Helper function to position dropdown menu using fixed positioning
+ * Handles overflow detection to flip menu direction if needed
+ */
+window.positionDropdown = function(btn, dropdown) {
+    const btnRect = btn.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate if dropdown would overflow bottom
+    const estimatedDropdownHeight = dropdown.offsetHeight || 100;
+    const spaceBelow = viewportHeight - btnRect.bottom;
+    const spaceAbove = btnRect.top;
+    
+    // Position below by default
+    let top = btnRect.bottom + 5;
+    let left = btnRect.right - 160; // Align to right
+    
+    // If not enough space below, flip to above
+    if (spaceBelow < estimatedDropdownHeight + 20 && spaceAbove > estimatedDropdownHeight) {
+        top = btnRect.top - estimatedDropdownHeight - 5;
+    }
+    
+    // Prevent going off-screen horizontally
+    if (left < 10) {
+        left = 10;
+    }
+    if (left + 160 > window.innerWidth) {
+        left = window.innerWidth - 170;
+    }
+    
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = top + 'px';
+    dropdown.style.left = left + 'px';
 };
 
 window.closeAllFeeMenus = function() {
@@ -2094,7 +2136,8 @@ window.toggleMaterialMenu = function(event) {
     // Close other menus
     closeAllMaterialMenus();
     
-    // Toggle current menu
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
     dropdown.classList.add('open');
 };
 
@@ -2303,7 +2346,8 @@ window.toggleHomeworkMenu = function(event) {
     // Close other menus
     closeAllHomeworkMenus();
     
-    // Toggle current menu
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
     dropdown.classList.add('open');
 };
 
@@ -2597,7 +2641,12 @@ window.toggleTimetableMenu = function(event, id) {
         if (m !== menu) m.classList.remove('open');
     });
 
-    menu?.classList.toggle('open');
+    // Position the menu
+    const btn = event.currentTarget;
+    if (menu && btn) {
+        positionDropdown(btn, menu);
+    }
+    menu?.classList.add('open');
 };
 
 window.closeAllTimetableMenus = function() {
@@ -2868,6 +2917,7 @@ window.closeEditUserModal = function() {
 
 window.toggleUserActionMenu = function(event, id) {
     event.stopPropagation();
+    const btn = event.currentTarget;
     const dropdown = document.getElementById(`user-actions-${id}`);
     
     // Close other open dropdowns
@@ -2875,5 +2925,9 @@ window.toggleUserActionMenu = function(event, id) {
         if (d !== dropdown) d.classList.remove('open');
     });
 
-    dropdown?.classList.toggle('open');
+    // Position the menu
+    if (dropdown && btn) {
+        positionDropdown(btn, dropdown);
+    }
+    dropdown?.classList.add('open');
 };
