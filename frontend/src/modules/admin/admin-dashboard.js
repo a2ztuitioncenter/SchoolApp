@@ -213,27 +213,363 @@ window.showTab = showTab;
 // =============================================
 // DASHBOARD
 // =============================================
+// Dashboard data cache
+let dashboardData = {
+    students: [],
+    unpaidFees: [],
+    financialSummary: {},
+    timetable: []
+};
+
 async function loadDashboardData() {
     try {
-        const [studentsRes, feesRes] = await Promise.all([
+        showInfoAlert('Loading dashboard...');
+        
+        // Load all data in parallel
+        const [studentsRes, unpaidFeesRes, financialRes, timetableRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
-            adminAPI.getUnpaidFees().catch(() => ({ fees: [] }))
+            adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
+            adminAPI.getFinancialSummary ? adminAPI.getFinancialSummary().catch(() => ({})) : Promise.resolve({}),
+            adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] })
         ]);
 
-        const el = id => document.getElementById(id);
-        const totalStudents = (studentsRes.students || []).length;
-        if (el('total-students')) el('total-students').textContent = totalStudents;
+        // Store data
+        dashboardData.students = studentsRes.students || [];
+        dashboardData.unpaidFees = unpaidFeesRes.fees || [];
+        dashboardData.financialSummary = financialRes || {};
+        dashboardData.timetable = timetableRes.timetable || [];
 
-        const unpaidList = feesRes.fees || [];
-        const totalUnpaid = unpaidList.reduce((s, f) => s + parseFloat(f.amount || 0), 0);
-        if (el('total-unpaid')) el('total-unpaid').textContent = `₹${totalUnpaid.toLocaleString()}`;
+        // Render all sections
+        renderDashboardSummaryCards();
+        renderFeesChart();
+        renderStudentsChart();
+        renderUnpaidFeesTable();
+        renderRecentStudents();
+        renderTodayTimetable();
 
-        const today = new Date();
-        const overdue = unpaidList.filter(f => new Date(f.dueDate) < today).length;
-        if (el('overdue-count')) el('overdue-count').textContent = overdue;
+        hideInfoAlert();
+        // Lazy load non-critical sections after 500ms
+        setTimeout(() => {
+            // Charts are already rendering above
+        }, 500);
+
     } catch (err) {
+        hideInfoAlert();
         console.error('Failed to load dashboard data', err);
+        showErrorAlert('Failed to load dashboard data: ' + err.message);
     }
+}
+
+// ===== RENDER FUNCTIONS =====
+
+/**
+ * Render the 6 summary stat cards with color-coded calculations
+ */
+function renderDashboardSummaryCards() {
+    const el = id => document.getElementById(id);
+    
+    // Calculate metrics
+    const totalStudents = dashboardData.students.length;
+    const activeStudents = dashboardData.students.filter(s => s.status === 'active').length;
+    const inactiveStudents = totalStudents - activeStudents;
+
+    const financials = dashboardData.financialSummary;
+    const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+    const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueCount = dashboardData.unpaidFees.filter(f => {
+        const dueDate = new Date(f.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+    }).length;
+
+    // Update DOM elements
+    if (el('total-students')) el('total-students').textContent = totalStudents;
+    if (el('active-students')) el('active-students').textContent = activeStudents;
+    if (el('inactive-students')) el('inactive-students').textContent = inactiveStudents;
+    if (el('total-collected')) el('total-collected').textContent = `₹${totalCollected.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    if (el('total-pending')) el('total-pending').textContent = `₹${totalPending.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    if (el('overdue-count')) el('overdue-count').textContent = overdueCount;
+}
+
+/**
+ * Render fees distribution pie chart (paid vs pending)
+ */
+function renderFeesChart() {
+    const canvas = document.getElementById('fees-chart');
+    const container = document.getElementById('fees-chart-loading');
+    
+    if (!canvas) return;
+
+    const financials = dashboardData.financialSummary;
+    const paid = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+    const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+    const total = paid + pending;
+
+    // Don't render if no data
+    if (total === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No fee data available</p></div>';
+        return;
+    }
+
+    // Hide loading indicator
+    if (container) container.style.display = 'none';
+
+    try {
+        // Destroy existing chart if present
+        if (window.feesChartInstance) {
+            window.feesChartInstance.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        window.feesChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Pending'],
+                datasets: [{
+                    data: [paid, pending],
+                    backgroundColor: ['#22c55e', '#fb923c'],
+                    borderColor: [getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary'), getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary')],
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 12, weight: '600' },
+                            padding: 15,
+                            usePointStyle: true,
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error rendering fees chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render students distribution bar chart (by class)
+ */
+function renderStudentsChart() {
+    const canvas = document.getElementById('students-chart');
+    const container = document.getElementById('students-chart-loading');
+    
+    if (!canvas) return;
+
+    // Group students by class
+    const classCounts = {};
+    dashboardData.students.forEach(student => {
+        const cls = student.classLevel || 'Other';
+        classCounts[cls] = (classCounts[cls] || 0) + 1;
+    });
+
+    const sortedClasses = Object.keys(classCounts).sort();
+    const counts = sortedClasses.map(cls => classCounts[cls]);
+
+    // Don't render if no data
+    if (sortedClasses.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No student data available</p></div>';
+        return;
+    }
+
+    // Hide loading indicator
+    if (container) container.style.display = 'none';
+
+    try {
+        // Destroy existing chart if present
+        if (window.studentsChartInstance) {
+            window.studentsChartInstance.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        const colors = ['#3b82f6', '#22c55e', '#fb923c', '#ef4444', '#8b5cf6', '#ec4899'];
+        
+        window.studentsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedClasses.map(cls => `Class ${cls}`),
+                datasets: [{
+                    label: 'Number of Students',
+                    data: counts,
+                    backgroundColor: colors.slice(0, sortedClasses.length),
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                indexAxis: 'x',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error rendering students chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render unpaid fees table (top 10, sorted by due date)
+ */
+function renderUnpaidFeesTable() {
+    const tbody = document.getElementById('unpaid-fees-tbody');
+    if (!tbody) return;
+
+    const fees = dashboardData.unpaidFees || [];
+    if (fees.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">No unpaid fees</td></tr>';
+        return;
+    }
+
+    // Sort by due date (ascending - soonest first)
+    const sorted = [...fees].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const topFees = sorted.slice(0, 10);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let html = '';
+    topFees.forEach(fee => {
+        const dueDate = new Date(fee.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+        const overdueText = daysOverdue > 0 ? `${daysOverdue} days` : 'Due soon';
+        const overdueClass = daysOverdue > 0 ? 'overdue' : '';
+
+        html += `
+            <tr>
+                <td data-label="Name">${fee.studentName || '-'}</td>
+                <td data-label="Class">${fee.classLevel || '-'}</td>
+                <td data-label="Amount">₹${parseFloat(fee.amount || 0).toLocaleString('en-IN')}</td>
+                <td data-label="Due Date">${new Date(fee.dueDate).toLocaleDateString('en-IN')}</td>
+                <td data-label="Days Overdue" class="status-${daysOverdue > 0 ? 'danger' : 'warning'}">${overdueText}</td>
+                <td data-label="Contact">${fee.phone || '-'}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+/**
+ * Render recently added students (top 5)
+ */
+function renderRecentStudents() {
+    const container = document.getElementById('recent-students-list');
+    if (!container) return;
+
+    const students = dashboardData.students || [];
+    if (students.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox empty-state-icon"></i><p class="empty-state-text">No students enrolled yet</p></div>';
+        return;
+    }
+
+    // Sort by creation date (newest first) if available, otherwise just take last 5
+    const sorted = [...students].sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.joiningDate || 0);
+        const dateB = new Date(b.createdAt || b.joiningDate || 0);
+        return dateB - dateA;
+    });
+    const recent = sorted.slice(0, 5);
+
+    let html = '';
+    recent.forEach(student => {
+        html += `
+            <div class="list-item">
+                <div class="list-item-header">
+                    <p class="list-item-title">${student.name || '-'}</p>
+                    <span class="list-item-badge">Class ${student.classLevel || '-'}</span>
+                </div>
+                <div class="list-item-meta">
+                    <span><i class="fas fa-phone"></i> ${student.phone || '-'}</span>
+                    <span><i class="fas fa-calendar"></i> ${student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN') : '-'}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render today's timetable schedule
+ */
+function renderTodayTimetable() {
+    const container = document.getElementById('today-timetable-list');
+    const dateEl = document.getElementById('today-date');
+    
+    if (!container) return;
+
+    // Get current day name
+    const today = new Date();
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    if (dateEl) dateEl.textContent = today.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const timetable = dashboardData.timetable || [];
+    
+    // Filter by today's day
+    const todayClasses = timetable.filter(t => {
+        const normalizedDay = t.dayOfWeek 
+            ? t.dayOfWeek.charAt(0).toUpperCase() + t.dayOfWeek.slice(1).toLowerCase()
+            : '';
+        return normalizedDay === dayName;
+    });
+
+    if (todayClasses.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check empty-state-icon"></i><p class="empty-state-text">No classes scheduled for today</p></div>';
+        return;
+    }
+
+    // Sort by start time
+    const sorted = [...todayClasses].sort((a, b) => {
+        const timeA = a.startTime || '';
+        const timeB = b.startTime || '';
+        return timeA.localeCompare(timeB);
+    });
+
+    let html = '';
+    sorted.forEach(cls => {
+        // Normalize time format
+        let displayTime = cls.startTime || '';
+        if (displayTime.includes(':')) {
+            const parts = displayTime.split(':');
+            displayTime = `${parts[0]}:${parts[1]}`;
+        }
+
+        html += `
+            <div class="list-item">
+                <div class="list-item-header">
+                    <p class="list-item-title">${cls.subject || '-'}</p>
+                    <span class="list-item-badge">Class ${cls.classLevel || '-'}</span>
+                </div>
+                <div class="list-item-meta">
+                    <span><i class="fas fa-clock"></i> ${displayTime}</span>
+                    <span><i class="fas fa-user-tie"></i> ${cls.teacherName || cls.teacherPhone || 'Unassigned'}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
 }
 
 

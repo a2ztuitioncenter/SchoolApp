@@ -6,6 +6,8 @@
     <title>Admin Dashboard | A2Z</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <!-- Styles -->
     <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
 
@@ -95,24 +97,166 @@
 
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
-                <!-- Live Summary Stats -->
-                <div class="card-grid">
-                    <div class="card">
-                        <h3><i class="fas fa-users"></i> Total Students</h3>
-                        <div class="stat-value" id="total-students">0</div>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Active student accounts</p>
+                
+                <!-- ===== ROW 1: SUMMARY STATS CARDS ===== -->
+                <div class="dashboard-section-title">
+                    <h2><i class="fas fa-chart-pie"></i> Key Metrics</h2>
+                </div>
+                <div class="dashboard-stats-grid">
+                    <!-- Total Students -->
+                    <div class="stat-card stat-card-primary">
+                        <div class="stat-card-icon"><i class="fas fa-users"></i></div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-label">Total Students</div>
+                            <div class="stat-card-value" id="total-students">0</div>
+                            <div class="stat-card-sublabel">Enrolled</div>
+                        </div>
                     </div>
-                    <div class="card">
-                        <h3><i class="fas fa-money-bill-wave"></i> Unpaid Fees</h3>
-                        <div class="stat-value" id="total-unpaid">₹0</div>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Outstanding fees</p>
+
+                    <!-- Active Students -->
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-card-icon"><i class="fas fa-user-check"></i></div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-label">Active Students</div>
+                            <div class="stat-card-value" id="active-students">0</div>
+                            <div class="stat-card-sublabel">Currently active</div>
+                        </div>
                     </div>
-                    <div class="card">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Overdue</h3>
-                        <div class="stat-value" id="overdue-count">0</div>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Fees overdue</p>
+
+                    <!-- Inactive Students -->
+                    <div class="stat-card stat-card-warning">
+                        <div class="stat-card-icon"><i class="fas fa-user-slash"></i></div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-label">Inactive Students</div>
+                            <div class="stat-card-value" id="inactive-students">0</div>
+                            <div class="stat-card-sublabel">Inactive/Archived</div>
+                        </div>
+                    </div>
+
+                    <!-- Fees Collected -->
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-card-icon"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-label">Fees Collected</div>
+                            <div class="stat-card-value" id="total-collected">₹0</div>
+                            <div class="stat-card-sublabel">Total paid</div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Fees -->
+                    <div class="stat-card stat-card-warning">
+                        <div class="stat-card-icon"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-label">Pending Fees</div>
+                            <div class="stat-card-value" id="total-pending">₹0</div>
+                            <div class="stat-card-sublabel">Outstanding</div>
+                        </div>
+                    </div>
+
+                    <!-- Overdue Payments -->
+                    <div class="stat-card stat-card-danger">
+                        <div class="stat-card-icon"><i class="fas fa-exclamation-circle"></i></div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-label">Overdue Payments</div>
+                            <div class="stat-card-value" id="overdue-count">0</div>
+                            <div class="stat-card-sublabel">Past due date</div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- ===== ROW 2: CHARTS ===== -->
+                <div class="dashboard-row">
+                    <!-- Fees Distribution Chart -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-pie-chart"></i> Fees Distribution</h3>
+                            <p class="card-subtitle">Paid vs Pending breakdown</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="fees-chart" height="300"></canvas>
+                            <div id="fees-chart-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+
+                    <!-- Students by Class Chart -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-bar"></i> Students by Class</h3>
+                            <p class="card-subtitle">Distribution across grade levels</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="students-chart" height="300"></canvas>
+                            <div id="students-chart-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 3A: FEES OVERVIEW ===== -->
+                <div class="dashboard-section-title" style="margin-top: 2rem;">
+                    <h2><i class="fas fa-money-check-alt"></i> Recent Activity</h2>
+                </div>
+
+                <div class="dashboard-row">
+                    <!-- Unpaid Fees List -->
+                    <div class="dashboard-card dashboard-card-full">
+                        <div class="card-header">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Unpaid Fees (Top 10)</h3>
+                            <p class="card-subtitle">Sorted by due date - soonest first</p>
+                            <button class="btn btn-small btn-secondary" onclick="showTab('fees')">View All →</button>
+                        </div>
+                        <div class="card-body">
+                            <div id="unpaid-fees-table-container" class="table-container">
+                                <table class="dashboard-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student Name</th>
+                                            <th>Class</th>
+                                            <th>Amount</th>
+                                            <th>Due Date</th>
+                                            <th>Days Overdue</th>
+                                            <th>Contact</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="unpaid-fees-tbody">
+                                        <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading fees data...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 3B: STUDENTS & TIMETABLE ===== -->
+                <div class="dashboard-row">
+                    <!-- Recently Added Students -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-user-plus"></i> Recent Students</h3>
+                            <p class="card-subtitle">Latest enrollments</p>
+                            <button class="btn btn-small btn-secondary" onclick="showTab('students')">View All →</button>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-students-list" class="list-container">
+                                <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading students...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Today's Timetable -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-calendar-day"></i> Today's Schedule</h3>
+                            <p class="card-subtitle" id="today-date">Loading...</p>
+                            <button class="btn btn-small btn-secondary" onclick="showTab('timetable')">View Full →</button>
+                        </div>
+                        <div class="card-body">
+                            <div id="today-timetable-list" class="list-container">
+                                <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading schedule...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- User Management Tab -->
