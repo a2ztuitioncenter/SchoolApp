@@ -1796,15 +1796,15 @@ window.saveTimetableEntry = async function() {
 };
 
 async function loadTimetable() {
-    const grid = document.getElementById('timetable-grid');
-    if (!grid) return;
+    const container = document.getElementById('timetable-by-class');
+    if (!container) return;
 
     try {
         showInfoAlert('Loading timetable...');
         const ttRes = await adminAPI.getTimetable();
         allTimetableData = ttRes.timetable || [];
         hideInfoAlert();
-        renderTimetableGrid(allTimetableData);
+        renderTimetableByClass(allTimetableData);
     } catch (err) {
         hideInfoAlert();
         showErrorAlert('Failed to load timetable: ' + err.message);
@@ -1812,6 +1812,7 @@ async function loadTimetable() {
 }
 
 let allTimetableData = [];
+let selectedTimetableDay = 'Monday'; // Default to Monday
 let showAllTimetable = false;
 
 function formatTime(t) {
@@ -1821,6 +1822,24 @@ function formatTime(t) {
         return t; 
     }
 }
+
+// Select a day and render its timetable
+window.selectTimetableDay = function(day) {
+    selectedTimetableDay = day;
+    console.log('[TIMETABLE] Selected day:', day);
+    
+    // Update active tab
+    document.querySelectorAll('.day-tab').forEach(tab => {
+        if (tab.getAttribute('data-day') === day) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Render the selected day
+    renderTimetableByClass(allTimetableData);
+};
 
 // Generate time slots for calendar grid (7:00 AM to 6:00 PM in 1-hour slots)
 function generateTimeSlots() {
@@ -1832,130 +1851,120 @@ function generateTimeSlots() {
     return slots;
 }
 
-function renderTimetableGrid(items) {
-    const grid = document.getElementById('timetable-grid');
-    const toggleBtn = document.getElementById('btn-toggle-timetable');
-    const countText = document.getElementById('timetable-count-text');
+function renderTimetableByClass(items) {
+    const container = document.getElementById('timetable-by-class');
     
-    if (!grid) return;
+    if (!container) return;
 
     if (items.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-muted);">No timetable entries found. Click "Add Entry" to create one.</div>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
+        container.innerHTML = '<div class="timetable-no-classes"><i class="fas fa-inbox"></i><p>No timetable entries found. Click "Add Entry" to create one.</p></div>';
         return;
     }
 
-    // Debug: Log raw data to verify
-    console.log('[TIMETABLE] Raw data from API:', items);
+    // Debug: Log data
+    console.log('[TIMETABLE] Rendering by class for:', selectedTimetableDay);
+    console.log('[TIMETABLE] All data:', items);
 
-    // Use ALL data for grid rendering (don't limit by pagination here)
-    // Pagination is only for pagination display purposes
-    const allGridData = items;
-    const displayLimit = 15;
-    const toShow = allGridData; // Use ALL data for grid
-
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const slots = generateTimeSlots();
-
-    // ===== NORMALIZE & CREATE EFFICIENT LOOKUP MAP =====
-    // Preprocess all entries into a "day-time" -> entry map for O(1) lookup
-    const timetableMap = {};
-    
-    allGridData.forEach(entry => {
-        // Normalize day: Ensure consistent case (e.g., "Monday", "monday" -> "Monday")
+    // Filter entries by selected day
+    const filteredEntries = items.filter(entry => {
         const normalizedDay = entry.dayOfWeek 
             ? entry.dayOfWeek.charAt(0).toUpperCase() + entry.dayOfWeek.slice(1).toLowerCase()
             : '';
-        
-        // Normalize time: Remove seconds if present (e.g., "09:00:00" -> "09:00")
-        let normalizedTime = entry.startTime || '';
-        if (normalizedTime.includes(':')) {
-            const parts = normalizedTime.split(':');
-            normalizedTime = `${parts[0]}:${parts[1]}`; // HH:MM format only
-        }
-        
-        // Create lookup key: "Monday-09:00"
-        const key = `${normalizedDay}-${normalizedTime}`;
-        
-        // Debug log each entry
-        console.log(`[TIMETABLE] Entry: day="${entry.dayOfWeek}" -> "${normalizedDay}", time="${entry.startTime}" -> "${normalizedTime}", key="${key}", subject="${entry.subject}"`);
-        
-        if (!timetableMap[key]) {
-            timetableMap[key] = [];
-        }
-        timetableMap[key].push(entry);
+        return normalizedDay === selectedTimetableDay;
     });
 
-    console.log('[TIMETABLE] Lookup map keys:', Object.keys(timetableMap));
-    console.log('[TIMETABLE] Grid slots:', slots);
+    console.log('[TIMETABLE] Filtered entries for', selectedTimetableDay, ':', filteredEntries);
 
-    let gridHTML = '';
+    if (filteredEntries.length === 0) {
+        container.innerHTML = `<div class="timetable-no-classes"><i class="fas fa-calendar-day"></i><p>No classes scheduled for ${selectedTimetableDay}</p></div>`;
+        return;
+    }
 
-    // Header row with day names
-    gridHTML += '<div class="timetable-grid-header">';
-    gridHTML += '<div class="timetable-time-cell"></div>';
-    days.forEach(day => {
-        gridHTML += `<div class="timetable-day-header">${day}</div>`;
+    // Group entries by class level
+    const classByLevel = {};
+    filteredEntries.forEach(entry => {
+        const classLevel = entry.classLevel || 'Unassigned';
+        if (!classByLevel[classLevel]) {
+            classByLevel[classLevel] = [];
+        }
+        classByLevel[classLevel].push(entry);
     });
-    gridHTML += '</div>';
 
-    // Time slots and entries
-    slots.forEach(slot => {
-        // Time cell
-        gridHTML += `<div class="timetable-time-cell">${slot}</div>`;
-        
-        // Day cells
-        days.forEach(day => {
-            // Create lookup key
-            const key = `${day}-${slot}`;
-            const entries = timetableMap[key] || [];
-            
-            gridHTML += '<div class="timetable-slot">';
-            
-            if (entries.length === 0) {
-                gridHTML += '';
-            } else {
-                entries.forEach(entry => {
-                    gridHTML += `
-                        <div class="timetable-entry">
-                            <span class="timetable-entry-subject">${entry.subject}</span>
-                            <span class="timetable-entry-class">${entry.classLevel}</span>
-                            <div class="timetable-entry-menu">
-                                <button class="timetable-entry-menu-btn" onclick="toggleTimetableMenu(event, ${entry.id})">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="action-menu-dropdown" id="tt-menu-${entry.id}">
-                                    <button class="action-menu-item" onclick="deleteTimetableRecord(${entry.id})">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            
-            gridHTML += '</div>';
+    // Sort each class's entries by start time
+    Object.values(classByLevel).forEach(classEntries => {
+        classEntries.sort((a, b) => {
+            const timeA = a.startTime || '';
+            const timeB = b.startTime || '';
+            return timeA.localeCompare(timeB);
         });
     });
 
-    grid.innerHTML = gridHTML;
+    let html = '';
 
-    // Show toggle button if more items exist
-    if(toggleBtn) {
-        toggleBtn.style.display = items.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllTimetable ? 'Show Less' : `Show More (${items.length - displayLimit} more)`;
-    }
-    if(countText) {
-        countText.textContent = items.length > 0 ? `Total entries: ${items.length}` : '';
-    }
+    // Create cards for each class
+    Object.keys(classByLevel).sort().forEach(classLevel => {
+        const classEntries = classByLevel[classLevel];
+        
+        html += `
+            <div class="class-timetable-card">
+                <div class="class-timetable-header">
+                    <i class="fas fa-chalkboard"></i>
+                    <h4 class="class-timetable-title">Class ${classLevel}</h4>
+                </div>
+                <table class="class-timetable-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Teacher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        // Add rows for each entry
+        classEntries.forEach(entry => {
+            // Normalize time (remove seconds)
+            let displayTime = entry.startTime || '';
+            if (displayTime.includes(':')) {
+                const parts = displayTime.split(':');
+                displayTime = `${parts[0]}:${parts[1]}`;
+            }
+
+            const teacherName = entry.teacherPhone || 'Unassigned';
+
+            html += `
+                        <tr>
+                            <td data-label="Time">${displayTime}</td>
+                            <td data-label="Subject">${entry.subject}</td>
+                            <td data-label="Teacher">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span>${teacherName}</span>
+                                    <div class="timetable-entry-menu">
+                                        <button class="timetable-entry-menu-btn" onclick="toggleTimetableMenu(event, ${entry.id})" title="More options">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="action-menu-dropdown" id="tt-menu-${entry.id}">
+                                            <button class="action-menu-item" onclick="deleteTimetableRecord(${entry.id})">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
 }
-
-window.toggleShowAllTimetable = function() {
-    showAllTimetable = !showAllTimetable;
-    renderTimetableGrid(allTimetableData);
-};
 
 window.deleteTimetableRecord = async function(id) {
     if (!confirm('Delete this timetable entry?')) return;

@@ -922,22 +922,29 @@
                 <div class="section-header">
                     <div>
                         <h2><i class="fas fa-clock"></i> School Timetable</h2>
-                        <p class="section-subtitle">Weekly schedule of classes and subjects</p>
+                        <p class="section-subtitle">Daily class schedule</p>
                     </div>
                     <button class="btn btn-primary btn-lg" onclick="openAddTimetableModal()">
                         <i class="fas fa-plus"></i> Add Entry
                     </button>
                 </div>
 
-                <!-- Calendar Grid View -->
-                <div class="timetable-container">
-                    <div id="timetable-grid" class="timetable-grid"></div>
+                <!-- Day Selector Tabs -->
+                <div class="timetable-day-selector">
+                    <div class="day-tabs">
+                        <button class="day-tab active" data-day="Monday" onclick="selectTimetableDay('Monday')">Mon</button>
+                        <button class="day-tab" data-day="Tuesday" onclick="selectTimetableDay('Tuesday')">Tue</button>
+                        <button class="day-tab" data-day="Wednesday" onclick="selectTimetableDay('Wednesday')">Wed</button>
+                        <button class="day-tab" data-day="Thursday" onclick="selectTimetableDay('Thursday')">Thu</button>
+                        <button class="day-tab" data-day="Friday" onclick="selectTimetableDay('Friday')">Fri</button>
+                        <button class="day-tab" data-day="Saturday" onclick="selectTimetableDay('Saturday')">Sat</button>
+                        <button class="day-tab" data-day="Sunday" onclick="selectTimetableDay('Sunday')">Sun</button>
+                    </div>
                 </div>
 
-                <!-- Pagination -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-timetable" onclick="toggleShowAllTimetable()" style="display: none;">Show More</button>
-                    <div id="timetable-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                <!-- Class-wise Timetable View -->
+                <div class="timetable-container">
+                    <div id="timetable-by-class" class="timetable-by-class"></div>
                 </div>
 
                 <!-- Add Timetable Modal -->
