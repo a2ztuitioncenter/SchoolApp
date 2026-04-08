@@ -1,20 +1,51 @@
-# Dependencies
-node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-bun.lockb
+# ============================================
+# TUITION APP - PRODUCTION .gitignore
+# ============================================
+# Security-focused git ignore configuration for production deployment
+# Last Updated: January 2025
 
-# Environment Variables (SECURITY CRITICAL - NEVER COMMIT)
+# ============================================
+# CRITICAL: Environment & Credentials
+# ============================================
+# NEVER commit files containing secrets, API keys, or credentials
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
+.env.development
 .myenv
 .myenv.local
 .myenv.*.local
 !.env.example
+!.env.production.example
 
-# Logs and Debug
+# ============================================
+# Dependencies & Lock Files
+# ============================================
+node_modules/
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+bun.lock
+npm-shrinkwrap.json
+
+# ============================================
+# Build & Distribution
+# ============================================
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+.cache/
+
+# ============================================
+# Logs & Debug Output
+# ============================================
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -23,21 +54,19 @@ pnpm-debug.log*
 lerna-debug.log*
 debug.log
 server_out.txt
+lerna-lerna.log
 
-# Build and Distribution
-dist/
-build/
-.next/
-out/
-
-# OS Files
+# ============================================
+# OS & IDE Files
+# ============================================
 .DS_Store
 Thumbs.db
 Desktop.ini
 .Spotlight-V100
 .Trashes
+ehthumbs.db
 
-# IDE and Editor Files
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -47,29 +76,89 @@ Desktop.ini
 .classpath
 .c9/
 *.sublime-workspace
-.venv
+*.sublime-project
+.vs/
+.vim/
 
-# Backup and Temporary Files
-*.bak
-*.backup
+# Python Virtual Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================
+# Temporary & Test Files (IMPORTANT)
+# ============================================
+# Remove temporary test/debug files
+test-connection.js
+tmp_*.json
+tmp_*.ts
+tmp_*.js
+tmp_hw.json
+tmp_test_conn.ts
 *.tmp
 *.temp
 *.old
 *_backup
 *_old
-*.swp
-*~
-.#*
+.tmp/
 
-# Database Backups
+# ============================================
+# Backup & Database Files
+# ============================================
+*.bak
+*.backup
 *.sql.bak
 *.sql.backup
 *.dump
 *.backup.sql
 postgres_backup/
 db_backup/
+database_backup/
+*.orig
 
-# Upload Directories (keep structure but ignore content)
+# ============================================
+# Development Tool Artifacts
+# ============================================
+# VS Code Copilot & Agents
+.agents/
+.copilot/
+skills-lock.json
+.copilot-instructions
+.instructions.md
+
+# Other development tools
+.awcache
+.eslintcache
+.tsc-cache
+eslint-cache/
+
+# ============================================
+# Documentation (Optional - Development Files)
+# ============================================
+# Uncomment if you want to exclude these from production
+# MERGE_NOTES.md
+# FIXES_SUMMARY.md
+# PAGINATION_IMPLEMENTATION.md
+# SECURITY_AUDIT_PRODUCTION.md
+
+# ============================================
+# Postman Collections (CAUTION: May contain credentials)
+# ============================================
+# Only ignore if collections contain sensitive data
+# postman/collections/*/*.request.yaml
+# postman/collections/*/*.json
+# postman/globals/*.globals.yaml
+# postman/globals/*.json
+.postman*
+postman_globals.json
+
+# ============================================
+# Upload Directories
+# ============================================
+# Keep directory structure with .gitkeep, ignore actual uploads
 uploads/
 uploads/homework/*
 uploads/materials/*
@@ -87,28 +176,65 @@ backend/uploads/notifications/*
 !backend/uploads/materials/.gitkeep
 !backend/uploads/notifications/.gitkeep
 
-# Postman Files
-postman/collections/*/*.request.yaml
-postman/collections/*/*.json
-postman/globals/*.globals.yaml
-postman/globals/*.json
-.postman*
-
-# Documentation (optional - uncomment if needed)
-# Tuition_App.pdf
-# Week_Plan.md
-
-# Testing
+# ============================================
+# Testing & Coverage
+# ============================================
 coverage/
 .nyc_output/
+*.lcov
+.nyc_report/
 
+# ============================================
 # Cache Directories
+# ============================================
 .cache/
-.eslintcache
-.tsc-cache
+.eslintcache/
+.next/cache/
+.husky/
 
-# Misc
-.awcache
-.turbo
-dist/css/
-dist/js/
+# ============================================
+# Misc & System Files
+# ============================================
+*.swp
+*.swo
+*~
+.#*
+.LSOverride
+.AppleDouble
+.AppleDB
+Zone.identifier
+Thumbs.db:encryptable
+
+# ============================================
+# Platform-specific
+# ============================================
+# Windows
+*.exe
+*.msi
+
+# Mac
+*.dmg
+
+# Linux
+*.deb
+*.rpm
+
+# ============================================
+# SPECIAL RULES FOR SECURITY
+# ============================================
+# These rules are critical for production security
+
+# ANY hidden files that might contain credentials
+.*
+
+# But KEEP important git files
+!.gitignore
+!.gitattributes
+!.env.example
+!.env.production.example
+
+# Exclude all config files with credentials
+# except examples
+config/*.local.*
+config/*secret*
+!config/example*
