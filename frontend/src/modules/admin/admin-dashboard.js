@@ -96,10 +96,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const addStudentModal = document.getElementById('add-student-modal');
         const addHomeworkModal = document.getElementById('add-homework-modal');
         const addFeeModal = document.getElementById('add-fee-modal');
+        const timetableModal = document.getElementById('timetable-modal');
         
         if (addStudentModal === e.target) closeAddStudentModal();
         if (addHomeworkModal === e.target) closeAddHomeworkModal();
         if (addFeeModal === e.target) closeAddFeeModal();
+        if (timetableModal === e.target) closeTimetableModal();
     });
 
     // Mobile Sidebar Toggle
@@ -114,35 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Default tab
     await showTab('dashboard');
 
-    // Wire up Timetable form
-    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            dayOfWeek: document.getElementById('tt-day')?.value,
-            startTime: document.getElementById('tt-start')?.value,
-            endTime: document.getElementById('tt-end')?.value,
-            subject: document.getElementById('tt-subject')?.value.trim(),
-            classLevel: document.getElementById('tt-class')?.value,
-            teacherId: document.getElementById('tt-teacher')?.value,
-        };
-
-        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
-            showErrorAlert('All fields are required.');
-            return;
-        }
-
-        try {
-            showInfoAlert('Saving timetable entry...');
-            await adminAPI.addTimetable(payload);
-            hideInfoAlert();
-            showSuccessAlert('Timetable entry saved successfully!');
-            document.getElementById('timetable-form').reset();
-            await loadTimetable();
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message || 'Failed to save timetable entry');
-        }
-    });
+    // Timetable form is now handled via modal (see saveTimetableEntry function)
 
     // Wire up Notice form
     document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
@@ -1729,16 +1703,42 @@ async function loadResults() {
 // TIMETABLE
 // =============================================
 
-async function loadTimetable() {
-    const list = document.getElementById('timetable-list');
-    if (!list) return;
+// Modal functions
+window.openAddTimetableModal = function() {
+    const modal = document.getElementById('timetable-modal');
+    if (modal) {
+        document.getElementById('tt-id').value = '';
+        document.getElementById('timetable-form').reset();
+        modal.style.display = 'flex';
+        loadTimetableDropdowns();
+    }
+};
 
+window.closeTimetableModal = function() {
+    const modal = document.getElementById('timetable-modal');
+    if (modal) modal.style.display = 'none';
+    document.getElementById('timetable-form').reset();
+};
+
+window.toggleTimetableMenu = function(event, id) {
+    event.stopPropagation();
+    const menu = document.getElementById(`tt-menu-${id}`);
+    
+    // Close other open menus
+    document.querySelectorAll('[id^="tt-menu-"]').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+
+    menu?.classList.toggle('open');
+};
+
+window.closeAllTimetableMenus = function() {
+    document.querySelectorAll('[id^="tt-menu-"]').forEach(m => m.classList.remove('open'));
+};
+
+async function loadTimetableDropdowns() {
     try {
-        showAllTimetable = false; // Reset pagination when loading fresh data
-        showInfoAlert('Loading timetable...');
-        // First load classes and teachers for the dropdown
-        const [ttRes, classesRes, usersRes] = await Promise.all([
-            adminAPI.getTimetable(),
+        const [classesRes, usersRes] = await Promise.all([
             attendanceAPI.getClasses(),
             adminAPI.getUsers()
         ]);
@@ -1746,21 +1746,65 @@ async function loadTimetable() {
         // Populate Class Dropdown
         const classes = classesRes.data || [];
         const classSel = document.getElementById('tt-class');
-        if (classSel && classSel.options.length <= 1) {
+        if (classSel) {
             classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         // Populate Teacher Dropdown
         const teachers = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
         const teacherSel = document.getElementById('tt-teacher');
-        if (teacherSel && teacherSel.options.length <= 1) {
+        if (teacherSel) {
             teacherSel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.id}">${t.phone}</option>`).join('');
         }
+    } catch (err) {
+        console.error('Failed to load dropdowns:', err);
+    }
+}
 
+window.saveTimetableEntry = async function() {
+    const ttId = document.getElementById('tt-id')?.value;
+    const payload = {
+        dayOfWeek: document.getElementById('tt-day')?.value,
+        startTime: document.getElementById('tt-start')?.value,
+        endTime: document.getElementById('tt-end')?.value,
+        subject: document.getElementById('tt-subject')?.value.trim(),
+        classLevel: document.getElementById('tt-class')?.value,
+        teacherId: document.getElementById('tt-teacher')?.value,
+    };
+
+    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
+        showErrorAlert('All fields are required.');
+        return;
+    }
+
+    try {
+        showInfoAlert('Saving timetable entry...');
+        if (ttId) {
+            // Update existing (if implemented in API)
+            await adminAPI.updateTimetable(ttId, payload);
+        } else {
+            await adminAPI.addTimetable(payload);
+        }
+        hideInfoAlert();
+        showSuccessAlert('Timetable entry saved successfully!');
+        closeTimetableModal();
+        await loadTimetable();
+    } catch (err) {
+        hideInfoAlert();
+        showErrorAlert(err.message || 'Failed to save timetable entry');
+    }
+};
+
+async function loadTimetable() {
+    const grid = document.getElementById('timetable-grid');
+    if (!grid) return;
+
+    try {
+        showInfoAlert('Loading timetable...');
+        const ttRes = await adminAPI.getTimetable();
         allTimetableData = ttRes.timetable || [];
         hideInfoAlert();
-
-        renderTimetableTable(allTimetableData);
+        renderTimetableGrid(allTimetableData);
     } catch (err) {
         hideInfoAlert();
         showErrorAlert('Failed to load timetable: ' + err.message);
@@ -1770,47 +1814,108 @@ async function loadTimetable() {
 let allTimetableData = [];
 let showAllTimetable = false;
 
-function renderTimetableTable(items) {
-    const list = document.getElementById('timetable-list');
+function formatTime(t) {
+    try { 
+        return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); 
+    } catch(e) { 
+        return t; 
+    }
+}
+
+// Generate time slots for calendar grid (7:00 AM to 6:00 PM in 1-hour slots)
+function generateTimeSlots() {
+    const slots = [];
+    for (let hour = 7; hour < 18; hour++) {
+        const time = `${hour.toString().padStart(2, '0')}:00`;
+        slots.push(time);
+    }
+    return slots;
+}
+
+function renderTimetableGrid(items) {
+    const grid = document.getElementById('timetable-grid');
     const toggleBtn = document.getElementById('btn-toggle-timetable');
     const countText = document.getElementById('timetable-count-text');
     
-    if (!list) return;
+    if (!grid) return;
 
     if (items.length === 0) {
-        list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
+        grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-muted);">No timetable entries found. Click "Add Entry" to create one.</div>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 10;
+    const displayLimit = 15;
     const toShow = showAllTimetable ? items : items.slice(0, displayLimit);
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const slots = generateTimeSlots();
 
-    function formatTime(t) {
-        try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
-        catch(e) { return t; }
-    }
+    // Create data map: day -> slot -> entries
+    const timetableMap = {};
+    toShow.forEach(entry => {
+        if (!timetableMap[entry.dayOfWeek]) {
+            timetableMap[entry.dayOfWeek] = {};
+        }
+        if (!timetableMap[entry.dayOfWeek][entry.startTime]) {
+            timetableMap[entry.dayOfWeek][entry.startTime] = [];
+        }
+        timetableMap[entry.dayOfWeek][entry.startTime].push(entry);
+    });
 
-    list.innerHTML = toShow.map(t => `
-        <tr>
-            <td>${t.dayOfWeek}</td>
-            <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
-            <td>${t.subject}</td>
-            <td>${t.classLevel}</td>
-            <td>${t.teacherPhone || t.teacherId}</td>
-            <td>
-                <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    let gridHTML = '';
+
+    // Header row with day names
+    gridHTML += '<div class="timetable-grid-header">';
+    gridHTML += '<div class="timetable-time-cell"></div>';
+    days.forEach(day => {
+        gridHTML += `<div class="timetable-day-header">${day}</div>`;
+    });
+    gridHTML += '</div>';
+
+    // Time slots and entries
+    slots.forEach(slot => {
+        // Time cell
+        gridHTML += `<div class="timetable-time-cell">${slot}</div>`;
+        
+        // Day cells
+        days.forEach(day => {
+            const entries = (timetableMap[day] && timetableMap[day][slot]) || [];
+            gridHTML += '<div class="timetable-slot">';
+            
+            if (entries.length === 0) {
+                gridHTML += '';
+            } else {
+                entries.forEach(entry => {
+                    gridHTML += `
+                        <div class="timetable-entry">
+                            <span class="timetable-entry-subject">${entry.subject}</span>
+                            <span class="timetable-entry-class">${entry.classLevel}</span>
+                            <div class="timetable-entry-menu">
+                                <button class="timetable-entry-menu-btn" onclick="toggleTimetableMenu(event, ${entry.id})">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="action-menu-dropdown" id="tt-menu-${entry.id}">
+                                    <button class="action-menu-item" onclick="deleteTimetableRecord(${entry.id})">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            gridHTML += '</div>';
+        });
+    });
+
+    grid.innerHTML = gridHTML;
 
     // Show toggle button if more items exist
     if(toggleBtn) {
         toggleBtn.style.display = items.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllTimetable ? 'Show Less Timetable' : `Show More Timetable (${items.length})`;
+        toggleBtn.textContent = showAllTimetable ? 'Show Less' : `Show More (${items.length - displayLimit} more)`;
     }
     if(countText) {
         countText.textContent = showAllTimetable ? '' : `Showing ${toShow.length} of ${items.length}`;
@@ -1819,7 +1924,7 @@ function renderTimetableTable(items) {
 
 window.toggleShowAllTimetable = function() {
     showAllTimetable = !showAllTimetable;
-    renderTimetableTable(allTimetableData);
+    renderTimetableGrid(allTimetableData);
 };
 
 window.deleteTimetableRecord = async function(id) {
@@ -1827,6 +1932,7 @@ window.deleteTimetableRecord = async function(id) {
     try {
         await adminAPI.deleteTimetable(id);
         showSuccessAlert('Timetable entry deleted!');
+        closeAllTimetableMenus();
         await loadTimetable();
     } catch (err) {
         showErrorAlert('Failed to delete timetable: ' + err.message);

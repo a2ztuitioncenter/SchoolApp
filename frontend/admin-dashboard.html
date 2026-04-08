@@ -918,11 +918,39 @@
 
             <!-- Timetable Tab -->
             <div id="tab-timetable" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>➕ Add Timetable Entry</h3>
-                        <form id="timetable-form">
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-clock"></i> School Timetable</h2>
+                        <p class="section-subtitle">Weekly schedule of classes and subjects</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddTimetableModal()">
+                        <i class="fas fa-plus"></i> Add Entry
+                    </button>
+                </div>
+
+                <!-- Calendar Grid View -->
+                <div class="timetable-container">
+                    <div id="timetable-grid" class="timetable-grid"></div>
+                </div>
+
+                <!-- Pagination -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-timetable" onclick="toggleShowAllTimetable()" style="display: none;">Show More</button>
+                    <div id="timetable-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
+
+                <!-- Add Timetable Modal -->
+                <div id="timetable-modal" class="modal" style="display: none;">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h2>Add Timetable Entry</h2>
+                            <span class="close" onclick="closeTimetableModal()">&times;</span>
+                        </div>
+                        <form id="timetable-form" class="modal-body">
+                            <input type="hidden" id="tt-id">
+                            <div class="form-section-title">Class Schedule</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Day of Week *</label>
                                     <select id="tt-day" required>
@@ -940,6 +968,8 @@
                                     <label>Start Time *</label>
                                     <input type="time" id="tt-start" required>
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>End Time *</label>
                                     <input type="time" id="tt-end" required>
@@ -948,49 +978,27 @@
                                     <label>Subject *</label>
                                     <input type="text" id="tt-subject" placeholder="e.g. Mathematics" required>
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Class Level *</label>
                                     <select id="tt-class" required>
                                         <option value="">Select Class</option>
-                                        <!-- Loaded dynamically -->
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Teacher *</label>
                                     <select id="tt-teacher" required>
                                         <option value="">Select Teacher</option>
-                                        <!-- Loaded dynamically -->
                                     </select>
                                 </div>
                             </div>
-                            <div style="margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary">💾 Save Timetable</button>
-                            </div>
                         </form>
-                    </div>
-                </div>
-                <div class="card-grid" style="margin-top: 20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h2>⏰ Timetable</h2>
-                        </div>
-                        <div class="table-container" style="margin-top:20px;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr><th>Day</th><th>Time</th><th>Subject</th><th>Class</th><th>Teacher</th><th>Actions</th></tr>
-                                </thead>
-                                <tbody id="timetable-list">
-                                    <tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>
-                                </tbody>
-                            </table>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeTimetableModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" onclick="saveTimetableEntry()">Save Entry</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Pagination / Show More for Timetable -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-timetable" onclick="toggleShowAllTimetable()" style="display: none;">Show More Timetable</button>
-                    <div id="timetable-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
