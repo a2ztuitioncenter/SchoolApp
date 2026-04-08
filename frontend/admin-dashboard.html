@@ -886,7 +886,7 @@
                 <!-- Materials Table -->
                 <div class="table-wrapper">
                     <div class="table-container">
-                        <table class="data-table">
+                        <table class="materials-table">
                             <thead>
                                 <tr>
                                     <th>Title</th>
@@ -1087,25 +1087,22 @@
         </div>
     </div>
     <!-- Study Material Modal -->
-    <div id="material-modal" class="modal">
+    <div id="material-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="material-modal-title">Add Study Material</h2>
                 <span class="close" onclick="closeMaterialModal()">&times;</span>
             </div>
-            <form id="material-form">
+            <form id="material-form" class="modal-body">
                 <input type="hidden" id="material-id">
-                <div class="form-group">
-                    <label>Title*</label>
-                    <input type="text" id="material-title" required placeholder="e.g. Chapter 1 Notes">
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="material-description" rows="2" placeholder="Optional details..."></textarea>
-                </div>
+                <div class="form-section-title">Material Information</div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Subject*</label>
+                        <label>Title *</label>
+                        <input type="text" id="material-title" required placeholder="e.g. Chapter 1 Notes">
+                    </div>
+                    <div class="form-group">
+                        <label>Subject *</label>
                         <select id="material-subject" required>
                             <option value="">Select Subject</option>
                             <option value="Mathematics">Mathematics</option>
@@ -1115,8 +1112,10 @@
                             <option value="Geography">Geography</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Class Level*</label>
+                        <label>Class Level *</label>
                         <select id="material-class" required>
                             <option value="">Select Class</option>
                             <option value="8">Class 8</option>
@@ -1126,17 +1125,23 @@
                             <option value="12">Class 12</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>File (PDF, JPG, PNG) *</label>
+                        <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
+                        <small id="material-file-hint" style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current file</small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>File (PDF, JPG, PNG)*</label>
-                    <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
-                    <small id="material-file-hint" style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current file</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Material</button>
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Description</label>
+                        <textarea id="material-description" rows="2" placeholder="Optional details..."></textarea>
+                    </div>
                 </div>
             </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" onclick="saveMaterial()">Save Material</button>
+            </div>
         </div>
     </div>
 

@@ -1138,11 +1138,12 @@ window.deleteFeeRecord = async function (id) {
 };
 
 // =============================================
-// MATERIALS
+// MATERIALS - WITH LAZY LOADING & 3-DOT MENU
 // =============================================
 
 let allMaterialsData = [];
 let showAllMaterials = false;
+let materialsFilterTimeout;
 
 async function loadMaterials() {
     try {
@@ -1153,7 +1154,7 @@ async function loadMaterials() {
         // Update stats
         updateMaterialsStats();
         
-        // Render table and mobile view
+        // Render table
         renderMaterialsTable();
     } catch (err) {
         console.error('Error loading materials:', err);
@@ -1195,7 +1196,7 @@ function renderMaterialsTable() {
         return;
     }
 
-    const displayLimit = 10;
+    const displayLimit = 15;
     const toShow = showAllMaterials ? list : list.slice(0, displayLimit);
     
     tbody.innerHTML = toShow.map(m => `
@@ -1207,20 +1208,22 @@ function renderMaterialsTable() {
             <td>${escapeHtml(m.subject)}</td>
             <td><span class="badge">Class ${escapeHtml(m.classLevel)}</span></td>
             <td>${escapeHtml(m.uploadedBy || '-')}</td>
+            <td><small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small></td>
             <td>
-                <small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small>
-            </td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-material-id="${m.id}">
+                        <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
+                            <i class="fas fa-download" style="width: 16px;"></i> Download
+                        </button>
+                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}",description:'${(m.description || '').replace(/'/g, "\\'")}",subject:'${m.subject}',classLevel:'${m.classLevel}',fileUrl:'${m.fileUrl}'})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
+                        </button>
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        </button>
+                    </div>
                 </div>
             </td>
         </tr>
@@ -1229,14 +1232,11 @@ function renderMaterialsTable() {
     // Show toggle button if more items exist
     if(toggleBtn) {
         toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllMaterials ? 'Show Less Materials' : `Show More Materials (${list.length})`;
+        toggleBtn.textContent = showAllMaterials ? 'Show Less' : `Show More Materials (${list.length})`;
     }
     if(countText) {
         countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
     }
-
-    // Render mobile cards
-    renderMaterialsCards(toShow);
 }
 
 window.toggleShowAllMaterials = function() {
@@ -1244,50 +1244,21 @@ window.toggleShowAllMaterials = function() {
     renderMaterialsTable();
 };
 
-function renderMaterialsCards(list) {
-    const cardsContainer = document.getElementById('materials-cards');
-    if (!cardsContainer) return;
+window.toggleMaterialMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllMaterialMenus();
+    
+    // Toggle current menu
+    dropdown.classList.add('open');
+};
 
-    cardsContainer.innerHTML = list.length ? list.map(m => `
-        <div class="material-card">
-            <div class="material-card-header">
-                <h3 class="material-card-title">${escapeHtml(m.title)}</h3>
-            </div>
-            <div class="material-card-content">
-                ${m.description ? `<p style="margin: 0 0 0.75rem; font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(m.description)}</p>` : ''}
-                <div class="material-card-meta">
-                    <div class="material-card-meta-item">
-                        <i class="fas fa-book-open" style="color: var(--accent-blue);"></i>
-                        <span><strong>${escapeHtml(m.subject)}</strong></span>
-                    </div>
-                    <div class="material-card-meta-item">
-                        <i class="fas fa-chalkboard" style="color: var(--success);"></i>
-                        <span>Class <strong>${escapeHtml(m.classLevel)}</strong></span>
-                    </div>
-                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
-                        <i class="fas fa-user" style="color: var(--warning);"></i>
-                        <span><strong>${escapeHtml(m.uploadedBy || 'Unknown')}</strong></span>
-                    </div>
-                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
-                        <i class="fas fa-calendar" style="color: var(--text-muted);"></i>
-                        <span>${formatDate(m.createdAt)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="material-card-actions">
-                <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
-                    <i class="fas fa-download"></i> Download
-                </button>
-                <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('') : '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No materials found</p>';
-}
+window.closeAllMaterialMenus = function() {
+    document.querySelectorAll('.materials-table .action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
 
 function getFilteredMaterials() {
     const searchTerm = document.getElementById('material-search')?.value.toLowerCase() || '';
@@ -1312,6 +1283,7 @@ window.filterMaterials = function() {
 };
 
 function formatDate(dateString) {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -1324,13 +1296,12 @@ function escapeHtml(text) {
 
 window.saveMaterial = async function(e) {
     if (e && e.preventDefault) e.preventDefault();
-    console.log('📝 Saving material...');
     
-    const id = document.getElementById('material-id').value;
-    const title = document.getElementById('material-title').value;
-    const description = document.getElementById('material-description').value;
-    const subject = document.getElementById('material-subject').value;
-    const classLevel = document.getElementById('material-class').value;
+    const id = document.getElementById('material-id')?.value;
+    const title = document.getElementById('material-title')?.value;
+    const description = document.getElementById('material-description')?.value;
+    const subject = document.getElementById('material-subject')?.value;
+    const classLevel = document.getElementById('material-class')?.value;
     const fileInput = document.getElementById('material-file');
 
     if (!title || !subject || !classLevel) {
@@ -1352,35 +1323,42 @@ window.saveMaterial = async function(e) {
         return;
     }
 
+    showInfoAlert(id ? 'Updating material...' : 'Uploading material...');
     try {
         let res;
         if (id) {
-            console.log(`📤 Updating material ID: ${id}`);
             res = await materialsAPI.update(id, formData);
+            hideInfoAlert();
             showSuccessAlert('Material updated successfully');
         } else {
-            console.log('📤 Creating new material...');
             res = await materialsAPI.create(formData);
+            hideInfoAlert();
             showSuccessAlert('Material uploaded successfully');
         }
         closeMaterialModal();
-        loadMaterials();
+        await loadMaterials();
     } catch (err) {
-        console.error('❌ Error saving material:', err);
+        hideInfoAlert();
+        console.error('Error saving material:', err);
         showErrorAlert('Error saving material: ' + err.message);
     }
 };
 
-async function deleteMaterial(id) {
+window.deleteMaterial = async function(id) {
     if (!confirm('Are you sure you want to delete this material?')) return;
+    showInfoAlert('Deleting material...');
     try {
         await materialsAPI.delete(id);
-        showSuccessAlert('Material deleted'); // Changed showToast to showSuccessAlert
-        loadMaterials();
+        hideInfoAlert();
+        showSuccessAlert('Material deleted');
+        closeAllMaterialMenus();
+        await loadMaterials();
     } catch (err) {
-        showErrorAlert('Error deleting: ' + err.message); // Changed alert to showErrorAlert
+        hideInfoAlert();
+        console.error('Error deleting:', err);
+        showErrorAlert('Error deleting: ' + err.message);
     }
-}
+};
 
 window.openMaterialModal = function(material = null) {
     const modal = document.getElementById('material-modal');
@@ -1406,14 +1384,22 @@ window.openMaterialModal = function(material = null) {
         titleObj.innerText = 'Add Study Material';
         document.getElementById('material-id').value = '';
     }
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
+    closeAllMaterialMenus();
 };
 
 window.closeMaterialModal = function() {
     document.getElementById('material-modal').style.display = 'none';
+    document.getElementById('material-form').reset();
 };
 
-window.deleteMaterial = deleteMaterial;
+async function initMaterialsTab() {
+    try {
+        await loadMaterials();
+    } catch (err) {
+        showErrorAlert('Failed to load materials');
+    }
+}
 
 // =============================================
 // HOMEWORK - MODAL FUNCTIONS
