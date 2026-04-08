@@ -2661,6 +2661,140 @@ textarea:focus {
 }
 
 /* ============================================
+   KPI CARDS - QUICK STATS
+   ============================================ */
+
+.quick-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.kpi-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all var(--transition);
+  display: flex;
+  flex-direction: column;
+  border-left: 4px solid #0052cc;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+  border-color: #0052cc;
+}
+
+.kpi-card.kpi-success {
+  border-left-color: #22c55e;
+}
+
+.kpi-card.kpi-success:hover {
+  border-color: #22c55e;
+}
+
+.kpi-card.kpi-info {
+  border-left-color: #0052cc;
+}
+
+.kpi-card.kpi-info:hover {
+  border-color: #0052cc;
+}
+
+.kpi-card.kpi-warning {
+  border-left-color: #fb923c;
+}
+
+.kpi-card.kpi-warning:hover {
+  border-color: #fb923c;
+}
+
+.kpi-card.kpi-danger {
+  border-left-color: #ef4444;
+}
+
+.kpi-card.kpi-danger:hover {
+  border-color: #ef4444;
+}
+
+.kpi-card.kpi-secondary {
+  border-left-color: #8b5cf6;
+}
+
+.kpi-card.kpi-secondary:hover {
+  border-color: #8b5cf6;
+}
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.kpi-header i {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.kpi-header.success i {
+  color: #22c55e;
+}
+
+.kpi-header.warning i {
+  color: #fb923c;
+}
+
+.kpi-header.danger i {
+  color: #ef4444;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+
+.kpi-card.kpi-success .kpi-value {
+  color: #22c55e;
+}
+
+.kpi-card.kpi-info .kpi-value {
+  color: #0052cc;
+}
+
+.kpi-card.kpi-warning .kpi-value {
+  color: #fb923c;
+}
+
+.kpi-card.kpi-danger .kpi-value {
+  color: #ef4444;
+}
+
+.kpi-card.kpi-secondary .kpi-value {
+  color: #8b5cf6;
+}
+
+.kpi-footer {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+/* ============================================
    ENHANCED DASHBOARD COMPONENTS (ERP Style)
    ============================================ */
 
@@ -3008,7 +3142,6 @@ textarea:focus {
   padding: 1.5rem;
   flex: 1;
   overflow: auto;
-  max-height: 500px;
 }
 
 /* Tables in Dashboard */
@@ -3188,6 +3321,11 @@ textarea:focus {
     gap: 1rem;
   }
 
+  .quick-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
   .dashboard-metrics-grid {
     grid-template-columns: 1fr;
   }
@@ -3196,13 +3334,16 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
-  .card-body {
-    max-height: 400px;
-  }
 }
+
 
 @media (max-width: 768px) {
   .dashboard-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .quick-stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
   }
@@ -3239,7 +3380,6 @@ textarea:focus {
   }
 
   .card-body {
-    max-height: 300px;
     padding: 1rem;
   }
 

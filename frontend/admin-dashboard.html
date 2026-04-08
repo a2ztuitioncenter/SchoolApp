@@ -100,23 +100,77 @@
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
                 
-                <!-- ===== ROW 1: KEY METRICS - CHART-BASED ERP STYLE ===== -->
+                <!-- ===== ROW 0: QUICK STATS KPI CARDS ===== -->
                 <div class="dashboard-section-title">
+                    <h2><i class="fas fa-tachometer-alt"></i> Quick Stats</h2>
+                </div>
+                <div class="quick-stats-grid">
+                    <!-- Total Students KPI -->
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <i class="fas fa-users"></i>
+                            <span class="kpi-label">Total Students</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-students">0</div>
+                        <div class="kpi-footer" id="kpi-total-students-detail">Active & Inactive</div>
+                    </div>
+
+                    <!-- Active Students KPI -->
+                    <div class="kpi-card kpi-success">
+                        <div class="kpi-header">
+                            <i class="fas fa-user-check"></i>
+                            <span class="kpi-label">Active Students</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-active-students">0</div>
+                        <div class="kpi-footer" id="kpi-active-percentage">0% of total</div>
+                    </div>
+
+                    <!-- Total Fees Collected KPI -->
+                    <div class="kpi-card kpi-info">
+                        <div class="kpi-header">
+                            <i class="fas fa-money-check-alt"></i>
+                            <span class="kpi-label">Fees Collected</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-fees-collected">₹0</div>
+                        <div class="kpi-footer" id="kpi-collection-percentage">0% collected</div>
+                    </div>
+
+                    <!-- Pending Fees KPI -->
+                    <div class="kpi-card kpi-warning">
+                        <div class="kpi-header">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span class="kpi-label">Pending Fees</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-fees-pending">₹0</div>
+                        <div class="kpi-footer" id="kpi-pending-percentage">0% pending</div>
+                    </div>
+
+                    <!-- Overdue Fees KPI -->
+                    <div class="kpi-card kpi-danger">
+                        <div class="kpi-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span class="kpi-label">Overdue Fees</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-fees-overdue">₹0</div>
+                        <div class="kpi-footer" id="kpi-overdue-count">0 students overdue</div>
+                    </div>
+
+                    <!-- Attendance Rate KPI -->
+                    <div class="kpi-card kpi-secondary">
+                        <div class="kpi-header">
+                            <i class="fas fa-calendar-check"></i>
+                            <span class="kpi-label">Avg. Attendance</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-attendance-rate">0%</div>
+                        <div class="kpi-footer" id="kpi-attendance-detail">This month</div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 1: KEY METRICS - CHART-BASED ERP STYLE ===== -->
+                <div class="dashboard-section-title" style="margin-top: 2.5rem;">
                     <h2><i class="fas fa-chart-pie"></i> Key Metrics</h2>
                 </div>
                 <div class="dashboard-metrics-grid">
-                    <!-- Students Overview (Donut: Active vs Inactive) -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-users"></i> Students Overview</h3>
-                            <p class="card-subtitle">Active vs Inactive distribution</p>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="students-overview-chart" height="300"></canvas>
-                            <div id="students-overview-loading" class="chart-loading">Loading chart...</div>
-                        </div>
-                    </div>
-
                     <!-- Fees Overview (Donut: Collected vs Pending vs Overdue) -->
                     <div class="dashboard-card">
                         <div class="card-header">
@@ -140,18 +194,6 @@
                             <div id="growth-trend-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
-
-                    <!-- Class Distribution (Bar: Students per class) -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-chart-bar"></i> Class Distribution</h3>
-                            <p class="card-subtitle">Students per class level</p>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="class-distribution-chart" height="300"></canvas>
-                            <div id="class-distribution-loading" class="chart-loading">Loading chart...</div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- ===== ROW 2: DETAILED CHARTS ===== -->
@@ -168,15 +210,15 @@
                         </div>
                     </div>
 
-                    <!-- Class Distribution Detail -->
+                    <!-- Class Distribution Line Chart -->
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-chart-bar"></i> Students by Class (Detailed)</h3>
-                            <p class="card-subtitle">Distribution across grade levels</p>
+                            <h3><i class="fas fa-chart-line"></i> Class Distribution Trend</h3>
+                            <p class="card-subtitle">Student enrollment across classes</p>
                         </div>
                         <div class="card-body">
-                            <canvas id="students-chart" height="300"></canvas>
-                            <div id="students-chart-loading" class="chart-loading">Loading chart...</div>
+                            <canvas id="class-distribution-line-chart" height="300"></canvas>
+                            <div id="class-distribution-line-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
                 </div>
@@ -213,19 +255,6 @@
                         <div class="card-body">
                             <div id="recent-activity-list" class="activity-list">
                                 <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading activity...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Today's Snapshot -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-calendar-day"></i> Today's Classes</h3>
-                            <p class="card-subtitle" id="today-date-snapshot">Today</p>
-                        </div>
-                        <div class="card-body">
-                            <div id="today-snapshot-list" class="snapshot-list">
-                                <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading schedule...</div>
                             </div>
                         </div>
                     </div>
