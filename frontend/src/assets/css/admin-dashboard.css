@@ -511,6 +511,312 @@ textarea:focus {
 }
 
 /* ============================================
+   SECTION HEADER - ERP STYLE
+   ============================================ */
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.section-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+}
+
+.btn-lg {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+/* ============================================
+   FILTER & SEARCH BAR - COMPACT DESIGN
+   ============================================ */
+
+.filter-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.filter-group select,
+.search-box input {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+  transition: border-color var(--transition);
+}
+
+.filter-group select:focus,
+.search-box input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+  max-width: 350px;
+}
+
+.search-box i {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.search-box input {
+  padding-left: 2rem;
+  width: 100%;
+}
+
+.form-control {
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  transition: border-color var(--transition);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+}
+
+/* ============================================
+   COMPACT STUDENT TABLE - ERP STYLE
+   ============================================ */
+
+.students-table {
+  font-size: 0.875rem;
+}
+
+.students-table thead th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 1rem;
+}
+
+.students-table tbody tr {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color var(--transition);
+}
+
+.students-table tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.students-table tbody tr:hover .action-menu-btn {
+  opacity: 1;
+}
+
+.students-table td {
+  padding: 0.75rem 1rem;
+  color: var(--text-main);
+}
+
+.students-table td:first-child {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.students-table td:nth-child(2) {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.students-table td:last-child {
+  text-align: right;
+  padding-right: 0.75rem;
+}
+
+/* ============================================
+   FORM SECTIONS - MODAL ORGANIZATION
+   ============================================ */
+
+.form-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 1.25rem 0 0.75rem 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.form-section-title:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.form-row .form-group {
+  margin-bottom: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 0.375rem;
+}
+
+/* ============================================
+   3-DOT ACTION MENU
+   ============================================ */
+
+.action-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.action-menu-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.25rem;
+  opacity: 0.6;
+  transition: opacity var(--transition), color var(--transition);
+  padding: 0.25rem 0.5rem;
+}
+
+.action-menu-btn:hover {
+  color: var(--text-main);
+  opacity: 1;
+}
+
+.action-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 160px;
+  z-index: 1000;
+  display: none;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.action-menu-dropdown.open {
+  display: block;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border: none;
+  background: none;
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.875rem;
+  width: 100%;
+  text-align: left;
+  transition: background-color var(--transition);
+}
+
+.action-menu-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.action-menu-item.danger {
+  color: var(--danger);
+}
+
+.action-menu-item.danger:hover {
+  background-color: rgba(207, 34, 46, 0.1);
+}
+
+.action-menu-item.success {
+  color: var(--success);
+}
+
+.action-menu-item.success:hover {
+  background-color: rgba(26, 127, 55, 0.1);
+}
+
+.action-menu-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 0.25rem 0;
+}
+
+/* ============================================
+   PAGINATION FOOTER
+   ============================================ */
+
+.pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ============================================
    UTILITIES & TABS
    ============================================ */
 
@@ -569,6 +875,142 @@ textarea:focus {
   .card-grid { grid-template-columns: 1fr; }
   
   .admin-info { display: none; }
+
+  /* ========== Student Management Mobile ========== */
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.25rem;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .filter-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .filter-group select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .search-box {
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+  }
+  
+  .search-box input {
+    width: 100%;
+    padding: 0.5rem 2rem 0.5rem 2rem;
+  }
+  
+  /* Modal mobile optimizations */
+  .modal-content {
+    width: 95%;
+    max-width: 100%;
+    margin: 5vh auto;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .modal {
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .form-section-title {
+    margin: 0.75rem 0 0.5rem 0;
+    padding-top: 0.75rem;
+  }
+  
+  /* Table mobile responsiveness */
+  .students-table {
+    font-size: 0.8rem;
+  }
+  
+  .students-table thead th {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  .students-table td {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .students-table td:first-child {
+    font-size: 0.85rem;
+  }
+  
+  .students-table td:last-child {
+    padding-right: 0.5rem;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  /* Action menu on mobile */
+  .action-menu-btn {
+    font-size: 1.1rem;
+    padding: 0.35rem 0.25rem;
+    opacity: 1;
+  }
+  
+  .action-menu-dropdown {
+    right: -0.5rem;
+    min-width: 140px;
+  }
+  
+  .action-menu-item {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.8rem;
+    gap: 0.375rem;
+  }
+  
+  .action-menu-item i {
+    width: 14px;
+  }
+  
+  /* Pagination footer mobile */
+  .pagination-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .btn-lg {
+    width: 100%;
+    padding: 0.6rem 1rem;
+  }
+  
+  .btn {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+  }
 }
 
 /* Utility Classes */
@@ -598,65 +1040,6 @@ textarea:focus {
   filter: brightness(1.2);
 }
 
-.modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.15);
-  z-index: 1000;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal-content {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  width: 90%;
-  max-width: 600px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
-}
-
-.modal-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h2 {
-  font-size: 1.1rem;
-  margin: 0;
-}
-
-.close {
-  cursor: pointer;
-  font-size: 1.5rem;
-  color: var(--text-muted);
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border-subtle);
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-@media (max-width: 600px) {
-  .form-row {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ============================================
@@ -1001,66 +1384,7 @@ textarea:focus {
   font-size: 0.85rem;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .section-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-  }
-
-  .section-header h2 {
-    font-size: 1.5rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-box {
-    min-width: auto;
-  }
-
-  .filter-group {
-    flex-direction: column;
-  }
-
-  .filter-group select {
-    min-width: auto;
-  }
-
-  /* Hide table on mobile, show cards instead */
-  .table-wrapper {
-    display: none;
-  }
-
-  #materials-mobile-list,
-  #users-mobile-list {
-    display: block !important;
-  }
-
-  .materials-cards,
-  .users-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .btn-lg {
-    width: 100%;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.8rem;
-  }
-}
-
+/* Responsive Design - Extra Small Mobile */
 @media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr;

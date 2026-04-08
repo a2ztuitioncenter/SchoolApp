@@ -515,13 +515,13 @@ function renderStudentsTable(students) {
     if (!tbody) return;
 
     if (!students.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No students found. Click "Add Student" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 5;
+    const displayLimit = 10;
     const toShow = showAllStudents ? students : students.slice(0, displayLimit);
     
     if (toggleBtn) {
@@ -539,25 +539,47 @@ function renderStudentsTable(students) {
 
     tbody.innerHTML = toShow.map(s => `
         <tr>
-            <td><strong>${s.id}</strong></td>
-            <td>${s.name}</td>
-            <td>${s.phone || 'N/A'}</td>
-            <td>${s.classLevel || 'N/A'}${s.section ? ' - ' + s.section : ''}</td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.phone || '-'}</td>
+            <td>${s.classLevel || '-'}${s.section ? ' - ' + s.section : ''}</td>
             <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
             <td>
-                <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
-                <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
-                    <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
-                </button>
-                <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleStudentMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-student-id="${s.id}">
+                        <button class="action-menu-item" onclick="openEditStudentModal(${s.id})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
+                        </button>
+                        <button class="action-menu-item ${s.status === 'active' ? 'success' : 'warning'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
+                            <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}" style="width: 16px;"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
+                        </button>
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteStudentById(${s.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>
     `).join('');
 }
 
-window.editStudent = function (id) {
+window.openAddStudentModal = function() {
+    document.getElementById('add-student-modal').style.display = 'block';
+    document.getElementById('add-student-form').reset();
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeAddStudentModal = function() {
+    document.getElementById('add-student-modal').style.display = 'none';
+    document.getElementById('add-student-form').reset();
+    document.body.style.overflow = '';
+};
+
+window.openEditStudentModal = function(id) {
     const s = allStudentsData.find(st => st.id === id);
     if (!s) return;
+    
     document.getElementById('edit-student-id').value = s.id;
     document.getElementById('edit-student-name').value = s.name || '';
     document.getElementById('edit-student-classLevel').value = s.classLevel || '';
@@ -565,15 +587,60 @@ window.editStudent = function (id) {
     document.getElementById('edit-student-phone').value = s.phone || '';
     document.getElementById('edit-student-email').value = s.email || '';
     document.getElementById('edit-student-fatherName').value = s.fatherName || '';
-    const section = document.getElementById('edit-student-section');
-    if (section) { section.style.display = 'grid'; section.scrollIntoView({ behavior: 'smooth' }); }
-    document.getElementById('edit-student-section').style.display = 'grid';
-    document.getElementById('edit-student-section').scrollIntoView({ behavior: 'smooth' });
+    
+    document.getElementById('edit-student-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    closeAllStudentMenus();
+};
+
+window.closeEditStudentModal = function() {
+    document.getElementById('edit-student-modal').style.display = 'none';
+    document.getElementById('edit-student-form').reset();
+    document.body.style.overflow = '';
+};
+
+window.toggleStudentMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllStudentMenus();
+    
+    // Toggle current menu
+    dropdown.classList.add('open');
+};
+
+window.closeAllStudentMenus = function() {
+    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
+
+// Close menus when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.action-menu')) {
+        closeAllStudentMenus();
+    }
+});
+
+// Close modals when clicking on backdrop
+window.addEventListener('click', function(e) {
+    const addModal = document.getElementById('add-student-modal');
+    const editModal = document.getElementById('edit-student-modal');
+    
+    if (addModal && e.target === addModal) {
+        closeAddStudentModal();
+    }
+    if (editModal && e.target === editModal) {
+        closeEditStudentModal();
+    }
+});
+
+window.editStudent = function (id) {
+    openEditStudentModal(id);
 };
 
 window.cancelEditStudent = function () {
-    document.getElementById('edit-student-section').style.display = 'none';
-    document.getElementById('edit-student-form').reset();
+    closeEditStudentModal();
 };
 
 window.deleteStudentById = async function (id) {
@@ -1377,11 +1444,23 @@ function setupForms() {
             status:      'active'
         };
         try {
-            showInfoAlert('Onboarding student...');
+            showInfoAlert('Adding student...');
             const res = await adminAPI.addStudent(payload);
-            if (res.success) { showSuccessAlert('Student onboarded!'); e.target.reset(); await loadStudents(); }
-            else showErrorAlert(res.error || 'Failed to onboard student');
-        } catch (err) { showErrorAlert(err.message); }
+            if (res.success) { 
+                hideInfoAlert();
+                showSuccessAlert('Student added successfully!'); 
+                closeAddStudentModal();
+                e.target.reset(); 
+                await loadStudents(); 
+            }
+            else {
+                hideInfoAlert();
+                showErrorAlert(res.error || 'Failed to add student');
+            }
+        } catch (err) { 
+            hideInfoAlert();
+            showErrorAlert(err.message); 
+        }
     });
 
     document.getElementById('edit-student-form')?.addEventListener('submit', async (e) => {
@@ -1399,14 +1478,19 @@ function setupForms() {
             showInfoAlert('Updating student...');
             const res = await adminAPI.updateStudent(id, payload);
             if (res.success) {
-                showSuccessAlert('Student updated!');
-                document.getElementById('edit-student-section').style.display = 'none';
+                hideInfoAlert();
+                showSuccessAlert('Student updated successfully!');
+                closeEditStudentModal();
                 e.target.reset();
                 await loadStudents();
             } else {
+                hideInfoAlert();
                 showErrorAlert(res.error || 'Failed to update student');
             }
-        } catch (err) { showErrorAlert(err.message); }
+        } catch (err) { 
+            hideInfoAlert();
+            showErrorAlert(err.message); 
+        }
     });
 
     document.getElementById('logout-btn')?.addEventListener('click', () => {
