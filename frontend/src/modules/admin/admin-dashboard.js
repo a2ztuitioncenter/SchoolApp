@@ -1931,7 +1931,7 @@ function renderTimetableByClass(items) {
                 displayTime = `${parts[0]}:${parts[1]}`;
             }
 
-            const teacherName = entry.teacherPhone || 'Unassigned';
+            const teacherName = entry.teacherName || 'Unassigned';
 
             html += `
                         <tr>

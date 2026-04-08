@@ -216,7 +216,7 @@ router.get('/financials/report', async (req, res) => {
 router.get('/timetable', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT t.*, u.phone as "teacherPhone" 
+            `SELECT t.*, u.name as "teacherName", u.phone as "teacherPhone" 
              FROM timetable t
              LEFT JOIN users u ON t."teacherId" = u.id
              ORDER BY t."dayOfWeek", t."startTime" ASC`
