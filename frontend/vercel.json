@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://schoolapp-kwkb.onrender.com/api/:match*"
+      "destination": "https://schoolapp-bu95.onrender.com/api/:match*"
     },
     {
       "source": "/uploads/:match*",
-      "destination": "https://schoolapp-kwkb.onrender.com/uploads/:match*"
+      "destination": "https://schoolapp-bu95.onrender.com/uploads/:match*"
     },
     {
       "source": "/health",
-      "destination": "https://schoolapp-kwkb.onrender.com/health"
+      "destination": "https://schoolapp-bu95.onrender.com/health"
     }
   ]
 }
