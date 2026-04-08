@@ -6,6 +6,10 @@
     <title>Admin Dashboard | A2Z</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- ChartJS Plugin: Data Labels -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <!-- Styles -->
     <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
 
@@ -95,38 +99,286 @@
 
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
-                <!-- Live Summary Stats -->
-                <div class="card-grid">
-                    <div class="card">
-                        <h3><i class="fas fa-users"></i> Total Students</h3>
-                        <div class="stat-value" id="total-students">0</div>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Active student accounts</p>
+                
+                <!-- ===== ROW 0: QUICK STATS KPI CARDS ===== -->
+                <div class="dashboard-section-title">
+                    <h2><i class="fas fa-tachometer-alt"></i> Quick Stats</h2>
+                </div>
+                <div class="quick-stats-grid">
+                    <!-- Total Students KPI -->
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <i class="fas fa-users"></i>
+                            <span class="kpi-label">Total Students</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-students">0</div>
+                        <div class="kpi-footer" id="kpi-total-students-detail">Active & Inactive</div>
                     </div>
-                    <div class="card">
-                        <h3><i class="fas fa-money-bill-wave"></i> Unpaid Fees</h3>
-                        <div class="stat-value" id="total-unpaid">₹0</div>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Outstanding fees</p>
+
+                    <!-- Active Students KPI -->
+                    <div class="kpi-card kpi-success">
+                        <div class="kpi-header">
+                            <i class="fas fa-user-check"></i>
+                            <span class="kpi-label">Active Students</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-active-students">0</div>
+                        <div class="kpi-footer" id="kpi-active-percentage">0% of total</div>
                     </div>
-                    <div class="card">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Overdue</h3>
-                        <div class="stat-value" id="overdue-count">0</div>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Fees overdue</p>
+
+                    <!-- Total Fees Collected KPI -->
+                    <div class="kpi-card kpi-info">
+                        <div class="kpi-header">
+                            <i class="fas fa-money-check-alt"></i>
+                            <span class="kpi-label">Fees Collected</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-fees-collected">₹0</div>
+                        <div class="kpi-footer" id="kpi-collection-percentage">0% collected</div>
+                    </div>
+
+                    <!-- Pending Fees KPI -->
+                    <div class="kpi-card kpi-warning">
+                        <div class="kpi-header">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span class="kpi-label">Pending Fees</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-fees-pending">₹0</div>
+                        <div class="kpi-footer" id="kpi-pending-percentage">0% pending</div>
+                    </div>
+
+                    <!-- Overdue Fees KPI -->
+                    <div class="kpi-card kpi-danger">
+                        <div class="kpi-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span class="kpi-label">Overdue Fees</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-fees-overdue">₹0</div>
+                        <div class="kpi-footer" id="kpi-overdue-count">0 students overdue</div>
+                    </div>
+
+                    <!-- Attendance Rate KPI -->
+                    <div class="kpi-card kpi-secondary">
+                        <div class="kpi-header">
+                            <i class="fas fa-calendar-check"></i>
+                            <span class="kpi-label">Avg. Attendance</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-attendance-rate">0%</div>
+                        <div class="kpi-footer" id="kpi-attendance-detail">This month</div>
                     </div>
                 </div>
+
+                <!-- ===== ROW 1: KEY METRICS - CHART-BASED ERP STYLE ===== -->
+                <div class="dashboard-section-title" style="margin-top: 2.5rem;">
+                    <h2><i class="fas fa-chart-pie"></i> Key Metrics</h2>
+                </div>
+                <div class="dashboard-metrics-grid">
+                    <!-- Fees Overview (Donut: Collected vs Pending vs Overdue) -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-money-bill"></i> Fees Overview</h3>
+                            <p class="card-subtitle">Collected, Pending & Overdue</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="fees-overview-chart" height="300"></canvas>
+                            <div id="fees-overview-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+
+                    <!-- Growth Trend (Line: Student enrollment over time) -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Growth Trends</h3>
+                            <p class="card-subtitle">Cumulative enrolment over time</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="growth-trend-chart" height="300"></canvas>
+                            <div id="growth-trend-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 2: DETAILED CHARTS ===== -->
+                <div class="dashboard-row">
+                    <!-- Detailed Fees Breakdown -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-pie-chart"></i> Detailed Fees Breakdown</h3>
+                            <p class="card-subtitle">Paid vs Pending with percentages</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="fees-chart" height="300"></canvas>
+                            <div id="fees-chart-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+
+                    <!-- Class Distribution Line Chart -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Class Distribution Trend</h3>
+                            <p class="card-subtitle">Student enrollment across classes</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="class-distribution-line-chart" height="300"></canvas>
+                            <div id="class-distribution-line-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 3: TRENDS ===== -->
+                <div class="dashboard-section-title" style="margin-top: 2rem;">
+                    <h2><i class="fas fa-chart-line"></i> Trends</h2>
+                </div>
+                <div class="dashboard-row">
+                    <!-- Fees Trend Chart -->
+                    <div class="dashboard-card dashboard-card-full">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Fees Collected (Last 30 Days)</h3>
+                            <p class="card-subtitle">Daily collection trend vs expected revenue</p>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="trend-chart" height="80"></canvas>
+                            <div id="trend-chart-loading" class="chart-loading">Loading chart...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 4: ACTIVITY & TODAY ===== -->
+                <div class="dashboard-section-title" style="margin-top: 2rem;">
+                    <h2><i class="fas fa-bolt"></i> Quick View</h2>
+                </div>
+                <div class="dashboard-row">
+                    <!-- Recent Activity -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                            <p class="card-subtitle">Latest updates</p>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-activity-list" class="activity-list">
+                                <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading activity...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ROW 5: SUPPORTING DATA ===== -->
+                <div class="dashboard-section-title" style="margin-top: 2rem;">
+                    <h2><i class="fas fa-money-check-alt"></i> Financial Overview</h2>
+                </div>
+
+                <div class="dashboard-row">
+                    <!-- Unpaid Fees List -->
+                    <div class="dashboard-card dashboard-card-full">
+                        <div class="card-header">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Unpaid Fees (Top 10)</h3>
+                            <p class="card-subtitle">Sorted by due date - soonest first</p>
+                            <button class="btn btn-small btn-secondary" onclick="showTab('fees')">View All →</button>
+                        </div>
+                        <div class="card-body">
+                            <div id="unpaid-fees-table-container" class="table-container">
+                                <table class="dashboard-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student Name</th>
+                                            <th>Class</th>
+                                            <th>Amount</th>
+                                            <th>Due Date</th>
+                                            <th>Days Overdue</th>
+                                            <th>Contact</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="unpaid-fees-tbody">
+                                        <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading fees data...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- User Management Tab -->
             <div id="users" class="tab-content">
-                <!-- Add New User Form -->
-                <div class="card-grid" style="margin-top: 2rem;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3><i class="fas fa-user-plus"></i> Add New User</h3>
-                        <form id="add-user-form" style="display: grid; gap: 1rem;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label>Full Name *</label>
-                                    <input type="text" id="user-name" placeholder="Enter full name" required>
-                                </div>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-users"></i> User Management</h2>
+                        <p class="section-subtitle">Manage staff, teachers, and system administrators.</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddUserModal()">
+                        <i class="fas fa-plus"></i> Add User
+                    </button>
+                </div>
+
+                <!-- Search & Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." onkeyup="filterUsersTable()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="user-role-filter" onchange="filterUsersTable()">
+                            <option value="">All Roles</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                        <select id="user-status-filter" onchange="filterUsersTable()">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-wrapper">
+                    <div class="table-container list-view-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-list">
+                                <tr>
+                                    <td colspan="4" class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No users found. Add a new user to get started.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mobile Card View (Hidden on Desktop) -->
+                <div id="users-mobile-list" style="display: none; margin-top: 1rem;">
+                    <div id="users-cards" class="users-cards"></div>
+                </div>
+
+                <!-- Pagination / Show More for Users -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()" style="display: none;">Show All Users</button>
+                    <div id="users-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
+
+                <!-- Add User Modal -->
+                <div id="addUserModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-user-plus"></i> Add New User</h2>
+                            <span class="close" onclick="closeAddUserModal()">&times;</span>
+                        </div>
+                        <form id="add-user-form">
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" id="user-name" placeholder="Enter full name" required>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number *</label>
                                     <input type="tel" id="user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
@@ -135,6 +387,8 @@
                                     <label>Email</label>
                                     <input type="email" id="user-email" placeholder="user@a2z.local">
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Role *</label>
                                     <select id="user-role" required>
@@ -143,26 +397,28 @@
                                         <option value="staff">Staff</option>
                                     </select>
                                 </div>
-                                <div class="form-group" style="grid-column: 1 / -1;">
+                                <div class="form-group">
                                     <label>Login Password *</label>
                                     <input type="password" id="user-password" placeholder="Enter login password" required>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Add User</button>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">Create User</button>
+                            </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Edit User Section (hidden by default) -->
-                <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-user-section">
-                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid var(--accent-blue);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3><i class="fas fa-user-edit"></i> Edit User</h3>
-                            <button class="btn" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main);" onclick="cancelEditUser()">✕ Cancel</button>
+                <!-- Edit User Modal -->
+                <div id="editUserModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2><i class="fas fa-user-edit"></i> Edit User</h2>
+                            <span class="close" onclick="closeEditUserModal()">&times;</span>
                         </div>
-                        <form id="edit-user-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
+                        <form id="edit-user-form">
                             <input type="hidden" id="edit-user-id">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number</label>
                                     <input type="tel" id="edit-user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
@@ -171,99 +427,133 @@
                                     <label>Email</label>
                                     <input type="email" id="edit-user-email" placeholder="user@a2z.local">
                                 </div>
-                                <div class="form-group">
-                                    <label>Role</label>
-                                    <select id="edit-user-role" required>
-                                        <option value="teacher">Teacher</option>
-                                        <option value="staff">Staff</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
-                                </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <div class="form-group">
+                                <label>Role</label>
+                                <select id="edit-user-role" required>
+                                    <option value="teacher">Teacher</option>
+                                    <option value="staff">Staff</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+                            </div>
                         </form>
                     </div>
                 </div>
+            </div>
 
-                <!-- Users Table -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <select id="user-role-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
-                            <option value="">All Roles</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
+            <!-- Student Onboarding Tab - Refactored ERP Style -->
+            <div id="students" class="tab-content">
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-graduation-cap"></i> Student Management</h2>
+                        <p class="section-subtitle">Manage student enrollment, status, and information.</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddStudentModal()">
+                        <i class="fas fa-plus"></i> Add Student
+                    </button>
+                </div>
+
+                <!-- Search & Filter Bar -->
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <select id="student-class-filter" class="form-control" onchange="filterStudentsTable()">
+                            <option value="">All Classes</option>
                         </select>
-                        <select id="user-status-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterUsersTable()">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
+                        <select id="student-section-filter" class="form-control" onchange="filterStudentsTable()">
+                            <option value="">All Sections</option>
                         </select>
                     </div>
-                    <div style="flex: 1; max-width: 400px; position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." oninput="filterUsersTable()" style="padding-left: 2.5rem; width: 100%;">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="student-search" placeholder="Search by name, phone or ID..." onkeyup="filterStudentsTable()">
                     </div>
                 </div>
-                <div class="table-container" style="margin-top: 1rem;">
-                    <table>
+
+                <!-- Student List Table -->
+                <div class="table-container">
+                    <table class="students-table">
                         <thead>
                             <tr>
+                                <th>Name</th>
                                 <th>Phone</th>
-                                <th>Email</th>
-                                <th>Role</th>
+                                <th>Class</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th></th>
                             </tr>
                         </thead>
-                        <tbody id="users-list">
+                        <tbody id="students-list">
                             <tr>
                                 <td colspan="5" class="empty-state">
                                     <i class="fas fa-inbox"></i>
-                                    <p>No users found. Add a new user to get started.</p>
+                                    <p>No students found. Click "Add Student" to get started.</p>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <!-- Pagination / Show More for Users -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()" style="display: none;">Show All Users</button>
-                    <div id="users-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+
+                <!-- Pagination -->
+                <div class="pagination-footer">
+                    <button class="btn btn-secondary" id="btn-toggle-students" onclick="toggleShowAllStudents()" style="display: none;">Show All Students</button>
+                    <div id="students-count-text" style="font-size: 0.85rem; color: var(--text-muted);"></div>
                 </div>
             </div>
 
-            <!-- Student Onboarding Tab -->
-            <div id="students" class="tab-content">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3><i class="fas fa-user-graduate"></i> Onboard New Student</h3>
-                        <form id="add-student-form" style="display: grid; gap: 1rem;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <!-- Add Student Modal -->
+            <div id="add-student-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-user-plus"></i> Add New Student</h2>
+                        <span class="close" onclick="closeAddStudentModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="add-student-form">
+                            <!-- Personal Information -->
+                            <div class="form-section-title">Personal Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>First Name</label>
+                                    <label>First Name *</label>
                                     <input type="text" id="student-firstName" placeholder="First name" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Last Name</label>
+                                    <label>Last Name *</label>
                                     <input type="text" id="student-lastName" placeholder="Last name" required>
                                 </div>
+                            </div>
+
+                            <!-- Academic Information -->
+                            <div class="form-section-title">Academic Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>Phone Number</label>
-                                    <input type="tel" id="student-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" id="student-email" placeholder="student@a2z.local" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Class Level</label>
+                                    <label>Class Level *</label>
                                     <input type="text" id="student-classLevel" placeholder="e.g., 10A, 12B" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Section</label>
+                                    <label>Section *</label>
                                     <input type="text" id="student-section" placeholder="e.g., A, B, C" required>
                                 </div>
+                            </div>
+
+                            <!-- Contact Information -->
+                            <div class="form-section-title">Contact Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Phone Number *</label>
+                                    <input type="tel" id="student-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email *</label>
+                                    <input type="email" id="student-email" placeholder="student@a2z.local" required>
+                                </div>
+                            </div>
+
+                            <!-- Parent Information -->
+                            <div class="form-section-title">Parent Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Father's Name</label>
                                     <input type="text" id="student-fatherName" placeholder="Father's full name">
@@ -273,33 +563,51 @@
                                     <input type="text" id="student-motherName" placeholder="Mother's full name">
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Onboard Student</button>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeAddStudentModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Add Student</button>
+                            </div>
                         </form>
                     </div>
                 </div>
+            </div>
 
-                <!-- Edit Student Section (hidden by default) -->
-                <div class="card-grid" style="margin-top: 2rem; display: none;" id="edit-student-section">
-                    <div class="card" style="grid-column: 1 / -1; border-left: 4px solid var(--accent-blue);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3><i class="fas fa-user-edit"></i> Edit Student</h3>
-                            <button class="btn" style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); color: var(--text-main);" onclick="cancelEditStudent()">✕ Cancel</button>
-                        </div>
-                        <form id="edit-student-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
+            <!-- Edit Student Modal -->
+            <div id="edit-student-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-user-edit"></i> Edit Student</h2>
+                        <span class="close" onclick="closeEditStudentModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="edit-student-form">
                             <input type="hidden" id="edit-student-id">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+
+                            <!-- Personal Information -->
+                            <div class="form-section-title">Personal Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>Full Name</label>
+                                    <label>Full Name *</label>
                                     <input type="text" id="edit-student-name" placeholder="Full name" required>
                                 </div>
+                            </div>
+
+                            <!-- Academic Information -->
+                            <div class="form-section-title">Academic Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label>Class Level</label>
-                                    <input type="text" id="edit-student-classLevel" placeholder="e.g., 10A">
+                                    <label>Class Level *</label>
+                                    <input type="text" id="edit-student-classLevel" placeholder="e.g., 10A" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Section</label>
-                                    <input type="text" id="edit-student-section" placeholder="e.g., A">
+                                    <label>Section *</label>
+                                    <input type="text" id="edit-student-section" placeholder="e.g., A" required>
                                 </div>
+                            </div>
+
+                            <!-- Contact Information -->
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone</label>
                                     <input type="tel" id="edit-student-phone" placeholder="10-digit number">
@@ -308,56 +616,23 @@
                                     <label>Email</label>
                                     <input type="email" id="edit-student-email" placeholder="student@a2z.local">
                                 </div>
+                            </div>
+
+                            <!-- Parent Information -->
+                            <div class="form-section-title">Parent Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Father's Name</label>
                                     <input type="text" id="edit-student-fatherName" placeholder="Father's full name">
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeEditStudentModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
                         </form>
                     </div>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <select id="student-class-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterStudentsTable()">
-                            <option value="">All Classes</option>
-                        </select>
-                        <select id="student-section-filter" class="form-group" style="margin: 0; padding: 0.4rem;" onchange="filterStudentsTable()">
-                            <option value="">All Sections</option>
-                        </select>
-                    </div>
-                    <div style="flex: 1; max-width: 400px; position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                        <input type="text" id="student-search" placeholder="Search by Name, ID, or Phone..." oninput="filterStudentsTable()" style="padding-left: 2.5rem; width: 100%;">
-                    </div>
-                </div>
-                <div class="table-container" style="margin-top: 1rem;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Class</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="students-list">
-                            <tr>
-                                <td colspan="6" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No students found. Onboard a student to get started.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination / Show More for Students -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-students" onclick="toggleShowAllStudents()" style="display: none;">Show All Students</button>
-                    <div id="students-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
@@ -424,14 +699,72 @@
                 </div>
             </div>
 
-            <!-- Homework Tab -->
+            <!-- Homework Tab - Refactored ERP Style -->
             <div id="tab-homework" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3 id="hw-form-title">➕ Add Homework</h3>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-book"></i> Homework Management</h2>
+                        <p class="section-subtitle">Manage and assign homework to classes.</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddHomeworkModal()">
+                        <i class="fas fa-plus"></i> Add Homework
+                    </button>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="hw-filter-class" placeholder="Search by title, class or subject..." onkeyup="filterHomework()">
+                    </div>
+                </div>
+
+                <!-- Homework List Table -->
+                <div class="table-container">
+                    <table class="homework-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Class</th>
+                                <th>Subject</th>
+                                <th>Due Date</th>
+                                <th>Assigned By</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="homework-table-body">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No homework found. Click "Add Homework" to get started.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-footer">
+                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()" style="display: none;">Show All Homework</button>
+                    <div id="homework-count-text" style="font-size: 0.85rem; color: var(--text-muted);"></div>
+                </div>
+            </div>
+
+            <!-- Add Homework Modal -->
+            <div id="add-homework-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-plus-circle"></i> Add New Homework</h2>
+                        <span class="close" onclick="closeAddHomeworkModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
                         <form id="homework-form">
                             <input type="hidden" id="hw-edit-id">
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+
+                            <!-- Basic Information -->
+                            <div class="form-section-title">Basic Information</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Title *</label>
                                     <input type="text" id="hw-title" placeholder="e.g. Chapter 5 Exercise" required>
@@ -440,6 +773,11 @@
                                     <label>Class *</label>
                                     <input type="text" id="hw-class" placeholder="e.g. 10A" required>
                                 </div>
+                            </div>
+
+                            <!-- Subject & Due Date -->
+                            <div class="form-section-title">Details</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Subject *</label>
                                     <input type="text" id="hw-subject" placeholder="e.g. Mathematics" required>
@@ -448,128 +786,201 @@
                                     <label>Due Date</label>
                                     <input type="date" id="hw-due-date">
                                 </div>
-                                <div class="form-group">
-                                    <label>Attachment (PDF/JPG/PNG)</label>
-                                    <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
-                                    <div id="hw-current-attachment" style="font-size: 0.8rem; color: #666; margin-top: 4px; display: none;"></div>
-                                </div>
-                                <div class="form-group" style="grid-column: span 2;">
-                                    <label>Description</label>
-                                    <textarea id="hw-description" rows="1" placeholder="Describe the homework..."></textarea>
-                                </div>
                             </div>
-                            <div style="margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary">💾 Save Homework</button>
-                                <button type="button" class="btn btn-secondary" style="margin-left:10px;" onclick="resetHomeworkForm()">🔄 Reset</button>
+
+                            <!-- Description & Attachment -->
+                            <div class="form-section-title">Additional Information</div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="hw-description" rows="3" placeholder="Describe the homework..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Attachment (PDF/JPG/PNG)</label>
+                                <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
+                                <div id="hw-current-attachment" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;"></div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeAddHomeworkModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Homework</button>
                             </div>
                         </form>
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>All Homework</h3>
-                        <input type="text" id="hw-filter-class" placeholder="Filter by class..." oninput="filterHomework()" style="margin-bottom:1rem; padding:0.5rem; width:100%; max-width:300px;">
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Title</th>
-                                        <th>Class</th>
-                                        <th>Subject</th>
-                                        <th>Due Date</th>
-                                        <th>Assigned By</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="homework-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            </div>
 
-                <!-- Pagination / Show More for Homework -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()" style="display: none;">Show More Homework</button>
-                    <div id="homework-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+            <!-- Edit Homework Modal -->
+            <div id="edit-homework-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Edit Homework</h2>
+                        <span class="close" onclick="closeEditHomeworkModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="homework-form-edit">
+                            <input type="hidden" id="hw-edit-id-modal">
+
+                            <!-- Basic Information -->
+                            <div class="form-section-title">Basic Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Title *</label>
+                                    <input type="text" id="hw-edit-title" placeholder="e.g. Chapter 5 Exercise" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Class *</label>
+                                    <input type="text" id="hw-edit-class" placeholder="e.g. 10A" required>
+                                </div>
+                            </div>
+
+                            <!-- Subject & Due Date -->
+                            <div class="form-section-title">Details</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Subject *</label>
+                                    <input type="text" id="hw-edit-subject" placeholder="e.g. Mathematics" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Due Date</label>
+                                    <input type="date" id="hw-edit-due-date">
+                                </div>
+                            </div>
+
+                            <!-- Description & Attachment -->
+                            <div class="form-section-title">Additional Information</div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="hw-edit-description" rows="3" placeholder="Describe the homework..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Attachment (PDF/JPG/PNG)</label>
+                                <input type="file" id="hw-edit-attachment" accept=".pdf,.jpg,.jpeg,.png">
+                                <div id="hw-edit-current-attachment" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;"></div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="closeEditHomeworkModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- Fees & Financials Tab -->
             <div id="tab-fees" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card">
-                        <h3>Total Collected</h3>
-                        <div class="stat-value" style="color: #238636;" id="fee-stat-collected">₹0</div>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-receipt"></i> Fees & Financials</h2>
+                        <p class="section-subtitle">Manage fee records and payment status</p>
                     </div>
-                    <div class="card">
-                        <h3>Total Pending</h3>
-                        <div class="stat-value" style="color: #da3633;" id="fee-stat-pending">₹0</div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddFeeModal()">
+                        <i class="fas fa-plus"></i> Add Fee
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(36, 134, 54, 0.1); color: var(--success);">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Collected</div>
+                            <div class="stat-number" id="fee-stat-collected">₹0</div>
+                        </div>
                     </div>
-                    <div class="card">
-                        <h3>Paid / Unpaid</h3>
-                        <div class="stat-value" style="color: var(--accent-blue);">
-                            <span id="fee-stat-paid-count">0</span> / <span id="fee-stat-unpaid-count">0</span>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(218, 54, 51, 0.1); color: #da3633;">
+                            <i class="fas fa-hourglass-end"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Pending</div>
+                            <div class="stat-number" id="fee-stat-pending">₹0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(31, 111, 235, 0.1); color: var(--accent-blue);">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Paid / Unpaid</div>
+                            <div class="stat-number"><span id="fee-stat-paid-count">0</span> / <span id="fee-stat-unpaid-count">0</span></div>
                         </div>
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>➕ Add Fee Record</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>Student ID *</label>
-                                <input type="number" id="fee-student-id" placeholder="Student ID">
-                            </div>
-                            <div class="form-group">
-                                <label>Amount (₹) *</label>
-                                <input type="number" id="fee-amount" placeholder="e.g. 2000" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>Due Date *</label>
-                                <input type="date" id="fee-due-date">
-                            </div>
-                            <div class="form-group">
-                                <label>Description</label>
-                                <input type="text" id="fee-description" placeholder="e.g. Monthly Tuition Fee">
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" style="margin-top:1rem;" onclick="addFeeRecord()">➕ Add Fee</button>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
+                        <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                    </div>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="debouncedFilterFees()">
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
-                                <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
-                            </div>
-                            <div style="flex: 1; max-width: 400px; position: relative;">
-                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
-                                <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="filterFeesTable()" style="padding-left: 2.5rem; width: 100%;">
-                            </div>
+
+                <!-- Fees Table -->
+                <div class="table-container">
+                    <table class="fees-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student</th>
+                                <th>Class</th>
+                                <th>Amount</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fees-table-body"></tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()" style="display: none;">Show All Fees</button>
+                    <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                </div>
+
+                <!-- Add Fee Modal -->
+                <div id="add-fee-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Add Fee Record</h2>
+                            <span class="close" onclick="closeAddFeeModal()">&times;</span>
                         </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Student</th>
-                                        <th>Class</th>
-                                        <th>Amount</th>
-                                        <th>Description</th>
-                                        <th>Due Date</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="fees-table-body"></tbody>
-                            </table>
-                        </div>
-                        <!-- Pagination / Show More for Fees -->
-                        <div style="text-align: center; margin-top: 1rem;">
-                            <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()" style="display: none;">Show All Fees</button>
-                            <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                        <form id="add-fee-form" class="modal-body">
+                            <div class="form-section-title">Fee Information</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Student ID *</label>
+                                    <input type="number" id="fee-student-id" placeholder="e.g. 1001" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Amount (₹) *</label>
+                                    <input type="number" id="fee-amount" placeholder="e.g. 2000" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Due Date *</label>
+                                    <input type="date" id="fee-due-date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <input type="text" id="fee-description" placeholder="e.g. Monthly Tuition Fee">
+                                </div>
+                            </div>
+                        </form>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeAddFeeModal()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveFee()">Add Fee</button>
                         </div>
                     </div>
                 </div>
@@ -657,7 +1068,7 @@
                 <!-- Materials Table -->
                 <div class="table-wrapper">
                     <div class="table-container">
-                        <table class="data-table">
+                        <table class="materials-table">
                             <thead>
                                 <tr>
                                     <th>Title</th>
@@ -689,11 +1100,46 @@
 
             <!-- Timetable Tab -->
             <div id="tab-timetable" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>➕ Add Timetable Entry</h3>
-                        <form id="timetable-form">
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-clock"></i> School Timetable</h2>
+                        <p class="section-subtitle">Daily class schedule</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddTimetableModal()">
+                        <i class="fas fa-plus"></i> Add Entry
+                    </button>
+                </div>
+
+                <!-- Day Selector Tabs -->
+                <div class="timetable-day-selector">
+                    <div class="day-tabs">
+                        <button class="day-tab active" data-day="Monday" onclick="selectTimetableDay('Monday')">Mon</button>
+                        <button class="day-tab" data-day="Tuesday" onclick="selectTimetableDay('Tuesday')">Tue</button>
+                        <button class="day-tab" data-day="Wednesday" onclick="selectTimetableDay('Wednesday')">Wed</button>
+                        <button class="day-tab" data-day="Thursday" onclick="selectTimetableDay('Thursday')">Thu</button>
+                        <button class="day-tab" data-day="Friday" onclick="selectTimetableDay('Friday')">Fri</button>
+                        <button class="day-tab" data-day="Saturday" onclick="selectTimetableDay('Saturday')">Sat</button>
+                        <button class="day-tab" data-day="Sunday" onclick="selectTimetableDay('Sunday')">Sun</button>
+                    </div>
+                </div>
+
+                <!-- Class-wise Timetable View -->
+                <div class="timetable-container">
+                    <div id="timetable-by-class" class="timetable-by-class"></div>
+                </div>
+
+                <!-- Add Timetable Modal -->
+                <div id="timetable-modal" class="modal" style="display: none;">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h2>Add Timetable Entry</h2>
+                            <span class="close" onclick="closeTimetableModal()">&times;</span>
+                        </div>
+                        <form id="timetable-form" class="modal-body">
+                            <input type="hidden" id="tt-id">
+                            <div class="form-section-title">Class Schedule</div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Day of Week *</label>
                                     <select id="tt-day" required>
@@ -711,6 +1157,8 @@
                                     <label>Start Time *</label>
                                     <input type="time" id="tt-start" required>
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>End Time *</label>
                                     <input type="time" id="tt-end" required>
@@ -719,49 +1167,27 @@
                                     <label>Subject *</label>
                                     <input type="text" id="tt-subject" placeholder="e.g. Mathematics" required>
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label>Class Level *</label>
                                     <select id="tt-class" required>
                                         <option value="">Select Class</option>
-                                        <!-- Loaded dynamically -->
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Teacher *</label>
                                     <select id="tt-teacher" required>
                                         <option value="">Select Teacher</option>
-                                        <!-- Loaded dynamically -->
                                     </select>
                                 </div>
                             </div>
-                            <div style="margin-top: 1rem;">
-                                <button type="submit" class="btn btn-primary">💾 Save Timetable</button>
-                            </div>
                         </form>
-                    </div>
-                </div>
-                <div class="card-grid" style="margin-top: 20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h2>⏰ Timetable</h2>
-                        </div>
-                        <div class="table-container" style="margin-top:20px;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr><th>Day</th><th>Time</th><th>Subject</th><th>Class</th><th>Teacher</th><th>Actions</th></tr>
-                                </thead>
-                                <tbody id="timetable-list">
-                                    <tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>
-                                </tbody>
-                            </table>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeTimetableModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" onclick="saveTimetableEntry()">Save Entry</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Pagination / Show More for Timetable -->
-                <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-timetable" onclick="toggleShowAllTimetable()" style="display: none;">Show More Timetable</button>
-                    <div id="timetable-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
             </div>
 
@@ -858,25 +1284,22 @@
         </div>
     </div>
     <!-- Study Material Modal -->
-    <div id="material-modal" class="modal">
+    <div id="material-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="material-modal-title">Add Study Material</h2>
                 <span class="close" onclick="closeMaterialModal()">&times;</span>
             </div>
-            <form id="material-form">
+            <form id="material-form" class="modal-body">
                 <input type="hidden" id="material-id">
-                <div class="form-group">
-                    <label>Title*</label>
-                    <input type="text" id="material-title" required placeholder="e.g. Chapter 1 Notes">
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="material-description" rows="2" placeholder="Optional details..."></textarea>
-                </div>
+                <div class="form-section-title">Material Information</div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Subject*</label>
+                        <label>Title *</label>
+                        <input type="text" id="material-title" required placeholder="e.g. Chapter 1 Notes">
+                    </div>
+                    <div class="form-group">
+                        <label>Subject *</label>
                         <select id="material-subject" required>
                             <option value="">Select Subject</option>
                             <option value="Mathematics">Mathematics</option>
@@ -886,8 +1309,10 @@
                             <option value="Geography">Geography</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Class Level*</label>
+                        <label>Class Level *</label>
                         <select id="material-class" required>
                             <option value="">Select Class</option>
                             <option value="8">Class 8</option>
@@ -897,17 +1322,23 @@
                             <option value="12">Class 12</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>File (PDF, JPG, PNG) *</label>
+                        <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
+                        <small id="material-file-hint" style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current file</small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>File (PDF, JPG, PNG)*</label>
-                    <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
-                    <small id="material-file-hint" style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current file</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Material</button>
+                <div class="form-row">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Description</label>
+                        <textarea id="material-description" rows="2" placeholder="Optional details..."></textarea>
+                    </div>
                 </div>
             </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" onclick="saveMaterial()">Save Material</button>
+            </div>
         </div>
     </div>
 

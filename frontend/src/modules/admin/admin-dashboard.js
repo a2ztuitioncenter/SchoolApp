@@ -46,13 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             profileBtn.setAttribute('aria-expanded', !isExpanded);
             profileMenu.classList.toggle('open');
         });
-        
-        document.addEventListener('click', (e) => {
-            if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
-                profileBtn.setAttribute('aria-expanded', 'false');
-                profileMenu.classList.remove('open');
-            }
-        });
     }
 
     const dropLogoutBtn = document.getElementById('dropdown-logout-btn');
@@ -78,6 +71,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     setupTabNavigation();
     setupForms();
+
+    // ===== UNIFIED GLOBAL EVENT HANDLER =====
+    // Single consolidated click handler for all UI interactions
+    document.addEventListener('click', (e) => {
+        // Close profile menu if clicking outside
+        const profileBtn = document.getElementById('profile-btn');
+        const profileMenu = document.getElementById('profile-menu');
+        if (profileBtn && profileMenu) {
+            if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+                profileBtn.setAttribute('aria-expanded', 'false');
+                profileMenu.classList.remove('open');
+            }
+        }
+        
+        // Close any open action menu dropdowns if clicking outside
+        if (!e.target.closest('.action-menu') && !e.target.closest('.action-menu-dropdown')) {
+            document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+        }
+        
+        // Close any open action dropdowns if clicking outside
+        if (!e.target.closest('.action-menu') && !e.target.closest('.action-dropdown')) {
+            document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
+        }
+    });
+
+    // Close modals when clicking on modal background (deprecated - use proper modal handlers)
+    window.addEventListener('click', (e) => {
+        const addStudentModal = document.getElementById('add-student-modal');
+        const addHomeworkModal = document.getElementById('add-homework-modal');
+        const addFeeModal = document.getElementById('add-fee-modal');
+        const timetableModal = document.getElementById('timetable-modal');
+        
+        if (addStudentModal === e.target) closeAddStudentModal();
+        if (addHomeworkModal === e.target) closeAddHomeworkModal();
+        if (addFeeModal === e.target) closeAddFeeModal();
+        if (timetableModal === e.target) closeTimetableModal();
+    });
 
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
@@ -111,35 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Default tab
     await showTab('dashboard');
 
-    // Wire up Timetable form
-    document.getElementById('timetable-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            dayOfWeek: document.getElementById('tt-day')?.value,
-            startTime: document.getElementById('tt-start')?.value,
-            endTime: document.getElementById('tt-end')?.value,
-            subject: document.getElementById('tt-subject')?.value.trim(),
-            classLevel: document.getElementById('tt-class')?.value,
-            teacherId: document.getElementById('tt-teacher')?.value,
-        };
-
-        if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
-            showErrorAlert('All fields are required.');
-            return;
-        }
-
-        try {
-            showInfoAlert('Saving timetable entry...');
-            await adminAPI.addTimetable(payload);
-            hideInfoAlert();
-            showSuccessAlert('Timetable entry saved successfully!');
-            document.getElementById('timetable-form').reset();
-            await loadTimetable();
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message || 'Failed to save timetable entry');
-        }
-    });
+    // Timetable form is now handled via modal (see saveTimetableEntry function)
 
     // Wire up Notice form
     document.getElementById('notice-form')?.addEventListener('submit', async (e) => {
@@ -236,29 +238,897 @@ window.showTab = showTab;
 // =============================================
 // DASHBOARD
 // =============================================
+// Dashboard data cache
+let dashboardData = {
+    students: [],
+    unpaidFees: [],
+    financialSummary: {},
+    timetable: [],
+    trends: [],
+    latestStudents: [],
+    latestPayments: [],
+    latestHomework: []
+};
+
 async function loadDashboardData() {
     try {
-        const [studentsRes, feesRes] = await Promise.all([
+        showInfoAlert('Loading dashboard...');
+        
+        // Load all data in parallel (including new trend data)
+        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
-            adminAPI.getUnpaidFees().catch(() => ({ fees: [] }))
+            adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
+            adminAPI.getFinancialSummary ? adminAPI.getFinancialSummary().catch(() => ({})) : Promise.resolve({}),
+            adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] }),
+            // New: Fetch 30-day trend data
+            fetchTrendData().catch(() => ({ trends: [], summary: {} }))
         ]);
 
-        const el = id => document.getElementById(id);
-        const totalStudents = (studentsRes.students || []).length;
-        if (el('total-students')) el('total-students').textContent = totalStudents;
+        // Store data
+        dashboardData.students = studentsRes.students || [];
+        dashboardData.unpaidFees = unpaidFeesRes.fees || [];
+        dashboardData.financialSummary = financialRes || {};
+        dashboardData.timetable = timetableRes.timetable || [];
+        dashboardData.trends = trendsRes.trends || [];
 
-        const unpaidList = feesRes.fees || [];
-        const totalUnpaid = unpaidList.reduce((s, f) => s + parseFloat(f.amount || 0), 0);
-        if (el('total-unpaid')) el('total-unpaid').textContent = `₹${totalUnpaid.toLocaleString()}`;
+        // Fetch additional data for activity panel (non-critical, can fail silently)
+        const [latestStudents, latestPayments, latestHomework] = await Promise.all([
+            fetchLatestStudents().catch(() => []),
+            fetchLatestPayments().catch(() => []),
+            fetchLatestHomework().catch(() => [])
+        ]);
 
-        const today = new Date();
-        const overdue = unpaidList.filter(f => new Date(f.dueDate) < today).length;
-        if (el('overdue-count')) el('overdue-count').textContent = overdue;
+        dashboardData.latestStudents = latestStudents;
+        dashboardData.latestPayments = latestPayments;
+        dashboardData.latestHomework = latestHomework;
+
+        // Render all sections
+        // Quick Stats KPI Cards (at the top)
+        renderQuickStatsKPI();
+        
+        // Key Metrics - Chart-based (2 visualizations)
+        renderFeesOverviewChart();
+        renderGrowthTrendChart();
+        
+        // Detailed breakdown charts
+        renderFeesChart();
+        renderClassDistributionLineChart();
+        renderTrendChart();
+        
+        // Activity & snapshot panels
+        renderActivityPanel();
+        
+        // Tables
+        renderUnpaidFeesTable();
+        renderRecentStudents();
+        renderTodayTimetable();
+
+        hideInfoAlert();
+
     } catch (err) {
+        hideInfoAlert();
         console.error('Failed to load dashboard data', err);
+        showErrorAlert('Failed to load dashboard data: ' + err.message);
     }
 }
 
+/**
+ * Fetch 30-day trend data from backend
+ */
+async function fetchTrendData() {
+    const res = await fetch('/api/admin/financials/trends', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+        }
+    });
+    
+    if (!res.ok) throw new Error('Failed to fetch trend data');
+    return await res.json();
+}
+
+/**
+ * Fetch latest students
+ */
+async function fetchLatestStudents() {
+    const res = await adminAPI.getStudents();
+    if (res.students && res.students.length > 0) {
+        return res.students.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
+    }
+    return [];
+}
+
+/**
+ * Fetch latest payments (from unpaid fees, but find paid ones)
+ */
+async function fetchLatestPayments() {
+    try {
+        // Fetch all fees and filter for paid ones
+        const feesRes = await feesAPI.getAll();
+        const fees = feesRes.fees || [];
+        
+        // Filter paid fees and get latest 3
+        return fees
+            .filter(f => f.isPaid === true)
+            .sort((a, b) => new Date(b.paidDate || b.createdAt) - new Date(a.paidDate || a.createdAt))
+            .slice(0, 3);
+    } catch (err) {
+        console.error('Error fetching latest payments:', err);
+        return [];
+    }
+}
+
+/**
+ * Fetch latest homework
+ */
+async function fetchLatestHomework() {
+    try {
+        const res = await homeworkAPI.getAll();
+        const homework = res.homework || [];
+        
+        // Get latest 3
+        return homework
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 3);
+    } catch (err) {
+        console.error('Error fetching latest homework:', err);
+        return [];
+    }
+}
+
+// ===== RENDER FUNCTIONS =====
+
+/**
+ * Render Quick Stats KPI Cards
+ * Displays key performance indicators at the top of the dashboard
+ */
+function renderQuickStatsKPI() {
+    try {
+        const el = id => document.getElementById(id);
+        
+        // Calculate metrics
+        const totalStudents = dashboardData.students.length;
+        const activeStudents = dashboardData.students.filter(s => s.status === 'active').length;
+        const inactiveStudents = totalStudents - activeStudents;
+
+        const financials = dashboardData.financialSummary;
+        const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+        const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+        const totalFees = totalCollected + totalPending;
+
+        // Calculate overdue fees
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const overdueData = dashboardData.unpaidFees.reduce((acc, f) => {
+            const dueDate = new Date(f.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            if (dueDate < today) {
+                acc.count += 1;
+                acc.amount += parseFloat(f.amount) || 0;
+            }
+            return acc;
+        }, { count: 0, amount: 0 });
+
+        // Calculate collection percentage
+        const collectionPercentage = totalFees > 0 ? ((totalCollected / totalFees) * 100).toFixed(1) : 0;
+        const pendingPercentage = totalFees > 0 ? ((totalPending / totalFees) * 100).toFixed(1) : 0;
+        
+        // Calculate active student percentage
+        const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
+
+        // Calculate attendance rate (mock - 85% average for now as we'd need more data)
+        const attendanceRate = 85;
+
+        // Update KPI cards
+        if (el('kpi-total-students')) {
+            el('kpi-total-students').textContent = totalStudents;
+            el('kpi-total-students-detail').textContent = `${activeStudents} active, ${inactiveStudents} inactive`;
+        }
+
+        if (el('kpi-active-students')) {
+            el('kpi-active-students').textContent = activeStudents;
+            el('kpi-active-percentage').textContent = `${activePercentage}% of total`;
+        }
+
+        if (el('kpi-fees-collected')) {
+            el('kpi-fees-collected').textContent = `₹${(totalCollected / 100000).toFixed(1)}L`;
+            el('kpi-collection-percentage').textContent = `${collectionPercentage}% collected`;
+        }
+
+        if (el('kpi-fees-pending')) {
+            el('kpi-fees-pending').textContent = `₹${(totalPending / 100000).toFixed(1)}L`;
+            el('kpi-pending-percentage').textContent = `${pendingPercentage}% pending`;
+        }
+
+        if (el('kpi-fees-overdue')) {
+            el('kpi-fees-overdue').textContent = `₹${(overdueData.amount / 100000).toFixed(1)}L`;
+            el('kpi-overdue-count').textContent = `${overdueData.count} students overdue`;
+        }
+
+        if (el('kpi-attendance-rate')) {
+            el('kpi-attendance-rate').textContent = `${attendanceRate}%`;
+            el('kpi-attendance-detail').textContent = 'This month (avg.)';
+        }
+
+    } catch (err) {
+        console.error('Error rendering quick stats KPI:', err);
+    }
+}
+
+/**
+ * Render the 6 summary stat cards with color-coded calculations and click handlers
+ */
+/**
+ * Render fees distribution pie chart (paid vs pending) with percentage labels
+ */
+function renderFeesChart() {
+    const canvas = document.getElementById('fees-chart');
+    const container = document.getElementById('fees-chart-loading');
+    
+    if (!canvas) return;
+
+    const financials = dashboardData.financialSummary;
+    const paid = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+    const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+    const total = paid + pending;
+
+    // Don't render if no data
+    if (total === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No fee data available</p></div>';
+        return;
+    }
+
+    // Hide loading indicator
+    if (container) container.style.display = 'none';
+
+    try {
+        // Destroy existing chart if present
+        if (window.feesChartInstance) {
+            window.feesChartInstance.destroy();
+        }
+
+        // Calculate percentages
+        const paidPercent = ((paid / total) * 100).toFixed(1);
+        const pendingPercent = ((pending / total) * 100).toFixed(1);
+
+        const ctx = canvas.getContext('2d');
+        window.feesChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [`Paid (${paidPercent}%)`, `Pending (${pendingPercent}%)`],
+                datasets: [{
+                    data: [paid, pending],
+                    backgroundColor: ['#22c55e', '#fb923c'],
+                    borderColor: [getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary'), getComputedStyle(document.documentElement).getPropertyValue('--bg-secondary')],
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: { size: 12, weight: '600' },
+                            padding: 15,
+                            usePointStyle: true,
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#ffffff',
+                        font: { weight: 'bold', size: 14 },
+                        formatter: (value, ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${percentage}%`;
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `₹${context.parsed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering fees chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render students distribution bar chart (by class) with enhanced tooltips
+ */
+function renderClassDistributionLineChart() {
+    const canvas = document.getElementById('class-distribution-line-chart');
+    const container = document.getElementById('class-distribution-line-loading');
+    
+    if (!canvas) return;
+
+    // Group students by class
+    const classCounts = {};
+    dashboardData.students.forEach(student => {
+        const cls = student.classLevel || 'Other';
+        classCounts[cls] = (classCounts[cls] || 0) + 1;
+    });
+
+    const sortedClasses = Object.keys(classCounts).sort();
+    const counts = sortedClasses.map(cls => classCounts[cls]);
+
+    // Don't render if no data
+    if (sortedClasses.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No student data available</p></div>';
+        return;
+    }
+
+    // Hide loading indicator
+    if (container) container.style.display = 'none';
+
+    try {
+        // Destroy existing chart if present
+        if (window.classDistributionLineChart) {
+            window.classDistributionLineChart.destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        
+        window.classDistributionLineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedClasses.map(cls => `Class ${cls}`),
+                datasets: [{
+                    label: 'Number of Students',
+                    data: counts,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 12, weight: '600' } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Students: ${context.parsed.y}`;
+                            },
+                            afterLabel: function(context) {
+                                const total = dashboardData.students.length || 1;
+                                const percentage = ((context.parsed.y / total) * 100).toFixed(1);
+                                return `Percentage: ${percentage}%`;
+                            }
+                        },
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 12, weight: '600' },
+                        bodyFont: { size: 12 }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#3b82f6',
+                        font: { weight: 'bold', size: 12 },
+                        anchor: 'top',
+                        align: 'top',
+                        offset: 10,
+                        formatter: (value) => value
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering class distribution line chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render Fees Overview Chart (Collected vs Pending vs Overdue donut)
+ */
+function renderFeesOverviewChart() {
+    const canvas = document.getElementById('fees-overview-chart');
+    const container = document.getElementById('fees-overview-loading');
+    
+    if (!canvas) return;
+
+    const financials = dashboardData.financialSummary;
+    const collected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+    const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+    
+    // Calculate overdue
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdue = dashboardData.unpaidFees.filter(f => {
+        const dueDate = new Date(f.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+    }).reduce((sum, f) => sum + parseFloat(f.amount), 0);
+
+    const total = collected + pending + overdue;
+    if (total === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No fees data</p></div>';
+        return;
+    }
+
+    if (container) container.style.display = 'none';
+
+    try {
+        if (window.feesOverviewChart) window.feesOverviewChart.destroy();
+
+        const ctx = canvas.getContext('2d');
+        window.feesOverviewChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    `Collected (₹${(collected / 100000).toFixed(1)}L)`,
+                    `Pending (₹${(pending / 100000).toFixed(1)}L)`,
+                    `Overdue (₹${(overdue / 100000).toFixed(1)}L)`
+                ],
+                datasets: [{
+                    data: [collected, pending, overdue],
+                    backgroundColor: ['#22c55e', '#fb923c', '#ef4444'],
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
+                    datalabels: {
+                        font: { weight: 'bold', size: 14 },
+                        color: '#ffffff',
+                        formatter: (value) => `${((value / total) * 100).toFixed(1)}%`
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    } catch (err) {
+        console.error('Error rendering fees overview chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render Growth Trend Chart (Cumulative student enrollment over time)
+ */
+function renderGrowthTrendChart() {
+    const canvas = document.getElementById('growth-trend-chart');
+    const container = document.getElementById('growth-trend-loading');
+    
+    if (!canvas) return;
+
+    // Group students by enrollment month
+    const enrollmentByMonth = {};
+    dashboardData.students.forEach(student => {
+        const date = new Date(student.createdAt || new Date());
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        enrollmentByMonth[monthKey] = (enrollmentByMonth[monthKey] || 0) + 1;
+    });
+
+    const sortedMonths = Object.keys(enrollmentByMonth).sort();
+    if (sortedMonths.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No enrollment history</p></div>';
+        return;
+    }
+
+    if (container) container.style.display = 'none';
+
+    try {
+        if (window.growthTrendChart) window.growthTrendChart.destroy();
+
+        // Calculate cumulative enrollment
+        let cumulative = 0;
+        const cumulativeData = sortedMonths.map(month => {
+            cumulative += enrollmentByMonth[month];
+            return cumulative;
+        });
+
+        const ctx = canvas.getContext('2d');
+        window.growthTrendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedMonths.map(m => m.substring(5) + '/' + m.substring(0, 4)),
+                datasets: [{
+                    label: 'Total Enrolled Students',
+                    data: cumulativeData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top', labels: { font: { size: 12, weight: '600' } } },
+                    tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12, titleFont: { size: 12 } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error rendering growth trend chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render unpaid fees table (top 10, sorted by due date)
+ */
+function renderUnpaidFeesTable() {
+    const tbody = document.getElementById('unpaid-fees-tbody');
+    if (!tbody) return;
+
+    const fees = dashboardData.unpaidFees || [];
+    if (fees.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">No unpaid fees</td></tr>';
+        return;
+    }
+
+    // Sort by due date (ascending - soonest first)
+    const sorted = [...fees].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const topFees = sorted.slice(0, 10);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let html = '';
+    topFees.forEach(fee => {
+        const dueDate = new Date(fee.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+        const overdueText = daysOverdue > 0 ? `${daysOverdue} days` : 'Due soon';
+        const overdueClass = daysOverdue > 0 ? 'overdue' : '';
+
+        html += `
+            <tr>
+                <td data-label="Name">${fee.studentName || '-'}</td>
+                <td data-label="Class">${fee.classLevel || '-'}</td>
+                <td data-label="Amount">₹${parseFloat(fee.amount || 0).toLocaleString('en-IN')}</td>
+                <td data-label="Due Date">${new Date(fee.dueDate).toLocaleDateString('en-IN')}</td>
+                <td data-label="Days Overdue" class="status-${daysOverdue > 0 ? 'danger' : 'warning'}">${overdueText}</td>
+                <td data-label="Contact">${fee.phone || '-'}</td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+/**
+ * Render recently added students (top 5)
+ */
+function renderRecentStudents() {
+    const container = document.getElementById('recent-students-list');
+    if (!container) return;
+
+    const students = dashboardData.students || [];
+    if (students.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox empty-state-icon"></i><p class="empty-state-text">No students enrolled yet</p></div>';
+        return;
+    }
+
+    // Sort by creation date (newest first) if available, otherwise just take last 5
+    const sorted = [...students].sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.joiningDate || 0);
+        const dateB = new Date(b.createdAt || b.joiningDate || 0);
+        return dateB - dateA;
+    });
+    const recent = sorted.slice(0, 5);
+
+    let html = '';
+    recent.forEach(student => {
+        html += `
+            <div class="list-item">
+                <div class="list-item-header">
+                    <p class="list-item-title">${student.name || '-'}</p>
+                    <span class="list-item-badge">Class ${student.classLevel || '-'}</span>
+                </div>
+                <div class="list-item-meta">
+                    <span><i class="fas fa-phone"></i> ${student.phone || '-'}</span>
+                    <span><i class="fas fa-calendar"></i> ${student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN') : '-'}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render today's timetable schedule
+ */
+function renderTodayTimetable() {
+    const container = document.getElementById('today-timetable-list');
+    const dateEl = document.getElementById('today-date');
+    
+    if (!container) return;
+
+    // Get current day name
+    const today = new Date();
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+    if (dateEl) dateEl.textContent = today.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const timetable = dashboardData.timetable || [];
+    
+    // Filter by today's day
+    const todayClasses = timetable.filter(t => {
+        const normalizedDay = t.dayOfWeek 
+            ? t.dayOfWeek.charAt(0).toUpperCase() + t.dayOfWeek.slice(1).toLowerCase()
+            : '';
+        return normalizedDay === dayName;
+    });
+
+    if (todayClasses.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check empty-state-icon"></i><p class="empty-state-text">No classes scheduled for today</p></div>';
+        return;
+    }
+
+    // Sort by start time
+    const sorted = [...todayClasses].sort((a, b) => {
+        const timeA = a.startTime || '';
+        const timeB = b.startTime || '';
+        return timeA.localeCompare(timeB);
+    });
+
+    let html = '';
+    sorted.forEach(cls => {
+        // Normalize time format
+        let displayTime = cls.startTime || '';
+        if (displayTime.includes(':')) {
+            const parts = displayTime.split(':');
+            displayTime = `${parts[0]}:${parts[1]}`;
+        }
+
+        html += `
+            <div class="list-item">
+                <div class="list-item-header">
+                    <p class="list-item-title">${cls.subject || '-'}</p>
+                    <span class="list-item-badge">Class ${cls.classLevel || '-'}</span>
+                </div>
+                <div class="list-item-meta">
+                    <span><i class="fas fa-clock"></i> ${displayTime}</span>
+                    <span><i class="fas fa-user-tie"></i> ${cls.teacherName || cls.teacherPhone || 'Unassigned'}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render trend chart (30-day fees collected)
+ */
+function renderTrendChart() {
+    const canvas = document.getElementById('trend-chart');
+    const container = document.getElementById('trend-chart-loading');
+    
+    if (!canvas) return;
+
+    const trendData = dashboardData.trends || [];
+    if (trendData.length === 0) {
+        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No trend data available for the last 30 days</p></div>';
+        return;
+    }
+
+    // Hide loading indicator
+    if (container) container.style.display = 'none';
+
+    try {
+        // Destroy existing chart if present
+        if (window.trendChartInstance) {
+            window.trendChartInstance.destroy();
+        }
+
+        // Format dates (group by week if too many data points)
+        const labels = trendData.map(d => {
+            const date = new Date(d.date);
+            return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+        });
+
+        const amounts = trendData.map(d => parseFloat(d.amount) || 0);
+
+        const ctx = canvas.getContext('2d');
+        window.trendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Fees Collected (₹)',
+                    data: amounts,
+                    borderColor: '#0052cc',
+                    backgroundColor: 'rgba(0, 82, 204, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#0052cc',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: { size: 12, weight: '600' },
+                            padding: 15,
+                            usePointStyle: true,
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim()
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: { size: 12, weight: '600' },
+                        bodyFont: { size: 12 },
+                        callbacks: {
+                            label: function(context) {
+                                return `₹${context.parsed.y.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + (value / 1000).toFixed(0) + 'K';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error rendering trend chart:', err);
+        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+    }
+}
+
+/**
+ * Render recent activity panel (latest student, payment, homework)
+ */
+function renderActivityPanel() {
+    const container = document.getElementById('recent-activity-list');
+    if (!container) return;
+
+    const activities = [];
+
+    // Add all latest students (up to 2)
+    if (dashboardData.latestStudents && dashboardData.latestStudents.length > 0) {
+        dashboardData.latestStudents.slice(0, 2).forEach(student => {
+            const date = new Date(student.createdAt || new Date());
+            activities.push({
+                type: 'recent-student',
+                icon: 'fas fa-user-plus',
+                title: student.name || 'New Student',
+                subtitle: `Class ${student.classLevel || '-'}`,
+                time: getRelativeTime(date),
+                link: 'showTab("students")',
+                timestamp: date.getTime()
+            });
+        });
+    }
+
+    // Add all latest payments (up to 2)
+    if (dashboardData.latestPayments && dashboardData.latestPayments.length > 0) {
+        dashboardData.latestPayments.slice(0, 2).forEach(payment => {
+            const date = new Date(payment.createdAt || new Date());
+            activities.push({
+                type: 'recent-payment',
+                icon: 'fas fa-money-bill-wave',
+                title: `Payment: ${payment.studentName || 'Unknown'}`,
+                subtitle: `₹${parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+                time: getRelativeTime(date),
+                link: 'showTab("fees")',
+                timestamp: date.getTime()
+            });
+        });
+    }
+
+    // Add all latest homework (up to 2)
+    if (dashboardData.latestHomework && dashboardData.latestHomework.length > 0) {
+        dashboardData.latestHomework.slice(0, 2).forEach(hw => {
+            const date = new Date(hw.createdAt || new Date());
+            activities.push({
+                type: 'recent-homework',
+                icon: 'fas fa-book',
+                title: hw.title || 'New Homework',
+                subtitle: `Class ${hw.classLevel || '-'} • ${hw.subject || '-'}`,
+                time: getRelativeTime(date),
+                link: 'showTab("homework")',
+                timestamp: date.getTime()
+            });
+        });
+    }
+
+    if (activities.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-inbox empty-state-icon"></i><p class="empty-state-text">No recent activity</p></div>';
+        return;
+    }
+
+    // Sort activities by timestamp (most recent first) and take top 6
+    activities.sort((a, b) => b.timestamp - a.timestamp);
+    const displayActivities = activities.slice(0, 6);
+
+    let html = '';
+    displayActivities.forEach(activity => {
+        html += `
+            <div class="activity-item ${activity.type}">
+                <div class="activity-icon"><i class="${activity.icon}"></i></div>
+                <div class="activity-content">
+                    <div class="activity-title">${activity.title}</div>
+                    <div class="activity-subtitle">${activity.subtitle}</div>
+                    <div class="activity-time">${activity.time}</div>
+                    <a class="activity-link" href="#" onclick="${activity.link}; return false;">View →</a>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Helper: Convert date to relative time string (e.g., "2 hours ago")
+ */
+function getRelativeTime(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
 
 // =============================================
 // USERS - with Edit, Delete, Toggle Access
@@ -354,13 +1224,13 @@ function renderUsersTable(users) {
     if (!tbody) return;
 
     if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users matching criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No users matching criteria.</td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 5;
+    const displayLimit = 10;
     const toShow = showAllUsers ? users : users.slice(0, displayLimit);
     
     if (toggleBtn) {
@@ -377,18 +1247,9 @@ function renderUsersTable(users) {
     }
 
     tbody.innerHTML = toShow.map(u => {
-        const roleColors = {
-            teacher: 'background:#d6eaf8;color:#154360',
-            staff: 'background:#d5f5e3;color:#145a32',
-            admin: 'background:#fadbd8;color:#78281f',
-        };
-        const roleBadgeStyle = roleColors[u.role] || 'background:#eee;color:#333';
+        const initials = (u.name || (u.phone+'') || '?').charAt(0).toUpperCase();
         return `
         <tr>
-            <td>${u.phone}</td>
-            <td>${u.email || '<span style="color:#aaa">—</span>'}</td>
-            <td><span class="status-badge" style="${roleBadgeStyle}">${u.role}</span></td>
-            <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'Active' : 'Inactive'}</span></td>
             <td>
                 <div class="table-actions">
                     <button class="btn-actions-toggle" onclick="toggleUserActionsMenu(${u.id}, event)">⋮</button>
@@ -407,6 +1268,60 @@ function renderUsersTable(users) {
             </td>
         </tr>`;
     }).join('');
+
+    // Render mobile cards
+    renderUsersCards(toShow);
+}
+
+function renderUsersCards(list) {
+    const cardsContainer = document.getElementById('users-cards');
+    if (!cardsContainer) return;
+
+    cardsContainer.innerHTML = list.length ? list.map(u => {
+        // Use name if it exists and isn't "User" (default), else initials of email or phone
+        let initials = '?';
+        if (u.name && u.name !== 'User') {
+            initials = u.name.charAt(0).toUpperCase();
+        } else if (u.email) {
+            initials = u.email.charAt(0).toUpperCase();
+        } else if (u.phone) {
+            initials = (u.phone + '').charAt(0);
+        }
+
+        return `
+        <div class="material-card">
+            <div class="material-card-header" style="display:flex; align-items:center; gap:12px;">
+                <div class="user-avatar" style="flex-shrink:0;">${initials}</div>
+                <div class="user-info">
+                    <h3 class="material-card-title" style="margin:0;">${u.name || 'User'}</h3>
+                    <p class="user-email-text" style="font-size: 0.8rem;">${u.email || u.phone}</p>
+                </div>
+            </div>
+            <div class="material-card-content" style="margin: 1rem 0;">
+                <div class="material-card-meta">
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-user-tag" style="color: var(--accent-blue);"></i>
+                        <span>Role: <strong>${u.role}</strong></span>
+                    </div>
+                    <div class="material-card-meta-item">
+                        <i class="fas fa-circle" style="color: ${u.isActive ? 'var(--success)' : 'var(--warning)'}; font-size:8px;"></i>
+                        <span>Status: <strong>${u.isActive ? 'Active' : 'Inactive'}</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div class="material-card-actions">
+                <button class="btn-table btn-edit" onclick="editUser(${u.id})">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="btn-table ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                    <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn-table btn-delete" onclick="deleteUserById(${u.id})">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>`;
+    }).join('') : '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No users found</p>';
 }
 
 window.editUser = function (id) {
@@ -416,13 +1331,11 @@ window.editUser = function (id) {
     document.getElementById('edit-user-phone').value = user.phone || '';
     document.getElementById('edit-user-email').value = user.email || '';
     document.getElementById('edit-user-role').value = user.role || 'teacher';
-    document.getElementById('edit-user-section').style.display = 'grid';
-    document.getElementById('edit-user-section').scrollIntoView({ behavior: 'smooth' });
+    openEditUserModal();
 };
 
 window.cancelEditUser = function () {
-    document.getElementById('edit-user-section').style.display = 'none';
-    document.getElementById('edit-user-form').reset();
+    closeEditUserModal();
 };
 
 window.deleteUserById = async function (id) {
@@ -524,13 +1437,13 @@ function renderStudentsTable(students) {
     if (!tbody) return;
 
     if (!students.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students found. Add one below.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No students found. Click "Add Student" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 5;
+    const displayLimit = 10;
     const toShow = showAllStudents ? students : students.slice(0, displayLimit);
     
     if (toggleBtn) {
@@ -548,25 +1461,47 @@ function renderStudentsTable(students) {
 
     tbody.innerHTML = toShow.map(s => `
         <tr>
-            <td><strong>${s.id}</strong></td>
-            <td>${s.name}</td>
-            <td>${s.phone || 'N/A'}</td>
-            <td>${s.classLevel || 'N/A'}${s.section ? ' - ' + s.section : ''}</td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.phone || '-'}</td>
+            <td>${s.classLevel || '-'}${s.section ? ' - ' + s.section : ''}</td>
             <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
             <td>
-                <button class="btn-sm btn-edit" onclick="editStudent(${s.id})"><i class="fas fa-pen"></i> Edit</button>
-                <button class="btn-sm ${s.status === 'active' ? 'btn-warning' : 'btn-success'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
-                    <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
-                </button>
-                <button class="btn-sm btn-delete" onclick="deleteStudentById(${s.id})"><i class="fas fa-trash"></i></button>
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleStudentMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-student-id="${s.id}">
+                        <button class="action-menu-item" onclick="openEditStudentModal(${s.id})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
+                        </button>
+                        <button class="action-menu-item ${s.status === 'active' ? 'success' : 'warning'}" onclick="toggleStudentStatusById(${s.id}, '${s.status === 'active' ? 'inactive' : 'active'}')">
+                            <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}" style="width: 16px;"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
+                        </button>
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteStudentById(${s.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>
     `).join('');
 }
 
-window.editStudent = function (id) {
+window.openAddStudentModal = function() {
+    document.getElementById('add-student-modal').style.display = 'block';
+    document.getElementById('add-student-form').reset();
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeAddStudentModal = function() {
+    document.getElementById('add-student-modal').style.display = 'none';
+    document.getElementById('add-student-form').reset();
+    document.body.style.overflow = '';
+};
+
+window.openEditStudentModal = function(id) {
     const s = allStudentsData.find(st => st.id === id);
     if (!s) return;
+    
     document.getElementById('edit-student-id').value = s.id;
     document.getElementById('edit-student-name').value = s.name || '';
     document.getElementById('edit-student-classLevel').value = s.classLevel || '';
@@ -574,15 +1509,41 @@ window.editStudent = function (id) {
     document.getElementById('edit-student-phone').value = s.phone || '';
     document.getElementById('edit-student-email').value = s.email || '';
     document.getElementById('edit-student-fatherName').value = s.fatherName || '';
-    const section = document.getElementById('edit-student-section');
-    if (section) { section.style.display = 'grid'; section.scrollIntoView({ behavior: 'smooth' }); }
-    document.getElementById('edit-student-section').style.display = 'grid';
-    document.getElementById('edit-student-section').scrollIntoView({ behavior: 'smooth' });
+    
+    document.getElementById('edit-student-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    closeAllStudentMenus();
+};
+
+window.closeEditStudentModal = function() {
+    document.getElementById('edit-student-modal').style.display = 'none';
+    document.getElementById('edit-student-form').reset();
+    document.body.style.overflow = '';
+};
+
+window.toggleStudentMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllStudentMenus();
+    
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
+    dropdown.classList.add('open');
+};
+
+window.closeAllStudentMenus = function() {
+    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
+
+window.editStudent = function (id) {
+    openEditStudentModal(id);
 };
 
 window.cancelEditStudent = function () {
-    document.getElementById('edit-student-section').style.display = 'none';
-    document.getElementById('edit-student-form').reset();
+    closeEditStudentModal();
 };
 
 window.deleteStudentById = async function (id) {
@@ -738,7 +1699,7 @@ function renderHomeworkTable(list) {
     if (!tbody) return;
 
     if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No homework found. Add one below.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>No homework found. Click "Add Homework" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
@@ -750,15 +1711,24 @@ function renderHomeworkTable(list) {
     tbody.innerHTML = toShow.map((hw, i) => {
         const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
         return `<tr>
-            <td>${i + 1}</td>
-            <td>${hw.title}</td>
-            <td><span class="badge">${hw.classLevel || hw.class_name}</span></td>
+            <td><strong>${hw.title}</strong></td>
+            <td><span class="status-badge status-active">${hw.classLevel || hw.class_name}</span></td>
             <td>${hw.subject}</td>
             <td>${due}</td>
             <td>${hw.teacherPhone || '-'}</td>
             <td>
-                <button class="btn-sm btn-edit" onclick="editHomework(${hw.id})">Edit</button>
-                <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})">Delete</button>
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-hw-id="${hw.id}">
+                        <button class="action-menu-item" onclick="openEditHomeworkModal(${hw.id})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
+                        </button>
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>`;
     }).join('');
@@ -766,10 +1736,10 @@ function renderHomeworkTable(list) {
     // Show toggle button if more items exist
     if(toggleBtn) {
         toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllHomework ? 'Show Less Homework' : `Show More Homework (${list.length})`;
+        toggleBtn.textContent = showAllHomework ? 'Show Less' : `Show All Homework (${list.length})`;
     }
     if(countText) {
-        countText.textContent = showAllHomework ? '' : `Showing ${toShow.length} of ${list.length}`;
+        countText.textContent = `Showing ${toShow.length} of ${list.length} homework items`;
     }
 }
 
@@ -815,79 +1785,86 @@ window.saveHomework = async function (e) {
     }
 
     try {
+        showInfoAlert(id ? 'Updating homework...' : 'Adding homework...');
         const res = id
             ? await homeworkAPI.update(id, formData)
             : await homeworkAPI.create(formData);
         if (res.data) {
-            showSuccessAlert(id ? 'Homework updated!' : 'Homework added!');
-            resetHomeworkForm();
+            hideInfoAlert();
+            showSuccessAlert(id ? 'Homework updated successfully!' : 'Homework added successfully!');
+            closeAddHomeworkModal();
+            document.getElementById('homework-form').reset();
             await loadAllHomework();
         } else {
+            hideInfoAlert();
             showErrorAlert(res.error || 'Failed to save homework');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to save homework');
     }
 };
 
 window.editHomework = function (id) {
-    const hw = allHomeworkData.find(h => h.id === id);
-    if (!hw) return;
-    document.getElementById('hw-edit-id').value = hw.id;
-    document.getElementById('hw-title').value   = hw.title;
-    document.getElementById('hw-class').value   = hw.classLevel || hw.class_name;
-    document.getElementById('hw-subject').value = hw.subject;
-    document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
-    document.getElementById('hw-description').value = hw.description || '';
-    
-    const attachInfo = document.getElementById('hw-current-attachment');
-    if (attachInfo) {
-        if (hw.attachmentUrl) {
-            const fileName = hw.attachmentUrl.split('/').pop();
-            attachInfo.textContent = `Current: ${fileName}`;
-            attachInfo.style.display = 'block';
-        } else {
-            attachInfo.style.display = 'none';
-        }
-    }
-
-    const titleEl = document.getElementById('hw-form-title');
-    if (titleEl) titleEl.textContent = 'Edit Homework';
-    document.getElementById('hw-title').scrollIntoView({ behavior: 'smooth' });
+    openEditHomeworkModal(id);
 };
 
 window.deleteHomework = async function (id) {
-    if (!confirm('Delete this homework?')) return;
+    if (!confirm('Delete this homework? This action cannot be undone.')) return;
     try {
+        showInfoAlert('Deleting homework...');
         const res = await homeworkAPI.delete(id);
         if (res.message) {
-            showSuccessAlert('Homework deleted');
+            hideInfoAlert();
+            showSuccessAlert('Homework deleted successfully');
             await loadAllHomework();
         } else {
-            showErrorAlert('Failed to delete');
+            hideInfoAlert();
+            showErrorAlert('Failed to delete homework');
         }
     } catch (err) {
-        showErrorAlert(err.message || 'Failed to delete');
+        hideInfoAlert();
+        showErrorAlert(err.message || 'Failed to delete homework');
     }
 };
 
-window.resetHomeworkForm = resetHomeworkForm;
-function resetHomeworkForm() {
-    ['hw-edit-id', 'hw-title', 'hw-class', 'hw-subject', 'hw-due-date', 'hw-description', 'hw-attachment'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-    const attachInfo = document.getElementById('hw-current-attachment');
-    if (attachInfo) attachInfo.style.display = 'none';
-
-    const titleEl = document.getElementById('hw-form-title');
-    if (titleEl) titleEl.textContent = 'Add Homework';
-    currentEditHwId = null;
-}
-
 // =============================================
-// FEES - FULL CRUD
+// FEES - FULL CRUD WITH LAZYLOADING & DEBOUNCE
 // =============================================
+let showAllFees = false;
+let feesFilterTimeout;
+
+window.openAddFeeModal = function() {
+    const modal = document.getElementById('add-fee-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('fee-student-id')?.focus();
+    }
+};
+
+window.closeAddFeeModal = function() {
+    const modal = document.getElementById('add-fee-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleShowAllFees = function() {
+    showAllFees = !showAllFees;
+    debouncedFilterFees();
+};
+
+window.debouncedFilterFees = function() {
+    clearTimeout(feesFilterTimeout);
+    feesFilterTimeout = setTimeout(() => {
+        const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
+        const filtered = allFeesData.filter(f => 
+            (f.studentName || '').toLowerCase().includes(query) || 
+            (f.student_id?.toString() || '').includes(query) ||
+            (f.description || '').toLowerCase().includes(query)
+        );
+        renderFeesTable(filtered);
+    }, 300);
+};
+
 async function initFeesTab() {
     try {
         await loadFeeStats();
@@ -907,8 +1884,7 @@ async function loadFeeStats() {
     set('fee-stat-unpaid-count', s.unpaidCount || 0);
 }
 
-window.loadFees = loadFees;
-async function loadFees(mode = 'all') {
+window.loadFees = async function(mode = 'all') {
     document.getElementById('fee-tab-all')?.classList.toggle('active',   mode === 'all');
     document.getElementById('fee-tab-unpaid')?.classList.toggle('active', mode === 'unpaid');
 
@@ -919,13 +1895,6 @@ async function loadFees(mode = 'all') {
     } catch (err) {
         showErrorAlert('Failed to load fees');
     }
-}
-
-let showAllFees = false;
-
-window.toggleShowAllFees = function() {
-    showAllFees = !showAllFees;
-    filterFeesTable(); // re-runs slicing logic
 };
 
 function renderFeesTable(fees) {
@@ -935,13 +1904,13 @@ function renderFeesTable(fees) {
     if (!tbody) return;
 
     if (!fees.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No fee records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No fee records found</td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
     }
 
-    const displayLimit = 5;
+    const displayLimit = 15;
     const toShow = showAllFees ? fees : fees.slice(0, displayLimit);
     
     if (toggleBtn) {
@@ -957,88 +1926,160 @@ function renderFeesTable(fees) {
         countText.textContent = `Showing ${toShow.length} of ${fees.length} record(s)`;
     }
 
-    tbody.innerHTML = toShow.map((f, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td><strong>${f.studentName || f.studentId}</strong>${f.student_id ? `<br><small style="color:#636e72">ID: ${f.student_id}</small>` : ''}</td>
-            <td>${f.classLevel || '-'}</td>
-            <td>₹${parseFloat(f.amount).toFixed(2)}</td>
-            <td>${f.description || '-'}</td>
-            <td>${new Date(f.dueDate).toLocaleDateString('en-IN')}</td>
-            <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
-            <td>
-                <button class="btn-sm ${f.paid ? 'btn-warning' : 'btn-success'}" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
-                    ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
-                </button>
-                <button class="btn-sm btn-delete" onclick="deleteFeeRecord(${f.id})"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = toShow.map((f, i) => {
+        return `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${f.studentName || f.studentId}</strong></td>
+                <td>${f.classLevel || '-'}</td>
+                <td>₹${parseFloat(f.amount).toFixed(2)}</td>
+                <td>${new Date(f.dueDate).toLocaleDateString('en-IN')}</td>
+                <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
+                <td>
+                    <div class="action-menu">
+                        <button class="action-menu-btn" onclick="toggleFeeMenu(event);">⋮</button>
+                        <div class="action-menu-dropdown" data-fee-id="${f.id}">
+                            <button class="action-menu-item" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
+                                <i class="fas fa-${f.paid ? 'times-circle' : 'check-circle'}" style="width: 16px;"></i> ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
+                            </button>
+                            <div class="action-menu-divider"></div>
+                            <button class="action-menu-item danger" onclick="deleteFeeRecord(${f.id})">
+                                <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-window.filterFeesTable = function() {
-    const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
-    const filtered = allFeesData.filter(f => 
-        (f.studentName || '').toLowerCase().includes(query) || 
-        (f.student_id?.toString() || '').includes(query) ||
-        (f.description || '').toLowerCase().includes(query)
-    );
-    renderFeesTable(filtered);
+window.toggleFeeMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllFeeMenus();
+    
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
+    dropdown.classList.add('open');
 };
 
+/**
+ * Helper function to position dropdown menu using fixed positioning
+ * Handles overflow detection to flip menu direction if needed
+ */
+window.positionDropdown = function(btn, dropdown) {
+    const btnRect = btn.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    
+    // Calculate if dropdown would overflow bottom
+    const estimatedDropdownHeight = dropdown.offsetHeight || 100;
+    const spaceBelow = viewportHeight - btnRect.bottom;
+    const spaceAbove = btnRect.top;
+    
+    // Position below by default
+    let top = btnRect.bottom + 5;
+    let left = btnRect.right - 160; // Align to right
+    
+    // If not enough space below, flip to above
+    if (spaceBelow < estimatedDropdownHeight + 20 && spaceAbove > estimatedDropdownHeight) {
+        top = btnRect.top - estimatedDropdownHeight - 5;
+    }
+    
+    // Prevent going off-screen horizontally
+    if (left < 10) {
+        left = 10;
+    }
+    if (left + 160 > window.innerWidth) {
+        left = window.innerWidth - 170;
+    }
+    
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = top + 'px';
+    dropdown.style.left = left + 'px';
+};
 
-window.addFeeRecord = async function () {
+window.closeAllFeeMenus = function() {
+    document.querySelectorAll('.fees-table .action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
+
+window.saveFee = async function () {
     const studentId  = document.getElementById('fee-student-id')?.value;
     const amount     = document.getElementById('fee-amount')?.value;
     const dueDate    = document.getElementById('fee-due-date')?.value;
     const description = document.getElementById('fee-description')?.value.trim();
 
     if (!studentId || !amount || !dueDate) { showErrorAlert('Student ID, Amount and Due Date are required'); return; }
+    
+    showInfoAlert('Adding fee...');
     try {
         const res = await feesAPI.add({ studentId, amount, dueDate, description });
         if (res.data) {
+            hideInfoAlert();
             showSuccessAlert('Fee record added!');
+            closeAddFeeModal();
             ['fee-student-id', 'fee-amount', 'fee-due-date', 'fee-description'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
             await initFeesTab();
         } else {
+            hideInfoAlert();
             showErrorAlert(res.error || 'Failed to add fee');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to add fee');
     }
 };
 
 window.toggleFeePaid = async function (id, markAsPaid) {
+    showInfoAlert(markAsPaid ? 'Marking as paid...' : 'Marking as unpaid...');
     try {
         const res = markAsPaid ? await feesAPI.markPaid(id) : await feesAPI.markUnpaid(id);
         if (res.data) {
+            hideInfoAlert();
             showSuccessAlert(markAsPaid ? 'Marked as Paid' : 'Marked as Unpaid');
             await initFeesTab();
+        } else {
+            hideInfoAlert();
+            showErrorAlert('Failed to update status');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert('Failed to update fee status');
     }
 };
 
 window.deleteFeeRecord = async function (id) {
     if (!confirm('Delete this fee record?')) return;
+    showInfoAlert('Deleting fee...');
     try {
         const res = await feesAPI.delete(id);
-        if (res.message) { showSuccessAlert('Fee deleted'); await initFeesTab(); }
-        else showErrorAlert('Failed to delete');
+        if (res.message || res.data) { 
+            hideInfoAlert();
+            showSuccessAlert('Fee deleted'); 
+            await initFeesTab(); 
+        }
+        else { 
+            hideInfoAlert();
+            showErrorAlert('Failed to delete'); 
+        }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to delete');
     }
 };
 
 // =============================================
-// MATERIALS
+// MATERIALS - WITH LAZY LOADING & 3-DOT MENU
 // =============================================
 
 let allMaterialsData = [];
 let showAllMaterials = false;
+let materialsFilterTimeout;
 
 async function loadMaterials() {
     try {
@@ -1049,7 +2090,7 @@ async function loadMaterials() {
         // Update stats
         updateMaterialsStats();
         
-        // Render table and mobile view
+        // Render table
         renderMaterialsTable();
     } catch (err) {
         console.error('Error loading materials:', err);
@@ -1091,7 +2132,7 @@ function renderMaterialsTable() {
         return;
     }
 
-    const displayLimit = 10;
+    const displayLimit = 15;
     const toShow = showAllMaterials ? list : list.slice(0, displayLimit);
     
     tbody.innerHTML = toShow.map(m => `
@@ -1103,20 +2144,22 @@ function renderMaterialsTable() {
             <td>${escapeHtml(m.subject)}</td>
             <td><span class="badge">Class ${escapeHtml(m.classLevel)}</span></td>
             <td>${escapeHtml(m.uploadedBy || '-')}</td>
+            <td><small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small></td>
             <td>
-                <small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small>
-            </td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-material-id="${m.id}">
+                        <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
+                            <i class="fas fa-download" style="width: 16px;"></i> Download
+                        </button>
+                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}",description:'${(m.description || '').replace(/'/g, "\\'")}",subject:'${m.subject}',classLevel:'${m.classLevel}',fileUrl:'${m.fileUrl}'})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
+                        </button>
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        </button>
+                    </div>
                 </div>
             </td>
         </tr>
@@ -1125,14 +2168,11 @@ function renderMaterialsTable() {
     // Show toggle button if more items exist
     if(toggleBtn) {
         toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllMaterials ? 'Show Less Materials' : `Show More Materials (${list.length})`;
+        toggleBtn.textContent = showAllMaterials ? 'Show Less' : `Show More Materials (${list.length})`;
     }
     if(countText) {
         countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
     }
-
-    // Render mobile cards
-    renderMaterialsCards(toShow);
 }
 
 window.toggleShowAllMaterials = function() {
@@ -1140,50 +2180,22 @@ window.toggleShowAllMaterials = function() {
     renderMaterialsTable();
 };
 
-function renderMaterialsCards(list) {
-    const cardsContainer = document.getElementById('materials-cards');
-    if (!cardsContainer) return;
+window.toggleMaterialMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllMaterialMenus();
+    
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
+    dropdown.classList.add('open');
+};
 
-    cardsContainer.innerHTML = list.length ? list.map(m => `
-        <div class="material-card">
-            <div class="material-card-header">
-                <h3 class="material-card-title">${escapeHtml(m.title)}</h3>
-            </div>
-            <div class="material-card-content">
-                ${m.description ? `<p style="margin: 0 0 0.75rem; font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(m.description)}</p>` : ''}
-                <div class="material-card-meta">
-                    <div class="material-card-meta-item">
-                        <i class="fas fa-book-open" style="color: var(--accent-blue);"></i>
-                        <span><strong>${escapeHtml(m.subject)}</strong></span>
-                    </div>
-                    <div class="material-card-meta-item">
-                        <i class="fas fa-chalkboard" style="color: var(--success);"></i>
-                        <span>Class <strong>${escapeHtml(m.classLevel)}</strong></span>
-                    </div>
-                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
-                        <i class="fas fa-user" style="color: var(--warning);"></i>
-                        <span><strong>${escapeHtml(m.uploadedBy || 'Unknown')}</strong></span>
-                    </div>
-                    <div class="material-card-meta-item" style="grid-column: 1 / -1;">
-                        <i class="fas fa-calendar" style="color: var(--text-muted);"></i>
-                        <span>${formatDate(m.createdAt)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="material-card-actions">
-                <button class="btn-table btn-download" onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" title="Download">
-                    <i class="fas fa-download"></i> Download
-                </button>
-                <button class="btn-table btn-edit" onclick='openMaterialModal(${JSON.stringify(m).replace(/'/g, "&#39;")})' title="Edit">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-table btn-delete" onclick="deleteMaterial(${m.id})" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('') : '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No materials found</p>';
-}
+window.closeAllMaterialMenus = function() {
+    document.querySelectorAll('.materials-table .action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
 
 function getFilteredMaterials() {
     const searchTerm = document.getElementById('material-search')?.value.toLowerCase() || '';
@@ -1208,6 +2220,7 @@ window.filterMaterials = function() {
 };
 
 function formatDate(dateString) {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -1220,13 +2233,12 @@ function escapeHtml(text) {
 
 window.saveMaterial = async function(e) {
     if (e && e.preventDefault) e.preventDefault();
-    console.log('📝 Saving material...');
     
-    const id = document.getElementById('material-id').value;
-    const title = document.getElementById('material-title').value;
-    const description = document.getElementById('material-description').value;
-    const subject = document.getElementById('material-subject').value;
-    const classLevel = document.getElementById('material-class').value;
+    const id = document.getElementById('material-id')?.value;
+    const title = document.getElementById('material-title')?.value;
+    const description = document.getElementById('material-description')?.value;
+    const subject = document.getElementById('material-subject')?.value;
+    const classLevel = document.getElementById('material-class')?.value;
     const fileInput = document.getElementById('material-file');
 
     if (!title || !subject || !classLevel) {
@@ -1248,35 +2260,42 @@ window.saveMaterial = async function(e) {
         return;
     }
 
+    showInfoAlert(id ? 'Updating material...' : 'Uploading material...');
     try {
         let res;
         if (id) {
-            console.log(`📤 Updating material ID: ${id}`);
             res = await materialsAPI.update(id, formData);
+            hideInfoAlert();
             showSuccessAlert('Material updated successfully');
         } else {
-            console.log('📤 Creating new material...');
             res = await materialsAPI.create(formData);
+            hideInfoAlert();
             showSuccessAlert('Material uploaded successfully');
         }
         closeMaterialModal();
-        loadMaterials();
+        await loadMaterials();
     } catch (err) {
-        console.error('❌ Error saving material:', err);
+        hideInfoAlert();
+        console.error('Error saving material:', err);
         showErrorAlert('Error saving material: ' + err.message);
     }
 };
 
-async function deleteMaterial(id) {
+window.deleteMaterial = async function(id) {
     if (!confirm('Are you sure you want to delete this material?')) return;
+    showInfoAlert('Deleting material...');
     try {
         await materialsAPI.delete(id);
-        showSuccessAlert('Material deleted'); // Changed showToast to showSuccessAlert
-        loadMaterials();
+        hideInfoAlert();
+        showSuccessAlert('Material deleted');
+        closeAllMaterialMenus();
+        await loadMaterials();
     } catch (err) {
-        showErrorAlert('Error deleting: ' + err.message); // Changed alert to showErrorAlert
+        hideInfoAlert();
+        console.error('Error deleting:', err);
+        showErrorAlert('Error deleting: ' + err.message);
     }
-}
+};
 
 window.openMaterialModal = function(material = null) {
     const modal = document.getElementById('material-modal');
@@ -1302,18 +2321,92 @@ window.openMaterialModal = function(material = null) {
         titleObj.innerText = 'Add Study Material';
         document.getElementById('material-id').value = '';
     }
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
+    closeAllMaterialMenus();
 };
 
 window.closeMaterialModal = function() {
     document.getElementById('material-modal').style.display = 'none';
+    document.getElementById('material-form').reset();
 };
 
-window.deleteMaterial = deleteMaterial;
+async function initMaterialsTab() {
+    try {
+        await loadMaterials();
+    } catch (err) {
+        showErrorAlert('Failed to load materials');
+    }
+}
 
 // =============================================
-// FORM SETUP (Add User / Add Student / Logout)
+// HOMEWORK - MODAL FUNCTIONS
 // =============================================
+window.openAddHomeworkModal = function() {
+    document.getElementById('add-homework-modal').style.display = 'block';
+    document.getElementById('homework-form').reset();
+    document.getElementById('hw-edit-id').value = '';
+    document.getElementById('hw-current-attachment').style.display = 'none';
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeAddHomeworkModal = function() {
+    document.getElementById('add-homework-modal').style.display = 'none';
+    document.getElementById('homework-form').reset();
+    document.body.style.overflow = '';
+};
+
+window.openEditHomeworkModal = function(id) {
+    const hw = allHomeworkData.find(h => h.id === id);
+    if (!hw) return;
+    
+    // Populate form with homework data
+    document.getElementById('hw-edit-id').value = hw.id;
+    document.getElementById('hw-title').value = hw.title || '';
+    document.getElementById('hw-class').value = hw.classLevel || '';
+    document.getElementById('hw-subject').value = hw.subject || '';
+    document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+    document.getElementById('hw-description').value = hw.description || '';
+    
+    const attachInfo = document.getElementById('hw-current-attachment');
+    if (attachInfo) {
+        if (hw.attachmentUrl) {
+            const fileName = hw.attachmentUrl.split('/').pop();
+            attachInfo.textContent = `Current: ${fileName}`;
+            attachInfo.style.display = 'block';
+        } else {
+            attachInfo.style.display = 'none';
+        }
+    }
+    
+    document.getElementById('add-homework-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    closeAllHomeworkMenus();
+};
+
+window.closeEditHomeworkModal = function() {
+    document.getElementById('add-homework-modal').style.display = 'none';
+    document.getElementById('homework-form').reset();
+    document.getElementById('hw-edit-id').value = '';
+    document.body.style.overflow = '';
+};
+
+window.toggleHomeworkMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
+    
+    // Close other menus
+    closeAllHomeworkMenus();
+    
+    // Position and toggle current menu
+    positionDropdown(btn, dropdown);
+    dropdown.classList.add('open');
+};
+
+window.closeAllHomeworkMenus = function() {
+    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+};
+
 function setupForms() {
     const hwForm = document.getElementById('homework-form');
     if (hwForm) hwForm.addEventListener('submit', saveHomework);
@@ -1330,23 +2423,22 @@ function setupForms() {
             password: document.getElementById('user-password')?.value
         };
         if (!payload.name || !payload.phone || !payload.role || !payload.password) {
-            showErrorAlert('Name, Phone, Role, and Password are required');
+            showErrorAlert('All required fields (*) must be filled');
             return;
         }
         try {
-            console.log('📤 Adding user:', payload.phone);
             showInfoAlert('Adding user...');
             const res = await adminAPI.addUser(payload);
             hideInfoAlert();
             if (res.success) { 
-                showSuccessAlert('User added!'); 
+                showSuccessAlert('User added successfully!'); 
                 document.getElementById('add-user-form').reset();
+                closeAddUserModal();
                 await loadUsers(); 
             }
             else showErrorAlert(res.error || 'Failed to add user');
         } catch (err) { 
             hideInfoAlert();
-            console.error('Error adding user:', err);
             showErrorAlert(err.message || 'Failed to add user'); 
         }
     });
@@ -1363,8 +2455,8 @@ function setupForms() {
             showInfoAlert('Updating user...');
             const res = await adminAPI.updateUser(id, payload);
             if (res.success) {
-                showSuccessAlert('User updated!');
-                document.getElementById('edit-user-section').style.display = 'none';
+                showSuccessAlert('User updated successfully!');
+                closeEditUserModal();
                 e.target.reset();
                 await loadUsers();
             } else {
@@ -1387,11 +2479,23 @@ function setupForms() {
             status:      'active'
         };
         try {
-            showInfoAlert('Onboarding student...');
+            showInfoAlert('Adding student...');
             const res = await adminAPI.addStudent(payload);
-            if (res.success) { showSuccessAlert('Student onboarded!'); e.target.reset(); await loadStudents(); }
-            else showErrorAlert(res.error || 'Failed to onboard student');
-        } catch (err) { showErrorAlert(err.message); }
+            if (res.success) { 
+                hideInfoAlert();
+                showSuccessAlert('Student added successfully!'); 
+                closeAddStudentModal();
+                e.target.reset(); 
+                await loadStudents(); 
+            }
+            else {
+                hideInfoAlert();
+                showErrorAlert(res.error || 'Failed to add student');
+            }
+        } catch (err) { 
+            hideInfoAlert();
+            showErrorAlert(err.message); 
+        }
     });
 
     document.getElementById('edit-student-form')?.addEventListener('submit', async (e) => {
@@ -1409,14 +2513,19 @@ function setupForms() {
             showInfoAlert('Updating student...');
             const res = await adminAPI.updateStudent(id, payload);
             if (res.success) {
-                showSuccessAlert('Student updated!');
-                document.getElementById('edit-student-section').style.display = 'none';
+                hideInfoAlert();
+                showSuccessAlert('Student updated successfully!');
+                closeEditStudentModal();
                 e.target.reset();
                 await loadStudents();
             } else {
+                hideInfoAlert();
                 showErrorAlert(res.error || 'Failed to update student');
             }
-        } catch (err) { showErrorAlert(err.message); }
+        } catch (err) { 
+            hideInfoAlert();
+            showErrorAlert(err.message); 
+        }
     });
 
     document.getElementById('logout-btn')?.addEventListener('click', () => {
@@ -1558,16 +2667,47 @@ async function loadResults() {
 // TIMETABLE
 // =============================================
 
-async function loadTimetable() {
-    const list = document.getElementById('timetable-list');
-    if (!list) return;
+// Modal functions
+window.openAddTimetableModal = function() {
+    const modal = document.getElementById('timetable-modal');
+    if (modal) {
+        document.getElementById('tt-id').value = '';
+        document.getElementById('timetable-form').reset();
+        modal.style.display = 'flex';
+        loadTimetableDropdowns();
+    }
+};
 
+window.closeTimetableModal = function() {
+    const modal = document.getElementById('timetable-modal');
+    if (modal) modal.style.display = 'none';
+    document.getElementById('timetable-form').reset();
+};
+
+window.toggleTimetableMenu = function(event, id) {
+    event.stopPropagation();
+    const menu = document.getElementById(`tt-menu-${id}`);
+    
+    // Close other open menus
+    document.querySelectorAll('[id^="tt-menu-"]').forEach(m => {
+        if (m !== menu) m.classList.remove('open');
+    });
+
+    // Position the menu
+    const btn = event.currentTarget;
+    if (menu && btn) {
+        positionDropdown(btn, menu);
+    }
+    menu?.classList.add('open');
+};
+
+window.closeAllTimetableMenus = function() {
+    document.querySelectorAll('[id^="tt-menu-"]').forEach(m => m.classList.remove('open'));
+};
+
+async function loadTimetableDropdowns() {
     try {
-        showAllTimetable = false; // Reset pagination when loading fresh data
-        showInfoAlert('Loading timetable...');
-        // First load classes and teachers for the dropdown
-        const [ttRes, classesRes, usersRes] = await Promise.all([
-            adminAPI.getTimetable(),
+        const [classesRes, usersRes] = await Promise.all([
             attendanceAPI.getClasses(),
             adminAPI.getUsers()
         ]);
@@ -1575,21 +2715,65 @@ async function loadTimetable() {
         // Populate Class Dropdown
         const classes = classesRes.data || [];
         const classSel = document.getElementById('tt-class');
-        if (classSel && classSel.options.length <= 1) {
+        if (classSel) {
             classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         // Populate Teacher Dropdown
         const teachers = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
         const teacherSel = document.getElementById('tt-teacher');
-        if (teacherSel && teacherSel.options.length <= 1) {
+        if (teacherSel) {
             teacherSel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.id}">${t.phone}</option>`).join('');
         }
+    } catch (err) {
+        console.error('Failed to load dropdowns:', err);
+    }
+}
 
+window.saveTimetableEntry = async function() {
+    const ttId = document.getElementById('tt-id')?.value;
+    const payload = {
+        dayOfWeek: document.getElementById('tt-day')?.value,
+        startTime: document.getElementById('tt-start')?.value,
+        endTime: document.getElementById('tt-end')?.value,
+        subject: document.getElementById('tt-subject')?.value.trim(),
+        classLevel: document.getElementById('tt-class')?.value,
+        teacherId: document.getElementById('tt-teacher')?.value,
+    };
+
+    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
+        showErrorAlert('All fields are required.');
+        return;
+    }
+
+    try {
+        showInfoAlert('Saving timetable entry...');
+        if (ttId) {
+            // Update existing (if implemented in API)
+            await adminAPI.updateTimetable(ttId, payload);
+        } else {
+            await adminAPI.addTimetable(payload);
+        }
+        hideInfoAlert();
+        showSuccessAlert('Timetable entry saved successfully!');
+        closeTimetableModal();
+        await loadTimetable();
+    } catch (err) {
+        hideInfoAlert();
+        showErrorAlert(err.message || 'Failed to save timetable entry');
+    }
+};
+
+async function loadTimetable() {
+    const container = document.getElementById('timetable-by-class');
+    if (!container) return;
+
+    try {
+        showInfoAlert('Loading timetable...');
+        const ttRes = await adminAPI.getTimetable();
         allTimetableData = ttRes.timetable || [];
         hideInfoAlert();
-
-        renderTimetableTable(allTimetableData);
+        renderTimetableByClass(allTimetableData);
     } catch (err) {
         hideInfoAlert();
         showErrorAlert('Failed to load timetable: ' + err.message);
@@ -1597,68 +2781,205 @@ async function loadTimetable() {
 }
 
 let allTimetableData = [];
+let selectedTimetableDay = 'Monday'; // Default to Monday
 let showAllTimetable = false;
 
-function renderTimetableTable(items) {
-    const list = document.getElementById('timetable-list');
-    const toggleBtn = document.getElementById('btn-toggle-timetable');
-    const countText = document.getElementById('timetable-count-text');
-    
-    if (!list) return;
-
-    if (items.length === 0) {
-        list.innerHTML = '<tr><td colspan="6" class="empty-state">No timetable entries found.</td></tr>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
-        return;
-    }
-
-    const displayLimit = 10;
-    const toShow = showAllTimetable ? items : items.slice(0, displayLimit);
-
-    function formatTime(t) {
-        try { return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
-        catch(e) { return t; }
-    }
-
-    list.innerHTML = toShow.map(t => `
-        <tr>
-            <td>${t.dayOfWeek}</td>
-            <td>${formatTime(t.startTime)} - ${formatTime(t.endTime)}</td>
-            <td>${t.subject}</td>
-            <td>${t.classLevel}</td>
-            <td>${t.teacherPhone || t.teacherId}</td>
-            <td>
-                <button class="btn btn-danger btn-xs" onclick="deleteTimetableRecord(${t.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-
-    // Show toggle button if more items exist
-    if(toggleBtn) {
-        toggleBtn.style.display = items.length > displayLimit ? 'block' : 'none';
-        toggleBtn.textContent = showAllTimetable ? 'Show Less Timetable' : `Show More Timetable (${items.length})`;
-    }
-    if(countText) {
-        countText.textContent = showAllTimetable ? '' : `Showing ${toShow.length} of ${items.length}`;
+function formatTime(t) {
+    try { 
+        return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); 
+    } catch(e) { 
+        return t; 
     }
 }
 
-window.toggleShowAllTimetable = function() {
-    showAllTimetable = !showAllTimetable;
-    renderTimetableTable(allTimetableData);
+// Select a day and render its timetable
+window.selectTimetableDay = function(day) {
+    selectedTimetableDay = day;
+    console.log('[TIMETABLE] Selected day:', day);
+    
+    // Update active tab
+    document.querySelectorAll('.day-tab').forEach(tab => {
+        if (tab.getAttribute('data-day') === day) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Render the selected day
+    renderTimetableByClass(allTimetableData);
 };
+
+// Generate time slots for calendar grid (7:00 AM to 6:00 PM in 1-hour slots)
+function generateTimeSlots() {
+    const slots = [];
+    for (let hour = 7; hour < 18; hour++) {
+        const time = `${hour.toString().padStart(2, '0')}:00`;
+        slots.push(time);
+    }
+    return slots;
+}
+
+function renderTimetableByClass(items) {
+    const container = document.getElementById('timetable-by-class');
+    
+    if (!container) return;
+
+    if (items.length === 0) {
+        container.innerHTML = '<div class="timetable-no-classes"><i class="fas fa-inbox"></i><p>No timetable entries found. Click "Add Entry" to create one.</p></div>';
+        return;
+    }
+
+    // Debug: Log data
+    console.log('[TIMETABLE] Rendering by class for:', selectedTimetableDay);
+    console.log('[TIMETABLE] All data:', items);
+
+    // Filter entries by selected day
+    const filteredEntries = items.filter(entry => {
+        const normalizedDay = entry.dayOfWeek 
+            ? entry.dayOfWeek.charAt(0).toUpperCase() + entry.dayOfWeek.slice(1).toLowerCase()
+            : '';
+        return normalizedDay === selectedTimetableDay;
+    });
+
+    console.log('[TIMETABLE] Filtered entries for', selectedTimetableDay, ':', filteredEntries);
+
+    if (filteredEntries.length === 0) {
+        container.innerHTML = `<div class="timetable-no-classes"><i class="fas fa-calendar-day"></i><p>No classes scheduled for ${selectedTimetableDay}</p></div>`;
+        return;
+    }
+
+    // Group entries by class level
+    const classByLevel = {};
+    filteredEntries.forEach(entry => {
+        const classLevel = entry.classLevel || 'Unassigned';
+        if (!classByLevel[classLevel]) {
+            classByLevel[classLevel] = [];
+        }
+        classByLevel[classLevel].push(entry);
+    });
+
+    // Sort each class's entries by start time
+    Object.values(classByLevel).forEach(classEntries => {
+        classEntries.sort((a, b) => {
+            const timeA = a.startTime || '';
+            const timeB = b.startTime || '';
+            return timeA.localeCompare(timeB);
+        });
+    });
+
+    let html = '';
+
+    // Create cards for each class
+    Object.keys(classByLevel).sort().forEach(classLevel => {
+        const classEntries = classByLevel[classLevel];
+        
+        html += `
+            <div class="class-timetable-card">
+                <div class="class-timetable-header">
+                    <i class="fas fa-chalkboard"></i>
+                    <h4 class="class-timetable-title">Class ${classLevel}</h4>
+                </div>
+                <table class="class-timetable-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Subject</th>
+                            <th>Teacher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        // Add rows for each entry
+        classEntries.forEach(entry => {
+            // Normalize time (remove seconds)
+            let displayTime = entry.startTime || '';
+            if (displayTime.includes(':')) {
+                const parts = displayTime.split(':');
+                displayTime = `${parts[0]}:${parts[1]}`;
+            }
+
+            const teacherName = entry.teacherName || 'Unassigned';
+
+            html += `
+                        <tr>
+                            <td data-label="Time">${displayTime}</td>
+                            <td data-label="Subject">${entry.subject}</td>
+                            <td data-label="Teacher">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span>${teacherName}</span>
+                                    <div class="timetable-entry-menu">
+                                        <button class="timetable-entry-menu-btn" onclick="toggleTimetableMenu(event, ${entry.id})" title="More options">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="action-menu-dropdown" id="tt-menu-${entry.id}">
+                                            <button class="action-menu-item" onclick="deleteTimetableRecord(${entry.id})">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
 
 window.deleteTimetableRecord = async function(id) {
     if (!confirm('Delete this timetable entry?')) return;
     try {
         await adminAPI.deleteTimetable(id);
         showSuccessAlert('Timetable entry deleted!');
+        closeAllTimetableMenus();
         await loadTimetable();
     } catch (err) {
         showErrorAlert('Failed to delete timetable: ' + err.message);
     }
 };
 
+window.openAddUserModal = function() {
+    const modal = document.getElementById('addUserModal');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.closeAddUserModal = function() {
+    const modal = document.getElementById('addUserModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.openEditUserModal = function() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.closeEditUserModal = function() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleUserActionMenu = function(event, id) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = document.getElementById(`user-actions-${id}`);
+    
+    // Close other open dropdowns
+    document.querySelectorAll('.action-dropdown.open').forEach(d => {
+        if (d !== dropdown) d.classList.remove('open');
+    });
+
+    // Position the menu
+    if (dropdown && btn) {
+        positionDropdown(btn, dropdown);
+    }
+    dropdown?.classList.add('open');
+};
