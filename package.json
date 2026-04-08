@@ -3,6 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "build": "npm install --prefix backend && npm install --prefix frontend",
+    "start": "npm start --prefix backend"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

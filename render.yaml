@@ -5,51 +5,20 @@ services:
     region: oregon
     plan: free
     
-    # Install Bun runtime
-    buildCommand: |
-      curl -fsSL https://bun.sh/install | bash
-      export PATH="/root/.bun/bin:$PATH"
-      cd backend && bun install
-      cd ../frontend && bun install
-      cd ..
+    # Build command - use root npm scripts
+    buildCommand: npm run build
     
-    # Start command
-    startCommand: |
-      export PATH="/root/.bun/bin:$PATH"
-      cd backend && bun run src/server.js
+    # Start command - use root npm scripts
+    startCommand: npm start
     
     # Environment variables - set these in Render dashboard
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        generateValue: true  # Render will auto-assign port
     
-    # Keep-alive configuration for free tier
-    preDeployCommand: |
-      echo "Pre-deployment configuration"
-
-  - type: web
-    name: tuition-app-frontend
-    runtime: static
-    region: oregon
-    plan: free
-    staticPublishPath: frontend
+    # Health check
     routes:
-      - path: /
-        destination: frontend/index.html
-      - path: /admin*
-        destination: frontend/admin-dashboard.html
-      - path: /student*
-        destination: frontend/student-dashboard.html
-      - path: /teacher*
-        destination: frontend/teacher-dashboard.html
-
-databases:
-  - name: tuition-postgres
-    engine: postgres
-    version: "15"
-    plan: free
-    region: oregon
-    databaseName: tuition_app
-    # Render will auto-create DATABASE_URL environment variable
+      - type: http
+        path: /health
+        
+dependencies: []
