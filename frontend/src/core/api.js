@@ -185,6 +185,7 @@ const resultsAPI = {
  */
 export const authAPI = {
   register: (userData) => apiCall('/auth/register', { method: 'POST', body: JSON.stringify(userData) }),
+  teacherRegister: (userData) => apiCall('/auth/teacher-register', { method: 'POST', body: JSON.stringify(userData) }),
   login: (phone, password, role = 'student') => apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password, role }) }),
   adminLogin: (phone, password) => apiCall('/auth/admin-login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
   teacherLogin: (phone, password) => apiCall('/auth/teacher-login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
@@ -220,6 +221,10 @@ export const adminAPI = {
   getTimetable: () => apiCall('/admin/timetable', { method: 'GET' }),
   addTimetable: (data) => apiCall('/admin/timetable', { method: 'POST', body: JSON.stringify(data) }),
   deleteTimetable: (id) => apiCall(`/admin/timetable/${id}`, { method: 'DELETE' }),
+  // User Approval System
+  getPendingUsers: () => apiCall('/auth/admin/pending-users', { method: 'GET' }),
+  approveUser: (userId) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST' }),
+  rejectUser: (userId, reason) => apiCall(`/auth/admin/reject-user/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }),
 };
 
 /**
@@ -288,4 +293,4 @@ export const downloadFile = async (filePath, fileName = 'download') => {
 
 window.downloadFile = downloadFile;
 
-export { attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };
+export { authAPI, adminAPI, studentAPI, teacherAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };

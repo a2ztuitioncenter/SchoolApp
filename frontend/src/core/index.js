@@ -1,7 +1,9 @@
 // Master portal init — theme is handled automatically by CSS prefers-color-scheme
 function init() {
   console.log('✅ Index JS Init');
+  setupGetStartedTypingAnimation();
   setupGetStartedHandler();
+  setupHeaderSignupHandler();
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
   console.log('🚀 Index Page Loaded');
@@ -11,6 +13,45 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+/**
+ * Typing animation for "Get Started" button text
+ */
+function setupGetStartedTypingAnimation() {
+  const btn = document.getElementById('btn-get-started');
+  if (!btn) return;
+
+  const text = btn.textContent; // "Get Started"
+  const speed = 150; // milliseconds per character
+  let index = 0;
+
+  // Calculate exact button width needed for full text (before clearing)
+  const originalWidth = btn.offsetWidth;
+  
+  // Freeze the button completely during animation
+  btn.style.width = originalWidth + 'px'; // Fix width to prevent resizing
+  btn.style.height = btn.offsetHeight + 'px'; // Fix height
+  btn.style.transition = 'none'; // Disable transitions
+  btn.style.pointerEvents = 'none'; // Disable interactions
+  btn.textContent = ''; // Clear the text
+
+  function type() {
+    if (index < text.length) {
+      btn.textContent += text.charAt(index);
+      index++;
+      setTimeout(type, speed);
+    } else {
+      // Re-enable after typing is complete
+      btn.style.width = ''; // Restore original width
+      btn.style.height = ''; // Restore original height
+      btn.style.transition = ''; // Restore original transition
+      btn.style.pointerEvents = ''; // Re-enable interactions
+    }
+  }
+
+  // Start typing when page loads
+  type();
 }
 
 /**
@@ -66,6 +107,68 @@ function setupGetStartedHandler() {
       document.body.style.overflow = 'auto';
     }
   });
+}
+
+/**
+ * Setup header signup button handler to reveal signup modal
+ */
+function setupHeaderSignupHandler() {
+  const headerSignupBtn = document.getElementById('header-signup');
+  const signupModal = document.getElementById('signup-modal');
+
+  if (headerSignupBtn && signupModal) {
+    headerSignupBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Header signup clicked');
+      signupModal.classList.remove('signup-modal--hidden');
+      signupModal.classList.add('signup-modal--visible');
+      document.body.style.overflow = 'hidden';
+    });
+  }
+
+  // Close modal when clicking overlay or close button
+  const modalOverlay = signupModal.querySelector('.signup-modal-overlay');
+  const closeBtn = document.getElementById('signup-modal-close');
+
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', () => {
+      signupModal.classList.add('signup-modal--hidden');
+      signupModal.classList.remove('signup-modal--visible');
+      document.body.style.overflow = 'auto';
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      signupModal.classList.add('signup-modal--hidden');
+      signupModal.classList.remove('signup-modal--visible');
+      document.body.style.overflow = 'auto';
+    });
+  }
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && signupModal.classList.contains('signup-modal--visible')) {
+      signupModal.classList.add('signup-modal--hidden');
+      signupModal.classList.remove('signup-modal--visible');
+      document.body.style.overflow = 'auto';
+    }
+  });
+
+  // Handle "Log in" link in footer
+  const signupToLoginLink = document.getElementById('signup-to-login');
+  const loginModal = document.getElementById('login-modal');
+  if (signupToLoginLink && loginModal) {
+    signupToLoginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Close signup modal
+      signupModal.classList.add('signup-modal--hidden');
+      signupModal.classList.remove('signup-modal--visible');
+      // Open login modal
+      loginModal.classList.remove('login-modal--hidden');
+      loginModal.classList.add('login-modal--visible');
+    });
+  }
 }
 
 // alert("Welcome")

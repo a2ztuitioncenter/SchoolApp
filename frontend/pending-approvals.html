@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Approvals | A2Z Tuition Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="./src/assets/css/index.css">
+    <style>
+        .admin-page-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 10px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 12px 20px;
+            color: #ccc;
+            text-decoration: none;
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+
+        .sidebar-nav a:hover,
+        .sidebar-nav a.active {
+            background-color: #0052cc;
+            color: #ffffff;
+        }
+
+        .main-content {
+            margin-left: 240px;
+            flex: 1;
+            padding: 30px;
+            background-color: #f8f9fa;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+
+        .page-header p {
+            color: #666;
+        }
+
+        .approvals-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+
+        .approval-card {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 20px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .approval-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .approval-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #1a1a1a;
+        }
+
+        .approval-detail {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-badge.student {
+            background-color: rgba(31, 111, 235, 0.15);
+            color: #388bfd;
+        }
+
+        .role-badge.teacher {
+            background-color: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background-color: rgba(206, 173, 0, 0.15);
+            color: #ceac00;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-approve {
+            background-color: #238636;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background-color: #1a6e2e;
+        }
+
+        .btn-reject {
+            background-color: #da3633;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background-color: #b92c26;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        .empty-state h3 {
+            font-size: 1.3rem;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error-message {
+            background-color: rgba(207, 34, 46, 0.1);
+            color: #cf222e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #cf222e;
+        }
+
+        .success-message {
+            background-color: rgba(26, 127, 55, 0.1);
+            color: #1a7f37;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #238636;
+        }
+
+        .rejection-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rejection-modal.show {
+            display: flex;
+        }
+
+        .rejection-modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .rejection-modal-content h3 {
+            margin-bottom: 15px;
+            color: #1a1a1a;
+        }
+
+        .rejection-modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-family: inherit;
+            min-height: 100px;
+            margin-bottom: 15px;
+        }
+
+        .rejection-modal-content textarea:focus {
+            outline: none;
+            border-color: #0052cc;
+            box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.1);
+        }
+
+        .rejection-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 10px 0;
+            }
+
+            .sidebar-nav a {
+                padding: 12px;
+                text-align: center;
+                font-size: 0.8rem;
+            }
+
+            .main-content {
+                margin-left: 60px;
+                padding: 15px;
+            }
+
+            .approval-card {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .action-buttons {
+                grid-column: 1 / -1;
+            }
+
+            .role-badge,
+            .status-badge {
+                font-size: 0.7rem;
+                padding: 3px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-page-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>A2Z Admin</h3>
+        </div>
+        <nav class="sidebar-nav">
+            <li><a href="/admin-dashboard.html"><i class="fa fa-chart-bar"></i> <span>Dashboard</span></a></li>
+            <li><a href="#" class="active"><i class="fa fa-clock"></i> <span>Pending Approvals</span></a></li>
+            <li><a href="/admin-dashboard.html"><i class="fa fa-users"></i> <span>Users</span></a></li>
+            <li><a href="/admin-dashboard.html"><i class="fa fa-sign-out"></i> <span>Logout</span></a></li>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1>Pending Approvals</h1>
+            <p>Review and approve new user registrations</p>
+        </div>
+
+        <div class="approvals-container">
+            <div id="message-container"></div>
+            <div id="pending-users-list" class="loading">
+                <i class="fa fa-spinner fa-spin"></i> Loading pending users...
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Rejection Modal -->
+<div class="rejection-modal" id="rejection-modal">
+    <div class="rejection-modal-content">
+        <h3>Reject User Registration</h3>
+        <textarea id="rejection-reason" placeholder="Enter rejection reason (optional)..."></textarea>
+        <div class="rejection-modal-buttons">
+            <button class="btn" id="cancel-reject-btn" onclick="document.getElementById('rejection-modal').classList.remove('show')">Cancel</button>
+            <button class="btn btn-reject" id="confirm-reject-btn">Reject</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="./src/modules/admin/admin-pending-approvals.js"></script>
+
+</body>
+</html>
