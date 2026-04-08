@@ -1846,22 +1846,49 @@ function renderTimetableGrid(items) {
         return;
     }
 
+    // Debug: Log raw data to verify
+    console.log('[TIMETABLE] Raw data from API:', items);
+
+    // Use ALL data for grid rendering (don't limit by pagination here)
+    // Pagination is only for pagination display purposes
+    const allGridData = items;
     const displayLimit = 15;
-    const toShow = showAllTimetable ? items : items.slice(0, displayLimit);
+    const toShow = allGridData; // Use ALL data for grid
+
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const slots = generateTimeSlots();
 
-    // Create data map: day -> slot -> entries
+    // ===== NORMALIZE & CREATE EFFICIENT LOOKUP MAP =====
+    // Preprocess all entries into a "day-time" -> entry map for O(1) lookup
     const timetableMap = {};
-    toShow.forEach(entry => {
-        if (!timetableMap[entry.dayOfWeek]) {
-            timetableMap[entry.dayOfWeek] = {};
+    
+    allGridData.forEach(entry => {
+        // Normalize day: Ensure consistent case (e.g., "Monday", "monday" -> "Monday")
+        const normalizedDay = entry.dayOfWeek 
+            ? entry.dayOfWeek.charAt(0).toUpperCase() + entry.dayOfWeek.slice(1).toLowerCase()
+            : '';
+        
+        // Normalize time: Remove seconds if present (e.g., "09:00:00" -> "09:00")
+        let normalizedTime = entry.startTime || '';
+        if (normalizedTime.includes(':')) {
+            const parts = normalizedTime.split(':');
+            normalizedTime = `${parts[0]}:${parts[1]}`; // HH:MM format only
         }
-        if (!timetableMap[entry.dayOfWeek][entry.startTime]) {
-            timetableMap[entry.dayOfWeek][entry.startTime] = [];
+        
+        // Create lookup key: "Monday-09:00"
+        const key = `${normalizedDay}-${normalizedTime}`;
+        
+        // Debug log each entry
+        console.log(`[TIMETABLE] Entry: day="${entry.dayOfWeek}" -> "${normalizedDay}", time="${entry.startTime}" -> "${normalizedTime}", key="${key}", subject="${entry.subject}"`);
+        
+        if (!timetableMap[key]) {
+            timetableMap[key] = [];
         }
-        timetableMap[entry.dayOfWeek][entry.startTime].push(entry);
+        timetableMap[key].push(entry);
     });
+
+    console.log('[TIMETABLE] Lookup map keys:', Object.keys(timetableMap));
+    console.log('[TIMETABLE] Grid slots:', slots);
 
     let gridHTML = '';
 
@@ -1880,7 +1907,10 @@ function renderTimetableGrid(items) {
         
         // Day cells
         days.forEach(day => {
-            const entries = (timetableMap[day] && timetableMap[day][slot]) || [];
+            // Create lookup key
+            const key = `${day}-${slot}`;
+            const entries = timetableMap[key] || [];
+            
             gridHTML += '<div class="timetable-slot">';
             
             if (entries.length === 0) {
@@ -1918,7 +1948,7 @@ function renderTimetableGrid(items) {
         toggleBtn.textContent = showAllTimetable ? 'Show Less' : `Show More (${items.length - displayLimit} more)`;
     }
     if(countText) {
-        countText.textContent = showAllTimetable ? '' : `Showing ${toShow.length} of ${items.length}`;
+        countText.textContent = items.length > 0 ? `Total entries: ${items.length}` : '';
     }
 }
 
