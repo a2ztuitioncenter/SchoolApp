@@ -35,13 +35,13 @@ const upload = multer({
 
 const router = express.Router();
 
+// Student Routes (more specific - should come first)
+router.get('/class/:classLevel', getClassMaterials);
+
 // Admin Routes
 router.get('/', getAllMaterials);
 router.post('/', upload.single('materialFile'), createMaterial);
 router.put('/:id', upload.single('materialFile'), updateMaterial);
 router.delete('/:id', deleteMaterial);
-
-// Student Routes
-router.get('/class/:classLevel', getClassMaterials);
 
 export default router;

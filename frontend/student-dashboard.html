@@ -112,8 +112,9 @@
                 <div class="section-container">
                     <div class="section-header">
                         <h3><i class="fas fa-calendar-alt"></i> Class Timetable</h3>
+                        <span class="current-time" id="current-time"></span>
                     </div>
-                    <div id="timetable-container">
+                    <div id="timetable-container" class="timetable-table-wrapper">
                         <p class="loading-text">Loading timetable...</p>
                     </div>
                 </div>
@@ -137,30 +138,35 @@
 
                     <section class="left-col">
                         <div class="action-cards">
-                            <div class="card">
-                                <div class="icon-box blue"><i class="fas fa-file-alt"></i></div>
-                                <h4>Homework</h4>
+                            <div class="card card-clickable card-detailed" id="latest-homework-card" style="cursor: pointer; transition: all 0.3s ease;">
+                                <div class="card-header-section">
+                                    <h3 style="margin: 0; font-size: 0.95rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Homework</h3>
+                                </div>
+                                <div class="card-body-section">
+                                    <h4 id="latest-homework-title" style="margin: 0.5rem 0 0.25rem 0; font-size: 1rem;">Assignment</h4>
+                                    <p id="latest-homework-desc" style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">No description</p>
+                                    <p id="latest-homework-due" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Due: --</p>
+                                </div>
                             </div>
-                            <div class="card">
-                                <div class="icon-box green"><i class="fas fa-question-circle"></i></div>
-                                <h4>Daily Practice</h4>
-                            </div>
-                        </div>
-
-                        <div class="section-container">
-                            <h3>Today's Homework</h3>
-                            <div id="homework-container">
-                                <p class="loading-text" style="color: var(--text-muted); font-size: 0.9rem;">Loading
-                                    homework...</p>
+                            <div class="card card-clickable card-detailed" id="latest-dpp-card" style="cursor: pointer; transition: all 0.3s ease;">
+                                <div class="card-header-section">
+                                    <h3 style="margin: 0; font-size: 0.95rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">DPP</h3>
+                                </div>
+                                <div class="card-body-section">
+                                    <h4 id="latest-dpp-title" style="margin: 0.5rem 0 0.25rem 0; font-size: 1rem;">Practice Problem</h4>
+                                    <p id="latest-dpp-desc" style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">No description</p>
+                                    <p id="latest-dpp-date" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Posted: --</p>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Timetable preview on home -->
                         <div class="section-container">
                             <div class="section-header">
-                                <h3>This Week's Timetable</h3>
+                                <h3><i class="fas fa-clock"></i> Today's Classes</h3>
+                                <span class="current-time" id="current-time-preview"></span>
                             </div>
-                            <div id="timetable-preview"></div>
+                            <div id="timetable-preview" class="timetable-table-wrapper"></div>
                         </div>
                     </section>
 
