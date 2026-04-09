@@ -1,4 +1,5 @@
 import { authAPI, adminAPI } from '../../core/api.js';
+import { getAuth } from '../../core/auth-manager.js';
 
 let pendingUsers = [];
 let currentRejectingUserId = null;
@@ -6,10 +7,10 @@ let currentRejectingUserId = null;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔄 Initializing Pending Approvals...');
     
-    // Check if admin is logged in
-    const adminUserId = sessionStorage.getItem('adminUserId');
-    if (!adminUserId) {
-        window.location.href = '/admin-login.html';
+    // Check if admin is logged in (use auth-manager)
+    const auth = getAuth();
+    if (!auth || auth.role !== 'admin') {
+        window.location.href = '/';
         return;
     }
 

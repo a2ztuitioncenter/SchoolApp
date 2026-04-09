@@ -9,6 +9,21 @@ const API_BASE_URL = '/api';
 let isBackendHealthy = false;
 
 /**
+ * Get auth token from centralized auth manager
+ */
+export const getAuthToken = () => {
+  try {
+    const authStr = localStorage.getItem('auth');
+    if (!authStr) return null;
+    const auth = JSON.parse(authStr);
+    return auth?.token || null;
+  } catch (error) {
+    console.error('❌ Error reading auth token from localStorage:', error);
+    return null;
+  }
+};
+
+/**
  * Check if backend is available
  */
 export const checkBackendHealth = async () => {
@@ -44,13 +59,17 @@ export const waitForBackend = async (maxAttempts = 3, delayMs = 1000) => {
   return false;
 };
 
-// Store auth token in sessionStorage
+// Store auth token in localStorage (now managed by auth-manager)
 export const setAuthToken = (token) => {
-  sessionStorage.setItem('authToken', token);
-};
-
-export const getAuthToken = () => {
-  return sessionStorage.getItem('authToken');
+  // This is now handled by auth-manager.setAuth()
+  // Keeping for backward compatibility
+  try {
+    const auth = JSON.parse(localStorage.getItem('auth') || '{}');
+    auth.token = token;
+    localStorage.setItem('auth', JSON.stringify(auth));
+  } catch (error) {
+    console.error('Error storing auth token:', error);
+  }
 };
 
 export const clearAuthToken = () => {
@@ -59,6 +78,7 @@ export const clearAuthToken = () => {
 
 /**
  * Generic fetch wrapper with error handling and token injection
+ * Automatically includes JWT token from auth-manager
  */
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -71,6 +91,7 @@ const apiCall = async (endpoint, options = {}) => {
   // Disable gzip to avoid decoding issues
   headers['Accept-Encoding'] = 'identity';
 
+  // Add JWT token from centralized auth manager
   const token = getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -81,6 +102,39 @@ const apiCall = async (endpoint, options = {}) => {
       ...options,
       headers,
     });
+
+    // Handle token expiration (401 Unauthorized)
+    if (response.status === 401) {
+      console.warn('⚠️ Unauthorized: Token expired or invalid. Redirecting to login...');
+      // Clear auth and redirect to login
+      try {
+        const { clearAuth } = await import('./auth-manager.js');
+        clearAuth();
+      } catch (error) {
+        console.error('❌ Error during 401 cleanup:', error);
+        localStorage.removeItem('auth');
+        sessionStorage.clear();
+      }
+      
+      // Prevent immediate redirect loop by checking if we are already on index
+      if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+          window.location.href = '/';
+      }
+      return { error: 'Session expired. Please login again.' };
+    }
+
+    // Handle 403 Forbidden (insufficient permissions)
+    if (response.status === 403) {
+      console.warn('⚠️ Forbidden: Insufficient permissions');
+      return { error: 'You do not have permission to access this resource.' };
+    }
+
+    // Handle 429 Rate Limit
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('X-RateLimit-Remaining') || 60;
+      console.warn(`⚠️ Rate limited: Please try again in ${retryAfter} seconds`);
+      return { error: `Too many requests. Please try again in ${retryAfter} seconds.` };
+    }
 
     // Handle binary or JSON responses
     if (options.responseType === 'blob') {
@@ -225,6 +279,7 @@ export const adminAPI = {
   getPendingUsers: () => apiCall('/auth/admin/pending-users', { method: 'GET' }),
   approveUser: (userId) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST' }),
   rejectUser: (userId, reason) => apiCall(`/auth/admin/reject-user/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getTrendData: () => apiCall('/admin/financials/trends', { method: 'GET' }),
 };
 
 /**

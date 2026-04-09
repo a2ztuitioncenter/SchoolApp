@@ -4,7 +4,21 @@
  */
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 import './admin-pending-approvals.js';
+
+// ═══════════════════════════════════════════
+// ROUTE PROTECTION - Must be first
+// ═══════════════════════════════════════════
+requireRole('admin');
+
+// Global logout handler
+window.handleLogout = function() {
+  console.log('👋 Admin logging out...');
+  authLogout();
+};
+
+
 
 
 let currentTab = 'dashboard';
@@ -16,17 +30,11 @@ let currentEditHwId = null;
 // INIT
 // =============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    const adminId = sessionStorage.getItem('adminUserId');
-    const adminRole = sessionStorage.getItem('adminRole');
-
-    if (!adminId || adminRole !== 'admin') {
-        window.location.href = '/admin-login.html';
-        return;
-    }
-
+    console.log('📄 Admin Dashboard initializing...');
+    syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
+    const adminId = getUserId();
     const adminPhone = sessionStorage.getItem('adminPhone');
-    
-    // Set up GitHub-style profile menu
+
     const nameStr = `Admin`;
     const nameEls = document.querySelectorAll('#admin-name, #dropdown-admin-name');
     nameEls.forEach(el => el.textContent = nameStr);
@@ -51,10 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const dropLogoutBtn = document.getElementById('dropdown-logout-btn');
     if (dropLogoutBtn) {
-        dropLogoutBtn.addEventListener('click', () => {
-            sessionStorage.clear();
-            window.location.href = '/admin-login.html';
-        });
+        dropLogoutBtn.addEventListener('click', window.handleLogout);
     }
 
     // Check backend health before loading dashboard
@@ -298,16 +303,12 @@ async function loadDashboardData() {
  * Fetch 30-day trend data from backend
  */
 async function fetchTrendData() {
-    const res = await fetch('/api/admin/financials/trends', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
-            'Content-Type': 'application/json'
-        }
-    });
-    
-    if (!res.ok) throw new Error('Failed to fetch trend data');
-    return await res.json();
+    try {
+        return await adminAPI.getTrendData();
+    } catch (err) {
+        console.error('❌ Failed to fetch trend data:', err);
+        return { trends: [], summary: {} };
+    }
 }
 
 /**
@@ -2503,10 +2504,7 @@ function setupForms() {
         }
     });
 
-    document.getElementById('logout-btn')?.addEventListener('click', () => {
-        sessionStorage.clear();
-        window.location.href = '/admin-login.html';
-    });
+    document.getElementById('logout-btn')?.addEventListener('click', window.handleLogout);
 }
 
 // =============================================

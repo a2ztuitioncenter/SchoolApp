@@ -3,6 +3,7 @@
  */
 
 import { authAPI } from '../../core/api.js';
+import { setAuth, syncToSessionStorage } from '../../core/auth-manager.js';
 
 /**
  * Handle teacher login
@@ -36,15 +37,22 @@ export async function handleTeacherLogin() {
     if (response.success && response.user && response.user.role === 'teacher') {
       showSuccess('Teacher verified! Redirecting...');
       
-      // Store teacher session
-      sessionStorage.setItem('teacherId', response.user.id);
-      sessionStorage.setItem('teacherRole', response.user.role);
-      sessionStorage.setItem('teacherPhone', phone);
+      // Store auth state in centralized manager
+      setAuth({
+        role: 'teacher',
+        userId: response.user.id,
+        name: response.user.name,
+        phone: phone,
+        token: response.token  // Store the JWT token from backend
+      });
+
+      // Sync to sessionStorage for backward compatibility
+      syncToSessionStorage('teacher');
 
       // Redirect to teacher dashboard
       setTimeout(() => {
         window.location.href = '/teacher-dashboard.html';
-      }, 1000);
+      }, 500);
       
     } else if (response.user && response.user.role !== 'teacher') {
       showError('Access Denied: This account does not have teacher privileges.');

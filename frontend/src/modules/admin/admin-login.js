@@ -3,6 +3,7 @@
  */
 
 import { authAPI } from '../../core/api.js';
+import { setAuth, syncToSessionStorage } from '../../core/auth-manager.js';
 
 /**
  * Handle admin login
@@ -36,15 +37,22 @@ export async function handleAdminLogin() {
     if (response.success && response.user && response.user.role === 'admin') {
       showSuccess('Admin verified! Redirecting...');
       
-      // Store admin session
-      sessionStorage.setItem('adminUserId', response.user.id);
-      sessionStorage.setItem('adminRole', response.user.role);
-      sessionStorage.setItem('adminPhone', phone);
+      // Store auth state in centralized manager
+      setAuth({
+        role: 'admin',
+        userId: response.user.id,
+        name: response.user.name,
+        phone: phone,
+        token: response.token  // Store the JWT token from backend
+      });
+
+      // Sync to sessionStorage for backward compatibility
+      syncToSessionStorage('admin');
 
       // Redirect to admin dashboard
       setTimeout(() => {
         window.location.href = '/admin-dashboard.html';
-      }, 1000);
+      }, 500);
       
     } else if (response.user && response.user.role !== 'admin') {
       showError('Access Denied: This account does not have admin privileges.');

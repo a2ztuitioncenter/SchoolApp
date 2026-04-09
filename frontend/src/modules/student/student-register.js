@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 successMessage.style.display = 'block';
                 registerForm.reset();
 
-                // Redirect to login after a short delay
+                // Redirect to home after a short delay
                 setTimeout(() => {
-                    window.location.href = '/student-login.html';
+                    window.location.href = '/';
                 }, 2000);
             } else {
                 errorMessage.textContent = response.error || 'Registration failed. Please try again.';

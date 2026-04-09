@@ -198,28 +198,28 @@ function setupHeaderLoginHandler() {
     headerLoginBtn.addEventListener('click', (e) => {
       e.preventDefault();
       console.log('Header login clicked');
-      // Redirect to student login as default
-      window.location.href = '/student-login.html';
+      // Open auth modal with login selector
+      openAuthLoginSelector(e);
     });
   }
 }
 
 /**
- * Handle login card click - redirect to appropriate login page
+ * Handle login card click - open auth modal with appropriate role
  */
 function handleLoginCardClick(loginType) {
   console.log('Handling login for type:', loginType);
   
   switch(loginType) {
     case 'student':
-      window.location.href = '/student-login.html';
+      openAuthModal('login', 'student');
       break;
     case 'teacher':
-      window.location.href = '/teacher-login.html';
+      openAuthModal('login', 'teacher');
       break;
 
     case 'admin':
-      window.location.href = '/admin-login.html';
+      openAuthModal('login', 'admin');
       break;
     default:
       console.error('Unknown login type:', loginType);

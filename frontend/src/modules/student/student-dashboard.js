@@ -4,6 +4,20 @@
  */
 
 import { studentAPI, downloadFile, materialsAPI, waitForBackend } from '../../core/api.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+
+// ===========================
+// Global Logout Handler
+// ===========================
+window.handleLogout = function() {
+  console.log('👋 Logging out...');
+  authLogout();
+};
+
+// ===========================
+// Route Protection
+// ===========================
+requireRole('student');
 
 // ===========================
 // Initialization on Page Load
@@ -35,14 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Get userId from sessionStorage (set during login)
-    let userId = sessionStorage.getItem('studentUserId');
-
-    if (!userId) {
-      console.warn('⚠️ No userId found in sessionStorage, redirecting to login...');
-      window.location.href = '/student-login.html';
-      return;
-    }
+    // Get userId from centralized auth manager
+    syncToSessionStorage('student'); // Ensure sessionStorage is in sync
+    let userId = getUserId();
 
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
@@ -127,7 +136,7 @@ async function loadDashboardData(userId) {
     if (!dashboardResponse || !dashboardResponse.success) {
       if (dashboardResponse?.error === 'Student record not found') {
         showErrorMessage('Your student profile is being set up. Please try again in a moment.');
-        setTimeout(() => { window.location.href = '/student-login.html'; }, 3000);
+        setTimeout(() => { window.location.href = '/'; }, 3000);
         return null;
       }
       throw new Error(dashboardResponse?.error || 'Failed to fetch dashboard data');
@@ -446,10 +455,4 @@ function showErrorMessage(message) {
     errorDiv.textContent = '⚠️ ' + message;
     content.prepend(errorDiv);
   }
-}
-
-export function logout() {
-  sessionStorage.removeItem('studentUserId');
-  sessionStorage.removeItem('authToken');
-  window.location.href = '/';
 }

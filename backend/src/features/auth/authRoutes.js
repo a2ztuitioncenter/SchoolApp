@@ -1,9 +1,30 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { getUserByPhone, createUser, getApprovedUser, getUsersByStatus, updateUserStatus } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
+import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 
 const router = express.Router();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'tuition-app-dev-secret-key-change-in-production';
+const JWT_EXPIRY = '24h';
+
+/**
+ * Generate JWT Token
+ */
+const generateToken = (userId, role, phone) => {
+  return jwt.sign(
+    { 
+      userId, 
+      role, 
+      phone,
+      iat: Math.floor(Date.now() / 1000)
+    },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRY }
+  );
+};
 
 // Student login endpoint
 router.post('/login', async (req, res) => {
@@ -48,9 +69,13 @@ router.post('/login', async (req, res) => {
     // Get student details
     const studentData = await getStudentByUserId(pool, user.id);
 
+    // Generate JWT token
+    const token = generateToken(user.id, user.role, phone);
+
     res.json({ 
       success: true,
       message: 'Login successful',
+      token,
       user: {
         id: user.id,
         role: user.role,
@@ -115,9 +140,13 @@ router.post('/register', async (req, res) => {
       schoolId: 'school-001',
     });
 
+    // Generate JWT token
+    const token = generateToken(user.id, user.role, phone);
+
     return res.json({
       success: true,
       message: 'Registration successful',
+      token,
       user: {
         id: user.id,
         phone: user.phone,
@@ -169,10 +198,14 @@ router.post('/admin-login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Generate JWT token
+    const token = generateToken(user.id, user.role, phone);
+
     // Return success with user data
     return res.json({
       success: true,
       message: 'Admin login successful',
+      token,
       user: {
         id: user.id,
         phone: user.phone,
@@ -228,10 +261,14 @@ router.post('/teacher-login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Generate JWT token
+    const token = generateToken(user.id, user.role, phone);
+
     // Return success with user data
     return res.json({
       success: true,
       message: 'Teacher login successful',
+      token,
       user: {
         id: user.id,
         phone: user.phone,
@@ -287,9 +324,13 @@ router.post('/teacher-register', async (req, res) => {
       schoolId: 'school-001',
     });
 
+    // Generate JWT token (for pending approval)
+    const token = generateToken(user.id, user.role, phone);
+
     return res.json({
       success: true,
       message: 'Registration successful. Your account is awaiting admin approval.',
+      token,
       user: {
         id: user.id,
         phone: user.phone,
@@ -304,10 +345,10 @@ router.post('/teacher-register', async (req, res) => {
 });
 
 /**
- * GET /api/admin/pending-users
+ * GET /api/auth/admin/pending-users
  * Fetch all pending user registrations (admin only)
  */
-router.get('/admin/pending-users', async (req, res) => {
+router.get('/admin/pending-users', authenticate, authorize('admin'), async (req, res) => {
   const pool = req.db;
   const schoolId = req.query.schoolId || 'school-001';
 
@@ -326,10 +367,10 @@ router.get('/admin/pending-users', async (req, res) => {
 });
 
 /**
- * POST /api/admin/approve-user/:userId
+ * POST /api/auth/admin/approve-user/:userId
  * Approve a pending user registration (admin only)
  */
-router.post('/admin/approve-user/:userId', async (req, res) => {
+router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
   const pool = req.db;
   
@@ -357,10 +398,10 @@ router.post('/admin/approve-user/:userId', async (req, res) => {
 });
 
 /**
- * POST /api/admin/reject-user/:userId
+ * POST /api/auth/admin/reject-user/:userId
  * Reject a pending user registration (admin only)
  */
-router.post('/admin/reject-user/:userId', async (req, res) => {
+router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
   const { reason } = req.body;
   const pool = req.db;

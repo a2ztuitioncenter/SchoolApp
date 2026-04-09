@@ -1,14 +1,21 @@
 import { teacherAPI } from '../../core/api.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 
+// ═══════════════════════════════════════════
+// ROUTE PROTECTION - Must be first
+// ═══════════════════════════════════════════
+requireRole('teacher');
 
-// ─── Auth Guard ────────────────────────────────────────────────────────────────
-const teacherId   = sessionStorage.getItem('teacherId');
-const teacherRole = sessionStorage.getItem('teacherRole');
-const teacherPhone = sessionStorage.getItem('teacherPhone');
+// Global logout handler
+window.handleLogout = function() {
+  console.log('👋 Teacher logging out...');
+  authLogout();
+};
 
-if (!teacherId || teacherRole !== 'teacher') {
-  window.location.href = '/teacher-login.html';
-}
+// ─── Auth State (Managed in init) ───────────────────────────────────────────
+let teacherId = null;
+let teacherPhone = null;
+const teacherRole = 'teacher';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let allHomework  = [];
@@ -71,16 +78,16 @@ function setupTabs() {
     });
   });
 
-  // Logout
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
-    sessionStorage.removeItem('teacherId');
-    sessionStorage.removeItem('teacherRole');
-    sessionStorage.removeItem('teacherPhone');
-    window.location.href = '/teacher-login.html';
-  });
+  // Logout - uses global handler which properly clears all auth state
+  document.getElementById('logout-btn')?.addEventListener('click', window.handleLogout);
 }
 
 function init() {
+  console.log('📄 Teacher Dashboard initializing...');
+  syncToSessionStorage('teacher');
+  teacherId = getUserId();
+  teacherPhone = sessionStorage.getItem('teacherPhone');
+
   const nameEl = document.getElementById('teacher-name');
   if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
   

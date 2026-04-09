@@ -3,6 +3,13 @@
  * Handles opening/closing auth modals and form injection
  */
 
+import { authAPI as importedAuthAPI } from './api.js';
+import { setAuth as importedSetAuth } from './auth-manager.js';
+
+// Make globally accessible
+window.authAPI = importedAuthAPI;
+window.setAuth = importedSetAuth;
+
 let currentAuthType = null;
 let currentAuthRole = null;
 
@@ -211,22 +218,22 @@ async function handleStudentLoginModal(e) {
     btn.textContent = 'Logging in...';
     
     try {
-        // Import API from core
-        const { authAPI } = await import('./api.js');
-        const response = await authAPI.login(phone, password, 'student');
+        const response = await window.authAPI.login(phone, password, 'student');
         
         if (response.success) {
-            // Store session
-            sessionStorage.setItem('studentUserId', response.userId);
-            sessionStorage.setItem('studentRole', response.user.role);
-            sessionStorage.setItem('studentPhone', response.user.phone);
-            sessionStorage.setItem('studentName', response.user.name);
+            window.setAuth({
+                isLoggedIn: true,
+                role: 'student',
+                userId: response.userId,
+                name: response.user?.name || '',
+                phone: phone,
+                token: response.token
+            });
             
-            // Close modal and redirect
             closeAuthModal();
             setTimeout(() => {
                 window.location.href = '/student-dashboard.html';
-            }, 300);
+            }, 500);
         } else {
             showError(errorDiv, response.error || 'Login failed');
             btn.disabled = false;
@@ -263,18 +270,22 @@ async function handleTeacherLoginModal(e) {
     btn.textContent = 'Verifying...';
     
     try {
-        const { authAPI } = await import('./api.js');
-        const response = await authAPI.teacherLogin(phone, password);
+        const response = await window.authAPI.teacherLogin(phone, password);
         
         if (response.success && response.user.role === 'teacher') {
-            sessionStorage.setItem('teacherId', response.userId);
-            sessionStorage.setItem('teacherRole', response.user.role);
-            sessionStorage.setItem('teacherPhone', response.user.phone);
+            window.setAuth({
+                isLoggedIn: true,
+                role: 'teacher',
+                userId: response.userId,
+                name: response.user?.name || '',
+                phone: phone,
+                token: response.token
+            });
             
             closeAuthModal();
             setTimeout(() => {
                 window.location.href = '/teacher-dashboard.html';
-            }, 300);
+            }, 500);
         } else {
             showError(errorDiv, 'Access Denied or invalid credentials');
             btn.disabled = false;
@@ -311,18 +322,22 @@ async function handleAdminLoginModal(e) {
     btn.textContent = 'Verifying...';
     
     try {
-        const { authAPI } = await import('./api.js');
-        const response = await authAPI.adminLogin(phone, password);
+        const response = await window.authAPI.adminLogin(phone, password);
         
         if (response.success && response.user.role === 'admin') {
-            sessionStorage.setItem('adminUserId', response.userId);
-            sessionStorage.setItem('adminRole', response.user.role);
-            sessionStorage.setItem('adminPhone', response.user.phone);
+            window.setAuth({
+                isLoggedIn: true,
+                role: 'admin',
+                userId: response.userId,
+                name: response.user?.name || '',
+                phone: phone,
+                token: response.token
+            });
             
             closeAuthModal();
             setTimeout(() => {
                 window.location.href = '/admin-dashboard.html';
-            }, 300);
+            }, 500);
         } else {
             showError(errorDiv, 'Access Denied or invalid credentials');
             btn.disabled = false;
@@ -359,8 +374,7 @@ async function handleStudentSignupModal(e) {
     btn.textContent = 'Creating Account...';
     
     try {
-        const { authAPI } = await import('./api.js');
-        const response = await authAPI.register({
+        const response = await window.authAPI.register({
             name,
             phone,
             password,
@@ -371,7 +385,7 @@ async function handleStudentSignupModal(e) {
             showSuccess(successDiv, 'Account created successfully! Redirecting...');
             closeAuthModal();
             setTimeout(() => {
-                window.location.href = '/student-login.html';
+                window.location.href = '/';
             }, 2000);
         } else {
             showError(errorDiv, response.error || 'Signup failed');
@@ -415,8 +429,7 @@ async function handleTeacherSignupModal(e) {
     btn.textContent = 'Creating Account...';
     
     try {
-        const { authAPI } = await import('./api.js');
-        const response = await authAPI.teacherRegister({
+        const response = await window.authAPI.teacherRegister({
             name,
             email,
             phone,
@@ -427,7 +440,7 @@ async function handleTeacherSignupModal(e) {
             showSuccess(successDiv, '✅ Account created! Awaiting admin approval...');
             closeAuthModal();
             setTimeout(() => {
-                window.location.href = '/teacher-login.html';
+                window.location.href = '/';
             }, 3000);
         } else {
             showError(errorDiv, response.error || 'Signup failed');
