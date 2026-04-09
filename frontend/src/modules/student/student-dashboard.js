@@ -83,16 +83,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dashboardData && dashboardData.data && dashboardData.data.profile) {
         const profile = dashboardData.data.profile;
         console.log(`🎓 Student Profile loaded. Class: ${profile.classLevel}`);
+        
+        // Populate profile dropdown with initial values
+        const nameEls = document.querySelectorAll('#dropdown-student-name');
+        nameEls.forEach(el => el.textContent = profile.name || 'Student');
+        
+        const classEl = document.getElementById('dropdown-student-class');
+        if (classEl) classEl.textContent = `Class: ${profile.classLevel || '--'}`;
+        
+        const sectionEl = document.getElementById('dropdown-student-section');
+        if (sectionEl) sectionEl.textContent = profile.section || 'N/A';
+        
+        const idEl = document.getElementById('dropdown-student-id');
+        if (idEl) idEl.textContent = profile.id || 'N/A';
+        
+        const initialEl = document.getElementById('student-avatar-initial');
+        const nameParts = (profile.name || 'S').split(' ');
+        if (initialEl) initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
+        
         await loadMaterials(profile.classLevel);
     }
 
     // Tab Switching Logic
     setupTabSwitching();
+    
+    // Setup Profile Menu
+    setupProfileMenu();
   } catch (error) {
     console.error('❌ Dashboard initialization failed:', error);
     showErrorMessage('Failed to load dashboard. Please refresh the page.');
   }
 });
+
+function setupProfileMenu() {
+  const profileBtn = document.getElementById('student-profile-btn');
+  const profileDropdown = document.getElementById('student-profile-dropdown');
+  const logoutBtn = document.getElementById('dropdown-logout-btn');
+
+  if (profileBtn && profileDropdown) {
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
+      profileBtn.setAttribute('aria-expanded', !isExpanded);
+      profileDropdown.classList.toggle('open');
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.handleLogout();
+      window.location.href = '/';
+    });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const profileMenu = document.getElementById('student-profile-menu');
+    if (profileMenu && !profileMenu.contains(e.target)) {
+      if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
+      if (profileDropdown) profileDropdown.classList.remove('open');
+    }
+  });
+}
 
 function setupTabSwitching() {
   const navLinks = document.querySelectorAll('.sidebar nav a');
