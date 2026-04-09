@@ -642,27 +642,35 @@
 
             <!-- Attendance Tab -->
             <div id="tab-attendance" class="tab-content" style="display:none;">
-                <div class="card-grid">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h2>📋 Attendance Management</h2>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                            <div class="form-group">
-                                <label>Class</label>
-                                <select id="att-class-select" onchange="loadStudentsForAttendance()">
-                                    <option value="">-- Select Class --</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Date</label>
-                                <input type="date" id="att-date" value="">
-                            </div>
-                            <div class="form-group" style="align-self: flex-end;">
-                                <button class="btn btn-primary" onclick="loadAttendanceSheet()">Load Students</button>
-                            </div>
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-clipboard-check"></i> Attendance Management</h2>
+                        <p class="section-subtitle">Mark attendance and view monthly summaries for classes.</p>
+                    </div>
+                </div>
+
+                <!-- Attendance Sheet Section -->
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem;">Mark Attendance</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="form-group">
+                            <label>Class</label>
+                            <select id="att-class-select" class="form-control">
+                                <option value="">-- Select Class --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="att-date" value="" class="form-control">
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button class="btn btn-primary" onclick="loadAttendanceSheet()"><i class="fas fa-download"></i> Load Students</button>
                         </div>
                     </div>
                 </div>
-                <div id="attendance-sheet" style="display:none; margin-top:20px;">
+
+                <div id="attendance-sheet" style="display:none; margin-top:1.5rem;">
                     <div class="table-container">
                         <table class="data-table" id="att-sheet-table">
                             <thead>
@@ -676,29 +684,32 @@
                             </thead>
                             <tbody id="att-sheet-body"></tbody>
                         </table>
-                        <button class="btn btn-success" onclick="submitAttendance()" style="margin-top:15px;">✅ Save Attendance</button>
+                        <div style="margin-top:1.5rem; display: flex; gap: 1rem;">
+                            <button class="btn btn-success" onclick="submitAttendance()"><i class="fas fa-check"></i> Save Attendance</button>
+                            <button class="btn btn-secondary" onclick="document.getElementById('attendance-sheet').style.display='none';">Cancel</button>
+                        </div>
                     </div>
                 </div>
-                <div class="card-grid" style="margin-top:20px;">
-                    <div class="card" style="grid-column: 1 / -1;">
-                        <h3>Monthly Summary</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label>Class</label>
-                                <select id="summary-class-select">
-                                    <option value="">-- Select Class --</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Month</label>
-                                <input type="month" id="summary-month">
-                            </div>
-                            <div class="form-group" style="align-self: flex-end;">
-                                <button class="btn btn-primary" onclick="loadAttendanceSummary()">View Summary</button>
-                            </div>
+
+                <!-- Monthly Summary Section -->
+                <div class="card" style="margin-top:2rem;">
+                    <h3 style="margin-bottom: 1.5rem;">Monthly Summary</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="form-group">
+                            <label>Class</label>
+                            <select id="summary-class-select" class="form-control">
+                                <option value="">-- Select Class --</option>
+                            </select>
                         </div>
-                        <div id="summary-table-container" style="margin-top:15px; overflow-x:auto;"></div>
+                        <div class="form-group">
+                            <label>Month</label>
+                            <input type="month" id="summary-month" class="form-control">
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button class="btn btn-primary" onclick="loadAttendanceSummary()"><i class="fas fa-chart-bar"></i> View Summary</button>
+                        </div>
                     </div>
+                    <div id="summary-table-container" style="margin-top:1.5rem; overflow-x:auto;"></div>
                 </div>
             </div>
 
