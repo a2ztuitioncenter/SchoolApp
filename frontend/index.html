@@ -67,10 +67,12 @@
         <!-- Hidden Form Containers (for modal injection) -->
         
         <!-- Student Login Form -->
-        <div id="studentLoginForm" class="hidden-form-container">
+        <!-- Student Login Form -->
+        <template id="studentLoginForm">
             <div class="modal-header">
-                <div class="modal-logo"><i class="fas fa-book"></i></div>
-                <h2>Student Login</h2>
+                <div class="modal-logo"><i class="fas fa-graduation-cap"></i></div>
+                <div class="student-badge">Student Login</div>
+                <h2>A2Z</h2>
                 <p class="modal-subtitle">Welcome back! Enter your details to continue.</p>
             </div>
             <div class="error-message" id="studentLoginError"></div>
@@ -88,10 +90,10 @@
             <div class="modal-footer">
                 <p>Don't have an account? <a href="#" onclick="openAuthModal('signup', 'student')">Sign up</a></p>
             </div>
-        </div>
+        </template>
 
         <!-- Teacher Login Form -->
-        <div id="teacherLoginForm" class="hidden-form-container">
+        <template id="teacherLoginForm">
             <div class="modal-header">
                 <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
                 <div class="teacher-badge">Teacher Portal</div>
@@ -114,10 +116,10 @@
             <div class="modal-footer">
                 <p>Don't have an account? <a href="#" onclick="openAuthModal('signup', 'teacher')">Sign up</a></p>
             </div>
-        </div>
+        </template>
 
         <!-- Admin Login Form -->
-        <div id="adminLoginForm" class="hidden-form-container">
+        <template id="adminLoginForm">
             <div class="modal-header">
                 <div class="modal-logo"><i class="fas fa-building"></i></div>
                 <div class="admin-badge">Admin Panel</div>
@@ -140,10 +142,10 @@
             <div class="modal-footer">
                 <p><a href="#" onclick="openAuthModal('login', 'student')">← Back to Login</a></p>
             </div>
-        </div>
+        </template>
 
         <!-- Student Signup Form -->
-        <div id="studentSignupForm" class="hidden-form-container">
+        <template id="studentSignupForm">
             <div class="modal-header">
                 <div class="modal-logo"><i class="fas fa-graduation-cap"></i></div>
                 <h2>Student Registration</h2>
@@ -179,10 +181,10 @@
             <div class="modal-footer">
                 <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'student')">Log in</a></p>
             </div>
-        </div>
+        </template>
 
         <!-- Teacher Signup Form -->
-        <div id="teacherSignupForm" class="hidden-form-container">
+        <template id="teacherSignupForm">
             <div class="modal-header">
                 <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
                 <div class="teacher-badge">Teacher</div>
@@ -217,7 +219,7 @@
             <div class="modal-footer">
                 <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'teacher')">Log in</a></p>
             </div>
-        </div>
+        </template>
 
         <section class="about-us p-v">
             <div class="container">

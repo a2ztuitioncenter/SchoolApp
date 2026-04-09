@@ -109,8 +109,16 @@ function openAuthModal(type, role) {
         return;
     }
     
-    // Copy HTML to modal
-    content.innerHTML = formContainer.innerHTML;
+    // Clear existing content
+    content.innerHTML = '';
+    
+    // If it's a template, clone it. Otherwise use innerHTML for backward compatibility.
+    if (formContainer.tagName === 'TEMPLATE') {
+        const clone = formContainer.content.cloneNode(true);
+        content.appendChild(clone);
+    } else {
+        content.innerHTML = formContainer.innerHTML;
+    }
     
     // Rebind event listeners for the injected form
     rebindFormListeners(type, role);
@@ -122,24 +130,24 @@ function openAuthModal(type, role) {
  * Rebind form event listeners after HTML injection
  */
 function rebindFormListeners(type, role) {
+    const modal = document.getElementById('authModal');
     if (type === 'login') {
         if (role === 'student') {
-            const form = document.getElementById('studentLoginFormElement');
-            const btn = document.getElementById('studentLoginBtn');
+            const form = modal.querySelector('#studentLoginFormElement');
             if (form) form.addEventListener('submit', handleStudentLoginModal);
         } else if (role === 'teacher') {
-            const btn = document.getElementById('teacherLoginBtn');
+            const btn = modal.querySelector('#teacherLoginBtn');
             if (btn) btn.addEventListener('click', handleTeacherLoginModal);
         } else if (role === 'admin') {
-            const btn = document.getElementById('adminLoginBtn');
+            const btn = modal.querySelector('#adminLoginBtn');
             if (btn) btn.addEventListener('click', handleAdminLoginModal);
         }
     } else if (type === 'signup') {
         if (role === 'student') {
-            const form = document.getElementById('studentSignupFormElement');
+            const form = modal.querySelector('#studentSignupFormElement');
             if (form) form.addEventListener('submit', handleStudentSignupModal);
         } else if (role === 'teacher') {
-            const form = document.getElementById('teacherSignupFormElement');
+            const form = modal.querySelector('#teacherSignupFormElement');
             if (form) form.addEventListener('submit', handleTeacherSignupModal);
         }
     }
@@ -197,12 +205,14 @@ function setupModalCloseHandlers() {
 
 // Student Login
 async function handleStudentLoginModal(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    const modal = document.getElementById('authModal');
+    const phone = modal.querySelector('#student-login-phone')?.value?.trim();
+    const password = modal.querySelector('#student-login-password')?.value?.trim();
+    const errorDiv = modal.querySelector('#studentLoginError');
+    const btn = modal.querySelector('#studentLoginBtn');
     
-    const phone = document.getElementById('student-login-phone')?.value?.trim();
-    const password = document.getElementById('student-login-password')?.value?.trim();
-    const errorDiv = document.getElementById('studentLoginError');
-    const btn = document.getElementById('studentLoginBtn');
+    console.log('🔹 Student Login attempt:', { phone: phone ? '***' : 'empty' });
     
     if (!phone || !password) {
         showError(errorDiv, 'Phone and password are required');
@@ -221,6 +231,7 @@ async function handleStudentLoginModal(e) {
         const response = await window.authAPI.login(phone, password, 'student');
         
         if (response.success) {
+            console.log('✅ Student Login Success:', response.userId);
             window.setAuth({
                 isLoggedIn: true,
                 role: 'student',
@@ -235,6 +246,7 @@ async function handleStudentLoginModal(e) {
                 window.location.href = '/student-dashboard.html';
             }, 500);
         } else {
+            console.warn('❌ Student Login Failed:', response.error);
             showError(errorDiv, response.error || 'Login failed');
             btn.disabled = false;
             btn.textContent = 'Log In';
@@ -249,12 +261,14 @@ async function handleStudentLoginModal(e) {
 
 // Teacher Login
 async function handleTeacherLoginModal(e) {
-    e.preventDefault?.();
+    if (e) e.preventDefault?.();
+    const modal = document.getElementById('authModal');
+    const phone = modal.querySelector('#teacher-login-phone')?.value?.trim();
+    const password = modal.querySelector('#teacher-login-password')?.value?.trim();
+    const errorDiv = modal.querySelector('#teacherLoginError');
+    const btn = modal.querySelector('#teacherLoginBtn');
     
-    const phone = document.getElementById('teacher-login-phone')?.value?.trim();
-    const password = document.getElementById('teacher-login-password')?.value?.trim();
-    const errorDiv = document.getElementById('teacherLoginError');
-    const btn = document.getElementById('teacherLoginBtn');
+    console.log('🔹 Teacher Login attempt:', { phone: phone ? '***' : 'empty' });
     
     if (!phone || !password) {
         showError(errorDiv, 'Phone and password are required');
@@ -273,6 +287,7 @@ async function handleTeacherLoginModal(e) {
         const response = await window.authAPI.teacherLogin(phone, password);
         
         if (response.success && response.user.role === 'teacher') {
+            console.log('✅ Teacher Login Success:', response.userId);
             window.setAuth({
                 isLoggedIn: true,
                 role: 'teacher',
@@ -287,6 +302,7 @@ async function handleTeacherLoginModal(e) {
                 window.location.href = '/teacher-dashboard.html';
             }, 500);
         } else {
+            console.warn('❌ Teacher Login Failed:', response.error);
             showError(errorDiv, 'Access Denied or invalid credentials');
             btn.disabled = false;
             btn.textContent = 'Login as Teacher';
@@ -301,12 +317,14 @@ async function handleTeacherLoginModal(e) {
 
 // Admin Login
 async function handleAdminLoginModal(e) {
-    e.preventDefault?.();
+    if (e) e.preventDefault?.();
+    const modal = document.getElementById('authModal');
+    const phone = modal.querySelector('#admin-login-phone')?.value?.trim();
+    const password = modal.querySelector('#admin-login-password')?.value?.trim();
+    const errorDiv = modal.querySelector('#adminLoginError');
+    const btn = modal.querySelector('#adminLoginBtn');
     
-    const phone = document.getElementById('admin-login-phone')?.value?.trim();
-    const password = document.getElementById('admin-login-password')?.value?.trim();
-    const errorDiv = document.getElementById('adminLoginError');
-    const btn = document.getElementById('adminLoginBtn');
+    console.log('🔹 Admin Login attempt:', { phone: phone ? '***' : 'empty' });
     
     if (!phone || !password) {
         showError(errorDiv, 'Phone and password are required');
@@ -325,6 +343,7 @@ async function handleAdminLoginModal(e) {
         const response = await window.authAPI.adminLogin(phone, password);
         
         if (response.success && response.user.role === 'admin') {
+            console.log('✅ Admin Login Success:', response.userId);
             window.setAuth({
                 isLoggedIn: true,
                 role: 'admin',
@@ -339,6 +358,7 @@ async function handleAdminLoginModal(e) {
                 window.location.href = '/admin-dashboard.html';
             }, 500);
         } else {
+            console.warn('❌ Admin Login Failed:', response.error);
             showError(errorDiv, 'Access Denied or invalid credentials');
             btn.disabled = false;
             btn.textContent = 'Login as Admin';
@@ -354,18 +374,22 @@ async function handleAdminLoginModal(e) {
 // Student Signup
 async function handleStudentSignupModal(e) {
     e.preventDefault();
+    const form = e.target;
     
-    const name = document.getElementById('student-signup-name')?.value?.trim();
-    const phone = document.getElementById('student-signup-phone')?.value?.trim();
-    const password = document.getElementById('student-signup-password')?.value?.trim();
-    const classLevel = document.getElementById('student-signup-class')?.value;
-    const errorDiv = document.getElementById('studentSignupError');
-    const successDiv = document.getElementById('studentSignupSuccess');
-    const btn = document.getElementById('studentSignupBtn');
+    const name = form.querySelector('#student-signup-name')?.value?.trim();
+    const phone = form.querySelector('#student-signup-phone')?.value?.trim();
+    const password = form.querySelector('#student-signup-password')?.value?.trim();
+    const classLevel = form.querySelector('#student-signup-class')?.value;
+    const errorDiv = form.querySelector('#studentSignupError');
+    const successDiv = form.querySelector('#studentSignupSuccess');
+    const btn = form.querySelector('#studentSignupBtn');
+    
+    console.log('🔹 Student Signup attempt:', { name, phone });
     
     clearMessages(errorDiv, successDiv);
     
     if (!name || !phone || !password || !classLevel) {
+        console.warn('⚠️ Student Signup missing fields:', { name, phone, password: password?'***':'empty', classLevel });
         showError(errorDiv, 'All fields are required');
         return;
     }
@@ -403,19 +427,29 @@ async function handleStudentSignupModal(e) {
 // Teacher Signup
 async function handleTeacherSignupModal(e) {
     e.preventDefault();
+    const form = e.target;
     
-    const name = document.getElementById('teacher-signup-name')?.value?.trim();
-    const email = document.getElementById('teacher-signup-email')?.value?.trim();
-    const phone = document.getElementById('teacher-signup-phone')?.value?.trim();
-    const password = document.getElementById('teacher-signup-password')?.value?.trim();
-    const confirmPassword = document.getElementById('teacher-signup-confirm')?.value?.trim();
-    const errorDiv = document.getElementById('teacherSignupError');
-    const successDiv = document.getElementById('teacherSignupSuccess');
-    const btn = document.getElementById('teacherSignupBtn');
+    const name = form.querySelector('#teacher-signup-name')?.value?.trim();
+    const email = form.querySelector('#teacher-signup-email')?.value?.trim();
+    const phone = form.querySelector('#teacher-signup-phone')?.value?.trim();
+    const password = form.querySelector('#teacher-signup-password')?.value?.trim();
+    const confirmPassword = form.querySelector('#teacher-signup-confirm')?.value?.trim();
+    const errorDiv = form.querySelector('#teacherSignupError');
+    const successDiv = form.querySelector('#teacherSignupSuccess');
+    const btn = form.querySelector('#teacherSignupBtn');
+    
+    console.log('🔹 Teacher Signup attempt:', { name, email, phone });
     
     clearMessages(errorDiv, successDiv);
     
     if (!name || !email || !phone || !password || !confirmPassword) {
+        console.warn('⚠️ Teacher Signup missing fields:', { 
+            name: name || 'MISSING', 
+            email: email || 'MISSING', 
+            phone: phone || 'MISSING', 
+            password: password ? 'OK' : 'MISSING', 
+            confirmPassword: confirmPassword ? 'OK' : 'MISSING' 
+        });
         showError(errorDiv, 'All fields are required');
         return;
     }
@@ -433,7 +467,8 @@ async function handleTeacherSignupModal(e) {
             name,
             email,
             phone,
-            password
+            password,
+            confirmPassword
         });
         
         if (response.success) {
