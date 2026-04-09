@@ -903,7 +903,7 @@ footer .container {
 
 /* Animated Title with Letter Animation */
 .hero-title-animated {
-    font-size: clamp(2.5rem, 8vw, 5rem);
+    font-size: clamp(1.6rem, 4.5vw, 2.8rem);
     font-weight: 700;
     letter-spacing: -2px;
     margin-bottom: 1rem;
@@ -1148,7 +1148,7 @@ footer .container {
     }
 
     .hero-title-animated {
-        font-size: 2.2rem;
+        font-size: 1.5rem;
         margin-bottom: 0.8rem;
     }
 

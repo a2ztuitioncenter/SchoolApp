@@ -1,5 +1,5 @@
 import pkg from 'pg';
-import dotenv from 'dotenv';
+
 import { userModel } from '../features/auth/User.js';
 import { studentModel } from '../features/student/Student.js';
 import { feeModel } from '../features/fees/Fee.js';

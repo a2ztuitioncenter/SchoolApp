@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
-import dotenv from 'dotenv';
+
 import pkg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
