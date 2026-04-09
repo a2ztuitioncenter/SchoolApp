@@ -36,8 +36,8 @@ const uploadMaterial  = multer({ storage: makeStorage('materials'), fileFilter, 
 // AUTH GUARD HELPER
 // ============================================
 async function requireTeacher(pool, teacherId) {
-  if (!teacherId) return null;
-  const teacher = await getUserById(pool, teacherId);
+  if (!teacherId || teacherId === 'null' || isNaN(parseInt(teacherId))) return null;
+  const teacher = await getUserById(pool, parseInt(teacherId));
   return (teacher && teacher.role === 'teacher') ? teacher : null;
 }
 
@@ -48,15 +48,27 @@ router.get('/dashboard/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
     const pool = req.db;
+    const parsedTeacherId = parseInt(teacherId);
 
-    const teacher = await requireTeacher(pool, teacherId);
-    if (!teacher) return res.status(403).json({ error: 'Unauthorized: Not a teacher' });
+    console.log(`📊 Teacher Dashboard Request: teacherId=${teacherId} (parsed as ${parsedTeacherId})`);
+
+    const teacher = await requireTeacher(pool, parsedTeacherId);
+    if (!teacher) {
+      console.warn(`⚠️ Unauthorized: TeacherId ${parsedTeacherId} is not a valid teacher`);
+      return res.status(403).json({ error: 'Unauthorized: Not a teacher' });
+    }
+
+    console.log(`✅ Teacher verified: ${teacher.phone} (ID: ${teacher.id})`);
 
     // 1. Get Timetable (primary source of classes)
     const ttRes = await pool.query(
       'SELECT * FROM timetable WHERE "teacherId" = $1 ORDER BY "dayOfWeek", "startTime"',
-      [teacherId]
+      [parsedTeacherId]
     );
+    console.log(`📅 Timetable entries found: ${ttRes.rows.length}`);
+    if (ttRes.rows.length > 0) {
+      console.log(`   Sample: ${JSON.stringify(ttRes.rows[0])}`);
+    }
 
     // 2. Identify distinct classes this teacher covers
     const classes = [...new Set(ttRes.rows.map(r => r.classLevel))];
@@ -65,10 +77,12 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     const [hwRes, studRes] = await Promise.all([
       pool.query(
         'SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC',
-        [teacherId]
+        [parsedTeacherId]
       ),
       pool.query(`SELECT COUNT(id) AS "totalStudents" FROM students`)
     ]);
+
+    console.log(`📝 Homework entries: ${hwRes.rows.length}, Total Students: ${studRes.rows[0].totalStudents}`);
 
     res.json({
       success: true,
@@ -83,8 +97,8 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       timetable: ttRes.rows,
     });
   } catch (err) {
-    console.error('Teacher dashboard error:', err);
-    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    console.error('❌ Teacher dashboard error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch dashboard data', detail: err.message });
   }
 });
 
@@ -322,7 +336,7 @@ router.get('/materials', async (req, res) => {
 // POST /api/teacher/materials  (multipart)
 router.post('/materials', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
-    const { teacherId, title, description, classLevel, subject } = req.body;
+    const { teacherId, title, description, classLevel, section, subject } = req.body;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
@@ -331,9 +345,9 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 
     const fileUrl = `/uploads/materials/${req.file.filename}`;
     const result = await pool.query(
-      `INSERT INTO materials (title, description, "classLevel", subject, "fileUrl", "uploadedBy")
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description || null, classLevel, subject, fileUrl, teacher.phone]
+      `INSERT INTO materials (title, description, "classLevel", section, subject, "fileUrl", "uploadedBy")
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.phone]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -345,7 +359,7 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { teacherId, title, description, classLevel, subject } = req.body;
+    const { teacherId, title, description, classLevel, section, subject } = req.body;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
@@ -358,8 +372,8 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
     if (req.file) fileUrl = `/uploads/materials/${req.file.filename}`;
 
     const result = await pool.query(
-      `UPDATE materials SET title=$1, description=$2, "classLevel"=$3, subject=$4, "fileUrl"=$5 WHERE id=$6 RETURNING *`,
-      [title, description || null, classLevel, subject, fileUrl, id]
+      `UPDATE materials SET title=$1, description=$2, "classLevel"=$3, section=$4, subject=$5, "fileUrl"=$6 WHERE id=$7 RETURNING *`,
+      [title, description || null, classLevel, section || null, subject, fileUrl, id]
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {

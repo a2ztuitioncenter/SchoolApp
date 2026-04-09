@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'staff', 'admin')) NOT NULL,
     "isActive" BOOLEAN DEFAULT TRUE,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'rejected')),
+    "approvedBy" INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    "rejectionReason" TEXT,
+    "statusUpdatedAt" TIMESTAMP,
     "schoolId" VARCHAR(50) DEFAULT 'school-001',
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

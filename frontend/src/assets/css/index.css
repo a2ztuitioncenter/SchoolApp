@@ -137,65 +137,441 @@ header {
 
 .hero .container {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-    gap: 40px;
 }
 
-.hero-text {
-    flex: 1;
-    max-width: 500px;
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-width: 600px;
 }
 
-.hero-text h1 {
+/* Animation keyframes for welcome heading - fade in with upward movement */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animation keyframes for typing effect with blinking cursor */
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blink {
+    50% { border-right-color: transparent; }
+}
+
+.hero-content h1 {
     font-size: 2.8rem;
+    margin-top: 40px;
     margin-bottom: 20px;
     font-weight: 600;
     color: var(--text-main);
+    /* Smooth fade-in animation with upward movement on page load */
+    animation: fadeInUp 0.8s ease-out;
 }
 
-.hero-text p {
-    font-size: 1.1rem;
-    margin-bottom: 30px;
-    color: var(--text-muted);
-}
-
-.btn-learn-more {
-    display: inline-block;
+.btn-get-started {
     background-color: var(--accent-blue);
     color: #ffffff;
-    padding: 12px 30px;
-    border-radius: var(--radius-sm);
+    padding: 14px 40px;
+    border-radius: 8px;
     font-weight: 600;
-    transition: background 0.3s ease;
-    cursor: pointer;
+    font-size: 1rem;
     border: none;
+    cursor: pointer;
+    transition: all var(--transition);
+    box-shadow: 0 2px 8px rgba(0, 82, 204, 0.1);
+    /* Prevent text from spilling during animation */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: auto;
 }
 
-.btn-learn-more:hover {
+.btn-get-started:hover {
     background-color: #0043a8;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0, 82, 204, 0.15);
+}
+
+.btn-get-started:active {
+    transform: translateY(-1px);
+}
+
+/* Continuous glow animation for Get Started button */
+.btn-get-started-animating {
+    animation: buttonGlow 2s ease-in-out infinite;
+}
+
+@keyframes buttonGlow {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0, 82, 204, 0.1);
+    }
+    50% {
+        box-shadow: 0 4px 16px rgba(0, 82, 204, 0.25);
+    }
+}
+
+.hero-content p {
+    font-size: 1.1rem;
+    margin-bottom: 40px;
+    color: var(--text-muted);
+    max-width: 500px;
+    min-height: 1.5em; /* Prevent layout shift during typing */
+}
+
+/* Isolated container for hero title animation */
+#hero-title {
+    position: relative;
+    display: inline-block;
+    min-height: 1.1em; /* Prevent layout shift */
+    min-width: 100%; /* Contain within parent */
+}
+
+/* Blinking cursor for title */
+#hero-title::after {
+    content: '|';
+    animation: cursorBlink 1s infinite;
+    margin-left: 2px;
+    color: var(--accent-blue);
+    font-weight: bold;
+}
+
+@keyframes cursorBlink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
 }
 
 .hero-image {
-    flex: 1;
-    text-align: right;
+    display: flex;
+    justify-content: center;
+    width: 70vw;
+    max-width: 600px;
+    height: auto;
+    margin-bottom: 20px;
 }
 
 .hero-image img {
-    max-width: 100%;
+    width: 100%;
     height: auto;
-    border-radius: var(--radius-sm);
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+/* Login Modal */
+.login-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.login-modal--hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.login-modal--visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.login-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.login-modal--hidden .login-modal-overlay {
+    backdrop-filter: blur(0px);
+}
+
+.login-modal-content {
+    position: relative;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 900px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    animation: popupSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.login-modal--hidden .login-modal-content {
+    animation: popupSlideDown 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes popupSlideUp {
+    from {
+        transform: translateY(30px) scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes popupSlideDown {
+    from {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(30px) scale(0.92);
+        opacity: 0;
+    }
+}
+
+.login-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 28px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.3s ease;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-modal-close:hover {
+    color: var(--text-main);
+}
+
+/* Modal Sections */
+.modal-section {
+    margin-bottom: 20px;
+}
+
+.modal-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.modal-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-subtle), transparent);
+    margin: 25px 0;
+}
+
+/* Signup Modal (Header) */
+.signup-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.signup-modal--hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.signup-modal--visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.signup-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.signup-modal--hidden .signup-modal-overlay {
+    backdrop-filter: blur(0px);
+}
+
+.signup-modal-content {
+    position: relative;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    animation: popupSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.signup-modal--hidden .signup-modal-content {
+    animation: popupSlideDown 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.signup-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 28px;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.3s ease;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.signup-modal-close:hover {
+    color: var(--text-main);
+}
+
+.signup-modal-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.signup-modal-header h2 {
+    font-size: 1.8rem;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.signup-modal-header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.signup-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.signup-option-card {
+    background: linear-gradient(135deg, rgba(0, 82, 204, 0.05), transparent);
+    border: 2px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.signup-option-card:hover {
+    border-color: var(--accent-blue);
+    box-shadow: 0 8px 20px rgba(0, 82, 204, 0.15);
+    transform: translateY(-3px);
+}
+
+.signup-option-icon {
+    font-size: 2.5rem;
+    color: var(--accent-blue);
+    margin-bottom: 15px;
+}
+
+.signup-option-card h3 {
+    font-size: 1.2rem;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.signup-option-card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+.signup-option-cta {
+    background-color: var(--accent-blue);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.signup-option-card:hover .signup-option-cta {
+    background-color: #0043a8;
+}
+
+.signup-modal-footer {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.signup-modal-footer a {
+    color: var(--accent-blue);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.signup-modal-footer a:hover {
+    text-decoration: underline;
 }
 
 /* Login Grid */
 .login-grid {
-    padding-top: 0px;
-    padding-bottom: 80px;
-    margin-top: -60px;
-    background-color: var(--bg-primary);
-}
-
-.login-grid .container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 30px;
@@ -214,6 +590,7 @@ header {
 
 .login-card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
 }
 
 .login-card-icon {
@@ -239,6 +616,48 @@ header {
 .login-card p {
     color: var(--text-muted);
     font-size: 0.95rem;
+}
+
+/* Signup Card Styling */
+.signup-card {
+    background-color: var(--bg-secondary);
+    padding: 40px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--accent-blue);
+    background: linear-gradient(135deg, rgba(0, 82, 204, 0.05), transparent);
+    text-align: left;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.signup-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 82, 204, 0.15);
+    border-color: #0043a8;
+}
+
+.signup-card h3 {
+    font-size: 1.4rem;
+    color: var(--text-main);
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.signup-card h3 i {
+    color: var(--accent-blue);
+    font-size: 1rem;
+}
+
+.signup-description {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0;
 }
 
 .login-card-row {
@@ -391,20 +810,70 @@ footer .container {
 
 /* Basic Responsiveness */
 @media (max-width: 768px) {
-    .hero .container { flex-direction: column; text-align: center; }
-    .hero-text { max-width: 100%; }
-    .hero-image { text-align: center; }
+    .hero-content h1 { font-size: 2.2rem; }
+    .hero-content p { font-size: 1rem; }
     .about-text { columns: 1; text-align: left; }
     .about-columns .container { grid-template-columns: 1fr; }
     footer .container { grid-template-columns: 1fr; }
     .footer-links { grid-template-columns: repeat(2, 1fr); }
+    
+    .login-modal-content {
+        width: 95%;
+        max-width: 500px;
+        padding: 30px 20px;
+    }
+    
+    .login-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .modal-divider {
+        margin: 20px 0;
+    }
+    
+    .signup-modal-content {
+        width: 95%;
+        max-width: 500px;
+        padding: 30px 20px;
+    }
+    
+    .signup-options {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .signup-modal-header h2 {
+        font-size: 1.5rem;
+    }
 }
 
 @media (max-width: 480px) {
     .header-top nav ul { gap: 10px; font-size: 0.8rem; }
-    .hero-text h1 { font-size: 2rem; }
-    .hero-text p { font-size: 1rem; }
-    .btn-learn-more { padding: 10px 20px; }
-    .login-grid { margin-top: -40px; }
+    .hero-content h1 { font-size: 1.8rem; margin-top: 30px; }
+    .hero-content p { font-size: 0.95rem; margin-bottom: 30px; }
+    .btn-get-started { padding: 12px 30px; font-size: 0.95rem; width: 100%; max-width: 300px; }
     .footer-links { grid-template-columns: 1fr; }
+    
+    .signup-modal-content {
+        width: 95%;
+        padding: 25px 15px;
+    }
+    
+    .signup-option-card {
+        padding: 20px 15px;
+    }
+    
+    .signup-option-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    
+    .signup-option-card h3 {
+        font-size: 1rem;
+    }
+    
+    .signup-option-card p {
+        font-size: 0.85rem;
+    }
 }

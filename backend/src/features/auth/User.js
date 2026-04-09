@@ -33,9 +33,9 @@ export const createUser = async (pool, { name, phone, email, password, role, sch
   const hashedPassword = await bcrypt.hash(password, 10);
   
   const result = await pool.query(
-    `INSERT INTO users (name, phone, email, password, role, "schoolId")
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, phone, email, role, "isActive", "createdAt"`,
-    [name || null, phone, email || null, hashedPassword, role, schoolId]
+    `INSERT INTO users (name, phone, email, password, role, status, "schoolId")
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, phone, email, role, status, "isActive", "createdAt"`,
+    [name || null, phone, email || null, hashedPassword, role, 'pending', schoolId]
   );
   return result.rows[0];
 };
@@ -58,6 +58,49 @@ export const toggleUserStatus = async (pool, id, isActive) => {
   const result = await pool.query(
     'UPDATE users SET "isActive" = $2 WHERE id = $1 RETURNING *',
     [id, isActive]
+  );
+  return result.rows[0] || null;
+};
+
+/**
+ * Get user by phone and check if approved (status = 'active')
+ * Used for login verification
+ */
+export const getApprovedUser = async (pool, phone) => {
+  const result = await pool.query(
+    'SELECT * FROM users WHERE phone = $1 AND status = $2',
+    [phone, 'active']
+  );
+  return result.rows[0] || null;
+};
+
+/**
+ * Get all users with a specific status
+ * Used by admin to view pending/active/rejected users
+ */
+export const getUsersByStatus = async (pool, status, schoolId = 'school-001') => {
+  const result = await pool.query(
+    `SELECT u.id, u.name, u.phone, u.email, u.role, u.status, u."createdAt", u."approvedBy", u."rejectionReason", u."statusUpdatedAt",
+            s."classLevel", s.section
+     FROM users u
+     LEFT JOIN students s ON u.id = s."userId"
+     WHERE u.status = $1 AND u."schoolId" = $2 
+     ORDER BY u."createdAt" DESC`,
+    [status, schoolId]
+  );
+  return result.rows;
+};
+
+/**
+ * Update user approval status
+ * Called by admin to approve/reject users
+ */
+export const updateUserStatus = async (pool, userId, newStatus, approvedByAdminId = null, rejectionReason = null) => {
+  const result = await pool.query(
+    `UPDATE users 
+     SET status = $2, "approvedBy" = $3, "rejectionReason" = $4, "statusUpdatedAt" = NOW()
+     WHERE id = $1 RETURNING id, name, phone, email, role, status, "createdAt", "approvedBy", "statusUpdatedAt"`,
+    [userId, newStatus, approvedByAdminId, rejectionReason]
   );
   return result.rows[0] || null;
 };

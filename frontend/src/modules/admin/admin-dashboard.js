@@ -4,6 +4,23 @@
  */
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+import './admin-pending-approvals.js';
+
+// ═══════════════════════════════════════════
+// ROUTE PROTECTION - Must be first
+// ═══════════════════════════════════════════
+if (!requireRole('admin')) {
+  throw new Error('Unauthorized: Admin role required');
+}
+
+// Global logout handler
+window.handleLogout = function() {
+  // Admin logging out
+  authLogout();
+};
+
+syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
 
 
 let currentTab = 'dashboard';
@@ -15,17 +32,16 @@ let currentEditHwId = null;
 // INIT
 // =============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    const adminId = sessionStorage.getItem('adminUserId');
-    const adminRole = sessionStorage.getItem('adminRole');
+    const adminId = getUserId();
+    const adminRole = 'admin';
+    const adminPhone = sessionStorage.getItem('adminPhone');
 
-    if (!adminId || adminRole !== 'admin') {
-        window.location.href = '/admin-login.html';
+    if (!adminId) {
+        console.error('❌ No admin ID found');
+        window.location.href = '/';
         return;
     }
 
-    const adminPhone = sessionStorage.getItem('adminPhone');
-    
-    // Set up GitHub-style profile menu
     const nameStr = `Admin`;
     const nameEls = document.querySelectorAll('#admin-name, #dropdown-admin-name');
     nameEls.forEach(el => el.textContent = nameStr);
@@ -50,10 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const dropLogoutBtn = document.getElementById('dropdown-logout-btn');
     if (dropLogoutBtn) {
-        dropLogoutBtn.addEventListener('click', () => {
-            sessionStorage.clear();
-            window.location.href = '/admin-login.html';
-        });
+        dropLogoutBtn.addEventListener('click', window.handleLogout);
     }
 
     // Check backend health before loading dashboard
@@ -219,16 +232,17 @@ function showTab(tabName) {
 
 async function loadTabContent(tabName) {
     switch (tabName) {
-        case 'dashboard':     await loadDashboardData(); break;
-        case 'users':         await loadUsers(); break;
-        case 'students':      await loadStudents(); break;
-        case 'attendance':    await initAttendanceTab(); break;
-        case 'homework':      await loadAllHomework(); break;
-        case 'fees':          await initFeesTab(); break;
-        case 'materials':     await loadMaterials(); break;
-        case 'timetable':     await loadTimetable(); break;
-        case 'notifications': await loadNotifications(); break;
-        case 'results':       await loadResults(); break;
+        case 'dashboard':          await loadDashboardData(); break;
+        case 'pending-approvals':  await initPendingApprovalsTab(); break;
+        case 'users':              await loadUsers(); break;
+        case 'students':           await loadStudents(); break;
+        case 'attendance':         await initAttendanceTab(); break;
+        case 'homework':           await loadAllHomework(); break;
+        case 'fees':               await initFeesTab(); break;
+        case 'materials':          await loadMaterials(); break;
+        case 'timetable':          await loadTimetable(); break;
+        case 'notifications':      await loadNotifications(); break;
+        case 'results':            await loadResults(); break;
     }
 }
 
@@ -243,6 +257,7 @@ let dashboardData = {
     students: [],
     unpaidFees: [],
     financialSummary: {},
+    attendanceStats: {},
     timetable: [],
     trends: [],
     latestStudents: [],
@@ -250,26 +265,32 @@ let dashboardData = {
     latestHomework: []
 };
 
+let dashboardRefreshInterval = null;
+
 async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
         
-        // Load all data in parallel (including new trend data)
-        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes] = await Promise.all([
+        // Load all data in parallel (including new trend data and attendance stats)
+        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
             adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
             adminAPI.getFinancialSummary ? adminAPI.getFinancialSummary().catch(() => ({})) : Promise.resolve({}),
             adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] }),
             // New: Fetch 30-day trend data
-            fetchTrendData().catch(() => ({ trends: [], summary: {} }))
+            fetchTrendData().catch(() => ({ trends: [], summary: {} })),
+            // New: Fetch attendance statistics for this month
+            adminAPI.getAttendanceStats().catch(() => ({}))
         ]);
 
         // Store data
         dashboardData.students = studentsRes.students || [];
         dashboardData.unpaidFees = unpaidFeesRes.fees || [];
-        dashboardData.financialSummary = financialRes || {};
+        // Extract report from nested structure if it exists
+        dashboardData.financialSummary = (financialRes && financialRes.report) ? financialRes.report : (financialRes || {});
         dashboardData.timetable = timetableRes.timetable || [];
         dashboardData.trends = trendsRes.trends || [];
+        dashboardData.attendanceStats = attendanceRes || {};
 
         // Fetch additional data for activity panel (non-critical, can fail silently)
         const [latestStudents, latestPayments, latestHomework] = await Promise.all([
@@ -304,6 +325,14 @@ async function loadDashboardData() {
         renderTodayTimetable();
 
         hideInfoAlert();
+
+        // Setup auto-refresh: refresh dashboard every 30 seconds when dashboard tab is active
+        if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
+        dashboardRefreshInterval = setInterval(() => {
+            if (currentTab === 'dashboard') {
+                loadDashboardData();
+            }
+        }, 30000); // Refresh every 30 seconds
 
     } catch (err) {
         hideInfoAlert();
@@ -393,9 +422,20 @@ function renderQuickStatsKPI() {
         const inactiveStudents = totalStudents - activeStudents;
 
         const financials = dashboardData.financialSummary;
+        // Financial data processed
+        
+        // Data is already in rupees (not paise), use as-is
         const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
         const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
         const totalFees = totalCollected + totalPending;
+
+        // Amounts calculated
+            totalPaid_raw: financials.totalPaid,
+            totalPending_raw: financials.totalPending,
+            totalCollected,
+            totalPending,
+            totalFees
+        });
 
         // Calculate overdue fees
         const today = new Date();
@@ -405,7 +445,7 @@ function renderQuickStatsKPI() {
             dueDate.setHours(0, 0, 0, 0);
             if (dueDate < today) {
                 acc.count += 1;
-                acc.amount += parseFloat(f.amount) || 0;
+                acc.amount += parseFloat(f.amount) || 0; // Already in rupees
             }
             return acc;
         }, { count: 0, amount: 0 });
@@ -417,10 +457,16 @@ function renderQuickStatsKPI() {
         // Calculate active student percentage
         const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
 
-        // Calculate attendance rate (mock - 85% average for now as we'd need more data)
-        const attendanceRate = 85;
+        // Get real attendance rate from dashboardData instead of hardcoded 85%
+        const attendanceStats = dashboardData.attendanceStats || {};
+        const attendanceRate = attendanceStats.attendancePercent ? parseFloat(attendanceStats.attendancePercent).toFixed(1) : 0;
 
-        // Update KPI cards
+        // Helper function to format currency with proper spacing
+        const formatCurrency = (amount) => {
+            return `₹${parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        };
+
+        // Update KPI cards with actual rupee amounts (not in "L" format)
         if (el('kpi-total-students')) {
             el('kpi-total-students').textContent = totalStudents;
             el('kpi-total-students-detail').textContent = `${activeStudents} active, ${inactiveStudents} inactive`;
@@ -432,17 +478,17 @@ function renderQuickStatsKPI() {
         }
 
         if (el('kpi-fees-collected')) {
-            el('kpi-fees-collected').textContent = `₹${(totalCollected / 100000).toFixed(1)}L`;
+            el('kpi-fees-collected').textContent = formatCurrency(totalCollected);
             el('kpi-collection-percentage').textContent = `${collectionPercentage}% collected`;
         }
 
         if (el('kpi-fees-pending')) {
-            el('kpi-fees-pending').textContent = `₹${(totalPending / 100000).toFixed(1)}L`;
+            el('kpi-fees-pending').textContent = formatCurrency(totalPending);
             el('kpi-pending-percentage').textContent = `${pendingPercentage}% pending`;
         }
 
         if (el('kpi-fees-overdue')) {
-            el('kpi-fees-overdue').textContent = `₹${(overdueData.amount / 100000).toFixed(1)}L`;
+            el('kpi-fees-overdue').textContent = formatCurrency(overdueData.amount);
             el('kpi-overdue-count').textContent = `${overdueData.count} students overdue`;
         }
 
@@ -450,6 +496,16 @@ function renderQuickStatsKPI() {
             el('kpi-attendance-rate').textContent = `${attendanceRate}%`;
             el('kpi-attendance-detail').textContent = 'This month (avg.)';
         }
+
+        // Quick Stats rendered
+            totalStudents,
+            activeStudents,
+            totalCollected: `₹${totalCollected.toFixed(2)}`,
+            totalPending: `₹${totalPending.toFixed(2)}`,
+            attendanceRate,
+            overdueAmount: `₹${overdueData.amount.toFixed(2)}`,
+            overdueCount: overdueData.count
+        });
 
     } catch (err) {
         console.error('Error rendering quick stats KPI:', err);
@@ -1592,6 +1648,31 @@ async function initAttendanceTab() {
     }
 }
 
+/**
+ * Initialize Pending Approvals tab by fetching pending users
+ */
+async function initPendingApprovalsTab() {
+    try {
+        // Call the fetchPendingUsers function from admin-pending-approvals.js
+        if (typeof window.fetchPendingUsers === 'function') {
+            window.fetchPendingUsers();
+        } else {
+            // If the function isn't available yet, try again after a short delay
+            console.warn('fetchPendingUsers not yet available, retrying...');
+            setTimeout(() => {
+                if (typeof window.fetchPendingUsers === 'function') {
+                    window.fetchPendingUsers();
+                } else {
+                    showErrorAlert('Failed to load pending approvals module');
+                }
+            }, 100);
+        }
+    } catch (err) {
+        console.error('Error initializing pending approvals:', err);
+        showErrorAlert('Failed to load pending approvals');
+    }
+}
+
 window.loadAttendanceSheet = async function () {
     const classLevel = document.getElementById('att-class-select').value;
     const date = document.getElementById('att-date').value;
@@ -2528,10 +2609,7 @@ function setupForms() {
         }
     });
 
-    document.getElementById('logout-btn')?.addEventListener('click', () => {
-        sessionStorage.clear();
-        window.location.href = '/admin-login.html';
-    });
+    document.getElementById('logout-btn')?.addEventListener('click', window.handleLogout);
 }
 
 // =============================================
@@ -2795,7 +2873,7 @@ function formatTime(t) {
 // Select a day and render its timetable
 window.selectTimetableDay = function(day) {
     selectedTimetableDay = day;
-    console.log('[TIMETABLE] Selected day:', day);
+    // Day selected
     
     // Update active tab
     document.querySelectorAll('.day-tab').forEach(tab => {
@@ -2831,8 +2909,7 @@ function renderTimetableByClass(items) {
     }
 
     // Debug: Log data
-    console.log('[TIMETABLE] Rendering by class for:', selectedTimetableDay);
-    console.log('[TIMETABLE] All data:', items);
+    // Rendering timetable
 
     // Filter entries by selected day
     const filteredEntries = items.filter(entry => {
@@ -2842,7 +2919,7 @@ function renderTimetableByClass(items) {
         return normalizedDay === selectedTimetableDay;
     });
 
-    console.log('[TIMETABLE] Filtered entries for', selectedTimetableDay, ':', filteredEntries);
+    // Entries filtered
 
     if (filteredEntries.length === 0) {
         container.innerHTML = `<div class="timetable-no-classes"><i class="fas fa-calendar-day"></i><p>No classes scheduled for ${selectedTimetableDay}</p></div>`;

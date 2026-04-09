@@ -88,6 +88,35 @@ export const attendanceModel = {
     return result.rows;
   },
 
+  // Get overall attendance rate for the current month across all students
+  async getMonthlyOverallAttendance(month = null) {
+    const targetMonth = month || new Date().toISOString().slice(0, 7); // YYYY-MM format
+    
+    const result = await db.query(
+      `SELECT
+         COUNT(DISTINCT a."studentId") AS "totalStudents",
+         COUNT(a.id) AS "totalRecords",
+         COUNT(CASE WHEN a.status='present' THEN 1 END) AS "presentCount",
+         COUNT(CASE WHEN a.status='absent' THEN 1 END) AS "absentCount",
+         COUNT(CASE WHEN a.status='late' THEN 1 END) AS "lateCount",
+         ROUND(COUNT(CASE WHEN a.status='present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS "attendancePercent"
+       FROM attendance a
+       WHERE TO_CHAR(a.date, 'YYYY-MM') = $1`,
+      [targetMonth]
+    );
+    
+    const stats = result.rows[0] || { 
+      totalStudents: 0, 
+      totalRecords: 0, 
+      presentCount: 0, 
+      absentCount: 0, 
+      lateCount: 0, 
+      attendancePercent: 0 
+    };
+    
+    return stats;
+  },
+
   async getAllClasses() {
     const result = await db.query(
       `SELECT DISTINCT "classLevel" FROM students ORDER BY "classLevel"`

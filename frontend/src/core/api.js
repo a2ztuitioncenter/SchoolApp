@@ -9,6 +9,21 @@ const API_BASE_URL = '/api';
 let isBackendHealthy = false;
 
 /**
+ * Get auth token from centralized auth manager
+ */
+export const getAuthToken = () => {
+  try {
+    const authStr = localStorage.getItem('auth');
+    if (!authStr) return null;
+    const auth = JSON.parse(authStr);
+    return auth?.token || null;
+  } catch (error) {
+    console.error('❌ Error reading auth token from localStorage:', error);
+    return null;
+  }
+};
+
+/**
  * Check if backend is available
  */
 export const checkBackendHealth = async () => {
@@ -44,13 +59,17 @@ export const waitForBackend = async (maxAttempts = 3, delayMs = 1000) => {
   return false;
 };
 
-// Store auth token in sessionStorage
+// Store auth token in localStorage (now managed by auth-manager)
 export const setAuthToken = (token) => {
-  sessionStorage.setItem('authToken', token);
-};
-
-export const getAuthToken = () => {
-  return sessionStorage.getItem('authToken');
+  // This is now handled by auth-manager.setAuth()
+  // Keeping for backward compatibility
+  try {
+    const auth = JSON.parse(localStorage.getItem('auth') || '{}');
+    auth.token = token;
+    localStorage.setItem('auth', JSON.stringify(auth));
+  } catch (error) {
+    console.error('Error storing auth token:', error);
+  }
 };
 
 export const clearAuthToken = () => {
@@ -59,6 +78,7 @@ export const clearAuthToken = () => {
 
 /**
  * Generic fetch wrapper with error handling and token injection
+ * Automatically includes JWT token from auth-manager
  */
 const apiCall = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -71,6 +91,7 @@ const apiCall = async (endpoint, options = {}) => {
   // Disable gzip to avoid decoding issues
   headers['Accept-Encoding'] = 'identity';
 
+  // Add JWT token from centralized auth manager
   const token = getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -81,6 +102,45 @@ const apiCall = async (endpoint, options = {}) => {
       ...options,
       headers,
     });
+
+    // Handle 401 Unauthorized
+    if (response.status === 401) {
+      const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/teacher-login') || url.includes('/auth/admin-login') || url.includes('/auth/register');
+      
+      if (!isAuthRequest) {
+        console.warn('⚠️ Unauthorized: Token expired or invalid. Redirecting to login...');
+        try {
+          const { clearAuth } = await import('./auth-manager.js');
+          clearAuth();
+        } catch (error) {
+          console.error('❌ Error during 401 cleanup:', error);
+          localStorage.removeItem('auth');
+          sessionStorage.clear();
+        }
+        
+        if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+          window.location.href = '/';
+        }
+        return { error: 'Session expired. Please login again.' };
+      }
+      
+      // For login requests, let the specific handler show the "Invalid credentials" error
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || 'Invalid credentials' };
+    }
+
+    // Handle 403 Forbidden (insufficient permissions)
+    if (response.status === 403) {
+      console.warn('⚠️ Forbidden: Insufficient permissions');
+      return { error: 'You do not have permission to access this resource.' };
+    }
+
+    // Handle 429 Rate Limit
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('X-RateLimit-Remaining') || 60;
+      console.warn(`⚠️ Rate limited: Please try again in ${retryAfter} seconds`);
+      return { error: `Too many requests. Please try again in ${retryAfter} seconds.` };
+    }
 
     // Handle binary or JSON responses
     if (options.responseType === 'blob') {
@@ -160,7 +220,7 @@ const feesAPI = {
  */
 const materialsAPI = {
   getAll: () => apiCall('/admin/materials', { method: 'GET' }),
-  getByClass: (classLevel) => apiCall(`/admin/materials/class/${classLevel}`, { method: 'GET' }),
+  getByClass: (classLevel) => apiCall(`/materials/class/${classLevel}`, { method: 'GET' }),
   create: (formData) => apiCall('/admin/materials', { method: 'POST', body: formData }),
   update: (id, formData) => apiCall(`/admin/materials/${id}`, { method: 'PUT', body: formData }),
   delete: (id) => apiCall(`/admin/materials/${id}`, { method: 'DELETE' }),
@@ -185,6 +245,7 @@ const resultsAPI = {
  */
 export const authAPI = {
   register: (userData) => apiCall('/auth/register', { method: 'POST', body: JSON.stringify(userData) }),
+  teacherRegister: (userData) => apiCall('/auth/teacher-register', { method: 'POST', body: JSON.stringify(userData) }),
   login: (phone, password, role = 'student') => apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password, role }) }),
   adminLogin: (phone, password) => apiCall('/auth/admin-login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
   teacherLogin: (phone, password) => apiCall('/auth/teacher-login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
@@ -217,9 +278,15 @@ export const adminAPI = {
   toggleStudentStatus: (id, status) => apiCall(`/admin/students/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getUnpaidFees: () => apiCall('/admin/financials/unpaid-fees', { method: 'GET' }),
   getFinancialSummary: () => apiCall('/admin/financials/report', { method: 'GET' }),
+  getAttendanceStats: (month) => apiCall(`/admin/attendance/overall-monthly${month ? `?month=${month}` : ''}`, { method: 'GET' }),
   getTimetable: () => apiCall('/admin/timetable', { method: 'GET' }),
   addTimetable: (data) => apiCall('/admin/timetable', { method: 'POST', body: JSON.stringify(data) }),
   deleteTimetable: (id) => apiCall(`/admin/timetable/${id}`, { method: 'DELETE' }),
+  // User Approval System
+  getPendingUsers: () => apiCall('/auth/admin/pending-users', { method: 'GET' }),
+  approveUser: (userId) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST' }),
+  rejectUser: (userId, reason) => apiCall(`/auth/admin/reject-user/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getTrendData: () => apiCall('/admin/financials/trends', { method: 'GET' }),
 };
 
 /**

@@ -27,7 +27,7 @@ export const getClassMaterials = async (req, res) => {
 
 export const createMaterial = async (req, res) => {
   try {
-    const { title, description, classLevel, subject, uploadedBy } = req.body;
+    const { title, description, classLevel, section, subject, uploadedBy } = req.body;
     const fileUrl = req.file ? `/uploads/materials/${req.file.filename}` : null;
 
     if (!title || !classLevel || !subject || !fileUrl) {
@@ -35,9 +35,9 @@ export const createMaterial = async (req, res) => {
     }
 
     const result = await req.db.query(
-      `INSERT INTO materials (title, description, "classLevel", subject, "fileUrl", "uploadedBy")
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description, classLevel, subject, fileUrl, uploadedBy || null]
+      `INSERT INTO materials (title, description, "classLevel", section, subject, "fileUrl", "uploadedBy")
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [title, description, classLevel, section || null, subject, fileUrl, uploadedBy || null]
     );
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
@@ -49,7 +49,7 @@ export const createMaterial = async (req, res) => {
 export const updateMaterial = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, classLevel, subject } = req.body;
+        const { title, description, classLevel, section, subject } = req.body;
         let fileUrl = req.body.fileUrl; // Keep existing if no new file
 
         if (req.file) {
@@ -58,9 +58,9 @@ export const updateMaterial = async (req, res) => {
 
         const result = await req.db.query(
             `UPDATE materials 
-             SET title = $1, description = $2, "classLevel" = $3, subject = $4, "fileUrl" = $5, "updatedAt" = CURRENT_TIMESTAMP
-             WHERE id = $6 RETURNING *`,
-            [title, description, classLevel, subject, fileUrl, id]
+             SET title = $1, description = $2, "classLevel" = $3, section = $4, subject = $5, "fileUrl" = $6, "updatedAt" = CURRENT_TIMESTAMP
+             WHERE id = $7 RETURNING *`,
+            [title, description, classLevel, section || null, subject, fileUrl, id]
         );
 
         if (result.rows.length === 0) {

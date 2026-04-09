@@ -1005,10 +1005,25 @@ textarea:focus {
   color: var(--text-main);
   font-size: 1.25rem;
   cursor: pointer;
+  padding: 10px 15px;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.mobile-toggle:hover {
+  background-color: var(--bg-primary);
+}
+
+.mobile-toggle:active {
+  background-color: var(--border-subtle);
 }
 
 @media (max-width: 768px) {
-  .mobile-toggle { display: block; }
+  .mobile-toggle { display: flex; }
   
   .sidebar {
     transform: translateX(-100%);

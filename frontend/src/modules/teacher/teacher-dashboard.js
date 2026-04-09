@@ -1,14 +1,21 @@
 import { teacherAPI } from '../../core/api.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 
+// ═══════════════════════════════════════════
+// ROUTE PROTECTION - Must be first
+// ═══════════════════════════════════════════
+requireRole('teacher');
 
-// ─── Auth Guard ────────────────────────────────────────────────────────────────
-const teacherId   = sessionStorage.getItem('teacherId');
-const teacherRole = sessionStorage.getItem('teacherRole');
-const teacherPhone = sessionStorage.getItem('teacherPhone');
+// Global logout handler
+window.handleLogout = function() {
+  // Teacher logging out
+  authLogout();
+};
 
-if (!teacherId || teacherRole !== 'teacher') {
-  window.location.href = '/teacher-login.html';
-}
+// ─── Auth State (Managed in init) ───────────────────────────────────────────
+let teacherId = null;
+let teacherPhone = null;
+const teacherRole = 'teacher';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let allHomework  = [];
@@ -21,6 +28,19 @@ let availableClasses = [];
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 function todayName() { return DAY_NAMES[new Date().getDay()]; }
+
+// Normalize day name to handle different formats
+function normalizeDayName(day) {
+  if (!day) return null;
+  const normalized = day.trim().toLowerCase();
+  const found = DAY_NAMES.find(d => d.toLowerCase() === normalized);
+  if (found) return found;
+  // Try to match by day number if it's numeric
+  const dayNum = parseInt(day);
+  if (!isNaN(dayNum) && dayNum >= 0 && dayNum < 7) return DAY_NAMES[dayNum];
+  console.warn(`⚠️ Could not normalize day name: "${day}"`);
+  return day; // Return original if no match
+}
 
 function formatTime(t) {
   if (!t) return '';
@@ -65,33 +85,90 @@ function setupTabs() {
 
       if (tab === 'homework')  { loadHomework(); populateHwDropdowns(); }
       if (tab === 'materials') loadMaterials();
+      if (tab === 'timetable') renderWeeklyTimetable();
       if (tab === 'syllabus')  loadSyllabus();
       if (tab === 'attendance') initAttendanceTab();
       if (tab === 'summary')   initSummaryTab();
     });
   });
-
-  // Logout
-  document.getElementById('header-logout-btn')?.addEventListener('click', () => {
-    sessionStorage.removeItem('teacherId');
-    sessionStorage.removeItem('teacherRole');
-    sessionStorage.removeItem('teacherPhone');
-    window.location.href = '/teacher-login.html';
-  });
-
-  // Close profile dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-      const profileContainer = document.querySelector('.admin-profile-container');
-      const dropdown = document.getElementById('profile-dropdown');
-      if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
-          dropdown.classList.remove('active');
-      }
-  });
 }
 
 function init() {
-  const nameEl = document.getElementById('teacher-name');
-  if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
+  // Teacher Dashboard initializing
+  syncToSessionStorage('teacher');
+  teacherId = getUserId();
+  
+  if (!teacherId || teacherId === 'null') {
+    console.warn('⚠️ No valid teacher session found, redirecting to login...');
+    window.location.href = './index.html';
+    return;
+  }
+  
+  teacherPhone = sessionStorage.getItem('teacherPhone');
+
+  // Setup profile menu
+  const profileBtn = document.getElementById('teacher-profile-btn');
+  const profileMenu = document.getElementById('teacher-profile-dropdown');
+  
+  if (profileBtn && profileMenu) {
+    // Profile button and menu found
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
+      profileBtn.setAttribute('aria-expanded', !isExpanded);
+      profileMenu.classList.toggle('open');
+      // Profile menu toggled
+    });
+    
+    // Close profile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+        profileBtn.setAttribute('aria-expanded', 'false');
+        profileMenu.classList.remove('open');
+      }
+    });
+  } else {
+    console.warn('⚠️ Profile button or menu not found');
+  }
+
+  // Setup dropdown logout button
+  const dropLogoutBtn = document.getElementById('dropdown-logout-btn-teacher');
+  if (dropLogoutBtn) {
+    // Logout button found
+    dropLogoutBtn.addEventListener('click', window.handleLogout);
+  } else {
+    console.warn('⚠️ Logout button not found');
+  }
+
+  // Set profile information
+  const initialEl = document.getElementById('teacher-avatar-initial');
+  if (initialEl) {
+    initialEl.textContent = 'T';
+    // Teacher avatar initial updated
+  }
+  
+  const ddName = document.getElementById('dropdown-teacher-name');
+  if (ddName) ddName.textContent = `Teacher`;
+  
+  const ddEmail = document.getElementById('dropdown-teacher-email');
+  if (ddEmail) ddEmail.textContent = teacherPhone || `teacher@a2z.local`;
+  
+  // Mobile Sidebar Toggle
+  const mobileToggle = document.getElementById('mobile-menu-toggle');
+  const sidebar = document.querySelector('.sidebar');
+  if (mobileToggle && sidebar) {
+    mobileToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+    });
+    // Close sidebar when clicking a link on mobile
+    document.querySelectorAll('.sidebar nav a').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('active');
+        }
+      });
+    });
+  }
   
   setupTabs();
   setupFormListeners();
@@ -104,59 +181,79 @@ document.addEventListener('DOMContentLoaded', init);
 async function loadDashboard() {
   try {
     showInfo('Loading dashboard...');
+    // Loading dashboard for teacher
+    
     const [dashRes, matRes] = await Promise.all([
       teacherAPI.getDashboard(teacherId),
       teacherAPI.getMaterials(teacherId),
     ]);
     hideInfo();
 
+    // Dashboard and materials data loaded
+
     if (dashRes.success) {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
       setText('stat-homework', dashRes.homework?.length ?? 0);
       allTimetable = dashRes.timetable || [];
       allHomework  = dashRes.homework  || [];
+      
+      // Timetable and homework loaded
+    } else {
+      console.warn('⚠️ Dashboard response not successful:', dashRes.error);
     }
+    
     if (matRes.success) {
       allMaterials = matRes.data || [];
       setText('stat-materials', allMaterials.length);
     }
 
     renderTodayTimetable();
-    renderWeeklyTimetable();
   } catch (err) {
     hideInfo();
+    console.error('Dashboard load error:', err);
     showError('Failed to load dashboard: ' + err.message);
   }
 }
 
-// Timetable — today
+// Timetable — today (only ongoing and upcoming)
 function renderTodayTimetable() {
   const today = todayName();
   document.getElementById('today-label').textContent = `— ${today}`;
   const tbody = document.getElementById('today-timetable-body');
-  const todayEntries = allTimetable.filter(e => e.dayOfWeek === today);
+  
+  // Normalize dayOfWeek values in timetable and match with today
+  const todayEntries = allTimetable.filter(e => {
+    const normalized = normalizeDayName(e.dayOfWeek);
+    return normalized === today;
+  });
 
-  if (!todayEntries.length) {
-    tbody.innerHTML = renderEmptyState(4, 'No classes today.', 'fa-calendar-times');
+  // Rendering Today's Timetable
+  
+  const now = nowMinutes();
+  
+  // Filter only ongoing and upcoming classes (exclude done classes)
+  const upcomingEntries = todayEntries.filter(e => {
+    const end = timeToMinutes(e.endTime);
+    return now < end; // Only show if end time is in the future
+  });
+
+  if (!upcomingEntries.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.9rem;">No upcoming classes today</td></tr>`;
     return;
   }
 
-  const now = nowMinutes();
-  tbody.innerHTML = todayEntries
+  tbody.innerHTML = upcomingEntries
     .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
     .map(e => {
       const start = timeToMinutes(e.startTime);
       const end   = timeToMinutes(e.endTime);
       const isNow  = now >= start && now < end;
-      const isPast = now >= end;
-      const cls    = isNow ? 'timetable-now' : (isPast ? 'timetable-upcoming' : '');
-      const chip   = isNow ? '<span class="now-chip">IN SESSION</span>' : '';
-      const status = isNow ? '<span class="badge badge-complete">Now</span>' : (isPast ? '<span style="color:var(--text-muted)">Done</span>' : '<span class="badge">Upcoming</span>');
-      return `<tr class="${cls}">
-        <td>${e.classLevel || '–'}</td>
-        <td>${e.subject || '–'}${chip}</td>
-        <td class="time-block">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
-        <td>${status}</td>
+      const chip   = isNow ? '<span style="margin-left:8px; font-size:0.75rem; background:rgba(63,185,80,0.15); color:#3fb950; padding:2px 6px; border-radius:3px;">Now</span>' : '';
+      return `<tr style="border-bottom:1px solid var(--border-subtle); padding:0;">
+        <td style="padding:10px 12px; font-size:0.9rem;">${e.classLevel || '–'}</td>
+        <td style="padding:10px 12px; font-size:0.9rem;">${e.subject || '–'}${chip}</td>
+        <td style="padding:10px 12px; font-size:0.9rem;">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
+        <td style="padding:10px 12px; font-size:0.85rem; color:var(--text-muted);">${isNow ? 'In Session' : 'Upcoming'}</td>
       </tr>`;
     }).join('');
 }
@@ -166,36 +263,120 @@ setInterval(() => {
   if (allTimetable.length) renderTodayTimetable();
 }, 60000);
 
-// Full weekly timetable
+// Full weekly timetable - Admin style design
 function renderWeeklyTimetable() {
   const container = document.getElementById('weekly-timetable');
-  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const today = todayName();
+  let selectedDay = today;
+
+  // Group timetable by day
   const grouped = {};
   days.forEach(d => { grouped[d] = []; });
-  allTimetable.forEach(e => { if (grouped[e.dayOfWeek]) grouped[e.dayOfWeek].push(e); });
+  allTimetable.forEach(e => {
+    const normalized = normalizeDayName(e.dayOfWeek);
+    if (grouped[normalized]) grouped[normalized].push(e);
+  });
 
-  const today = todayName();
-  const html = days.map(day => {
-    const entries = grouped[day];
-    if (!entries.length) return '';
-    return `<div style="margin-bottom:1rem;">
-      <div class="syllabus-subject-header" style="${day === today ? 'color:#3fb950;' : ''}">${day}${day === today ? ' 📍 Today' : ''}</div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Class</th><th>Subject</th><th>Time</th></tr></thead>
+  // Day selector buttons
+  const dayButtonsHtml = days.map(day => `
+    <button class="day-btn ${day === selectedDay ? 'active' : ''}" data-day="${day}" style="
+      padding: 8px 16px;
+      border: none;
+      background: ${day === selectedDay ? '#0052cc' : '#ffffff'};
+      color: ${day === selectedDay ? '#ffffff' : '#666'};
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-right: 8px;
+      transition: all 0.2s ease;
+    ">${day.substring(0, 3)}</button>
+  `).join('');
+
+  // Group classes for selected day
+  const dayEntries = grouped[selectedDay] || [];
+  const classesByLevel = {};
+  dayEntries.forEach(e => {
+    if (!classesByLevel[e.classLevel]) classesByLevel[e.classLevel] = [];
+    classesByLevel[e.classLevel].push(e);
+  });
+
+  // Sort classes numerically
+  const sortedClasses = Object.keys(classesByLevel).sort((a, b) => {
+    const aNum = parseInt(a);
+    const bNum = parseInt(b);
+    return aNum - bNum;
+  });
+
+  // Render classes in 2-column grid
+  const classesHtml = sortedClasses.map(classLevel => {
+    const entries = classesByLevel[classLevel].sort((a, b) => 
+      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+    );
+    
+    return `
+      <div style="flex: 1; min-width: 350px; margin-bottom: 2rem;">
+        <div style="
+          background: #0052cc;
+          color: white;
+          padding: 12px 16px;
+          border-radius: 6px;
+          font-weight: 500;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        ">
+          <i class="fas fa-book"></i> Class ${classLevel}
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TIME</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">SUBJECT</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TEACHER</th>
+            </tr>
+          </thead>
           <tbody>
-            ${entries.sort((a,b) => timeToMinutes(a.startTime)-timeToMinutes(b.startTime)).map(e => `
-              <tr>
-                <td>${e.classLevel || '–'}</td>
-                <td>${e.subject || '–'}</td>
-                <td>${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
-              </tr>`).join('')}
+            ${entries.map(e => `
+              <tr style="border-bottom: 1px solid #f0f0f0;">
+                <td style="padding: 12px; color: #0052cc; font-weight: 500; font-size: 0.9rem;">${formatTime(e.startTime)}</td>
+                <td style="padding: 12px; color: #1a1a1a; font-size: 0.9rem;">${e.subject || '–'}</td>
+                <td style="padding: 12px; color: #666; font-size: 0.9rem;">${e.teacherPhone ? e.teacherPhone.substring(0, 8) : 'Bhaba'}</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
       </div>
-    </div>`;
+    `;
   }).join('');
-  container.innerHTML = html || '<p style="color:var(--text-muted);">No timetable entries found. Ask admin to configure your timetable.</p>';
+
+  const noDataHtml = sortedClasses.length === 0 ? 
+    '<p style="color:var(--text-muted); padding: 2rem; text-align: center;">No classes scheduled for ' + selectedDay + '</p>' : '';
+
+  const html = `
+    <div style="margin-bottom: 2rem;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        ${dayButtonsHtml}
+      </div>
+    </div>
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+      ${classesHtml || noDataHtml}
+    </div>
+  `;
+
+  container.innerHTML = html;
+
+  // Add event listeners to day buttons
+  setTimeout(() => {
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedDay = btn.getAttribute('data-day');
+        renderWeeklyTimetable(); // Re-render with selected day
+      });
+    });
+  }, 0);
 }
 
 // ─── ATTENDANCE ───────────────────────────────────────────────────────────────
@@ -317,9 +498,9 @@ function renderHomeworkTable() {
     }).join('');
 }
 
-async function populateHwDropdowns() {
-  const classSel = document.getElementById('hw-classLevel');
-  const secSel   = document.getElementById('hw-section');
+async function populateSharedDropdowns(prefix = 'hw') {
+  const classSel = document.getElementById(`${prefix}-classLevel`);
+  const secSel   = document.getElementById(`${prefix}-section`);
   if (!classSel || !secSel) return;
   
   if (classSel.options.length > 1 && secSel.options.length > 1) return;
@@ -328,13 +509,10 @@ async function populateHwDropdowns() {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     const classes = res.data || [];
     
-    // For now, these classes might be 10A, 12B. Let's try to split them if possible or just use them as classLevel.
-    // The user wants class and section dropdowns.
     const classSet = new Set();
     const secSet   = new Set();
     
     classes.forEach(c => {
-      // Simple heuristic: if it ends with a letter, that's the section.
       const match = c.match(/^(\d+)([A-Z])$/i);
       if (match) {
         classSet.add(match[1]);
@@ -344,11 +522,14 @@ async function populateHwDropdowns() {
       }
     });
 
-    classSel.innerHTML = '<option value="">Select Class</option>' + 
+    const classOptions = '<option value="">Select Class</option>' + 
       Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
-    secSel.innerHTML = '<option value="">Select Section</option>' + 
+    const secOptions = '<option value="">Select Section</option>' + 
       Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
-  } catch (err) { console.error('Populate HW dropdowns failed', err); }
+
+    classSel.innerHTML = classOptions;
+    secSel.innerHTML = secOptions;
+  } catch (err) { console.error('Populate dropdowns failed', err); }
 }
 
 function renderDppTable() {
@@ -377,7 +558,7 @@ function renderDppTable() {
 }
 
 window.openHwModal = async function(typeOrHw = 'homework') {
-  await populateHwDropdowns();
+  await populateSharedDropdowns('hw');
   document.getElementById('hw-form').reset();
   const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
   const type = typeof typeOrHw === 'string' ? typeOrHw : (hw ? hw.type : 'homework');
@@ -472,6 +653,7 @@ function setupFormListeners() {
     const fd = new FormData();
     fd.append('teacherId',    teacherId);
     fd.append('classLevel',   document.getElementById('mat-classLevel').value);
+    fd.append('section',      document.getElementById('mat-section').value);
     fd.append('subject',      document.getElementById('mat-subject').value);
     fd.append('title',        document.getElementById('mat-title').value);
     fd.append('description',  document.getElementById('mat-description').value);
@@ -531,7 +713,7 @@ function renderMaterialsTable() {
     <tr>
       <td>${m.title}</td>
       <td>${m.subject}</td>
-      <td><span class="badge">Class ${m.classLevel}</span></td>
+      <td><span class="badge">Class ${m.classLevel}${m.section ? '-' + m.section : ''}</span></td>
       <td><a href="${m.fileUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-download"></i></a></td>
       <td>
         <button class="btn-sm btn-edit"   onclick="editMaterial(${m.id})"><i class="fas fa-pen"></i></button>
@@ -540,7 +722,8 @@ function renderMaterialsTable() {
     </tr>`).join('');
 }
 
-window.openMatModal = function(m = null) {
+window.openMatModal = async function(m = null) {
+  await populateSharedDropdowns('mat');
   document.getElementById('mat-form').reset();
   document.getElementById('mat-edit-id').value = m?.id || '';
   document.getElementById('mat-current-file').value = m?.fileUrl || '';
@@ -548,6 +731,7 @@ window.openMatModal = function(m = null) {
   document.getElementById('mat-file-hint').style.display = m ? 'inline' : 'none';
   if (m) {
     document.getElementById('mat-classLevel').value  = m.classLevel   || '';
+    document.getElementById('mat-section').value     = m.section      || '';
     document.getElementById('mat-subject').value     = m.subject      || '';
     document.getElementById('mat-title').value       = m.title        || '';
     document.getElementById('mat-description').value = m.description  || '';

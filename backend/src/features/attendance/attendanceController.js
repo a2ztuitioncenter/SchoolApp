@@ -90,3 +90,15 @@ export const getClasses = async (req, res) => {
     res.status(500).json({ error: 'Server error', detail: err.message });
   }
 };
+
+// Get overall monthly attendance summary for dashboard (all students, all classes)
+export const getMonthlyOverallAttendance = async (req, res) => {
+  try {
+    const { month } = req.query;
+    const stats = await attendanceModel.getMonthlyOverallAttendance(month);
+    res.json(stats);
+  } catch (err) {
+    console.error('getMonthlyOverallAttendance:', err);
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
+};

@@ -4,16 +4,32 @@
  */
 
 import { studentAPI, downloadFile, materialsAPI, waitForBackend } from '../../core/api.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+
+// ===========================
+// Global Logout Handler
+// ===========================
+window.handleLogout = function() {
+  // Logging out
+  authLogout();
+};
+
+// ===========================
+// Route Protection
+// ===========================
+if (!requireRole('student')) {
+  throw new Error('Unauthorized: Student role required');
+}
 
 // ===========================
 // Initialization on Page Load
 // ===========================
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('📄 Dashboard initializing...');
+  // Dashboard initializing
 
   try {
     // Check backend health before loading dashboard
-    console.log('⏳ Checking backend connection...');
+    // Checking backend connection
     const isBackendReady = await waitForBackend(3, 1000);
     
     if (!isBackendReady) {
@@ -35,12 +51,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Get userId from sessionStorage (set during login)
-    let userId = sessionStorage.getItem('studentUserId');
+    // Get userId from centralized auth manager
+    syncToSessionStorage('student'); // Ensure sessionStorage is in sync
+    let userId = getUserId();
 
     if (!userId) {
-      console.warn('⚠️ No userId found in sessionStorage, redirecting to login...');
-      window.location.href = '/student-login.html';
+      console.error('❌ No user ID found in auth state');
+      window.location.href = '/';
       return;
     }
 
@@ -65,33 +82,70 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dashboardData = await loadDashboardData(userId);
     if (dashboardData && dashboardData.data && dashboardData.data.profile) {
         const profile = dashboardData.data.profile;
-        console.log(`🎓 Student Profile loaded. Class: ${profile.classLevel}`);
+        // Student Profile loaded
+        
+        // Populate profile dropdown with initial values
+        const nameEls = document.querySelectorAll('#dropdown-student-name');
+        nameEls.forEach(el => el.textContent = profile.name || 'Student');
+        
+        const classEl = document.getElementById('dropdown-student-class');
+        if (classEl) classEl.textContent = `Class: ${profile.classLevel || '--'}`;
+        
+        const sectionEl = document.getElementById('dropdown-student-section');
+        if (sectionEl) sectionEl.textContent = profile.section || 'N/A';
+        
+        const idEl = document.getElementById('dropdown-student-id');
+        if (idEl) idEl.textContent = profile.id || 'N/A';
+        
+        const initialEl = document.getElementById('student-avatar-initial');
+        const nameParts = (profile.name || 'S').split(' ');
+        if (initialEl) initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
+        
         await loadMaterials(profile.classLevel);
     }
 
     // Tab Switching Logic
     setupTabSwitching();
-
-    // Header Logout
-    const logoutBtn = document.getElementById('header-logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
-    }
-
-    // Close profile dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        const profileContainer = document.querySelector('.admin-profile-container');
-        const dropdown = document.getElementById('profile-dropdown');
-        if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
-            dropdown.classList.remove('active');
-        }
-    });
-
+    
+    // Setup Profile Menu
+    setupProfileMenu();
   } catch (error) {
     console.error('❌ Dashboard initialization failed:', error);
     showErrorMessage('Failed to load dashboard. Please refresh the page.');
   }
 });
+
+function setupProfileMenu() {
+  const profileBtn = document.getElementById('student-profile-btn');
+  const profileDropdown = document.getElementById('student-profile-dropdown');
+  const logoutBtn = document.getElementById('dropdown-logout-btn');
+
+  if (profileBtn && profileDropdown) {
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
+      profileBtn.setAttribute('aria-expanded', !isExpanded);
+      profileDropdown.classList.toggle('open');
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.handleLogout();
+      window.location.href = '/';
+    });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const profileMenu = document.getElementById('student-profile-menu');
+    if (profileMenu && !profileMenu.contains(e.target)) {
+      if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
+      if (profileDropdown) profileDropdown.classList.remove('open');
+    }
+  });
+}
 
 function setupTabSwitching() {
   const navLinks = document.querySelectorAll('.sidebar nav a');
@@ -110,15 +164,15 @@ function setupTabSwitching() {
       const target = document.getElementById(`tab-${tabId}`) || document.getElementById(tabId);
       if (target) {
           target.style.display = 'block';
-          console.log(`📂 Switched to tab: ${tabId}`);
+          // Tab switched
       }
 
       if (tabId === 'materials') {
         const classText = document.getElementById('student-class')?.innerText || '';
-        console.log(`🔍 Class text for materials: "${classText}"`);
+        // Class text for materials processed
         const match = classText.match(/Class: (\d+)/i);
         const studentClass = match ? match[1] : '10';
-        console.log(`📚 Fetching materials for Class: ${studentClass}`);
+        // Fetching materials
         loadMaterials(studentClass);
       }
 
@@ -135,7 +189,7 @@ function setupTabSwitching() {
  */
 async function loadDashboardData(userId) {
   try {
-    console.log(`📊 Fetching dashboard data for user: ${userId}`);
+    // Fetching dashboard data
 
     // Fetch data from backend
     const dashboardResponse = await studentAPI.getDashboard(userId);
@@ -143,7 +197,7 @@ async function loadDashboardData(userId) {
     if (!dashboardResponse || !dashboardResponse.success) {
       if (dashboardResponse?.error === 'Student record not found') {
         showErrorMessage('Your student profile is being set up. Please try again in a moment.');
-        setTimeout(() => { window.location.href = '/student-login.html'; }, 3000);
+        setTimeout(() => { window.location.href = '/'; }, 3000);
         return null;
       }
       throw new Error(dashboardResponse?.error || 'Failed to fetch dashboard data');
@@ -155,13 +209,19 @@ async function loadDashboardData(userId) {
     if (data.profile) populateProfile(data.profile);
     if (data.attendance) populateAttendance(data.attendance);
     if (data.fees) populateFees(data.fees);
-    if (data.homework) populateHomework(data.homework);
-    if (data.dailyPractice) populateDailyPractice(data.dailyPractice);
+    if (data.homework) {
+        populateHomework(data.homework);
+        populateLatestHomeworkCard(data.homework);
+    }
+    if (data.dailyPractice) {
+        populateDailyPractice(data.dailyPractice);
+        populateLatestDPPCard(data.dailyPractice);
+    }
     if (data.courseProgress) populateCourseProgress(data.courseProgress);
     if (data.timetable) populateTimetable(data.timetable);
     if (data.notifications) populateNotifications(data.notifications);
 
-    console.log('✅ Dashboard loaded successfully');
+    // Dashboard loaded successfully
     return data;
   } catch (error) {
     console.error('❌ Error loading dashboard:', error);
@@ -176,25 +236,48 @@ async function loadMaterials(classLevel) {
     
     try {
         container.innerHTML = '<div class="loading">Loading materials...</div>';
-        const res = await materialsAPI.getByClass(classLevel);
-        const list = res.data;
+        
+        // Normalize classLevel - handle various formats
+        const normalizedClassLevel = String(classLevel).trim();
+        // Loading materials
+        
+        const res = await materialsAPI.getByClass(normalizedClassLevel);
+        
+        // Check for API errors
+        if (res.error) {
+            console.error('API Error:', res.error);
+            container.innerHTML = `<p class="error" style="color:#e53e3e;">Failed to load materials: ${res.error}</p>`;
+            return;
+        }
+        
+        const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        // Materials loaded
 
-        container.innerHTML = list.length ? list.map(m => `
+        if (list.length === 0) {
+            container.innerHTML = '<p class="empty-state">No study materials available for your class.</p>';
+            return;
+        }
+
+        container.innerHTML = list.map(m => `
             <div class="dashboard-card" style="margin-bottom: 15px; border-left: 4px solid #48bb78; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
+                    <div style="flex: 1;">
                         <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${m.title}</h4>
-                        <p style="margin:5px 0; color:#718096; font-size:0.9rem;">${m.subject} | ${m.description || 'No description'}</p>
+                        <p style="margin:8px 0 0 0; color:#718096; font-size:0.9rem;">
+                            <span style="font-weight: 500;">${m.subject}</span>
+                            ${m.section ? ` • Section ${m.section}` : ''}
+                        </p>
+                        ${m.description ? `<p style="margin:5px 0 0 0; color:#718096; font-size:0.85rem;">${m.description}</p>` : ''}
                     </div>
-                    <button onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" class="btn-sm" style="background:#48bb78; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                    <button onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" class="btn-sm" style="background:#48bb78; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px; white-space: nowrap; margin-left: 15px;">
                         <i class="fas fa-download"></i> Download
                     </button>
                 </div>
             </div>
-        `).join('') : '<p class="empty-state">No study materials available for your class.</p>';
+        `).join('');
     } catch (err) {
-        console.error('Error loading materials:', err);
-        container.innerHTML = '<p class="error" style="color:#e53e3e;">Failed to load materials.</p>';
+        console.error('❌ Error loading materials:', err);
+        container.innerHTML = `<p class="error" style="color:#e53e3e;">Failed to load materials: ${err.message || 'Unknown error'}</p>`;
     }
 }
 
@@ -313,6 +396,67 @@ function populateDailyPractice(practiceList) {
   `).join('');
 }
 
+function populateLatestHomeworkCard(homework) {
+  const card = document.getElementById('latest-homework-card');
+  const titleEl = document.getElementById('latest-homework-title');
+  const descEl = document.getElementById('latest-homework-desc');
+  const dueEl = document.getElementById('latest-homework-due');
+
+  if (!Array.isArray(homework) || homework.length === 0) {
+    if (titleEl) titleEl.textContent = 'No Assignment';
+    if (descEl) descEl.textContent = 'No homework assigned';
+    if (dueEl) dueEl.textContent = 'Due: --';
+    return;
+  }
+
+  // Get the latest homework
+  const latest = homework[0];
+  if (titleEl) titleEl.textContent = latest.subject ? `${latest.subject}${latest.title ? ' - ' + latest.title : ''}` : (latest.title || 'Assignment');
+  if (descEl) descEl.textContent = latest.title ? latest.title.substring(0, 50) + (latest.title.length > 50 ? '...' : '') : 'New assignment';
+  if (dueEl) dueEl.textContent = `Due: ${formatDate(latest.dueDate)}`;
+
+  // Add click handler to scroll to homework section on home tab
+  if (card) {
+    card.addEventListener('click', () => {
+      navigateToTab('dpp');
+    });
+  }
+}
+
+function populateLatestDPPCard(practiceList) {
+  const card = document.getElementById('latest-dpp-card');
+  const titleEl = document.getElementById('latest-dpp-title');
+  const descEl = document.getElementById('latest-dpp-desc');
+  const dateEl = document.getElementById('latest-dpp-date');
+
+  if (!Array.isArray(practiceList) || practiceList.length === 0) {
+    if (titleEl) titleEl.textContent = 'No Practice';
+    if (descEl) descEl.textContent = 'No daily practice assigned';
+    if (dateEl) dateEl.textContent = 'Posted: --';
+    return;
+  }
+
+  // Get the latest practice
+  const latest = practiceList[0];
+  if (titleEl) titleEl.textContent = latest.subject ? `${latest.subject}${latest.title ? ' - ' + latest.title : ''}` : (latest.title || 'Practice Problem');
+  if (descEl) descEl.textContent = latest.title ? latest.title.substring(0, 50) + (latest.title.length > 50 ? '...' : '') : 'New problems';
+  if (dateEl) dateEl.textContent = `Posted: ${formatDate(latest.createdAt)}`;
+
+  // Add click handler to navigate to DPP tab
+  if (card) {
+    card.addEventListener('click', () => {
+      navigateToTab('dpp');
+    });
+  }
+}
+
+function navigateToTab(tabId) {
+  const link = document.querySelector(`[data-tab="${tabId}"]`);
+  if (link) {
+    link.click();
+  }
+}
+
 function populateCourseProgress(progress) {
   const progressCircle = document.getElementById('course-progress');
   if (progressCircle && progress.percentage !== undefined) {
@@ -338,52 +482,256 @@ function formatTime(timeStr) {
   } catch (e) { return timeStr; }
 }
 
+// ===========================
+// TIMETABLE HELPER FUNCTIONS
+// ===========================
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return null;
+  try {
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+  } catch (e) { return null; }
+}
+
+function getCurrentTimeInMinutes() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function isDayToday(dayOfWeek) {
+  if (!dayOfWeek) return false;
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const today = days[new Date().getDay()];
+  return dayOfWeek.toLowerCase() === today.toLowerCase();
+}
+
+function getClassStatus(entry) {
+  const startMinutes = parseTimeToMinutes(entry.startTime);
+  const endMinutes = parseTimeToMinutes(entry.endTime);
+  const currentMinutes = getCurrentTimeInMinutes();
+  const isToday = isDayToday(entry.dayOfWeek);
+
+  if (!startMinutes || !endMinutes) return 'upcoming';
+
+  if (isToday) {
+    if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+      return 'ongoing';
+    } else if (currentMinutes >= endMinutes) {
+      return 'completed';
+    }
+  } else {
+    // For non-today days, check if day is in past or future
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayIndex = new Date().getDay();
+    const dayIndex = days.findIndex(d => d.toLowerCase() === (entry.dayOfWeek || '').toLowerCase());
+    
+    if (dayIndex < todayIndex) {
+      return 'completed';
+    }
+  }
+
+  return 'upcoming';
+}
+
+function getStatusIcon(status) {
+  switch (status) {
+    case 'completed': return '✅';
+    case 'ongoing': return '🟢';
+    case 'upcoming': return '⏳';
+    default: return '•';
+  }
+}
+
+function getStatusLabel(status) {
+  switch (status) {
+    case 'completed': return 'Completed';
+    case 'ongoing': return 'Ongoing';
+    case 'upcoming': return 'Upcoming';
+    default: return 'Unknown';
+  }
+}
+
+function updateCurrentTime() {
+  const timeEl = document.getElementById('current-time');
+  const previewTimeEl = document.getElementById('current-time-preview');
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  
+  if (timeEl) {
+    timeEl.textContent = `Current Time: ${timeStr}`;
+  }
+  
+  if (previewTimeEl) {
+    const previewTimeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    previewTimeEl.textContent = previewTimeStr;
+  }
+}
+
 function populateTimetable(timetable) {
-  const containers = ['timetable-container', 'timetable-preview'].map(id => document.getElementById(id)).filter(Boolean);
-  if (!containers.length) return;
+  const container = document.getElementById('timetable-container');
+  if (!container) return;
 
   if (!Array.isArray(timetable) || timetable.length === 0) {
-    containers.forEach(c => { c.innerHTML = '<p class="empty-state">No timetable available for your class.</p>'; });
+    container.innerHTML = `
+      <div class="timetable-empty">
+        <i class="fas fa-calendar-times"></i>
+        <p>No timetable available for your class</p>
+      </div>
+    `;
     return;
   }
 
-  // Group by day
-  const byDay = {};
-  timetable.forEach(entry => {
-    const day = entry.dayOfWeek || 'Other';
-    if (!byDay[day]) byDay[day] = [];
-    byDay[day].push(entry);
+  // Sort timetable by day and time
+  const sortedTimetable = [...timetable].sort((a, b) => {
+    const dayOrder = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 0 };
+    const dayCompare = (dayOrder[a.dayOfWeek] || 0) - (dayOrder[b.dayOfWeek] || 0);
+    if (dayCompare !== 0) return dayCompare;
+    return parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime);
   });
 
-  const html = DAY_ORDER.filter(d => byDay[d])
-    .map(day => `
-      <div class="timetable-day">
-        <div class="timetable-day-label">${day}</div>
-        <div class="timetable-entries">
-          ${byDay[day].map(e => `
-            <div class="timetable-row">
-              <span class="timetable-time">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</span>
-              <span class="timetable-subject">${e.subject}</span>
-            </div>
-          `).join('')}
+  // Generate table HTML
+  const tableHTML = `
+    <table class="timetable-table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Time</th>
+          <th>Subject</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sortedTimetable.map(entry => {
+          const status = getClassStatus(entry);
+          const isOngoing = status === 'ongoing';
+          const statusIcon = getStatusIcon(status);
+          const statusLabel = getStatusLabel(status);
+          
+          return `
+            <tr class="${isOngoing ? 'ongoing-row' : ''}">
+              <td class="day-col">${entry.dayOfWeek || '—'}</td>
+              <td class="time-col">${formatTime(entry.startTime)} – ${formatTime(entry.endTime)}</td>
+              <td class="subject-col">${entry.subject || 'N/A'}</td>
+              <td class="status-col">
+                <span class="status-badge status-${status}">
+                  ${statusIcon} ${statusLabel}
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+
+  container.innerHTML = tableHTML;
+
+  // Update current time (both full and preview)
+  updateCurrentTime();
+  
+  // Update time every second (single interval for both)
+  setInterval(updateCurrentTime, 1000);
+
+  // Also populate preview with today's classes
+  populateTimetablePreview(timetable);
+}
+
+function populateTimetablePreview(timetable) {
+  const preview = document.getElementById('timetable-preview');
+  if (!preview) return;
+
+  if (!Array.isArray(timetable) || timetable.length === 0) {
+    preview.innerHTML = `
+      <div class="timetable-empty">
+        <i class="fas fa-calendar-times"></i>
+        <p>No classes scheduled for today</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Filter only today's classes and sort by time
+  const todayClasses = timetable.filter(entry => isDayToday(entry.dayOfWeek))
+    .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+
+  if (todayClasses.length === 0) {
+    preview.innerHTML = `
+      <div class="timetable-empty">
+        <i class="fas fa-check-circle"></i>
+        <p>No classes scheduled for today</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Find ongoing and next upcoming class
+  let ongoingClass = null;
+  let upcomingClass = null;
+
+  for (const cls of todayClasses) {
+    const status = getClassStatus(cls);
+    if (status === 'ongoing' && !ongoingClass) {
+      ongoingClass = cls;
+    } else if (status === 'upcoming' && !upcomingClass) {
+      upcomingClass = cls;
+    }
+  }
+
+  // If no ongoing, use first upcoming as ongoing display
+  if (!ongoingClass && upcomingClass) {
+    ongoingClass = upcomingClass;
+    upcomingClass = todayClasses.find(
+      cls => getClassStatus(cls) === 'upcoming' && cls !== ongoingClass
+    );
+  }
+
+  // Generate minimal two-section layout
+  let html = '<div class="timetable-preview-container">';
+
+  // Ongoing/Current Class Section
+  if (ongoingClass) {
+    const status = getClassStatus(ongoingClass);
+    const statusLabel = getStatusLabel(status);
+    html += `
+      <div class="class-card class-card-ongoing">
+        <div class="class-card-label">
+          <i class="fas fa-dot-circle"></i>
+          <span>${status === 'ongoing' ? 'Ongoing' : 'Current'}</span>
+        </div>
+        <div class="class-card-content">
+          <div class="class-time">${formatTime(ongoingClass.startTime)} – ${formatTime(ongoingClass.endTime)}</div>
+          <div class="class-subject">${ongoingClass.subject || 'N/A'}</div>
         </div>
       </div>
-    `).join('');
+    `;
+  }
 
-  // Full timetable container — show all days
-  const full = document.getElementById('timetable-container');
-  if (full) full.innerHTML = html;
+  // Upcoming Class Section
+  if (upcomingClass) {
+    html += `
+      <div class="class-card class-card-upcoming">
+        <div class="class-card-label">
+          <i class="fas fa-clock"></i>
+          <span>Upcoming</span>
+        </div>
+        <div class="class-card-content">
+          <div class="class-time">${formatTime(upcomingClass.startTime)} – ${formatTime(upcomingClass.endTime)}</div>
+          <div class="class-subject">${upcomingClass.subject || 'N/A'}</div>
+        </div>
+      </div>
+    `;
+  }
 
-  // Preview — show max 5 entries from the week
-  const preview = document.getElementById('timetable-preview');
-  if (preview) {
-    const previewEntries = timetable.slice(0, 5);
-    preview.innerHTML = previewEntries.map(e =>
-      `<p class="timetable-preview-item"><strong>${e.dayOfWeek}:</strong> ${formatTime(e.startTime)} – ${e.subject}</p>`
-    ).join('');
-    if (timetable.length > 5) {
-      preview.innerHTML += `<p style="font-size:0.8rem; color: var(--text-muted); margin-top: 4px;">+${timetable.length - 5} more…</p>`;
-    }
+  html += '</div>';
+  preview.innerHTML = html;
+}
+
+function updateCurrentTimePreview() {
+  const timeEl = document.getElementById('current-time-preview');
+  if (timeEl) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    timeEl.textContent = timeStr;
   }
 }
 
@@ -405,30 +753,34 @@ function populateNotifications(notifications) {
     return;
   }
 
-  const fullHtml = notifications.map(n => `
+  const fullHtml = notifications.map(n => {
+    const message = n.message || 'No message content';
+    return `
     <div class="notification-card">
       <div class="notification-header">
-        <span class="notification-title">${n.title}</span>
+        <span class="notification-title">${n.title || 'Announcement'}</span>
         <span class="notification-date">${formatDate(n.createdAt)}</span>
       </div>
-      <p class="notification-message">${n.message}</p>
+      <p class="notification-message">${message}</p>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
         ${n.classLevel ? `<span class="notification-badge">Class ${n.classLevel}</span>` : '<span class="notification-badge global">All Classes</span>'}
         ${n.attachmentUrl ? `<a href="${n.attachmentUrl}" target="_blank" class="download-link" style="color:var(--accent-blue); font-size:0.85rem;"><i class="fas fa-file-download"></i> Attachment</a>` : ''}
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 
   if (fullEl) fullEl.innerHTML = fullHtml;
 
   // Preview: show first 3
   if (previewEl) {
-    previewEl.innerHTML = notifications.slice(0, 3).map(n => `
+    previewEl.innerHTML = notifications.slice(0, 3).map(n => {
+      const msg = n.message || '';
+      return `
       <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle);">
-        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${n.title}</p>
-        <p style="font-size: 0.8rem; color: var(--text-muted);">${n.message.substring(0, 80)}${n.message.length > 80 ? '…' : ''}</p>
+        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${n.title || 'Announcement'}</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">${msg.substring(0, 80)}${msg.length > 80 ? '…' : ''}</p>
       </div>
-    `).join('');
+    `;}).join('');
     if (notifications.length > 3) {
       previewEl.innerHTML += `<p style="font-size:0.8rem; color: var(--accent-blue);">View All →</p>`;
     }
@@ -462,10 +814,4 @@ function showErrorMessage(message) {
     errorDiv.textContent = '⚠️ ' + message;
     content.prepend(errorDiv);
   }
-}
-
-export function logout() {
-  sessionStorage.removeItem('studentUserId');
-  sessionStorage.removeItem('authToken');
-  window.location.href = '/student-login.html';
 }

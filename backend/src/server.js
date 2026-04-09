@@ -16,6 +16,7 @@ import materialsRoutes  from './features/materials/materialsRoutes.js';
 import notificationsRoutes from './features/notifications/notificationsRoutes.js';
 import resultsRoutes    from './features/results/resultsRoutes.js';
 import downloadRoutes   from './features/download/downloadRoutes.js';
+import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securityLogger } from './middleware/auth-middleware.js';
 
 import { initializeDatabase } from './config/database.js';
 
@@ -50,8 +51,15 @@ const PORT = process.env.PORT || 3000;
 // Comment out if you need it for large files
 // app.use(compression());
 
-app.use(cors({ origin: '*' }));
+// Security middleware first
+app.use(corsSecure());
+app.use(validateInput);
+app.use(rateLimiter(100, 60000)); // 100 requests per minute
+app.use(securityLogger);
+
+// Standard middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Attach Database Pool to Request
 app.use((req, res, next) => {
@@ -82,19 +90,22 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/student', studentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/teacher', teacherRoutes);
+app.use('/api/auth', authRoutes); // Auth routes are public for login/register
+
+// Protected routes - Require authentication
+app.use('/api/student', authenticate, studentRoutes);
+app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
+app.use('/api/teacher', authenticate, authorize('teacher'), teacherRoutes);
 
 // Admin Module Routes (from verification requirements)
-app.use('/api/admin/attendance', attendanceRoutes);
-app.use('/api/admin/homework', homeworkRoutes);
-app.use('/api/admin/fees', feeRoutes);
-app.use('/api/admin/materials', materialsRoutes);
-app.use('/api/admin/notifications', notificationsRoutes);
-app.use('/api/admin/results', resultsRoutes);
-app.use('/api/download', downloadRoutes);
+app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);
+app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
+app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
+app.use('/api/admin/materials', authenticate, authorize('admin'), materialsRoutes);
+app.use('/api/materials', authenticate, materialsRoutes); // Public materials access for students (no admin required)
+app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
+app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
+app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

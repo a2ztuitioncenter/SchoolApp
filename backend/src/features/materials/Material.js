@@ -8,6 +8,7 @@ export const materialModel = {
       title VARCHAR(255) NOT NULL,
       description TEXT,
       "classLevel" VARCHAR(50) NOT NULL,
+      section VARCHAR(50),
       subject VARCHAR(100) NOT NULL,
       "fileUrl" TEXT NOT NULL,
       "uploadedBy" VARCHAR(100),
