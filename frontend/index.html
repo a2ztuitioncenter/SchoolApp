@@ -40,22 +40,63 @@
     </header>
 
     <main>
-        
-        
-        <section class="hero p-v">
-            <div class="container">
-                <div class="hero-content">
-                    <div class="hero-image">
-                        <img src="hero.png" alt="hero-image">
+        <!-- Modern Animated Hero Section -->
+        <section class="hero-animated" id="heroSection">
+            <!-- Animated Background SVG -->
+            <svg class="hero-background" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#0052cc;stop-opacity:0.1" />
+                        <stop offset="50%" style="stop-color:#7c3aed;stop-opacity:0.2" />
+                        <stop offset="100%" style="stop-color:#0052cc;stop-opacity:0.1" />
+                    </linearGradient>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <!-- Animated flowing lines -->
+                <path class="flow-line flow-line-1" d="M 0 100 Q 300 50, 600 100 T 1200 100" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+                <path class="flow-line flow-line-2" d="M 0 250 Q 300 200, 600 250 T 1200 250" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+                <path class="flow-line flow-line-3" d="M 0 400 Q 300 350, 600 400 T 1200 400" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+                <path class="flow-line flow-line-4" d="M 0 550 Q 300 500, 600 550 T 1200 550" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+                <path class="flow-line flow-line-5" d="M 0 700 Q 300 650, 600 700 T 1200 700" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+            </svg>
+
+            <!-- Hero Content -->
+            <div class="hero-content-modern">
+                <div class="content-wrapper">
+                    <!-- Animated Title -->
+                    <h1 class="hero-title-animated" id="heroTitle">Welcome to A2Z Tuition</h1>
+                    
+                    <!-- Subtitle -->
+                    <p class="hero-subtitle-modern" id="heroSubtitle">Empowering students through quality online education</p>
+                    
+                    <!-- Description -->
+                    <p class="hero-description">Join thousands of students and teachers for an enhanced learning experience</p>
+                    
+                    <!-- CTA Buttons -->
+                    <div class="hero-cta-group">
+                        <button class="btn-glass" id="btn-get-started-hero" onclick="openAuthLoginSelector(event)">
+                            <span class="btn-text">Get Started</span>
+                            <span class="btn-arrow">→</span>
+                        </button>
+                        <button class="btn-outline" onclick="document.getElementById('programs').scrollIntoView({behavior: 'smooth'})">
+                            <span class="btn-text">Learn More</span>
+                        </button>
                     </div>
-                    <div style="width: 100%; overflow: hidden;">
-                        <h1 id="hero-title">Welcome to A2Z Tuition</h1>
-                    </div>
-                    <p id="hero-subtitle">Empowering students through quality online education</p>
-                    <button class="btn-get-started" id="btn-get-started" onclick="openAuthLoginSelector(event)">Get Started</button>
                 </div>
+
+                <!-- Floating Elements -->
+                <div class="floating-element element-1"></div>
+                <div class="floating-element element-2"></div>
+                <div class="floating-element element-3"></div>
             </div>
         </section>
+        
 
         <!-- Central Auth Modal -->
         <div class="auth-modal hidden" id="authModal">

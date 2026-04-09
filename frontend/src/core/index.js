@@ -17,58 +17,37 @@ if (document.readyState === 'loading') {
 }
 
 /**
- * Animate hero title continuously with typing effect
+ * Animate hero title with letter-by-letter animation
  */
 function setupHeroTextAnimation() {
-  const titleEl = document.getElementById('hero-title');
+  const titleEl = document.getElementById('heroTitle');
   
   if (titleEl) {
     const text = titleEl.textContent;
-    titleEl.dataset.originalText = text;
+    titleEl.textContent = ''; // Clear original text
     
-    // Start continuous animation loop
-    animateTitleContinuously(titleEl, text);
+    // Split text into letters and create spans
+    const letters = text.split('');
+    letters.forEach((letter, index) => {
+      const span = document.createElement('span');
+      span.className = 'letter';
+      span.textContent = letter;
+      span.style.animationDelay = `${index * 0.05}s`; // Stagger animation
+      titleEl.appendChild(span);
+    });
   }
-}
-
-/**
- * Continuously animate title with typing and pause effect
- */
-function animateTitleContinuously(element, text) {
-  const speed = 80; // milliseconds per character
-  const pauseDuration = 2000; // pause after typing completes
-  
-  function animateOnce() {
-    let index = 0;
-    element.textContent = ''; // Clear the text
-    
-    function type() {
-      if (index < text.length) {
-        element.textContent += text.charAt(index);
-        index++;
-        setTimeout(type, speed);
-      } else {
-        // Typing complete, pause then repeat
-        setTimeout(animateOnce, pauseDuration);
-      }
-    }
-    
-    type();
-  }
-  
-  // Start the animation loop
-  animateOnce();
 }
 
 /**
  * Continuous animation for "Get Started" button text with always-active clicks
  */
 function setupGetStartedTypingAnimation() {
-  const btn = document.getElementById('btn-get-started');
+  // Updated to use new hero button
+  const btn = document.getElementById('btn-get-started-hero');
   if (!btn) return;
 
-  // Add the animation class for continuous glow effect
-  btn.classList.add('btn-get-started-animating');
+  // Add animation class for hover effects (handled by CSS)
+  btn.classList.add('btn-glass-animating');
   
   // Ensure pointer events are always enabled for clicks
   btn.style.pointerEvents = 'auto';
