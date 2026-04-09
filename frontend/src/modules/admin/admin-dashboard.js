@@ -10,7 +10,9 @@ import './admin-pending-approvals.js';
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first
 // ═══════════════════════════════════════════
-requireRole('admin');
+if (!requireRole('admin')) {
+  throw new Error('Unauthorized: Admin role required');
+}
 
 // Global logout handler
 window.handleLogout = function() {
@@ -18,7 +20,7 @@ window.handleLogout = function() {
   authLogout();
 };
 
-
+syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
 
 
 let currentTab = 'dashboard';
@@ -30,10 +32,15 @@ let currentEditHwId = null;
 // INIT
 // =============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('📄 Admin Dashboard initializing...');
-    syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
     const adminId = getUserId();
+    const adminRole = 'admin';
     const adminPhone = sessionStorage.getItem('adminPhone');
+
+    if (!adminId) {
+        console.error('❌ No admin ID found');
+        window.location.href = '/';
+        return;
+    }
 
     const nameStr = `Admin`;
     const nameEls = document.querySelectorAll('#admin-name, #dropdown-admin-name');
@@ -303,12 +310,16 @@ async function loadDashboardData() {
  * Fetch 30-day trend data from backend
  */
 async function fetchTrendData() {
-    try {
-        return await adminAPI.getTrendData();
-    } catch (err) {
-        console.error('❌ Failed to fetch trend data:', err);
-        return { trends: [], summary: {} };
-    }
+    const res = await fetch('/api/admin/financials/trends', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
+            'Content-Type': 'application/json'
+        }
+    });
+    
+    if (!res.ok) throw new Error('Failed to fetch trend data');
+    return await res.json();
 }
 
 /**

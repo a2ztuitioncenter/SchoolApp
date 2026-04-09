@@ -17,7 +17,9 @@ window.handleLogout = function() {
 // ===========================
 // Route Protection
 // ===========================
-requireRole('student');
+if (!requireRole('student')) {
+  throw new Error('Unauthorized: Student role required');
+}
 
 // ===========================
 // Initialization on Page Load
@@ -52,6 +54,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Get userId from centralized auth manager
     syncToSessionStorage('student'); // Ensure sessionStorage is in sync
     let userId = getUserId();
+
+    if (!userId) {
+      console.error('❌ No user ID found in auth state');
+      window.location.href = '/';
+      return;
+    }
 
     // Mobile Sidebar Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');

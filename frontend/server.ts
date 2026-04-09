@@ -36,7 +36,7 @@ const server = Bun.serve({
 
     //  REVERSE PROXY FOR API AND UPLOADS
     if (pathname.startsWith("/api") || pathname.startsWith("/uploads")) {
-      const targetUrl = `http://localhost:3000${pathname}${url.search}`;
+      const targetUrl = `http://127.0.0.1:3000${pathname}${url.search}`;
       console.log(`[PROXY] Forwarding ${req.method} ${pathname} -> ${targetUrl}`);
       try {
         const newHeaders = new Headers(req.headers);

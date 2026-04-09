@@ -36,8 +36,8 @@ const uploadMaterial  = multer({ storage: makeStorage('materials'), fileFilter, 
 // AUTH GUARD HELPER
 // ============================================
 async function requireTeacher(pool, teacherId) {
-  if (!teacherId) return null;
-  const teacher = await getUserById(pool, teacherId);
+  if (!teacherId || teacherId === 'null' || isNaN(parseInt(teacherId))) return null;
+  const teacher = await getUserById(pool, parseInt(teacherId));
   return (teacher && teacher.role === 'teacher') ? teacher : null;
 }
 

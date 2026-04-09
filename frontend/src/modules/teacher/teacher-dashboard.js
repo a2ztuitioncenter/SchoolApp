@@ -77,19 +77,67 @@ function setupTabs() {
       if (tab === 'summary')   initSummaryTab();
     });
   });
-
-  // Logout - uses global handler which properly clears all auth state
-  document.getElementById('logout-btn')?.addEventListener('click', window.handleLogout);
 }
 
 function init() {
   console.log('📄 Teacher Dashboard initializing...');
   syncToSessionStorage('teacher');
   teacherId = getUserId();
+  
+  if (!teacherId || teacherId === 'null') {
+    console.warn('⚠️ No valid teacher session found, redirecting to login...');
+    window.location.href = './index.html';
+    return;
+  }
+  
   teacherPhone = sessionStorage.getItem('teacherPhone');
 
-  const nameEl = document.getElementById('teacher-name');
-  if (nameEl) nameEl.textContent = `Teacher (${teacherPhone || '–'})`;
+  // Setup profile menu
+  const profileBtn = document.getElementById('teacher-profile-btn');
+  const profileMenu = document.getElementById('teacher-profile-dropdown');
+  
+  if (profileBtn && profileMenu) {
+    console.log('✅ Profile button and menu found');
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
+      profileBtn.setAttribute('aria-expanded', !isExpanded);
+      profileMenu.classList.toggle('open');
+      console.log('Profile menu toggled:', !isExpanded);
+    });
+    
+    // Close profile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+        profileBtn.setAttribute('aria-expanded', 'false');
+        profileMenu.classList.remove('open');
+      }
+    });
+  } else {
+    console.warn('⚠️ Profile button or menu not found');
+  }
+
+  // Setup dropdown logout button
+  const dropLogoutBtn = document.getElementById('dropdown-logout-btn-teacher');
+  if (dropLogoutBtn) {
+    console.log('✅ Logout button found');
+    dropLogoutBtn.addEventListener('click', window.handleLogout);
+  } else {
+    console.warn('⚠️ Logout button not found');
+  }
+
+  // Set profile information
+  const initialEl = document.getElementById('teacher-avatar-initial');
+  if (initialEl) {
+    initialEl.textContent = 'T';
+    console.log('✅ Teacher avatar initial updated');
+  }
+  
+  const ddName = document.getElementById('dropdown-teacher-name');
+  if (ddName) ddName.textContent = `Teacher`;
+  
+  const ddEmail = document.getElementById('dropdown-teacher-email');
+  if (ddEmail) ddEmail.textContent = teacherPhone || `teacher@a2z.local`;
   
   setupTabs();
   setupFormListeners();

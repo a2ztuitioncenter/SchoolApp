@@ -235,7 +235,7 @@ async function handleStudentLoginModal(e) {
             window.setAuth({
                 isLoggedIn: true,
                 role: 'student',
-                userId: response.userId,
+                userId: response.userId || response.user?.id,
                 name: response.user?.name || '',
                 phone: phone,
                 token: response.token
@@ -291,7 +291,7 @@ async function handleTeacherLoginModal(e) {
             window.setAuth({
                 isLoggedIn: true,
                 role: 'teacher',
-                userId: response.userId,
+                userId: response.user?.id || response.userId,
                 name: response.user?.name || '',
                 phone: phone,
                 token: response.token
@@ -347,7 +347,7 @@ async function handleAdminLoginModal(e) {
             window.setAuth({
                 isLoggedIn: true,
                 role: 'admin',
-                userId: response.userId,
+                userId: response.user?.id || response.userId,
                 name: response.user?.name || '',
                 phone: phone,
                 token: response.token

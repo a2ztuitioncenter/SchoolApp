@@ -173,20 +173,22 @@ export const rateLimiter = (maxRequests = 100, windowMs = 60000) => {
 export const validateInput = (req, res, next) => {
   // Check for suspicious patterns in query strings and body
   const checkForSuspiciousPatterns = (obj, path = '') => {
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        const value = obj[key];
-        const fullPath = path ? `${path}.${key}` : key;
-        
-        if (typeof value === 'string') {
-          // Check for SQL injection patterns
-          if (/(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|;|\/\*|\*\/|'|")/gi.test(value)) {
-            console.warn(`⚠️ Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
-            throw new Error(`Suspicious input in field: ${fullPath}`);
-          }
-        } else if (typeof value === 'object' && value !== null) {
-          checkForSuspiciousPatterns(value, fullPath);
+    if (!obj || typeof obj !== 'object') return;
+    
+    // Use Object.entries for safer iteration especially with null-prototype objects
+    const entries = Array.isArray(obj) ? obj.map((v, i) => [i, v]) : Object.entries(obj);
+    
+    for (const [key, value] of entries) {
+      const fullPath = path ? `${path}.${key}` : key;
+      
+      if (typeof value === 'string') {
+        // Check for SQL injection patterns
+        if (/(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|;|\/\*|\*\/|'|")/gi.test(value)) {
+          console.warn(`⚠️ Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
+          throw new Error(`Suspicious input in field: ${fullPath}`);
         }
+      } else if (value && typeof value === 'object') {
+        checkForSuspiciousPatterns(value, fullPath);
       }
     }
   };

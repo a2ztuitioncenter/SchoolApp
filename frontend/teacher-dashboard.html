@@ -35,6 +35,105 @@
         .modal-close { float: right; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); padding: 0; }
         .modal-close:hover { color: var(--text-main); transform: none; }
         .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        
+        /* Google Dashboard Style Profile */
+        .profile-btn.google-style {
+            background: transparent;
+            border: none;
+            padding: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            width: 40px;
+            height: 40px;
+        }
+        .profile-btn.google-style:hover {
+            background-color: rgba(0, 0, 0, 0.08);
+        }
+        .profile-btn.google-style .avatar-circle {
+            width: 36px;
+            height: 36px;
+            border: none;
+            box-shadow: none;
+        }
+        
+        /* Dropdown Styles */
+        .teacher-profile-menu {
+            position: relative;
+        }
+        .profile-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            width: 280px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1001;
+            overflow: hidden;
+            animation: dropdownFadeIn 0.2s ease;
+        }
+        .profile-dropdown.open {
+            display: block;
+        }
+        @keyframes dropdownFadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dropdown-header {
+            padding: 1.25rem;
+            background: var(--bg-hover);
+            text-align: center;
+        }
+        .dropdown-header .user-name {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+        .dropdown-header .user-email {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border-subtle);
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+            border: none;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            cursor: pointer;
+        }
+        .dropdown-item:hover {
+            background: var(--bg-hover);
+        }
+        .dropdown-item i {
+            width: 16px;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+        .dropdown-item.text-danger {
+            color: var(--danger);
+        }
+        .dropdown-item.text-danger i {
+            color: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -55,18 +154,30 @@
             <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-ol"></i> Syllabus</a>
             <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-chart-bar"></i> Att. Summary</a>
         </nav>
-        <button class="logout-btn" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
     </aside>
 
     <!-- Main -->
     <div class="main-content">
         <div class="header">
             <h1>Teacher Panel</h1>
-            <div class="admin-info">
-                <i class="fas fa-user-circle" style="font-size:2rem; color:var(--text-muted);"></i>
-                <div>
-                    <div style="font-weight:600; color:var(--text-main);" id="teacher-name">Teacher</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);" id="live-clock"></div>
+            <div class="teacher-profile-menu" id="teacher-profile-menu">
+                <button id="teacher-profile-btn" class="profile-btn google-style" aria-haspopup="true" aria-expanded="false">
+                    <div class="avatar-circle">
+                        <span id="teacher-avatar-initial">T</span>
+                        <span class="online-indicator"></span>
+                    </div>
+                </button>
+                
+                <div id="teacher-profile-dropdown" class="profile-dropdown">
+                    <div class="dropdown-header">
+                        <div class="user-name" id="dropdown-teacher-name">Teacher</div>
+                        <div class="user-email" id="dropdown-teacher-email">teacher@a2z.local</div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item"><i class="fas fa-user"></i> View Profile</a>
+                    <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
+                    <div class="dropdown-divider"></div>
+                    <button id="dropdown-logout-btn-teacher" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
                 </div>
             </div>
         </div>
