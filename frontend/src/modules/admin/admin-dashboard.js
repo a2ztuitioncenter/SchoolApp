@@ -271,60 +271,62 @@ async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
         
-        // Load all data in parallel (including new trend data and attendance stats)
-        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
-            adminAPI.getStudents().catch(() => ({ students: [] })),
-            adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
-            adminAPI.getFinancialSummary ? adminAPI.getFinancialSummary().catch(() => ({})) : Promise.resolve({}),
-            adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] }),
-            // New: Fetch 30-day trend data
-            fetchTrendData().catch(() => ({ trends: [], summary: {} })),
-            // New: Fetch attendance statistics for this month
-            adminAPI.getAttendanceStats().catch(() => ({}))
-        ]);
-
-        // Store data
-        dashboardData.students = studentsRes.students || [];
-        dashboardData.unpaidFees = unpaidFeesRes.fees || [];
-        // Extract report from nested structure if it exists
-        dashboardData.financialSummary = (financialRes && financialRes.report) ? financialRes.report : (financialRes || {});
-        dashboardData.timetable = timetableRes.timetable || [];
-        dashboardData.trends = trendsRes.trends || [];
-        dashboardData.attendanceStats = attendanceRes || {};
-
-        // Fetch additional data for activity panel (non-critical, can fail silently)
-        const [latestStudents, latestPayments, latestHomework] = await Promise.all([
-            fetchLatestStudents().catch(() => []),
-            fetchLatestPayments().catch(() => []),
-            fetchLatestHomework().catch(() => [])
-        ]);
-
-        dashboardData.latestStudents = latestStudents;
-        dashboardData.latestPayments = latestPayments;
-        dashboardData.latestHomework = latestHomework;
-
-        // Render all sections
-        // Quick Stats KPI Cards (at the top)
-        renderQuickStatsKPI();
+        // ✅ Add timeout wrapper to prevent hanging
+        const dashboardTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Dashboard load timeout')), 15000)
+        );
         
-        // Key Metrics - Chart-based (2 visualizations)
-        renderFeesOverviewChart();
-        renderGrowthTrendChart();
-        
-        // Detailed breakdown charts
-        renderFeesChart();
-        renderClassDistributionLineChart();
-        renderTrendChart();
-        
-        // Activity & snapshot panels
-        renderActivityPanel();
-        
-        // Tables
-        renderUnpaidFeesTable();
-        renderRecentStudents();
-        renderTodayTimetable();
+        const loadDataPromise = (async () => {
+            // ✅ Load all data in parallel with proper timeout and error handling
+            const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
+                adminAPI.getStudents().catch(() => ({ students: [] })),
+                adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
+                adminAPI.getFinancialSummary?.().catch(() => ({})) ?? Promise.resolve({}),
+                adminAPI.getTimetable?.().catch(() => ({ timetable: [] })) ?? Promise.resolve({ timetable: [] }),
+                // ✅ Fetch 30-day trend data with timeout
+                fetchTrendDataSafe().catch(() => ({ trends: [], summary: {} })),
+                // ✅ Fetch attendance statistics with timeout
+                adminAPI.getAttendanceStats?.().catch(() => ({})) ?? Promise.resolve({})
+            ]);
 
+            // ✅ Store data with null-safe access
+            dashboardData.students = studentsRes?.students || [];
+            dashboardData.unpaidFees = unpaidFeesRes?.fees || [];
+            // Extract report from nested structure if it exists
+            dashboardData.financialSummary = (financialRes?.report) ? financialRes.report : (financialRes || {});
+            dashboardData.timetable = timetableRes?.timetable || [];
+            dashboardData.trends = trendsRes?.trends || [];
+            dashboardData.attendanceStats = attendanceRes || {};
+
+            // Fetch additional data for activity panel (non-critical, can fail silently)
+            const [latestStudents, latestPayments, latestHomework] = await Promise.all([
+                fetchLatestStudents().catch(() => []),
+                fetchLatestPayments().catch(() => []),
+                fetchLatestHomework().catch(() => [])
+            ]);
+
+            dashboardData.latestStudents = latestStudents;
+            dashboardData.latestPayments = latestPayments;
+            dashboardData.latestHomework = latestHomework;
+
+            // ✅ Render all sections with individual error handling
+            try { renderQuickStatsKPI(); } catch (e) { console.warn('❌ KPI render error:', e); }
+            try { renderFeesOverviewChart(); } catch (e) { console.warn('❌ Fees overview error:', e); }
+            try { renderGrowthTrendChart(); } catch (e) { console.warn('❌ Growth trend error:', e); }
+            try { renderFeesChart(); } catch (e) { console.warn('❌ Fees chart error:', e); }
+            try { renderClassDistributionLineChart(); } catch (e) { console.warn('❌ Class distribution error:', e); }
+            try { renderTrendChart(); } catch (e) { console.warn('❌ Trend chart error:', e); }
+            try { renderActivityPanel(); } catch (e) { console.warn('❌ Activity panel error:', e); }
+            try { renderUnpaidFeesTable(); } catch (e) { console.warn('❌ Unpaid fees table error:', e); }
+            try { renderRecentStudents(); } catch (e) { console.warn('❌ Recent students error:', e); }
+            try { renderTodayTimetable(); } catch (e) { console.warn('❌ Today timetable error:', e); }
+        })();
+        
+        // Wait for dashboard load with timeout protection
+        await Promise.race([loadDataPromise, dashboardTimeout]);
+        
         hideInfoAlert();
+        console.log('✅ Dashboard loaded successfully');
 
         // Setup auto-refresh: refresh dashboard every 30 seconds when dashboard tab is active
         if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
@@ -336,72 +338,106 @@ async function loadDashboardData() {
 
     } catch (err) {
         hideInfoAlert();
-        console.error('Failed to load dashboard data', err);
-        showErrorAlert('Failed to load dashboard data: ' + err.message);
+        console.error('❌ Failed to load dashboard data:', err);
+        // Show dashboard anyway with empty data
+        showErrorAlert(`⚠️ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
+        
+        // Attempt to render empty dashboard so user isn't stuck
+        try {
+            renderQuickStatsKPI();
+            renderFeesOverviewChart();
+            renderGrowthTrendChart();
+        } catch (e) {
+            console.error('Could not render empty dashboard:', e);
+        }
     }
 }
 
 /**
- * Fetch 30-day trend data from backend
+ * Fetch 30-day trend data from backend with timeout
+ * ✅ Uses proper apiCall wrapper with token and timeout
  */
-async function fetchTrendData() {
-    const res = await fetch('/api/admin/financials/trends', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${sessionStorage.getItem('adminToken')}`,
-            'Content-Type': 'application/json'
-        }
-    });
-    
-    if (!res.ok) throw new Error('Failed to fetch trend data');
-    return await res.json();
+async function fetchTrendDataSafe() {
+    try {
+        // Use Promise.race to add timeout protection
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Trend data fetch timeout')), 5000)
+        );
+        
+        const trendPromise = adminAPI.getTrendData?.() ?? Promise.resolve({ trends: [], summary: {} });
+        
+        return await Promise.race([trendPromise, timeoutPromise]);
+    } catch (error) {
+        console.warn('⚠️ Failed to fetch trend data:', error.message);
+        // Return empty trends on failure - don't break dashboard
+        return { trends: [], summary: {} };
+    }
 }
 
 /**
- * Fetch latest students
+ * Fetch latest students with timeout
  */
 async function fetchLatestStudents() {
-    const res = await adminAPI.getStudents();
-    if (res.students && res.students.length > 0) {
-        return res.students.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
-    }
-    return [];
-}
-
-/**
- * Fetch latest payments (from unpaid fees, but find paid ones)
- */
-async function fetchLatestPayments() {
     try {
-        // Fetch all fees and filter for paid ones
-        const feesRes = await feesAPI.getAll();
-        const fees = feesRes.fees || [];
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Fetch timeout')), 3000)
+        );
         
-        // Filter paid fees and get latest 3
-        return fees
-            .filter(f => f.isPaid === true)
-            .sort((a, b) => new Date(b.paidDate || b.createdAt) - new Date(a.paidDate || a.createdAt))
-            .slice(0, 3);
+        const res = await Promise.race([adminAPI.getStudents(), timeoutPromise]);
+        if (res?.students && res.students.length > 0) {
+            return res.students
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+                .slice(0, 3);
+        }
+        return [];
     } catch (err) {
-        console.error('Error fetching latest payments:', err);
+        console.warn('⚠️ Error fetching latest students:', err.message);
         return [];
     }
 }
 
 /**
- * Fetch latest homework
+ * Fetch latest payments (from unpaid fees, but find paid ones) with timeout
+ */
+async function fetchLatestPayments() {
+    try {
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Fetch timeout')), 3000)
+        );
+        
+        // Fetch all fees and filter for paid ones
+        const feesRes = await Promise.race([feesAPI.getAll(), timeoutPromise]);
+        const fees = feesRes?.fees || [];
+        
+        // Filter paid fees and get latest 3
+        return fees
+            .filter(f => f?.isPaid === true)
+            .sort((a, b) => new Date(b.paidDate || b.createdAt || 0) - new Date(a.paidDate || a.createdAt || 0))
+            .slice(0, 3);
+    } catch (err) {
+        console.warn('⚠️ Error fetching latest payments:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Fetch latest homework with timeout
  */
 async function fetchLatestHomework() {
     try {
-        const res = await homeworkAPI.getAll();
-        const homework = res.homework || [];
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Fetch timeout')), 3000)
+        );
+        
+        const res = await Promise.race([homeworkAPI.getAll(), timeoutPromise]);
+        const homework = res?.homework || [];
         
         // Get latest 3
         return homework
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, 3);
     } catch (err) {
-        console.error('Error fetching latest homework:', err);
+        console.warn('⚠️ Error fetching latest homework:', err.message);
         return [];
     }
 }
@@ -409,106 +445,105 @@ async function fetchLatestHomework() {
 // ===== RENDER FUNCTIONS =====
 
 /**
- * Render Quick Stats KPI Cards
+ * Render Quick Stats KPI Cards - with improved error handling
  * Displays key performance indicators at the top of the dashboard
  */
 function renderQuickStatsKPI() {
     try {
         const el = id => document.getElementById(id);
         
-        // Calculate metrics
-        const totalStudents = dashboardData.students.length;
-        const activeStudents = dashboardData.students.filter(s => s.status === 'active').length;
+        // ✅ Null-safe data access
+        const students = dashboardData?.students || [];
+        const unpaidFees = dashboardData?.unpaidFees || [];
+        const financials = dashboardData?.financialSummary || {};
+        const attendanceStats = dashboardData?.attendanceStats || {};
+        
+        // Calculate metrics with null checks
+        const totalStudents = students.length || 0;
+        const activeStudents = students.filter(s => s?.status === 'active').length || 0;
         const inactiveStudents = totalStudents - activeStudents;
 
-        const financials = dashboardData.financialSummary;
         // Financial data processed
-        
-        // Data is already in rupees (not paise), use as-is
         const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
         const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
         const totalFees = totalCollected + totalPending;
 
-        // Amounts calculated
-            totalPaid_raw: financials.totalPaid,
-            totalPending_raw: financials.totalPending,
-            totalCollected,
-            totalPending,
-            totalFees
-        });
-
         // Calculate overdue fees
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const overdueData = dashboardData.unpaidFees.reduce((acc, f) => {
+        const overdueData = unpaidFees.reduce((acc, f) => {
+            if (!f?.dueDate || !f?.amount) return acc;
             const dueDate = new Date(f.dueDate);
             dueDate.setHours(0, 0, 0, 0);
             if (dueDate < today) {
                 acc.count += 1;
-                acc.amount += parseFloat(f.amount) || 0; // Already in rupees
+                acc.amount += parseFloat(f.amount) || 0;
             }
             return acc;
         }, { count: 0, amount: 0 });
 
-        // Calculate collection percentage
+        // Calculate percentages
         const collectionPercentage = totalFees > 0 ? ((totalCollected / totalFees) * 100).toFixed(1) : 0;
         const pendingPercentage = totalFees > 0 ? ((totalPending / totalFees) * 100).toFixed(1) : 0;
-        
-        // Calculate active student percentage
         const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
-
-        // Get real attendance rate from dashboardData instead of hardcoded 85%
-        const attendanceStats = dashboardData.attendanceStats || {};
         const attendanceRate = attendanceStats.attendancePercent ? parseFloat(attendanceStats.attendancePercent).toFixed(1) : 0;
 
-        // Helper function to format currency with proper spacing
+        // Helper function to format currency
         const formatCurrency = (amount) => {
-            return `₹${parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            try {
+                return `₹${parseFloat(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            } catch (e) {
+                return '₹0.00';
+            }
         };
 
-        // Update KPI cards with actual rupee amounts (not in "L" format)
+        // ✅ Safe DOM updates with null checks
         if (el('kpi-total-students')) {
-            el('kpi-total-students').textContent = totalStudents;
-            el('kpi-total-students-detail').textContent = `${activeStudents} active, ${inactiveStudents} inactive`;
+            el('kpi-total-students').textContent = totalStudents || 0;
+            if (el('kpi-total-students-detail')) {
+                el('kpi-total-students-detail').textContent = `${activeStudents} active, ${inactiveStudents} inactive`;
+            }
         }
 
         if (el('kpi-active-students')) {
-            el('kpi-active-students').textContent = activeStudents;
-            el('kpi-active-percentage').textContent = `${activePercentage}% of total`;
+            el('kpi-active-students').textContent = activeStudents || 0;
+            if (el('kpi-active-percentage')) {
+                el('kpi-active-percentage').textContent = `${activePercentage}% of total`;
+            }
         }
 
         if (el('kpi-fees-collected')) {
             el('kpi-fees-collected').textContent = formatCurrency(totalCollected);
-            el('kpi-collection-percentage').textContent = `${collectionPercentage}% collected`;
+            if (el('kpi-collection-percentage')) {
+                el('kpi-collection-percentage').textContent = `${collectionPercentage}% collected`;
+            }
         }
 
         if (el('kpi-fees-pending')) {
             el('kpi-fees-pending').textContent = formatCurrency(totalPending);
-            el('kpi-pending-percentage').textContent = `${pendingPercentage}% pending`;
+            if (el('kpi-pending-percentage')) {
+                el('kpi-pending-percentage').textContent = `${pendingPercentage}% pending`;
+            }
         }
 
         if (el('kpi-fees-overdue')) {
             el('kpi-fees-overdue').textContent = formatCurrency(overdueData.amount);
-            el('kpi-overdue-count').textContent = `${overdueData.count} students overdue`;
+            if (el('kpi-overdue-count')) {
+                el('kpi-overdue-count').textContent = `${overdueData.count} students overdue`;
+            }
         }
 
         if (el('kpi-attendance-rate')) {
-            el('kpi-attendance-rate').textContent = `${attendanceRate}%`;
-            el('kpi-attendance-detail').textContent = 'This month (avg.)';
+            el('kpi-attendance-rate').textContent = `${attendanceRate || 0}%`;
+            if (el('kpi-attendance-detail')) {
+                el('kpi-attendance-detail').textContent = 'This month (avg.)';
+            }
         }
 
-        // Quick Stats rendered
-            totalStudents,
-            activeStudents,
-            totalCollected: `₹${totalCollected.toFixed(2)}`,
-            totalPending: `₹${totalPending.toFixed(2)}`,
-            attendanceRate,
-            overdueAmount: `₹${overdueData.amount.toFixed(2)}`,
-            overdueCount: overdueData.count
-        });
-
+        console.log('✅ Quick Stats rendered successfully');
     } catch (err) {
-        console.error('Error rendering quick stats KPI:', err);
+        console.error('❌ Error rendering quick stats KPI:', err);
+        showErrorAlert('Error rendering KPI cards: ' + err.message);
     }
 }
 
@@ -705,68 +740,80 @@ function renderClassDistributionLineChart() {
  * Render Fees Overview Chart (Collected vs Pending vs Overdue donut)
  */
 function renderFeesOverviewChart() {
-    const canvas = document.getElementById('fees-overview-chart');
-    const container = document.getElementById('fees-overview-loading');
-    
-    if (!canvas) return;
-
-    const financials = dashboardData.financialSummary;
-    const collected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
-    const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
-    
-    // Calculate overdue
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const overdue = dashboardData.unpaidFees.filter(f => {
-        const dueDate = new Date(f.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
-        return dueDate < today;
-    }).reduce((sum, f) => sum + parseFloat(f.amount), 0);
-
-    const total = collected + pending + overdue;
-    if (total === 0) {
-        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No fees data</p></div>';
-        return;
-    }
-
-    if (container) container.style.display = 'none';
-
     try {
-        if (window.feesOverviewChart) window.feesOverviewChart.destroy();
+        const canvas = document.getElementById('fees-overview-chart');
+        const container = document.getElementById('fees-overview-loading');
+        
+        if (!canvas) return;
 
-        const ctx = canvas.getContext('2d');
-        window.feesOverviewChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: [
-                    `Collected (₹${(collected / 100000).toFixed(1)}L)`,
-                    `Pending (₹${(pending / 100000).toFixed(1)}L)`,
-                    `Overdue (₹${(overdue / 100000).toFixed(1)}L)`
-                ],
-                datasets: [{
-                    data: [collected, pending, overdue],
-                    backgroundColor: ['#22c55e', '#fb923c', '#ef4444'],
-                    borderColor: '#ffffff',
-                    borderWidth: 2,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
-                    datalabels: {
-                        font: { weight: 'bold', size: 14 },
-                        color: '#ffffff',
-                        formatter: (value) => `${((value / total) * 100).toFixed(1)}%`
+        // ✅ Null-safe data access
+        const financials = dashboardData?.financialSummary || {};
+        const unpaidFees = dashboardData?.unpaidFees || [];
+        
+        const collected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
+        const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+        
+        // Calculate overdue
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const overdue = unpaidFees
+            .filter(f => f?.dueDate)
+            .reduce((sum, f) => {
+                const dueDate = new Date(f.dueDate);
+                dueDate.setHours(0, 0, 0, 0);
+                return dueDate < today ? sum + (parseFloat(f.amount) || 0) : sum;
+            }, 0);
+
+        const total = collected + pending + overdue;
+        if (total === 0) {
+            if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No fees data</p></div>';
+            return;
+        }
+
+        if (container) container.style.display = 'none';
+
+        try {
+            if (window.feesOverviewChart) window.feesOverviewChart.destroy();
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Failed to get canvas context');
+            
+            window.feesOverviewChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        `Collected (₹${(collected / 100000).toFixed(1)}L)`,
+                        `Pending (₹${(pending / 100000).toFixed(1)}L)`,
+                        `Overdue (₹${(overdue / 100000).toFixed(1)}L)`
+                    ],
+                    datasets: [{
+                        data: [collected, pending, overdue],
+                        backgroundColor: ['#22c55e', '#fb923c', '#ef4444'],
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
+                        datalabels: {
+                            font: { weight: 'bold', size: 14 },
+                            color: '#ffffff',
+                            formatter: (value) => `${((value / total) * 100).toFixed(1)}%`
+                        }
                     }
-                }
-            },
-            plugins: [ChartDataLabels]
-        });
+                },
+                plugins: [ChartDataLabels]
+            });
+            console.log('✅ Fees overview chart rendered');
+        } catch (chartErr) {
+            console.error('Chart rendering error:', chartErr);
+            if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+        }
     } catch (err) {
-        console.error('Error rendering fees overview chart:', err);
-        if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
+        console.error('Error setting up fees overview chart:', err);
     }
 }
 
@@ -774,28 +821,32 @@ function renderFeesOverviewChart() {
  * Render Growth Trend Chart (Cumulative student enrollment over time)
  */
 function renderGrowthTrendChart() {
-    const canvas = document.getElementById('growth-trend-chart');
-    const container = document.getElementById('growth-trend-loading');
-    
-    if (!canvas) return;
-
-    // Group students by enrollment month
-    const enrollmentByMonth = {};
-    dashboardData.students.forEach(student => {
-        const date = new Date(student.createdAt || new Date());
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        enrollmentByMonth[monthKey] = (enrollmentByMonth[monthKey] || 0) + 1;
-    });
-
-    const sortedMonths = Object.keys(enrollmentByMonth).sort();
-    if (sortedMonths.length === 0) {
-        if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No enrollment history</p></div>';
-        return;
-    }
-
-    if (container) container.style.display = 'none';
-
     try {
+        const canvas = document.getElementById('growth-trend-chart');
+        const container = document.getElementById('growth-trend-loading');
+        
+        if (!canvas) return;
+
+        // ✅ Null-safe data access
+        const students = dashboardData?.students || [];
+        
+        // Group students by enrollment month
+        const enrollmentByMonth = {};
+        students.forEach(student => {
+            if (!student?.createdAt) return;
+            const date = new Date(student.createdAt);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            enrollmentByMonth[monthKey] = (enrollmentByMonth[monthKey] || 0) + 1;
+        });
+
+        const sortedMonths = Object.keys(enrollmentByMonth).sort();
+        if (sortedMonths.length === 0) {
+            if (container) container.innerHTML = '<div class="empty-state"><p class="empty-state-text">No enrollment history</p></div>';
+            return;
+        }
+
+        if (container) container.style.display = 'none';
+
         if (window.growthTrendChart) window.growthTrendChart.destroy();
 
         // Calculate cumulative enrollment
@@ -806,6 +857,8 @@ function renderGrowthTrendChart() {
         });
 
         const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get canvas context');
+        
         window.growthTrendChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -1280,7 +1333,7 @@ function renderUsersTable(users) {
     if (!tbody) return;
 
     if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No users matching criteria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No users found. Click "Add User" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
@@ -1302,32 +1355,52 @@ function renderUsersTable(users) {
         countText.textContent = `Showing ${toShow.length} of ${users.length} user(s)`;
     }
 
-    tbody.innerHTML = toShow.map(u => {
-        const initials = (u.name || (u.phone+'') || '?').charAt(0).toUpperCase();
-        return `
+    tbody.innerHTML = toShow.map(u => `
         <tr>
+            <td><strong>${u.name || u.phone || '-'}</strong></td>
+            <td>${u.phone || '-'}</td>
+            <td>${u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : '-'}</td>
+            <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'active' : 'inactive'}</span></td>
             <td>
-                <div class="table-actions">
-                    <button class="btn-actions-toggle" onclick="toggleUserActionsMenu(${u.id}, event)">⋮</button>
-                    <div class="actions-dropdown-menu" id="user-actions-${u.id}">
-                        <button class="actions-dropdown-item" onclick="editUser(${u.id})">
-                            <i class="fas fa-pen"></i> Edit User
+                <div class="action-menu">
+                    <button class="action-menu-btn" onclick="toggleUserMenu(event);">⋮</button>
+                    <div class="action-menu-dropdown" data-user-id="${u.id}">
+                        <button class="action-menu-item" onclick="editUser(${u.id})">
+                            <i class="fas fa-pen" style="width: 16px;"></i> Edit
                         </button>
-                        <button class="actions-dropdown-item" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
-                            <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable User' : 'Enable User'}
+                        <button class="action-menu-item ${u.isActive ? 'success' : 'warning'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
+                            <i class="fas fa-${u.isActive ? 'ban' : 'check'}" style="width: 16px;"></i> ${u.isActive ? 'Disable' : 'Enable'}
                         </button>
-                        <button class="actions-dropdown-item danger" onclick="deleteUserById(${u.id})">
-                            <i class="fas fa-trash"></i> Delete User
+                        <div class="action-menu-divider"></div>
+                        <button class="action-menu-item danger" onclick="deleteUserById(${u.id})">
+                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
                         </button>
                     </div>
                 </div>
             </td>
-        </tr>`;
-    }).join('');
+        </tr>
+    `).join('');
 
     // Render mobile cards
     renderUsersCards(toShow);
 }
+
+window.toggleUserMenu = function(event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const dropdown = btn.nextElementSibling;
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.action-menu-dropdown').forEach(d => {
+        if (d !== dropdown) d.classList.remove('active');
+    });
+    
+    dropdown.classList.toggle('active');
+};
+
+window.closeAllUserMenus = function() {
+    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('active'));
+};
 
 function renderUsersCards(list) {
     const cardsContainer = document.getElementById('users-cards');
@@ -1383,6 +1456,7 @@ function renderUsersCards(list) {
 window.editUser = function (id) {
     const user = allUsersData.find(u => u.id === id);
     if (!user) return;
+    closeAllUserMenus();
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-phone').value = user.phone || '';
     document.getElementById('edit-user-email').value = user.email || '';
@@ -1395,6 +1469,7 @@ window.cancelEditUser = function () {
 };
 
 window.deleteUserById = async function (id) {
+    closeAllUserMenus();
     if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
     try {
         const res = await adminAPI.deleteUser(id);
@@ -1410,6 +1485,7 @@ window.deleteUserById = async function (id) {
 };
 
 window.toggleUserStatusById = async function (id, isActive) {
+    closeAllUserMenus();
     try {
         const res = await adminAPI.toggleUserStatus(id, isActive);
         if (res.success) {
