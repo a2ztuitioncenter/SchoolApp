@@ -151,6 +151,7 @@
             <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book"></i> Homework</a>
             <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-edit"></i> Daily Practice</a>
             <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
+            <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
             <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-ol"></i> Syllabus</a>
             <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-chart-bar"></i> Att. Summary</a>
         </nav>
@@ -209,16 +210,20 @@
                 <h3><i class="fas fa-clock"></i> Today's Timetable <span id="today-label" style="font-weight:400; color:var(--text-muted); font-size:0.85rem;"></span></h3>
                 <div class="table-container" style="margin-top:1rem;">
                     <table>
-                        <thead><tr><th>Class</th><th>Subject</th><th>Time</th><th>Status</th></tr></thead>
+                        <thead><tr style="border-bottom:1px solid var(--border-subtle);"><th style="padding:10px 12px; font-size:0.9rem; font-weight:400; text-align:left; color:var(--text-muted);">Class</th><th style="padding:10px 12px; font-size:0.9rem; font-weight:400; text-align:left; color:var(--text-muted);">Subject</th><th style="padding:10px 12px; font-size:0.9rem; font-weight:400; text-align:left; color:var(--text-muted);">Time</th><th style="padding:10px 12px; font-size:0.9rem; font-weight:400; text-align:left; color:var(--text-muted);">Status</th></tr></thead>
                         <tbody id="today-timetable-body">
-                            <tr><td colspan="4" class="empty-state"><i class="fas fa-calendar-times"></i><p>No classes today.</p></td></tr>
+                            <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.9rem;">No upcoming classes today</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="card" style="margin-top:1.5rem;">
-                <h3><i class="fas fa-calendar-week"></i> Full Weekly Timetable</h3>
+        </div>
+
+        <!-- =================== TIMETABLE TAB =================== -->
+        <div id="tab-timetable" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3><i class="fas fa-calendar-week"></i> Weekly Timetable</h3>
                 <div id="weekly-timetable" style="margin-top:1rem;"></div>
             </div>
         </div>

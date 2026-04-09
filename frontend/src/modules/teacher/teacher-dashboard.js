@@ -85,6 +85,7 @@ function setupTabs() {
 
       if (tab === 'homework')  { loadHomework(); populateHwDropdowns(); }
       if (tab === 'materials') loadMaterials();
+      if (tab === 'timetable') renderWeeklyTimetable();
       if (tab === 'syllabus')  loadSyllabus();
       if (tab === 'attendance') initAttendanceTab();
       if (tab === 'summary')   initSummaryTab();
@@ -215,15 +216,14 @@ async function loadDashboard() {
     }
 
     renderTodayTimetable();
-    renderWeeklyTimetable();
   } catch (err) {
     hideInfo();
-    console.error('❌ Dashboard load error:', err);
+    console.error('Dashboard load error:', err);
     showError('Failed to load dashboard: ' + err.message);
   }
 }
 
-// Timetable — today
+// Timetable — today (only ongoing and upcoming)
 function renderTodayTimetable() {
   const today = todayName();
   document.getElementById('today-label').textContent = `— ${today}`;
@@ -235,33 +235,33 @@ function renderTodayTimetable() {
     return normalized === today;
   });
 
-  console.log(`📅 Rendering Today's Timetable (${today}): ${todayEntries.length} entries found`);
-  console.log(`   Total timetable entries available: ${allTimetable.length}`);
-  if (allTimetable.length > 0) {
-    console.log(`   Sample entry days: ${allTimetable.slice(0, 3).map(e => `"${e.dayOfWeek}"→"${normalizeDayName(e.dayOfWeek)}"`).join(', ')}`);
-  }
+  console.log(`Rendering Today's Timetable (${today}): ${todayEntries.length} entries found`);
+  
+  const now = nowMinutes();
+  
+  // Filter only ongoing and upcoming classes (exclude done classes)
+  const upcomingEntries = todayEntries.filter(e => {
+    const end = timeToMinutes(e.endTime);
+    return now < end; // Only show if end time is in the future
+  });
 
-  if (!todayEntries.length) {
-    tbody.innerHTML = renderEmptyState(4, 'No classes today.', 'fa-calendar-times');
+  if (!upcomingEntries.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.9rem;">No upcoming classes today</td></tr>`;
     return;
   }
 
-  const now = nowMinutes();
-  tbody.innerHTML = todayEntries
+  tbody.innerHTML = upcomingEntries
     .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
     .map(e => {
       const start = timeToMinutes(e.startTime);
       const end   = timeToMinutes(e.endTime);
       const isNow  = now >= start && now < end;
-      const isPast = now >= end;
-      const cls    = isNow ? 'timetable-now' : (isPast ? 'timetable-upcoming' : '');
-      const chip   = isNow ? '<span class="now-chip">IN SESSION</span>' : '';
-      const status = isNow ? '<span class="badge badge-complete">Now</span>' : (isPast ? '<span style="color:var(--text-muted)">Done</span>' : '<span class="badge">Upcoming</span>');
-      return `<tr class="${cls}">
-        <td>${e.classLevel || '–'}</td>
-        <td>${e.subject || '–'}${chip}</td>
-        <td class="time-block">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
-        <td>${status}</td>
+      const chip   = isNow ? '<span style="margin-left:8px; font-size:0.75rem; background:rgba(63,185,80,0.15); color:#3fb950; padding:2px 6px; border-radius:3px;">Now</span>' : '';
+      return `<tr style="border-bottom:1px solid var(--border-subtle); padding:0;">
+        <td style="padding:10px 12px; font-size:0.9rem;">${e.classLevel || '–'}</td>
+        <td style="padding:10px 12px; font-size:0.9rem;">${e.subject || '–'}${chip}</td>
+        <td style="padding:10px 12px; font-size:0.9rem;">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
+        <td style="padding:10px 12px; font-size:0.85rem; color:var(--text-muted);">${isNow ? 'In Session' : 'Upcoming'}</td>
       </tr>`;
     }).join('');
 }
