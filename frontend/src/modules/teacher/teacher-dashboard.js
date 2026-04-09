@@ -29,6 +29,19 @@ const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','
 
 function todayName() { return DAY_NAMES[new Date().getDay()]; }
 
+// Normalize day name to handle different formats
+function normalizeDayName(day) {
+  if (!day) return null;
+  const normalized = day.trim().toLowerCase();
+  const found = DAY_NAMES.find(d => d.toLowerCase() === normalized);
+  if (found) return found;
+  // Try to match by day number if it's numeric
+  const dayNum = parseInt(day);
+  if (!isNaN(dayNum) && dayNum >= 0 && dayNum < 7) return DAY_NAMES[dayNum];
+  console.warn(`⚠️ Could not normalize day name: "${day}"`);
+  return day; // Return original if no match
+}
+
 function formatTime(t) {
   if (!t) return '';
   try {
@@ -83,6 +96,8 @@ function init() {
   console.log('📄 Teacher Dashboard initializing...');
   syncToSessionStorage('teacher');
   teacherId = getUserId();
+  console.log(`🔑 Teacher ID: ${teacherId}`);
+  console.log(`📱 Teacher Phone: ${sessionStorage.getItem('teacherPhone')}`);
   
   if (!teacherId || teacherId === 'null') {
     console.warn('⚠️ No valid teacher session found, redirecting to login...');
@@ -150,18 +165,33 @@ document.addEventListener('DOMContentLoaded', init);
 async function loadDashboard() {
   try {
     showInfo('Loading dashboard...');
+    console.log(`🔄 Loading dashboard for teacher ID: ${teacherId}`);
+    
     const [dashRes, matRes] = await Promise.all([
       teacherAPI.getDashboard(teacherId),
       teacherAPI.getMaterials(teacherId),
     ]);
     hideInfo();
 
+    console.log('📊 Dashboard Response:', dashRes);
+    console.log('📚 Materials Response:', matRes);
+
     if (dashRes.success) {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
       setText('stat-homework', dashRes.homework?.length ?? 0);
       allTimetable = dashRes.timetable || [];
       allHomework  = dashRes.homework  || [];
+      
+      console.log(`✅ Timetable entries loaded: ${allTimetable.length}`);
+      console.log(`✅ Homework entries loaded: ${allHomework.length}`);
+      
+      if (allTimetable.length > 0) {
+        console.log('Sample timetable entry:', allTimetable[0]);
+      }
+    } else {
+      console.warn('⚠️ Dashboard response not successful:', dashRes.error);
     }
+    
     if (matRes.success) {
       allMaterials = matRes.data || [];
       setText('stat-materials', allMaterials.length);
@@ -171,6 +201,7 @@ async function loadDashboard() {
     renderWeeklyTimetable();
   } catch (err) {
     hideInfo();
+    console.error('❌ Dashboard load error:', err);
     showError('Failed to load dashboard: ' + err.message);
   }
 }
@@ -180,7 +211,18 @@ function renderTodayTimetable() {
   const today = todayName();
   document.getElementById('today-label').textContent = `— ${today}`;
   const tbody = document.getElementById('today-timetable-body');
-  const todayEntries = allTimetable.filter(e => e.dayOfWeek === today);
+  
+  // Normalize dayOfWeek values in timetable and match with today
+  const todayEntries = allTimetable.filter(e => {
+    const normalized = normalizeDayName(e.dayOfWeek);
+    return normalized === today;
+  });
+
+  console.log(`📅 Rendering Today's Timetable (${today}): ${todayEntries.length} entries found`);
+  console.log(`   Total timetable entries available: ${allTimetable.length}`);
+  if (allTimetable.length > 0) {
+    console.log(`   Sample entry days: ${allTimetable.slice(0, 3).map(e => `"${e.dayOfWeek}"→"${normalizeDayName(e.dayOfWeek)}"`).join(', ')}`);
+  }
 
   if (!todayEntries.length) {
     tbody.innerHTML = renderEmptyState(4, 'No classes today.', 'fa-calendar-times');
@@ -218,7 +260,15 @@ function renderWeeklyTimetable() {
   const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const grouped = {};
   days.forEach(d => { grouped[d] = []; });
-  allTimetable.forEach(e => { if (grouped[e.dayOfWeek]) grouped[e.dayOfWeek].push(e); });
+  
+  // Normalize dayOfWeek values and group them
+  allTimetable.forEach(e => {
+    const normalized = normalizeDayName(e.dayOfWeek);
+    if (grouped[normalized]) grouped[normalized].push(e);
+  });
+
+  console.log(`📊 Weekly Timetable: Total entries: ${allTimetable.length}`);
+  console.log(`   Day breakdown:`, Object.entries(grouped).filter(([d, es]) => es.length > 0).map(([d, es]) => `${d}: ${es.length}`).join(', '));
 
   const today = todayName();
   const html = days.map(day => {
@@ -241,6 +291,11 @@ function renderWeeklyTimetable() {
       </div>
     </div>`;
   }).join('');
+  
+  if (!html) {
+    console.warn('⚠️ No timetable data to display');
+  }
+  
   container.innerHTML = html || '<p style="color:var(--text-muted);">No timetable entries found. Ask admin to configure your timetable.</p>';
 }
 
