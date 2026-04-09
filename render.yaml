@@ -4,12 +4,13 @@ services:
     runtime: node
     region: oregon
     plan: free
+    root: backend
     
-    # Build command - use root npm scripts
-    buildCommand: npm run build
+    # Build command - install dependencies
+    buildCommand: npm install
     
-    # Start command - use root npm scripts
-    startCommand: npm start
+    # Start command - run with Node.js (not bun)
+    startCommand: node src/server.js
     
     # Environment variables - set these in Render dashboard
     envVars:
