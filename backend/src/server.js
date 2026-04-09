@@ -102,6 +102,7 @@ app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRou
 app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
 app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
 app.use('/api/admin/materials', authenticate, authorize('admin'), materialsRoutes);
+app.use('/api/materials', authenticate, materialsRoutes); // Public materials access for students (no admin required)
 app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
 app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
 app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users

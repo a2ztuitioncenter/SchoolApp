@@ -220,7 +220,7 @@ const feesAPI = {
  */
 const materialsAPI = {
   getAll: () => apiCall('/admin/materials', { method: 'GET' }),
-  getByClass: (classLevel) => apiCall(`/admin/materials/class/${classLevel}`, { method: 'GET' }),
+  getByClass: (classLevel) => apiCall(`/materials/class/${classLevel}`, { method: 'GET' }),
   create: (formData) => apiCall('/admin/materials', { method: 'POST', body: formData }),
   update: (id, formData) => apiCall(`/admin/materials/${id}`, { method: 'PUT', body: formData }),
   delete: (id) => apiCall(`/admin/materials/${id}`, { method: 'DELETE' }),
@@ -278,6 +278,7 @@ export const adminAPI = {
   toggleStudentStatus: (id, status) => apiCall(`/admin/students/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   getUnpaidFees: () => apiCall('/admin/financials/unpaid-fees', { method: 'GET' }),
   getFinancialSummary: () => apiCall('/admin/financials/report', { method: 'GET' }),
+  getAttendanceStats: (month) => apiCall(`/admin/attendance/overall-monthly${month ? `?month=${month}` : ''}`, { method: 'GET' }),
   getTimetable: () => apiCall('/admin/timetable', { method: 'GET' }),
   addTimetable: (data) => apiCall('/admin/timetable', { method: 'POST', body: JSON.stringify(data) }),
   deleteTimetable: (id) => apiCall(`/admin/timetable/${id}`, { method: 'DELETE' }),

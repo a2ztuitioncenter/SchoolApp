@@ -2,6 +2,7 @@ import express from 'express';
 import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus } from '../auth/User.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
+import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
 
 const router = express.Router();
 
@@ -310,5 +311,11 @@ router.delete('/timetable/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to delete timetable entry' });
     }
 });
+
+// ============================================================
+// ATTENDANCE - Overall Statistics
+// ============================================================
+
+router.get('/attendance/overall-monthly', getMonthlyOverallAttendance);
 
 export default router;

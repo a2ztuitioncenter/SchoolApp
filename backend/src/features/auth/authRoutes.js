@@ -44,7 +44,9 @@ router.post('/login', async (req, res) => {
     }
 
     // Role check for student (frontend uses this endpoint for student login)
-    if (user.role !== 'student') {
+    // Normalize role to lowercase for comparison
+    const userRole = user.role ? user.role.toLowerCase() : '';
+    if (userRole !== 'student') {
         return res.status(403).json({ error: 'Unauthorized role' });
     }
 
@@ -187,7 +189,8 @@ router.post('/admin-login', async (req, res) => {
     }
 
     // Check if user is admin
-    if (user.role !== 'admin') { // Fixed to lowercase
+    const userRole = user.role ? user.role.toLowerCase() : '';
+    if (userRole !== 'admin') {
       return res.status(403).json({ 
         error: 'Access Denied: This account does not have admin privileges',
         user: { id: user.id, role: user.role }
@@ -241,7 +244,8 @@ router.post('/teacher-login', async (req, res) => {
     }
 
     // Check if user is teacher
-    if (user.role !== 'teacher') { // Fixed to lowercase
+    const userRole = user.role ? user.role.toLowerCase() : '';
+    if (userRole !== 'teacher') {
       return res.status(403).json({ 
         error: 'Access Denied: This account does not have teacher privileges',
         user: { id: user.id, role: user.role }

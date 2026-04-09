@@ -1,6 +1,7 @@
 // Master portal init — theme is handled automatically by CSS prefers-color-scheme
 function init() {
   console.log('✅ Index JS Init');
+  setupHeroTextAnimation();
   setupGetStartedTypingAnimation();
   setupGetStartedHandler();
   setupHeaderSignupHandler();
@@ -16,42 +17,61 @@ if (document.readyState === 'loading') {
 }
 
 /**
- * Typing animation for "Get Started" button text
+ * Animate hero title continuously with typing effect
+ */
+function setupHeroTextAnimation() {
+  const titleEl = document.getElementById('hero-title');
+  
+  if (titleEl) {
+    const text = titleEl.textContent;
+    titleEl.dataset.originalText = text;
+    
+    // Start continuous animation loop
+    animateTitleContinuously(titleEl, text);
+  }
+}
+
+/**
+ * Continuously animate title with typing and pause effect
+ */
+function animateTitleContinuously(element, text) {
+  const speed = 80; // milliseconds per character
+  const pauseDuration = 2000; // pause after typing completes
+  
+  function animateOnce() {
+    let index = 0;
+    element.textContent = ''; // Clear the text
+    
+    function type() {
+      if (index < text.length) {
+        element.textContent += text.charAt(index);
+        index++;
+        setTimeout(type, speed);
+      } else {
+        // Typing complete, pause then repeat
+        setTimeout(animateOnce, pauseDuration);
+      }
+    }
+    
+    type();
+  }
+  
+  // Start the animation loop
+  animateOnce();
+}
+
+/**
+ * Continuous animation for "Get Started" button text with always-active clicks
  */
 function setupGetStartedTypingAnimation() {
   const btn = document.getElementById('btn-get-started');
   if (!btn) return;
 
-  const text = btn.textContent; // "Get Started"
-  const speed = 150; // milliseconds per character
-  let index = 0;
-
-  // Calculate exact button width needed for full text (before clearing)
-  const originalWidth = btn.offsetWidth;
+  // Add the animation class for continuous glow effect
+  btn.classList.add('btn-get-started-animating');
   
-  // Freeze the button completely during animation
-  btn.style.width = originalWidth + 'px'; // Fix width to prevent resizing
-  btn.style.height = btn.offsetHeight + 'px'; // Fix height
-  btn.style.transition = 'none'; // Disable transitions
-  btn.style.pointerEvents = 'none'; // Disable interactions
-  btn.textContent = ''; // Clear the text
-
-  function type() {
-    if (index < text.length) {
-      btn.textContent += text.charAt(index);
-      index++;
-      setTimeout(type, speed);
-    } else {
-      // Re-enable after typing is complete
-      btn.style.width = ''; // Restore original width
-      btn.style.height = ''; // Restore original height
-      btn.style.transition = ''; // Restore original transition
-      btn.style.pointerEvents = ''; // Re-enable interactions
-    }
-  }
-
-  // Start typing when page loads
-  type();
+  // Ensure pointer events are always enabled for clicks
+  btn.style.pointerEvents = 'auto';
 }
 
 /**
@@ -77,36 +97,36 @@ function setupGetStartedHandler() {
         document.body.style.overflow = 'auto';
       }
     });
-  }
 
-  // Close modal when clicking overlay or close button
-  const modalOverlay = loginModal.querySelector('.login-modal-overlay');
-  const closeBtn = document.getElementById('login-modal-close');
+    // Close modal when clicking overlay or close button
+    const modalOverlay = loginModal.querySelector('.login-modal-overlay');
+    const closeBtn = document.getElementById('login-modal-close');
 
-  if (modalOverlay) {
-    modalOverlay.addEventListener('click', () => {
-      loginModal.classList.add('login-modal--hidden');
-      loginModal.classList.remove('login-modal--visible');
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      loginModal.classList.add('login-modal--hidden');
-      loginModal.classList.remove('login-modal--visible');
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  // Close modal on Escape key
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && loginModal.classList.contains('login-modal--visible')) {
-      loginModal.classList.add('login-modal--hidden');
-      loginModal.classList.remove('login-modal--visible');
-      document.body.style.overflow = 'auto';
+    if (modalOverlay) {
+      modalOverlay.addEventListener('click', () => {
+        loginModal.classList.add('login-modal--hidden');
+        loginModal.classList.remove('login-modal--visible');
+        document.body.style.overflow = 'auto';
+      });
     }
-  });
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        loginModal.classList.add('login-modal--hidden');
+        loginModal.classList.remove('login-modal--visible');
+        document.body.style.overflow = 'auto';
+      });
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && loginModal.classList.contains('login-modal--visible')) {
+        loginModal.classList.add('login-modal--hidden');
+        loginModal.classList.remove('login-modal--visible');
+        document.body.style.overflow = 'auto';
+      }
+    });
+  }
 }
 
 /**
@@ -124,50 +144,50 @@ function setupHeaderSignupHandler() {
       signupModal.classList.add('signup-modal--visible');
       document.body.style.overflow = 'hidden';
     });
-  }
 
-  // Close modal when clicking overlay or close button
-  const modalOverlay = signupModal.querySelector('.signup-modal-overlay');
-  const closeBtn = document.getElementById('signup-modal-close');
+    // Close modal when clicking overlay or close button
+    const modalOverlay = signupModal.querySelector('.signup-modal-overlay');
+    const closeBtn = document.getElementById('signup-modal-close');
 
-  if (modalOverlay) {
-    modalOverlay.addEventListener('click', () => {
-      signupModal.classList.add('signup-modal--hidden');
-      signupModal.classList.remove('signup-modal--visible');
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      signupModal.classList.add('signup-modal--hidden');
-      signupModal.classList.remove('signup-modal--visible');
-      document.body.style.overflow = 'auto';
-    });
-  }
-
-  // Close modal on Escape key
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && signupModal.classList.contains('signup-modal--visible')) {
-      signupModal.classList.add('signup-modal--hidden');
-      signupModal.classList.remove('signup-modal--visible');
-      document.body.style.overflow = 'auto';
+    if (modalOverlay) {
+      modalOverlay.addEventListener('click', () => {
+        signupModal.classList.add('signup-modal--hidden');
+        signupModal.classList.remove('signup-modal--visible');
+        document.body.style.overflow = 'auto';
+      });
     }
-  });
 
-  // Handle "Log in" link in footer
-  const signupToLoginLink = document.getElementById('signup-to-login');
-  const loginModal = document.getElementById('login-modal');
-  if (signupToLoginLink && loginModal) {
-    signupToLoginLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      // Close signup modal
-      signupModal.classList.add('signup-modal--hidden');
-      signupModal.classList.remove('signup-modal--visible');
-      // Open login modal
-      loginModal.classList.remove('login-modal--hidden');
-      loginModal.classList.add('login-modal--visible');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        signupModal.classList.add('signup-modal--hidden');
+        signupModal.classList.remove('signup-modal--visible');
+        document.body.style.overflow = 'auto';
+      });
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && signupModal.classList.contains('signup-modal--visible')) {
+        signupModal.classList.add('signup-modal--hidden');
+        signupModal.classList.remove('signup-modal--visible');
+        document.body.style.overflow = 'auto';
+      }
     });
+
+    // Handle "Log in" link in footer
+    const signupToLoginLink = document.getElementById('signup-to-login');
+    const loginModal = document.getElementById('login-modal');
+    if (signupToLoginLink && loginModal) {
+      signupToLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Close signup modal
+        signupModal.classList.add('signup-modal--hidden');
+        signupModal.classList.remove('signup-modal--visible');
+        // Open login modal
+        loginModal.classList.remove('login-modal--hidden');
+        loginModal.classList.add('login-modal--visible');
+      });
+    }
   }
 }
 

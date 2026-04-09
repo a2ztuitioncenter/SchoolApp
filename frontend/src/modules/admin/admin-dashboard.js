@@ -237,6 +237,7 @@ let dashboardData = {
     students: [],
     unpaidFees: [],
     financialSummary: {},
+    attendanceStats: {},
     timetable: [],
     trends: [],
     latestStudents: [],
@@ -244,26 +245,32 @@ let dashboardData = {
     latestHomework: []
 };
 
+let dashboardRefreshInterval = null;
+
 async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
         
-        // Load all data in parallel (including new trend data)
-        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes] = await Promise.all([
+        // Load all data in parallel (including new trend data and attendance stats)
+        const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
             adminAPI.getStudents().catch(() => ({ students: [] })),
             adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
             adminAPI.getFinancialSummary ? adminAPI.getFinancialSummary().catch(() => ({})) : Promise.resolve({}),
             adminAPI.getTimetable ? adminAPI.getTimetable().catch(() => ({ timetable: [] })) : Promise.resolve({ timetable: [] }),
             // New: Fetch 30-day trend data
-            fetchTrendData().catch(() => ({ trends: [], summary: {} }))
+            fetchTrendData().catch(() => ({ trends: [], summary: {} })),
+            // New: Fetch attendance statistics for this month
+            adminAPI.getAttendanceStats().catch(() => ({}))
         ]);
 
         // Store data
         dashboardData.students = studentsRes.students || [];
         dashboardData.unpaidFees = unpaidFeesRes.fees || [];
-        dashboardData.financialSummary = financialRes || {};
+        // Extract report from nested structure if it exists
+        dashboardData.financialSummary = (financialRes && financialRes.report) ? financialRes.report : (financialRes || {});
         dashboardData.timetable = timetableRes.timetable || [];
         dashboardData.trends = trendsRes.trends || [];
+        dashboardData.attendanceStats = attendanceRes || {};
 
         // Fetch additional data for activity panel (non-critical, can fail silently)
         const [latestStudents, latestPayments, latestHomework] = await Promise.all([
@@ -298,6 +305,14 @@ async function loadDashboardData() {
         renderTodayTimetable();
 
         hideInfoAlert();
+
+        // Setup auto-refresh: refresh dashboard every 30 seconds when dashboard tab is active
+        if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
+        dashboardRefreshInterval = setInterval(() => {
+            if (currentTab === 'dashboard') {
+                loadDashboardData();
+            }
+        }, 30000); // Refresh every 30 seconds
 
     } catch (err) {
         hideInfoAlert();
@@ -387,9 +402,20 @@ function renderQuickStatsKPI() {
         const inactiveStudents = totalStudents - activeStudents;
 
         const financials = dashboardData.financialSummary;
+        console.log('📊 Financial Summary Data:', financials);
+        
+        // Data is already in rupees (not paise), use as-is
         const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
         const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
         const totalFees = totalCollected + totalPending;
+
+        console.log('💰 Calculated amounts:', {
+            totalPaid_raw: financials.totalPaid,
+            totalPending_raw: financials.totalPending,
+            totalCollected,
+            totalPending,
+            totalFees
+        });
 
         // Calculate overdue fees
         const today = new Date();
@@ -399,7 +425,7 @@ function renderQuickStatsKPI() {
             dueDate.setHours(0, 0, 0, 0);
             if (dueDate < today) {
                 acc.count += 1;
-                acc.amount += parseFloat(f.amount) || 0;
+                acc.amount += parseFloat(f.amount) || 0; // Already in rupees
             }
             return acc;
         }, { count: 0, amount: 0 });
@@ -411,10 +437,16 @@ function renderQuickStatsKPI() {
         // Calculate active student percentage
         const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
 
-        // Calculate attendance rate (mock - 85% average for now as we'd need more data)
-        const attendanceRate = 85;
+        // Get real attendance rate from dashboardData instead of hardcoded 85%
+        const attendanceStats = dashboardData.attendanceStats || {};
+        const attendanceRate = attendanceStats.attendancePercent ? parseFloat(attendanceStats.attendancePercent).toFixed(1) : 0;
 
-        // Update KPI cards
+        // Helper function to format currency with proper spacing
+        const formatCurrency = (amount) => {
+            return `₹${parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        };
+
+        // Update KPI cards with actual rupee amounts (not in "L" format)
         if (el('kpi-total-students')) {
             el('kpi-total-students').textContent = totalStudents;
             el('kpi-total-students-detail').textContent = `${activeStudents} active, ${inactiveStudents} inactive`;
@@ -426,17 +458,17 @@ function renderQuickStatsKPI() {
         }
 
         if (el('kpi-fees-collected')) {
-            el('kpi-fees-collected').textContent = `₹${(totalCollected / 100000).toFixed(1)}L`;
+            el('kpi-fees-collected').textContent = formatCurrency(totalCollected);
             el('kpi-collection-percentage').textContent = `${collectionPercentage}% collected`;
         }
 
         if (el('kpi-fees-pending')) {
-            el('kpi-fees-pending').textContent = `₹${(totalPending / 100000).toFixed(1)}L`;
+            el('kpi-fees-pending').textContent = formatCurrency(totalPending);
             el('kpi-pending-percentage').textContent = `${pendingPercentage}% pending`;
         }
 
         if (el('kpi-fees-overdue')) {
-            el('kpi-fees-overdue').textContent = `₹${(overdueData.amount / 100000).toFixed(1)}L`;
+            el('kpi-fees-overdue').textContent = formatCurrency(overdueData.amount);
             el('kpi-overdue-count').textContent = `${overdueData.count} students overdue`;
         }
 
@@ -444,6 +476,16 @@ function renderQuickStatsKPI() {
             el('kpi-attendance-rate').textContent = `${attendanceRate}%`;
             el('kpi-attendance-detail').textContent = 'This month (avg.)';
         }
+
+        console.log('✅ Quick Stats rendered with real-time data (Actual Amounts):', {
+            totalStudents,
+            activeStudents,
+            totalCollected: `₹${totalCollected.toFixed(2)}`,
+            totalPending: `₹${totalPending.toFixed(2)}`,
+            attendanceRate,
+            overdueAmount: `₹${overdueData.amount.toFixed(2)}`,
+            overdueCount: overdueData.count
+        });
 
     } catch (err) {
         console.error('Error rendering quick stats KPI:', err);

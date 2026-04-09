@@ -97,8 +97,6 @@ function init() {
   console.log('📄 Teacher Dashboard initializing...');
   syncToSessionStorage('teacher');
   teacherId = getUserId();
-  console.log(`🔑 Teacher ID: ${teacherId}`);
-  console.log(`📱 Teacher Phone: ${sessionStorage.getItem('teacherPhone')}`);
   
   if (!teacherId || teacherId === 'null') {
     console.warn('⚠️ No valid teacher session found, redirecting to login...');
@@ -202,10 +200,6 @@ async function loadDashboard() {
       
       console.log(`✅ Timetable entries loaded: ${allTimetable.length}`);
       console.log(`✅ Homework entries loaded: ${allHomework.length}`);
-      
-      if (allTimetable.length > 0) {
-        console.log('Sample timetable entry:', allTimetable[0]);
-      }
     } else {
       console.warn('⚠️ Dashboard response not successful:', dashRes.error);
     }
@@ -271,49 +265,120 @@ setInterval(() => {
   if (allTimetable.length) renderTodayTimetable();
 }, 60000);
 
-// Full weekly timetable
+// Full weekly timetable - Admin style design
 function renderWeeklyTimetable() {
   const container = document.getElementById('weekly-timetable');
-  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const today = todayName();
+  let selectedDay = today;
+
+  // Group timetable by day
   const grouped = {};
   days.forEach(d => { grouped[d] = []; });
-  
-  // Normalize dayOfWeek values and group them
   allTimetable.forEach(e => {
     const normalized = normalizeDayName(e.dayOfWeek);
     if (grouped[normalized]) grouped[normalized].push(e);
   });
 
-  console.log(`Weekly Timetable: Total entries: ${allTimetable.length}`);
-  console.log(`   Day breakdown:`, Object.entries(grouped).filter(([d, es]) => es.length > 0).map(([d, es]) => `${d}: ${es.length}`).join(', '));
+  // Day selector buttons
+  const dayButtonsHtml = days.map(day => `
+    <button class="day-btn ${day === selectedDay ? 'active' : ''}" data-day="${day}" style="
+      padding: 8px 16px;
+      border: none;
+      background: ${day === selectedDay ? '#0052cc' : '#ffffff'};
+      color: ${day === selectedDay ? '#ffffff' : '#666'};
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-right: 8px;
+      transition: all 0.2s ease;
+    ">${day.substring(0, 3)}</button>
+  `).join('');
 
-  const today = todayName();
-  const html = days.map(day => {
-    const entries = grouped[day];
-    if (!entries.length) return '';
-    return `<div style="margin-bottom:1rem;">
-      <div class="syllabus-subject-header" style="${day === today ? 'color:#3fb950;' : ''}">${day}${day === today ? ' 📍 Today' : ''}</div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Class</th><th>Subject</th><th>Time</th></tr></thead>
+  // Group classes for selected day
+  const dayEntries = grouped[selectedDay] || [];
+  const classesByLevel = {};
+  dayEntries.forEach(e => {
+    if (!classesByLevel[e.classLevel]) classesByLevel[e.classLevel] = [];
+    classesByLevel[e.classLevel].push(e);
+  });
+
+  // Sort classes numerically
+  const sortedClasses = Object.keys(classesByLevel).sort((a, b) => {
+    const aNum = parseInt(a);
+    const bNum = parseInt(b);
+    return aNum - bNum;
+  });
+
+  // Render classes in 2-column grid
+  const classesHtml = sortedClasses.map(classLevel => {
+    const entries = classesByLevel[classLevel].sort((a, b) => 
+      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+    );
+    
+    return `
+      <div style="flex: 1; min-width: 350px; margin-bottom: 2rem;">
+        <div style="
+          background: #0052cc;
+          color: white;
+          padding: 12px 16px;
+          border-radius: 6px;
+          font-weight: 500;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        ">
+          <i class="fas fa-book"></i> Class ${classLevel}
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TIME</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">SUBJECT</th>
+              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TEACHER</th>
+            </tr>
+          </thead>
           <tbody>
-            ${entries.sort((a,b) => timeToMinutes(a.startTime)-timeToMinutes(b.startTime)).map(e => `
-              <tr>
-                <td>${e.classLevel || '–'}</td>
-                <td>${e.subject || '–'}</td>
-                <td>${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
-              </tr>`).join('')}
+            ${entries.map(e => `
+              <tr style="border-bottom: 1px solid #f0f0f0;">
+                <td style="padding: 12px; color: #0052cc; font-weight: 500; font-size: 0.9rem;">${formatTime(e.startTime)}</td>
+                <td style="padding: 12px; color: #1a1a1a; font-size: 0.9rem;">${e.subject || '–'}</td>
+                <td style="padding: 12px; color: #666; font-size: 0.9rem;">${e.teacherPhone ? e.teacherPhone.substring(0, 8) : 'Bhaba'}</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
       </div>
-    </div>`;
+    `;
   }).join('');
-  
-  if (!html) {
-    console.warn('⚠️ No timetable data to display');
-  }
-  
-  container.innerHTML = html || '<p style="color:var(--text-muted);">No timetable entries found. Ask admin to configure your timetable.</p>';
+
+  const noDataHtml = sortedClasses.length === 0 ? 
+    '<p style="color:var(--text-muted); padding: 2rem; text-align: center;">No classes scheduled for ' + selectedDay + '</p>' : '';
+
+  const html = `
+    <div style="margin-bottom: 2rem;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        ${dayButtonsHtml}
+      </div>
+    </div>
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+      ${classesHtml || noDataHtml}
+    </div>
+  `;
+
+  container.innerHTML = html;
+
+  // Add event listeners to day buttons
+  setTimeout(() => {
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedDay = btn.getAttribute('data-day');
+        renderWeeklyTimetable(); // Re-render with selected day
+      });
+    });
+  }, 0);
 }
 
 // ─── ATTENDANCE ───────────────────────────────────────────────────────────────

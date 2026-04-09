@@ -197,6 +197,7 @@ header {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    pointer-events: auto;
 }
 
 .btn-get-started:hover {
@@ -209,11 +210,52 @@ header {
     transform: translateY(-1px);
 }
 
+/* Continuous glow animation for Get Started button */
+.btn-get-started-animating {
+    animation: buttonGlow 2s ease-in-out infinite;
+}
+
+@keyframes buttonGlow {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(0, 82, 204, 0.1);
+    }
+    50% {
+        box-shadow: 0 4px 16px rgba(0, 82, 204, 0.25);
+    }
+}
+
 .hero-content p {
     font-size: 1.1rem;
     margin-bottom: 40px;
     color: var(--text-muted);
     max-width: 500px;
+    min-height: 1.5em; /* Prevent layout shift during typing */
+}
+
+/* Isolated container for hero title animation */
+#hero-title {
+    position: relative;
+    display: inline-block;
+    min-height: 1.1em; /* Prevent layout shift */
+    min-width: 100%; /* Contain within parent */
+}
+
+/* Blinking cursor for title */
+#hero-title::after {
+    content: '|';
+    animation: cursorBlink 1s infinite;
+    margin-left: 2px;
+    color: var(--accent-blue);
+    font-weight: bold;
+}
+
+@keyframes cursorBlink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
 }
 
 .hero-image {

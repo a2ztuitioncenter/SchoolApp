@@ -68,10 +68,11 @@ export const authorize = (allowedRoles) => {
     }
 
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-    const userRole = req.user.role;
+    const userRole = req.user.role ? req.user.role.toLowerCase() : '';
+    const allowedRolesLower = roles.map(r => r.toLowerCase());
 
-    if (!roles.includes(userRole)) {
-      console.warn(`⚠️ Authorization failed: User role '${userRole}' not in allowed roles [${roles.join(', ')}]`);
+    if (!allowedRolesLower.includes(userRole)) {
+      console.warn(`⚠️ Authorization failed: User role '${userRole}' not in allowed roles [${allowedRolesLower.join(', ')}]`);
       return res.status(403).json({ 
         error: `Forbidden: User role '${userRole}' does not have access to this resource`,
         code: 'FORBIDDEN',
