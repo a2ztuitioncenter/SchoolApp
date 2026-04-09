@@ -8,7 +8,7 @@ requireRole('teacher');
 
 // Global logout handler
 window.handleLogout = function() {
-  console.log('👋 Teacher logging out...');
+  // Teacher logging out
   authLogout();
 };
 
@@ -94,7 +94,7 @@ function setupTabs() {
 }
 
 function init() {
-  console.log('📄 Teacher Dashboard initializing...');
+  // Teacher Dashboard initializing
   syncToSessionStorage('teacher');
   teacherId = getUserId();
   
@@ -111,13 +111,13 @@ function init() {
   const profileMenu = document.getElementById('teacher-profile-dropdown');
   
   if (profileBtn && profileMenu) {
-    console.log('✅ Profile button and menu found');
+    // Profile button and menu found
     profileBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
       profileBtn.setAttribute('aria-expanded', !isExpanded);
       profileMenu.classList.toggle('open');
-      console.log('Profile menu toggled:', !isExpanded);
+      // Profile menu toggled
     });
     
     // Close profile menu when clicking outside
@@ -134,7 +134,7 @@ function init() {
   // Setup dropdown logout button
   const dropLogoutBtn = document.getElementById('dropdown-logout-btn-teacher');
   if (dropLogoutBtn) {
-    console.log('✅ Logout button found');
+    // Logout button found
     dropLogoutBtn.addEventListener('click', window.handleLogout);
   } else {
     console.warn('⚠️ Logout button not found');
@@ -144,7 +144,7 @@ function init() {
   const initialEl = document.getElementById('teacher-avatar-initial');
   if (initialEl) {
     initialEl.textContent = 'T';
-    console.log('✅ Teacher avatar initial updated');
+    // Teacher avatar initial updated
   }
   
   const ddName = document.getElementById('dropdown-teacher-name');
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', init);
 async function loadDashboard() {
   try {
     showInfo('Loading dashboard...');
-    console.log(`🔄 Loading dashboard for teacher ID: ${teacherId}`);
+    // Loading dashboard for teacher
     
     const [dashRes, matRes] = await Promise.all([
       teacherAPI.getDashboard(teacherId),
@@ -189,8 +189,7 @@ async function loadDashboard() {
     ]);
     hideInfo();
 
-    console.log('📊 Dashboard Response:', dashRes);
-    console.log('📚 Materials Response:', matRes);
+    // Dashboard and materials data loaded
 
     if (dashRes.success) {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
@@ -198,8 +197,7 @@ async function loadDashboard() {
       allTimetable = dashRes.timetable || [];
       allHomework  = dashRes.homework  || [];
       
-      console.log(`✅ Timetable entries loaded: ${allTimetable.length}`);
-      console.log(`✅ Homework entries loaded: ${allHomework.length}`);
+      // Timetable and homework loaded
     } else {
       console.warn('⚠️ Dashboard response not successful:', dashRes.error);
     }
@@ -229,7 +227,7 @@ function renderTodayTimetable() {
     return normalized === today;
   });
 
-  console.log(`Rendering Today's Timetable (${today}): ${todayEntries.length} entries found`);
+  // Rendering Today's Timetable
   
   const now = nowMinutes();
   

@@ -16,7 +16,7 @@ if (!requireRole('admin')) {
 
 // Global logout handler
 window.handleLogout = function() {
-  console.log('👋 Admin logging out...');
+  // Admin logging out
   authLogout();
 };
 
@@ -402,14 +402,14 @@ function renderQuickStatsKPI() {
         const inactiveStudents = totalStudents - activeStudents;
 
         const financials = dashboardData.financialSummary;
-        console.log('📊 Financial Summary Data:', financials);
+        // Financial data processed
         
         // Data is already in rupees (not paise), use as-is
         const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
         const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
         const totalFees = totalCollected + totalPending;
 
-        console.log('💰 Calculated amounts:', {
+        // Amounts calculated
             totalPaid_raw: financials.totalPaid,
             totalPending_raw: financials.totalPending,
             totalCollected,
@@ -477,7 +477,7 @@ function renderQuickStatsKPI() {
             el('kpi-attendance-detail').textContent = 'This month (avg.)';
         }
 
-        console.log('✅ Quick Stats rendered with real-time data (Actual Amounts):', {
+        // Quick Stats rendered
             totalStudents,
             activeStudents,
             totalCollected: `₹${totalCollected.toFixed(2)}`,
@@ -2821,7 +2821,7 @@ function formatTime(t) {
 // Select a day and render its timetable
 window.selectTimetableDay = function(day) {
     selectedTimetableDay = day;
-    console.log('[TIMETABLE] Selected day:', day);
+    // Day selected
     
     // Update active tab
     document.querySelectorAll('.day-tab').forEach(tab => {
@@ -2857,8 +2857,7 @@ function renderTimetableByClass(items) {
     }
 
     // Debug: Log data
-    console.log('[TIMETABLE] Rendering by class for:', selectedTimetableDay);
-    console.log('[TIMETABLE] All data:', items);
+    // Rendering timetable
 
     // Filter entries by selected day
     const filteredEntries = items.filter(entry => {
@@ -2868,7 +2867,7 @@ function renderTimetableByClass(items) {
         return normalizedDay === selectedTimetableDay;
     });
 
-    console.log('[TIMETABLE] Filtered entries for', selectedTimetableDay, ':', filteredEntries);
+    // Entries filtered
 
     if (filteredEntries.length === 0) {
         container.innerHTML = `<div class="timetable-no-classes"><i class="fas fa-calendar-day"></i><p>No classes scheduled for ${selectedTimetableDay}</p></div>`;

@@ -10,7 +10,7 @@ import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } fr
 // Global Logout Handler
 // ===========================
 window.handleLogout = function() {
-  console.log('👋 Logging out...');
+  // Logging out
   authLogout();
 };
 
@@ -25,11 +25,11 @@ if (!requireRole('student')) {
 // Initialization on Page Load
 // ===========================
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('📄 Dashboard initializing...');
+  // Dashboard initializing
 
   try {
     // Check backend health before loading dashboard
-    console.log('⏳ Checking backend connection...');
+    // Checking backend connection
     const isBackendReady = await waitForBackend(3, 1000);
     
     if (!isBackendReady) {
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dashboardData = await loadDashboardData(userId);
     if (dashboardData && dashboardData.data && dashboardData.data.profile) {
         const profile = dashboardData.data.profile;
-        console.log(`🎓 Student Profile loaded. Class: ${profile.classLevel}`);
+        // Student Profile loaded
         
         // Populate profile dropdown with initial values
         const nameEls = document.querySelectorAll('#dropdown-student-name');
@@ -164,15 +164,15 @@ function setupTabSwitching() {
       const target = document.getElementById(`tab-${tabId}`) || document.getElementById(tabId);
       if (target) {
           target.style.display = 'block';
-          console.log(`📂 Switched to tab: ${tabId}`);
+          // Tab switched
       }
 
       if (tabId === 'materials') {
         const classText = document.getElementById('student-class')?.innerText || '';
-        console.log(`🔍 Class text for materials: "${classText}"`);
+        // Class text for materials processed
         const match = classText.match(/Class: (\d+)/i);
         const studentClass = match ? match[1] : '10';
-        console.log(`📚 Fetching materials for Class: ${studentClass}`);
+        // Fetching materials
         loadMaterials(studentClass);
       }
 
@@ -189,7 +189,7 @@ function setupTabSwitching() {
  */
 async function loadDashboardData(userId) {
   try {
-    console.log(`📊 Fetching dashboard data for user: ${userId}`);
+    // Fetching dashboard data
 
     // Fetch data from backend
     const dashboardResponse = await studentAPI.getDashboard(userId);
@@ -221,7 +221,7 @@ async function loadDashboardData(userId) {
     if (data.timetable) populateTimetable(data.timetable);
     if (data.notifications) populateNotifications(data.notifications);
 
-    console.log('✅ Dashboard loaded successfully');
+    // Dashboard loaded successfully
     return data;
   } catch (error) {
     console.error('❌ Error loading dashboard:', error);
@@ -239,7 +239,7 @@ async function loadMaterials(classLevel) {
         
         // Normalize classLevel - handle various formats
         const normalizedClassLevel = String(classLevel).trim();
-        console.log(`📚 Loading materials for class: "${normalizedClassLevel}" (original: "${classLevel}")`);
+        // Loading materials
         
         const res = await materialsAPI.getByClass(normalizedClassLevel);
         
@@ -251,7 +251,7 @@ async function loadMaterials(classLevel) {
         }
         
         const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-        console.log(`📚 Materials loaded: ${list.length} items for class ${normalizedClassLevel}`);
+        // Materials loaded
 
         if (list.length === 0) {
             container.innerHTML = '<p class="empty-state">No study materials available for your class.</p>';
