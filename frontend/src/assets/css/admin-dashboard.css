@@ -453,15 +453,23 @@ textarea:focus {
   overflow-y: auto;
 }
 
+.modal[style*="display: block"],
+.modal[style*="display: flex"] {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+
 .modal-content {
   background-color: var(--bg-secondary);
-  margin: 10vh auto;
   width: 90%;
-  max-width: 480px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
+  max-width: 420px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
   overflow: hidden;
-  animation: slideUp 0.2s ease-out;
+  animation: slideUp 0.3s ease-out;
+  margin: auto;
 }
 
 @keyframes slideUp {

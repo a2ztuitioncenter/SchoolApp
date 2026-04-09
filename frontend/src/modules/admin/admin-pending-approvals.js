@@ -334,7 +334,7 @@ window.showRejectModal = function(userId) {
     currentRejectingUserId = userId;
     document.getElementById('rejection-reason').value = '';
     const modal = document.getElementById('reject-modal');
-    if (modal) modal.style.display = 'block';
+    if (modal) modal.style.display = 'flex';
 };
 
 /**

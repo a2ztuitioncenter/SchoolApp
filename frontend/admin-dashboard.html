@@ -1230,21 +1230,132 @@
                 <div id="message-container"></div>
 
                 <!-- Rejection Modal -->
-                <div id="reject-modal" class="modal" style="display: none;">
-                    <div class="modal-content" style="max-width: 500px;">
-                        <div class="modal-header">
-                            <h2>Reject Registration</h2>
-                            <span class="close" onclick="closeRejectModal()">&times;</span>
+                <div id="reject-modal" class="modal" style="
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(4px);
+                    z-index: 1000;
+                    justify-content: center;
+                    align-items: center;
+                    align-content: center;
+                ">
+                    <div class="modal-content" style="
+                        max-width: 420px;
+                        width: 90%;
+                        background: var(--bg-primary);
+                        border-radius: 20px;
+                        border: 1px solid var(--border-color);
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                        overflow: hidden;
+                        animation: slideUp 0.3s ease-out;
+                    ">
+                        <div class="modal-header" style="
+                            padding: 24px 28px;
+                            background: linear-gradient(135deg, #ef4444, #dc2626);
+                            color: white;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            border-bottom: none;
+                        ">
+                            <h2 style="
+                                margin: 0;
+                                font-size: 18px;
+                                font-weight: 700;
+                                display: flex;
+                                align-items: center;
+                                gap: 12px;
+                            ">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Reject Registration
+                            </h2>
+                            <span class="close" onclick="closeRejectModal()" style="
+                                cursor: pointer;
+                                font-size: 28px;
+                                font-weight: 300;
+                                color: white;
+                                opacity: 0.8;
+                                transition: opacity 0.2s;
+                                width: 32px;
+                                height: 32px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                border-radius: 50%;
+                            " onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.opacity='0.8'; this.style.background='transparent'">&times;</span>
                         </div>
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label>Reason for Rejection *</label>
-                                <textarea id="rejection-reason" placeholder="Explain why you're rejecting this registration..." rows="4" required></textarea>
+                        <div class="modal-body" style="padding: 28px;">
+                            <p style="
+                                margin: 0 0 20px 0;
+                                font-size: 14px;
+                                color: var(--text-muted);
+                                line-height: 1.5;
+                            ">Please provide a clear reason for rejecting this registration. This will help the applicant understand the decision.</p>
+                            <div class="form-group" style="margin: 0;">
+                                <label style="
+                                    display: block;
+                                    margin-bottom: 10px;
+                                    font-weight: 600;
+                                    font-size: 14px;
+                                    color: var(--text-main);
+                                ">Reason for Rejection *</label>
+                                <textarea id="rejection-reason" placeholder="Explain why you're rejecting this registration..." rows="4" style="
+                                    width: 100%;
+                                    padding: 12px 14px;
+                                    border: 1px solid var(--border-color);
+                                    border-radius: 10px;
+                                    font-family: inherit;
+                                    font-size: 14px;
+                                    color: var(--text-main);
+                                    background: var(--bg-secondary);
+                                    resize: vertical;
+                                    transition: all 0.2s ease;
+                                " onfocus="this.style.borderColor='#667eea'; this.style.background='var(--bg-primary)'" onblur="this.style.borderColor='var(--border-color)'; this.style.background='var(--bg-secondary)'"></textarea>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
-                            <button class="btn btn-danger" id="confirm-reject-btn">Reject Registration</button>
+                        <div class="modal-footer" style="
+                            padding: 20px 28px;
+                            background: var(--bg-secondary);
+                            display: flex;
+                            gap: 12px;
+                            justify-content: flex-end;
+                            border-top: 1px solid var(--border-color);
+                        ">
+                            <button class="btn btn-secondary" onclick="closeRejectModal()" style="
+                                padding: 10px 24px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 10px;
+                                background: var(--bg-primary);
+                                color: var(--text-main);
+                                font-weight: 600;
+                                font-size: 14px;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                            " onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='var(--bg-primary)'">
+                                Cancel
+                            </button>
+                            <button class="btn btn-danger" id="confirm-reject-btn" style="
+                                padding: 10px 24px;
+                                border: none;
+                                border-radius: 10px;
+                                background: linear-gradient(135deg, #ef4444, #dc2626);
+                                color: white;
+                                font-weight: 600;
+                                font-size: 14px;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                display: flex;
+                                align-items: center;
+                                gap: 8px;
+                            " onmouseover="this.style.boxShadow='0 8px 16px rgba(239,68,68,0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
+                                <i class="fas fa-trash"></i>
+                                Reject
+                            </button>
                         </div>
                     </div>
                 </div>
