@@ -322,7 +322,7 @@ router.get('/materials', async (req, res) => {
 // POST /api/teacher/materials  (multipart)
 router.post('/materials', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
-    const { teacherId, title, description, classLevel, subject } = req.body;
+    const { teacherId, title, description, classLevel, section, subject } = req.body;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
@@ -331,9 +331,9 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 
     const fileUrl = `/uploads/materials/${req.file.filename}`;
     const result = await pool.query(
-      `INSERT INTO materials (title, description, "classLevel", subject, "fileUrl", "uploadedBy")
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [title, description || null, classLevel, subject, fileUrl, teacher.phone]
+      `INSERT INTO materials (title, description, "classLevel", section, subject, "fileUrl", "uploadedBy")
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.phone]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -345,7 +345,7 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { teacherId, title, description, classLevel, subject } = req.body;
+    const { teacherId, title, description, classLevel, section, subject } = req.body;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
@@ -358,8 +358,8 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
     if (req.file) fileUrl = `/uploads/materials/${req.file.filename}`;
 
     const result = await pool.query(
-      `UPDATE materials SET title=$1, description=$2, "classLevel"=$3, subject=$4, "fileUrl"=$5 WHERE id=$6 RETURNING *`,
-      [title, description || null, classLevel, subject, fileUrl, id]
+      `UPDATE materials SET title=$1, description=$2, "classLevel"=$3, section=$4, subject=$5, "fileUrl"=$6 WHERE id=$7 RETURNING *`,
+      [title, description || null, classLevel, section || null, subject, fileUrl, id]
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {

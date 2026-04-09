@@ -103,24 +103,30 @@ const apiCall = async (endpoint, options = {}) => {
       headers,
     });
 
-    // Handle token expiration (401 Unauthorized)
+    // Handle 401 Unauthorized
     if (response.status === 401) {
-      console.warn('⚠️ Unauthorized: Token expired or invalid. Redirecting to login...');
-      // Clear auth and redirect to login
-      try {
-        const { clearAuth } = await import('./auth-manager.js');
-        clearAuth();
-      } catch (error) {
-        console.error('❌ Error during 401 cleanup:', error);
-        localStorage.removeItem('auth');
-        sessionStorage.clear();
+      const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/teacher-login') || url.includes('/auth/admin-login') || url.includes('/auth/register');
+      
+      if (!isAuthRequest) {
+        console.warn('⚠️ Unauthorized: Token expired or invalid. Redirecting to login...');
+        try {
+          const { clearAuth } = await import('./auth-manager.js');
+          clearAuth();
+        } catch (error) {
+          console.error('❌ Error during 401 cleanup:', error);
+          localStorage.removeItem('auth');
+          sessionStorage.clear();
+        }
+        
+        if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+          window.location.href = '/';
+        }
+        return { error: 'Session expired. Please login again.' };
       }
       
-      // Prevent immediate redirect loop by checking if we are already on index
-      if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-          window.location.href = '/';
-      }
-      return { error: 'Session expired. Please login again.' };
+      // For login requests, let the specific handler show the "Invalid credentials" error
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || 'Invalid credentials' };
     }
 
     // Handle 403 Forbidden (insufficient permissions)

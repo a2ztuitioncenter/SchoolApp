@@ -80,8 +80,12 @@ export const getApprovedUser = async (pool, phone) => {
  */
 export const getUsersByStatus = async (pool, status, schoolId = 'school-001') => {
   const result = await pool.query(
-    `SELECT id, name, phone, email, role, status, "createdAt", "approvedBy", "rejectionReason", "statusUpdatedAt"
-     FROM users WHERE status = $1 AND "schoolId" = $2 ORDER BY "createdAt" DESC`,
+    `SELECT u.id, u.name, u.phone, u.email, u.role, u.status, u."createdAt", u."approvedBy", u."rejectionReason", u."statusUpdatedAt",
+            s."classLevel", s.section
+     FROM users u
+     LEFT JOIN students s ON u.id = s."userId"
+     WHERE u.status = $1 AND u."schoolId" = $2 
+     ORDER BY u."createdAt" DESC`,
     [status, schoolId]
   );
   return result.rows;

@@ -406,30 +406,34 @@ function populateNotifications(notifications) {
     return;
   }
 
-  const fullHtml = notifications.map(n => `
+  const fullHtml = notifications.map(n => {
+    const message = n.message || 'No message content';
+    return `
     <div class="notification-card">
       <div class="notification-header">
-        <span class="notification-title">${n.title}</span>
+        <span class="notification-title">${n.title || 'Announcement'}</span>
         <span class="notification-date">${formatDate(n.createdAt)}</span>
       </div>
-      <p class="notification-message">${n.message}</p>
+      <p class="notification-message">${message}</p>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
         ${n.classLevel ? `<span class="notification-badge">Class ${n.classLevel}</span>` : '<span class="notification-badge global">All Classes</span>'}
         ${n.attachmentUrl ? `<a href="${n.attachmentUrl}" target="_blank" class="download-link" style="color:var(--accent-blue); font-size:0.85rem;"><i class="fas fa-file-download"></i> Attachment</a>` : ''}
       </div>
     </div>
-  `).join('');
+  `;}).join('');
 
   if (fullEl) fullEl.innerHTML = fullHtml;
 
   // Preview: show first 3
   if (previewEl) {
-    previewEl.innerHTML = notifications.slice(0, 3).map(n => `
+    previewEl.innerHTML = notifications.slice(0, 3).map(n => {
+      const msg = n.message || '';
+      return `
       <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle);">
-        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${n.title}</p>
-        <p style="font-size: 0.8rem; color: var(--text-muted);">${n.message.substring(0, 80)}${n.message.length > 80 ? '…' : ''}</p>
+        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${n.title || 'Announcement'}</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">${msg.substring(0, 80)}${msg.length > 80 ? '…' : ''}</p>
       </div>
-    `).join('');
+    `;}).join('');
     if (notifications.length > 3) {
       previewEl.innerHTML += `<p style="font-size:0.8rem; color: var(--accent-blue);">View All →</p>`;
     }

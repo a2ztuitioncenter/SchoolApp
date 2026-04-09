@@ -101,6 +101,11 @@ function renderPendingUsers() {
                             ${roleLower === 'teacher' ? '👨‍🏫' : '👤'} ${user.role || 'Unknown'}
                         </span>
                     </div>
+                    ${user.classLevel ? `
+                    <div class="approval-detail" style="margin-top: 5px; font-weight: 500; color: var(--accent-blue);">
+                        <i class="fa fa-graduation-cap"></i> Class: ${user.classLevel}${user.section ? ` - Sec: ${user.section}` : ''}
+                    </div>
+                    ` : ''}
                     <div class="approval-detail">
                         <span class="status-badge">🕐 ${createdDate}</span>
                     </div>

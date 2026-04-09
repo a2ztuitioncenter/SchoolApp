@@ -363,9 +363,9 @@ function renderHomeworkTable() {
     }).join('');
 }
 
-async function populateHwDropdowns() {
-  const classSel = document.getElementById('hw-classLevel');
-  const secSel   = document.getElementById('hw-section');
+async function populateSharedDropdowns(prefix = 'hw') {
+  const classSel = document.getElementById(`${prefix}-classLevel`);
+  const secSel   = document.getElementById(`${prefix}-section`);
   if (!classSel || !secSel) return;
   
   if (classSel.options.length > 1 && secSel.options.length > 1) return;
@@ -374,13 +374,10 @@ async function populateHwDropdowns() {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     const classes = res.data || [];
     
-    // For now, these classes might be 10A, 12B. Let's try to split them if possible or just use them as classLevel.
-    // The user wants class and section dropdowns.
     const classSet = new Set();
     const secSet   = new Set();
     
     classes.forEach(c => {
-      // Simple heuristic: if it ends with a letter, that's the section.
       const match = c.match(/^(\d+)([A-Z])$/i);
       if (match) {
         classSet.add(match[1]);
@@ -390,11 +387,14 @@ async function populateHwDropdowns() {
       }
     });
 
-    classSel.innerHTML = '<option value="">Select Class</option>' + 
+    const classOptions = '<option value="">Select Class</option>' + 
       Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
-    secSel.innerHTML = '<option value="">Select Section</option>' + 
+    const secOptions = '<option value="">Select Section</option>' + 
       Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
-  } catch (err) { console.error('Populate HW dropdowns failed', err); }
+
+    classSel.innerHTML = classOptions;
+    secSel.innerHTML = secOptions;
+  } catch (err) { console.error('Populate dropdowns failed', err); }
 }
 
 function renderDppTable() {
@@ -423,7 +423,7 @@ function renderDppTable() {
 }
 
 window.openHwModal = async function(typeOrHw = 'homework') {
-  await populateHwDropdowns();
+  await populateSharedDropdowns('hw');
   document.getElementById('hw-form').reset();
   const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
   const type = typeof typeOrHw === 'string' ? typeOrHw : (hw ? hw.type : 'homework');
@@ -518,6 +518,7 @@ function setupFormListeners() {
     const fd = new FormData();
     fd.append('teacherId',    teacherId);
     fd.append('classLevel',   document.getElementById('mat-classLevel').value);
+    fd.append('section',      document.getElementById('mat-section').value);
     fd.append('subject',      document.getElementById('mat-subject').value);
     fd.append('title',        document.getElementById('mat-title').value);
     fd.append('description',  document.getElementById('mat-description').value);
@@ -577,7 +578,7 @@ function renderMaterialsTable() {
     <tr>
       <td>${m.title}</td>
       <td>${m.subject}</td>
-      <td><span class="badge">Class ${m.classLevel}</span></td>
+      <td><span class="badge">Class ${m.classLevel}${m.section ? '-' + m.section : ''}</span></td>
       <td><a href="${m.fileUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-download"></i></a></td>
       <td>
         <button class="btn-sm btn-edit"   onclick="editMaterial(${m.id})"><i class="fas fa-pen"></i></button>
@@ -586,7 +587,8 @@ function renderMaterialsTable() {
     </tr>`).join('');
 }
 
-window.openMatModal = function(m = null) {
+window.openMatModal = async function(m = null) {
+  await populateSharedDropdowns('mat');
   document.getElementById('mat-form').reset();
   document.getElementById('mat-edit-id').value = m?.id || '';
   document.getElementById('mat-current-file').value = m?.fileUrl || '';
@@ -594,6 +596,7 @@ window.openMatModal = function(m = null) {
   document.getElementById('mat-file-hint').style.display = m ? 'inline' : 'none';
   if (m) {
     document.getElementById('mat-classLevel').value  = m.classLevel   || '';
+    document.getElementById('mat-section').value     = m.section      || '';
     document.getElementById('mat-subject').value     = m.subject      || '';
     document.getElementById('mat-title').value       = m.title        || '';
     document.getElementById('mat-description').value = m.description  || '';

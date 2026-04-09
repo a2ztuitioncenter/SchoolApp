@@ -380,16 +380,17 @@ async function handleStudentSignupModal(e) {
     const phone = form.querySelector('#student-signup-phone')?.value?.trim();
     const password = form.querySelector('#student-signup-password')?.value?.trim();
     const classLevel = form.querySelector('#student-signup-class')?.value;
+    const section = form.querySelector('#student-signup-section')?.value;
     const errorDiv = form.querySelector('#studentSignupError');
     const successDiv = form.querySelector('#studentSignupSuccess');
     const btn = form.querySelector('#studentSignupBtn');
     
-    console.log('🔹 Student Signup attempt:', { name, phone });
+    console.log('🔹 Student Signup attempt:', { name, phone, classLevel, section });
     
     clearMessages(errorDiv, successDiv);
     
     if (!name || !phone || !password || !classLevel) {
-        console.warn('⚠️ Student Signup missing fields:', { name, phone, password: password?'***':'empty', classLevel });
+        console.warn('⚠️ Student Signup missing fields:', { name, phone, password: password?'***':'empty', classLevel, section });
         showError(errorDiv, 'All fields are required');
         return;
     }
@@ -402,7 +403,8 @@ async function handleStudentSignupModal(e) {
             name,
             phone,
             password,
-            classLevel: parseInt(classLevel)
+            classLevel,
+            section
         });
         
         if (response.success) {

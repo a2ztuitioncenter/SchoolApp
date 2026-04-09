@@ -57,13 +57,14 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Development password check
-    if (password !== 'student123' && password !== 'password123') {
-        // Find if password matches what was registerd (if any)
-        // For now, allow simple checks since this is dev
-        if (user.password !== password) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
+    // Verify password using bcryptjs
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    // Development fallback (keep for compatibility with existing plain text tests if any)
+    const isMockPassword = password === 'student123' || password === 'password123';
+
+    if (!passwordMatch && !isMockPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Get student details
@@ -96,7 +97,7 @@ router.post('/login', async (req, res) => {
  * Payload: { name, phone, password, classLevel }
  */
 router.post('/register', async (req, res) => {
-  const { name, phone, password, classLevel } = req.body;
+  const { name, phone, password, classLevel, section } = req.body;
   const pool = req.db;
 
   try {
@@ -132,6 +133,7 @@ router.post('/register', async (req, res) => {
       userId: user.id,
       name,
       classLevel,
+      section: section || null,
       phone,
       email: user.email,
       joiningDate,
