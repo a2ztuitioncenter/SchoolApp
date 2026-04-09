@@ -151,7 +151,17 @@ window.approveUserHandler = async function(userId) {
 window.showRejectModal = function(userId) {
     currentRejectingUserId = userId;
     document.getElementById('rejection-reason').value = '';
-    document.getElementById('rejection-modal').classList.add('show');
+    const modal = document.getElementById('reject-modal');
+    if (modal) modal.style.display = 'block';
+};
+
+/**
+ * Close rejection modal
+ */
+window.closeRejectModal = function() {
+    const modal = document.getElementById('reject-modal');
+    if (modal) modal.style.display = 'none';
+    currentRejectingUserId = null;
 };
 
 /**
@@ -199,7 +209,7 @@ async function rejectUser(userId, reason) {
             showMessage(`❌ User ${response.user.name} rejected successfully!`, 'success');
             
             // Close modal
-            document.getElementById('rejection-modal').classList.remove('show');
+            window.closeRejectModal();
             
             // Remove the card from UI
             const card = document.querySelector(`[data-user-id="${userId}"]`);
@@ -270,3 +280,4 @@ function showMessage(message, type = 'info') {
 window.approveUser = approveUser;
 window.rejectUser = rejectUser;
 window.showMessage = showMessage;
+window.fetchPendingUsers = fetchPendingUsers;

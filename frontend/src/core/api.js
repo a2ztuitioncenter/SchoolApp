@@ -293,4 +293,4 @@ export const downloadFile = async (filePath, fileName = 'download') => {
 
 window.downloadFile = downloadFile;
 
-export { authAPI, adminAPI, studentAPI, teacherAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };
+export { attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };

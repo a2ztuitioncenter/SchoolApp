@@ -4,6 +4,7 @@
  */
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
+import './admin-pending-approvals.js';
 
 
 let currentTab = 'dashboard';
@@ -199,16 +200,17 @@ function showTab(tabName) {
 
 async function loadTabContent(tabName) {
     switch (tabName) {
-        case 'dashboard':     await loadDashboardData(); break;
-        case 'users':         await loadUsers(); break;
-        case 'students':      await loadStudents(); break;
-        case 'attendance':    await initAttendanceTab(); break;
-        case 'homework':      await loadAllHomework(); break;
-        case 'fees':          await initFeesTab(); break;
-        case 'materials':     await loadMaterials(); break;
-        case 'timetable':     await loadTimetable(); break;
-        case 'notifications': await loadNotifications(); break;
-        case 'results':       await loadResults(); break;
+        case 'dashboard':          await loadDashboardData(); break;
+        case 'pending-approvals':  await initPendingApprovalsTab(); break;
+        case 'users':              await loadUsers(); break;
+        case 'students':           await loadStudents(); break;
+        case 'attendance':         await initAttendanceTab(); break;
+        case 'homework':           await loadAllHomework(); break;
+        case 'fees':               await initFeesTab(); break;
+        case 'materials':          await loadMaterials(); break;
+        case 'timetable':          await loadTimetable(); break;
+        case 'notifications':      await loadNotifications(); break;
+        case 'results':            await loadResults(); break;
     }
 }
 
@@ -1537,6 +1539,31 @@ async function initAttendanceTab() {
         if (monthEl) monthEl.value = today.slice(0, 7);
     } catch (err) {
         showErrorAlert('Failed to load attendance data');
+    }
+}
+
+/**
+ * Initialize Pending Approvals tab by fetching pending users
+ */
+async function initPendingApprovalsTab() {
+    try {
+        // Call the fetchPendingUsers function from admin-pending-approvals.js
+        if (typeof window.fetchPendingUsers === 'function') {
+            window.fetchPendingUsers();
+        } else {
+            // If the function isn't available yet, try again after a short delay
+            console.warn('fetchPendingUsers not yet available, retrying...');
+            setTimeout(() => {
+                if (typeof window.fetchPendingUsers === 'function') {
+                    window.fetchPendingUsers();
+                } else {
+                    showErrorAlert('Failed to load pending approvals module');
+                }
+            }, 100);
+        }
+    } catch (err) {
+        console.error('Error initializing pending approvals:', err);
+        showErrorAlert('Failed to load pending approvals');
     }
 }
 

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A2Z Tuition - Premier Online Learning</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./src/assets/css/modal.css">
     <link rel="stylesheet" href="./src/assets/css/index.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
 </head>
@@ -18,8 +19,8 @@
                 </div>
                 <nav style="display: flex; align-items: center; gap: 20px;">
                     <ul>
-                        <li><a id="header-login" href="#"><i class="fa fa-user"></i> Log in</a></li>
-                        <li><a id="header-signup" href="#"><i class="fa fa-plus-square"></i> Sign up</a></li>
+                        <li><a id="header-login" href="#" onclick="openAuthLoginSelector(event)"><i class="fa fa-user"></i> Log in</a></li>
+                        <li><a id="header-signup" href="#" onclick="openAuthSignupSelector(event)"><i class="fa fa-plus-square"></i> Sign up</a></li>
                     </ul>
                 </nav>
             </div>
@@ -49,76 +50,172 @@
                     </div>
                     <h1>Welcome to A2Z Tuition</h1>
                     <p>Empowering students through quality online education</p>
-                    <button class="btn-get-started" id="btn-get-started">Get Started</button>
+                    <button class="btn-get-started" id="btn-get-started" onclick="openAuthLoginSelector(event)">Get Started</button>
                 </div>
             </div>
         </section>
 
-        <!-- Login Modal Popup -->
-        <div class="login-modal login-modal--hidden" id="login-modal">
-            <div class="login-modal-overlay"></div>
-            <div class="login-modal-content">
-                <button class="login-modal-close" id="login-modal-close">&times;</button>
-                
-                <div class="modal-section">
-                    <h4 class="modal-section-title">Login</h4>
-                    <div class="login-grid">
-                        <div class="login-card" id="student-card" data-login-type="student">
-                            <div class="login-card-icon"><i class="fa fa-user"></i></div>
-                            <h3>Student Login <a href="student-login.html"><i class="fa fa-long-arrow-alt-right"></i></a></h3>
-                        </div>
-
-                        <div class="login-card" id="teacher-card" data-login-type="teacher">
-                            <div class="login-card-icon"><i class="fa fa-pencil"></i></div>
-                            <h3>Teacher Login <a href="teacher-login.html"><i class="fa fa-long-arrow-alt-right"></i></a></h3>
-                        </div>
-
-                        <div class="login-card" id="admin-card" data-login-type="admin">
-                            <div class="login-card-icon"><i class="fa fa-th"></i></div>
-                            <h3>Admin Dashboard <a href="admin-login.html"><i class="fa fa-long-arrow-alt-right"></i></a></h3>
-                        </div>
-                    </div>
-                </div>
+        <!-- Central Auth Modal -->
+        <div class="auth-modal hidden" id="authModal">
+            <div class="modal-overlay" onclick="closeAuthModal()"></div>
+            <div class="modal-container">
+                <button class="modal-close" onclick="closeAuthModal()" aria-label="Close modal"><i class="fas fa-times"></i></button>
+                <div id="authContent"></div>
             </div>
         </div>
 
-        <!-- Signup Modal (Header) -->
-        <div class="signup-modal signup-modal--hidden" id="signup-modal">
-            <div class="signup-modal-overlay"></div>
-            <div class="signup-modal-content">
-                <button class="signup-modal-close" id="signup-modal-close">&times;</button>
-                <div class="signup-modal-header">
-                    <h2>Create Your Account</h2>
-                    <p>Choose your role to get started</p>
+        <!-- Hidden Form Containers (for modal injection) -->
+        
+        <!-- Student Login Form -->
+        <div id="studentLoginForm" class="hidden-form-container">
+            <div class="modal-header">
+                <div class="modal-logo"><i class="fas fa-book"></i></div>
+                <h2>Student Login</h2>
+                <p class="modal-subtitle">Welcome back! Enter your details to continue.</p>
+            </div>
+            <div class="error-message" id="studentLoginError"></div>
+            <form id="studentLoginFormElement">
+                <div class="form-group">
+                    <label for="student-login-phone">Phone Number</label>
+                    <input type="tel" id="student-login-phone" name="phone" placeholder="Enter your 10-digit phone number" pattern="[0-9]{10}" required>
                 </div>
-                
-                <div class="signup-options">
-                    <div class="signup-option-card" onclick="window.location.href='/student-register.html'">
-                        <div class="signup-option-icon">
-                            <i class="fa fa-graduation-cap"></i>
-                        </div>
-                        <h3>Student</h3>
-                        <p>Join as a student and start learning</p>
-                        <div class="signup-option-cta">
-                            Sign Up <i class="fa fa-arrow-right"></i>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label for="student-login-password">Password</label>
+                    <input type="password" id="student-login-password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" id="studentLoginBtn" class="btn-submit">Log In</button>
+            </form>
+            <div class="modal-footer">
+                <p>Don't have an account? <a href="#" onclick="openAuthModal('signup', 'student')">Sign up</a></p>
+            </div>
+        </div>
 
-                    <div class="signup-option-card" onclick="window.location.href='/teacher-register.html'">
-                        <div class="signup-option-icon">
-                            <i class="fa fa-chalkboard-user"></i>
-                        </div>
-                        <h3>Teacher</h3>
-                        <p>Join as a teacher and share your knowledge</p>
-                        <div class="signup-option-cta">
-                            Sign Up <i class="fa fa-arrow-right"></i>
-                        </div>
-                    </div>
+        <!-- Teacher Login Form -->
+        <div id="teacherLoginForm" class="hidden-form-container">
+            <div class="modal-header">
+                <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
+                <div class="teacher-badge">Teacher Portal</div>
+                <h2>A2Z</h2>
+                <p class="modal-subtitle">Educator Access Portal</p>
+            </div>
+            <div class="error-message" id="teacherLoginError"></div>
+            <div class="success-message" id="teacherLoginSuccess"></div>
+            <form id="teacherLoginFormElement">
+                <div class="form-group">
+                    <label for="teacher-login-phone">Phone Number</label>
+                    <input type="tel" id="teacher-login-phone" name="phone" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
                 </div>
+                <div class="form-group">
+                    <label for="teacher-login-password">Password</label>
+                    <input type="password" id="teacher-login-password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="button" id="teacherLoginBtn" class="btn-submit">Login as Teacher</button>
+            </form>
+            <div class="modal-footer">
+                <p>Don't have an account? <a href="#" onclick="openAuthModal('signup', 'teacher')">Sign up</a></p>
+            </div>
+        </div>
 
-                <div class="signup-modal-footer">
-                    <p>Already have an account? <a href="#" id="signup-to-login">Log in</a></p>
+        <!-- Admin Login Form -->
+        <div id="adminLoginForm" class="hidden-form-container">
+            <div class="modal-header">
+                <div class="modal-logo"><i class="fas fa-building"></i></div>
+                <div class="admin-badge">Admin Panel</div>
+                <h2>A2Z</h2>
+                <p class="modal-subtitle">Administrator Portal</p>
+            </div>
+            <div class="error-message" id="adminLoginError"></div>
+            <div class="success-message" id="adminLoginSuccess"></div>
+            <form id="adminLoginFormElement">
+                <div class="form-group">
+                    <label for="admin-login-phone">Phone Number</label>
+                    <input type="tel" id="admin-login-phone" name="phone" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
                 </div>
+                <div class="form-group">
+                    <label for="admin-login-password">Password</label>
+                    <input type="password" id="admin-login-password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="button" id="adminLoginBtn" class="btn-submit">Login as Admin</button>
+            </form>
+            <div class="modal-footer">
+                <p><a href="#" onclick="openAuthModal('login', 'student')">← Back to Login</a></p>
+            </div>
+        </div>
+
+        <!-- Student Signup Form -->
+        <div id="studentSignupForm" class="hidden-form-container">
+            <div class="modal-header">
+                <div class="modal-logo"><i class="fas fa-graduation-cap"></i></div>
+                <h2>Student Registration</h2>
+                <p class="modal-subtitle">Join A2Z Tuition today and start your learning journey.</p>
+            </div>
+            <div class="error-message" id="studentSignupError"></div>
+            <div class="success-message" id="studentSignupSuccess"></div>
+            <form id="studentSignupFormElement">
+                <div class="form-group">
+                    <label for="student-signup-name">Full Name</label>
+                    <input type="text" id="student-signup-name" name="name" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label for="student-signup-phone">Phone Number</label>
+                    <input type="tel" id="student-signup-phone" name="phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                </div>
+                <div class="form-group">
+                    <label for="student-signup-password">Password</label>
+                    <input type="password" id="student-signup-password" name="password" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label for="student-signup-class">Class Level</label>
+                    <select id="student-signup-class" name="classLevel" required>
+                        <option value="">Select your class</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                        <option value="12">Class 12</option>
+                    </select>
+                </div>
+                <button type="submit" id="studentSignupBtn" class="btn-submit">Sign Up</button>
+            </form>
+            <div class="modal-footer">
+                <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'student')">Log in</a></p>
+            </div>
+        </div>
+
+        <!-- Teacher Signup Form -->
+        <div id="teacherSignupForm" class="hidden-form-container">
+            <div class="modal-header">
+                <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
+                <div class="teacher-badge">Teacher</div>
+                <h2>Teacher Registration</h2>
+                <p class="modal-subtitle">Join A2Z Tuition and inspire students to learn!</p>
+            </div>
+            <div class="error-message" id="teacherSignupError"></div>
+            <div class="success-message" id="teacherSignupSuccess"></div>
+            <form id="teacherSignupFormElement">
+                <div class="form-group">
+                    <label for="teacher-signup-name">Full Name</label>
+                    <input type="text" id="teacher-signup-name" name="name" placeholder="John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-signup-email">Email Address</label>
+                    <input type="email" id="teacher-signup-email" name="email" placeholder="john@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-signup-phone">Phone Number</label>
+                    <input type="tel" id="teacher-signup-phone" name="phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-signup-password">Password</label>
+                    <input type="password" id="teacher-signup-password" name="password" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-signup-confirm">Confirm Password</label>
+                    <input type="password" id="teacher-signup-confirm" name="confirmPassword" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" id="teacherSignupBtn" class="btn-submit">Sign Up</button>
+            </form>
+            <div class="modal-footer">
+                <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'teacher')">Log in</a></p>
             </div>
         </div>
 
@@ -173,6 +270,7 @@
     <script>
         document.documentElement.setAttribute('data-theme', 'light');
     </script>
+    <script src="./src/core/auth-modal.js"></script>
     <script type="module" src="./src/core/index.js"></script>
 </body>
 </html>

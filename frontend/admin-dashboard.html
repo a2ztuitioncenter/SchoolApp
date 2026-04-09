@@ -27,7 +27,7 @@
                 <a href="#" class="nav-link active" data-tab="dashboard">
                     <i class="fas fa-chart-line"></i> Dashboard
                 </a>
-                <a href="/pending-approvals.html" class="nav-link">
+                <a href="#" class="nav-link" data-tab="pending-approvals">
                     <i class="fas fa-clock"></i> Pending Approvals
                 </a>
                 <a href="#" class="nav-link" data-tab="users">
@@ -1216,8 +1216,50 @@
                 </div>
             </div>
 
+            <!-- Pending Approvals Tab -->
+            <div id="pending-approvals" class="tab-content">
+                <!-- Page Header -->
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-hourglass-half"></i> Pending User Approvals</h2>
+                        <p class="section-subtitle">Review and approve pending teacher & student registrations</p>
+                    </div>
+                </div>
+
+                <!-- Alert Messages Container -->
+                <div id="message-container"></div>
+
+                <!-- Rejection Modal -->
+                <div id="reject-modal" class="modal" style="display: none;">
+                    <div class="modal-content" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <h2>Reject Registration</h2>
+                            <span class="close" onclick="closeRejectModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Reason for Rejection *</label>
+                                <textarea id="rejection-reason" placeholder="Explain why you're rejecting this registration..." rows="4" required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+                            <button class="btn btn-danger" id="confirm-reject-btn">Reject Registration</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Users List -->
+                <div id="pending-users-list" class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #999;">
+                        <i class="fas fa-hourglass-end" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p style="font-size: 1.1rem;">Loading pending approvals...</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Exam Results Tab -->
-            <div id="tab-results" class="tab-content" style="display:none;">
+            <div id="results" class="tab-content">
                 <div class="card-grid">
                     <div class="card" style="grid-column: 1 / -1;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
