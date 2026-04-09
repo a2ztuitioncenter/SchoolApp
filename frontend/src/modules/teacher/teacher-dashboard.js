@@ -154,6 +154,23 @@ function init() {
   const ddEmail = document.getElementById('dropdown-teacher-email');
   if (ddEmail) ddEmail.textContent = teacherPhone || `teacher@a2z.local`;
   
+  // Mobile Sidebar Toggle
+  const mobileToggle = document.getElementById('mobile-menu-toggle');
+  const sidebar = document.querySelector('.sidebar');
+  if (mobileToggle && sidebar) {
+    mobileToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+    });
+    // Close sidebar when clicking a link on mobile
+    document.querySelectorAll('.sidebar nav a').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove('active');
+        }
+      });
+    });
+  }
+  
   setupTabs();
   setupFormListeners();
   loadDashboard();
@@ -267,7 +284,7 @@ function renderWeeklyTimetable() {
     if (grouped[normalized]) grouped[normalized].push(e);
   });
 
-  console.log(`📊 Weekly Timetable: Total entries: ${allTimetable.length}`);
+  console.log(`Weekly Timetable: Total entries: ${allTimetable.length}`);
   console.log(`   Day breakdown:`, Object.entries(grouped).filter(([d, es]) => es.length > 0).map(([d, es]) => `${d}: ${es.length}`).join(', '));
 
   const today = todayName();
