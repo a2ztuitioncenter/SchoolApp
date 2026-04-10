@@ -268,6 +268,10 @@ export const teacherAPI = {
   createSyllabus: (data)      => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
   updateSyllabus: (id, data)  => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSyllabus: (id, teacherId) => apiCall(`/teacher/syllabus/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
+
+  // Exam Results
+  createExamResult: (data) => apiCall('/teacher/exam-results', { method: 'POST', body: JSON.stringify(data) }),
+  getExamResults:    ()      => apiCall('/teacher/exam-results', { method: 'GET' }),
 };
 
 /**

@@ -88,6 +88,7 @@ function setupTabs() {
       if (tab === 'syllabus') loadSyllabus();
       if (tab === 'attendance') initAttendanceTab();
       if (tab === 'summary') initSummaryTab();
+      if (tab === 'exam') initExamTab();
     });
   });
 }
@@ -1005,14 +1006,11 @@ window.toggleActionMenu = function (event) {
     const winW = window.innerWidth;
     const margin = 8;
 
-    // Use fixed dimensions — avoids forced layout reflow (no scrollbar flash, no delay)
     const menuW = 168;
     const menuH = 130;
 
-    // Reset inline styles
     dropdown.style.cssText = 'position:fixed; z-index:9999;';
 
-    // 1. Vertical: open downward by default, flip upward if not enough space
     if (winH - rect.bottom < menuH + margin && rect.top > menuH + margin) {
       dropdown.style.top = 'auto';
       dropdown.style.bottom = `${winH - rect.top + 4}px`;
@@ -1023,7 +1021,6 @@ window.toggleActionMenu = function (event) {
       dropdown.style.transformOrigin = 'top right';
     }
 
-    // 2. Horizontal: right-align to button, clamp to viewport edges
     let left = rect.right - menuW;
     if (left + menuW > winW - margin) left = winW - menuW - margin;
     if (left < margin) left = margin;
@@ -1035,4 +1032,252 @@ window.toggleActionMenu = function (event) {
   }
 };
 
-export { loadDashboard, loadHomework, loadMaterials, loadSyllabus };
+// ─── EXAM RESULTS ─────────────────────────────────────────────────────────────
+let examStudents = [];
+
+async function initExamTab() {
+  const sel = document.getElementById('exam-class-select');
+  if (sel.options.length > 1) {
+      loadExamResults();
+      return; 
+  }
+  
+  try {
+    const res = await teacherAPI.getAttendanceClasses(teacherId);
+    availableClasses = res.data || [];
+    sel.innerHTML = '<option value="">Select Class</option>' +
+      availableClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    // Add event listeners for dynamic subjects
+    document.getElementById('exam-add-subject-btn').addEventListener('click', createExamSubjectRow);
+    document.getElementById('exam-submit-btn').addEventListener('click', submitExamResult);
+    
+    // Initial row
+    const container = document.getElementById('exam-subjects-container');
+    if (container.children.length === 0) createExamSubjectRow();
+    
+    loadExamResults();
+  } catch (err) {
+    showError('Failed to load exam classes: ' + err.message);
+  }
+}
+
+window.onExamClassChange = async function() {
+    const classLevel = document.getElementById('exam-class-select').value;
+    const rollSelect = document.getElementById('exam-roll-select');
+    const nameInput = document.getElementById('exam-name-input');
+    
+    rollSelect.innerHTML = '<option value="">Select Roll No.</option>';
+    nameInput.value = '';
+    examStudents = [];
+
+    if (!classLevel) return;
+
+    try {
+        showInfo('Loading students...');
+        // Reuse attendance sheet API to get students of the class
+        const date = new Date().toISOString().split('T')[0];
+        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
+        hideInfo();
+        
+        examStudents = res.students || [];
+        if (examStudents.length === 0) {
+            showInfo('No students found for this class');
+            return;
+        }
+
+        rollSelect.innerHTML = '<option value="">Select Roll No.</option>' +
+            examStudents.map(s => `<option value="${s.rollNumber || s.id}">${s.rollNumber || 'ID:'+s.id}</option>`).join('');
+    } catch (err) {
+        hideInfo();
+        showError('Failed to fetch students: ' + err.message);
+    }
+};
+
+window.onExamSectionChange = function() {
+    // Optionally filter students by section if needed
+    // For now we keep it simple as requested
+};
+
+window.onExamRollChange = function() {
+    const roll = document.getElementById('exam-roll-select').value;
+    const nameInput = document.getElementById('exam-name-input');
+    
+    const student = examStudents.find(s => (s.rollNumber || String(s.id)) === roll);
+    if (student) {
+        nameInput.value = student.name;
+    } else {
+        nameInput.value = '';
+    }
+};
+
+function createExamSubjectRow() {
+    const container = document.getElementById('exam-subjects-container');
+    const row = document.createElement('div');
+    row.className = 'subject-row-entry card';
+    row.style.cssText = 'padding: 1.5rem; margin-bottom: 1rem; border: 1px dashed var(--border-subtle); background: var(--bg-primary);';
+    
+    row.innerHTML = `
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <div class="filter-group">
+                <label>Subject Name</label>
+                <input type="text" class="sub-name" placeholder="e.g. Math" required>
+            </div>
+            <div class="filter-group">
+                <label>Total</label>
+                <input type="number" class="sub-total" value="100" min="1" oninput="calculateExamTotals()">
+            </div>
+            <div class="filter-group">
+                <label>Obtained</label>
+                <input type="number" class="sub-obtained" placeholder="0" min="0" oninput="calculateExamTotals()">
+            </div>
+            <div class="filter-group">
+                <label>Grade</label>
+                <input type="text" class="sub-grade" placeholder="A+">
+            </div>
+            <button type="button" class="btn btn-danger remove-sub-btn" style="padding: 0.6rem; border-radius: 4px;">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+
+    row.querySelector('.remove-sub-btn').addEventListener('click', () => {
+        if (container.children.length > 1) {
+            row.remove();
+            calculateExamTotals();
+        } else {
+            showError("At least one subject is required.");
+        }
+    });
+
+    container.appendChild(row);
+}
+
+window.calculateExamTotals = function() {
+    const totals = document.querySelectorAll('.sub-total');
+    const obtaineds = document.querySelectorAll('.sub-obtained');
+    let tSum = 0;
+    let oSum = 0;
+    
+    totals.forEach(t => tSum += parseFloat(t.value || 0));
+    obtaineds.forEach(o => oSum += parseFloat(o.value || 0));
+    
+    const submitBtn = document.getElementById('exam-submit-btn');
+    if (submitBtn) {
+        submitBtn.innerHTML = `<i class="fas fa-check-circle"></i> Submit Marks (${oSum} / ${tSum})`;
+    }
+}
+
+async function submitExamResult() {
+    const classLevel = document.getElementById('exam-class-select').value;
+    const section = document.getElementById('exam-section-select').value;
+    const rollNumber = document.getElementById('exam-roll-select').value;
+    const studentName = document.getElementById('exam-name-input').value;
+    const examTitle = document.getElementById('exam-title-input').value;
+
+    if (!classLevel || !rollNumber || !studentName || !examTitle) {
+        showError("Please fill all student details and exam title.");
+        return;
+    }
+
+    const rows = document.querySelectorAll('.subject-row-entry');
+    const subjects = [];
+    let totalMarks = 0;
+    let obtainedMarks = 0;
+
+    for (const row of rows) {
+        const name = row.querySelector('.sub-name').value.trim();
+        const total = parseFloat(row.querySelector('.sub-total').value);
+        const obtained = parseFloat(row.querySelector('.sub-obtained').value);
+        const grade = row.querySelector('.sub-grade').value.trim();
+
+        if (!name) {
+            showError("Subject name is required for all rows.");
+            return;
+        }
+
+        subjects.push({ name, total, obtained, grade });
+        totalMarks += total;
+        obtainedMarks += obtained;
+    }
+
+    const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
+    const remarks = percentage >= 33 ? 'Pass' : 'Fail';
+
+    try {
+        showInfo('Submitting results...');
+        const payload = {
+            classLevel,
+            section,
+            rollNumber,
+            studentName,
+            examTitle,
+            subjects,
+            totalMarks,
+            obtainedMarks,
+            percentage: parseFloat(percentage.toFixed(2)),
+            remarks
+        };
+
+        await teacherAPI.createExamResult(payload);
+        hideInfo();
+        showSuccess("Exam result submitted successfully!");
+        
+        // Reset form
+        document.getElementById('exam-roll-select').value = '';
+        document.getElementById('exam-name-input').value = '';
+        document.getElementById('exam-subjects-container').innerHTML = '';
+        createExamSubjectRow();
+        
+        loadExamResults();
+    } catch (err) {
+        hideInfo();
+        showError("Failed to submit results: " + err.message);
+    }
+}
+
+async function loadExamResults() {
+    try {
+        const res = await teacherAPI.getExamResults();
+        renderExamResults(res.data || []);
+    } catch (err) {
+        console.error("Failed to load exam results", err);
+    }
+}
+
+function renderExamResults(results) {
+    const tbody = document.getElementById('exam-table-body');
+    if (!results.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = results.map((r, index) => {
+        const subjectsHtml = Array.isArray(r.subjects) 
+            ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">
+                ${r.subjects.map(s => `<li>${s.name}: ${s.obtained}/${s.total} (${s.grade || '-'})</li>`).join('')}
+               </ul>`
+            : '-';
+        
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${r.classLevel} / ${r.section || '-'}</td>
+                <td>${r.rollNumber || '-'}</td>
+                <td><div style="font-weight:600;">${r.studentName}</div></td>
+                <td>${r.examTitle}</td>
+                <td>${subjectsHtml}</td>
+                <td><div style="font-weight:700; color:var(--accent-blue);">${r.obtainedMarks} / ${r.totalMarks}</div></td>
+                <td>
+                    <span class="badge ${r.remarks === 'Pass' ? 'badge-success' : 'badge-danger'}" 
+                          style="background: ${r.remarks === 'Pass' ? 'rgba(36,134,54,0.1)' : 'rgba(215,58,73,0.1)'}; 
+                                 color: ${r.remarks === 'Pass' ? 'var(--success)' : 'var(--danger)'};">
+                        ${r.remarks}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+export { loadDashboard, loadHomework, loadMaterials, loadSyllabus, initExamTab };
