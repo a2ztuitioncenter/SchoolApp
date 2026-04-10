@@ -1121,7 +1121,20 @@ function createExamSubjectRow() {
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
             <div class="filter-group">
                 <label>Subject Name</label>
-                <input type="text" class="sub-name" placeholder="e.g. Math" required>
+                <select class="sub-name" required>
+                    <option value="">Select Subject</option>
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="Social Science">Social Science</option>
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Biology">Biology</option>
+                    <option value="Computer">Computer</option>
+                    <option value="EVS">EVS</option>
+                    <option value="Other">Other</option>
+                </select>
             </div>
             <div class="filter-group">
                 <label>Total</label>
@@ -1133,7 +1146,7 @@ function createExamSubjectRow() {
             </div>
             <div class="filter-group">
                 <label>Grade</label>
-                <input type="text" class="sub-grade" placeholder="A+">
+                <input type="text" class="sub-grade" placeholder="-" readonly style="background: var(--bg-hover) !important;">
             </div>
             <button type="button" class="btn btn-danger remove-sub-btn" style="padding: 0.6rem; border-radius: 4px;">
                 <i class="fas fa-trash"></i>
@@ -1154,13 +1167,43 @@ function createExamSubjectRow() {
 }
 
 window.calculateExamTotals = function() {
-    const totals = document.querySelectorAll('.sub-total');
-    const obtaineds = document.querySelectorAll('.sub-obtained');
+    const rows = document.querySelectorAll('.subject-row-entry');
     let tSum = 0;
     let oSum = 0;
     
-    totals.forEach(t => tSum += parseFloat(t.value || 0));
-    obtaineds.forEach(o => oSum += parseFloat(o.value || 0));
+    rows.forEach(row => {
+        const totalInput = row.querySelector('.sub-total');
+        const obtainedInput = row.querySelector('.sub-obtained');
+        const gradeInput = row.querySelector('.sub-grade');
+        
+        const t = parseFloat(totalInput.value || 0);
+        const o = parseFloat(obtainedInput.value || 0);
+        
+        tSum += t;
+        oSum += o;
+        
+        // Auto Grade Calculation
+        if (t > 0) {
+            const perc = (o / t) * 100;
+            let grade = 'F';
+            if (perc >= 90) grade = 'A+';
+            else if (perc >= 80) grade = 'A';
+            else if (perc >= 70) grade = 'B+';
+            else if (perc >= 60) grade = 'B';
+            else if (perc >= 50) grade = 'C+';
+            else if (perc >= 40) grade = 'C';
+            else if (perc >= 33) grade = 'D';
+            
+            gradeInput.value = grade;
+            
+            // color code the grade input
+            if (grade === 'F') gradeInput.style.color = 'var(--danger)';
+            else if (grade.startsWith('A')) gradeInput.style.color = 'var(--success)';
+            else gradeInput.style.color = 'var(--accent-blue)';
+        } else {
+            gradeInput.value = '-';
+        }
+    });
     
     const submitBtn = document.getElementById('exam-submit-btn');
     if (submitBtn) {
