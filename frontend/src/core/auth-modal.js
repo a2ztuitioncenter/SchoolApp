@@ -542,7 +542,18 @@ function clearMessages(errorDiv, successDiv) {
 }
 
 // Export functions for use in HTML onclick handlers
+// These MUST be global for inline event handlers (onclick="...") to work
 window.openAuthModal = openAuthModal;
 window.openAuthLoginSelector = openAuthLoginSelector;
 window.openAuthSignupSelector = openAuthSignupSelector;
 window.closeAuthModal = closeAuthModal;
+
+// Verify exports in production for debugging
+if (typeof window !== 'undefined') {
+    console.log('✅ Auth modal functions exported to window:', {
+        openAuthModal: typeof window.openAuthModal,
+        openAuthLoginSelector: typeof window.openAuthLoginSelector,
+        openAuthSignupSelector: typeof window.openAuthSignupSelector,
+        closeAuthModal: typeof window.closeAuthModal
+    });
+}

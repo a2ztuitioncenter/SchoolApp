@@ -8,8 +8,11 @@ const publicDir = path.resolve(
 );
 
 const PORT = process.env.PORT || 8000;
+const BASE_API_URL = process.env.BASE_API_URL || "http://127.0.0.1:3000";
 
-// MIME types
+console.log("[CONFIG] Frontend Server Configuration:");
+console.log(`  - Port: ${PORT}`);
+console.log(`  - Base API URL: ${BASE_API_URL}`);
 const mimeTypes: { [key: string]: string } = {
   ".html": "text/html",
   ".css": "text/css",
@@ -36,8 +39,7 @@ const server = Bun.serve({
 
     //  REVERSE PROXY FOR API AND UPLOADS
     if (pathname.startsWith("/api") || pathname.startsWith("/uploads")) {
-      const base_api_url = process.env.BASE_API_URL || "http://127.0.0.1:3000";
-      const targetUrl = `${base_api_url}${pathname}${url.search}`;
+      const targetUrl = `${BASE_API_URL}${pathname}${url.search}`;
       console.log(`[PROXY] Forwarding ${req.method} ${pathname} -> ${targetUrl}`);
       try {
         const newHeaders = new Headers(req.headers);

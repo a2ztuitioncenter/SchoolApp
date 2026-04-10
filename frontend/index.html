@@ -83,7 +83,7 @@
                             <span class="btn-text">Get Started</span>
                             <span class="btn-arrow">→</span>
                         </button>
-                        <button class="btn-outline" onclick="document.getElementById('programs').scrollIntoView({behavior: 'smooth'})">
+                        <button class="btn-outline" onclick="const el = document.getElementById('programs'); if(el) el.scrollIntoView({behavior: 'smooth'})">
                             <span class="btn-text">Learn More</span>
                         </button>
                     </div>
