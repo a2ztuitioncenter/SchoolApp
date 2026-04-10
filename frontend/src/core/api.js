@@ -28,7 +28,7 @@ export const waitForBackend = async () => true;
  * Generic fetch wrapper with error handling and token injection
  * Automatically includes JWT token from auth-manager
  */
-const apiCall = async (endpoint, options = {}) => {
+export const apiCall = async (endpoint, options = {}) => {
   const url = `${base_api_url}${endpoint}`;
   
   // Conditionally set Content-Type
@@ -184,7 +184,7 @@ const notificationsAPI = {
 
 const resultsAPI = {
   getByStudent: (studentId) => apiCall(`/admin/results/${studentId}`, { method: 'GET' }),
-  getAll: () => apiCall('/admin/results', { method: 'GET' }),
+  getAll: () => apiCall('/admin/results/all', { method: 'GET' }),
   create: (data) => apiCall('/admin/results', { method: 'POST', body: JSON.stringify(data) }),
 };
 
@@ -208,6 +208,7 @@ export const studentAPI = {
   getAttendance: (userId) => apiCall(`/student/${userId}/attendance`, { method: 'GET' }),
   getFees: (userId) => apiCall(`/student/${userId}/fees`, { method: 'GET' }),
   getSyllabus: (userId) => apiCall(`/student/${userId}/syllabus`, { method: 'GET' }),
+  getResults: (userId) => apiCall(`/student/${userId}/results`, { method: 'GET' }),
 };
 
 /**

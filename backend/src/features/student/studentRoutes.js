@@ -6,6 +6,7 @@ import {
   getStudentFees,
 } from './dataController.js';
 import { getHomeworkByClass } from '../homework/Homework.js';
+import { getResultsByStudent } from '../results/resultsController.js';
 
 const router = express.Router();
 
@@ -26,6 +27,82 @@ router.get('/:userId/attendance', getStudentAttendance);
  * Returns: Fee records and pending amount
  */
 router.get('/:userId/fees', getStudentFees);
+
+/**
+ * GET /api/student/:userId/results
+ * Returns: Exam results for authenticated student only
+ * Security: Only allows students to fetch their own results
+ */
+router.get('/:userId/results', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pool = req.db;
+
+    // Ensure userId is a valid number
+    const parsedUserId = parseInt(userId, 10);
+    if (isNaN(parsedUserId)) {
+      return res.status(400).json({ error: 'Invalid userId format' });
+    }
+
+    console.log(`📍 [STUDENT RESULTS] Fetching results for userId: ${parsedUserId}`);
+
+    // Get student ID from userId (user record)
+    let studentResult;
+    try {
+      studentResult = await pool.query(
+        'SELECT id FROM students WHERE "userId" = $1',
+        [parsedUserId]
+      );
+    } catch (queryErr) {
+      console.error(`❌ [STUDENT RESULTS] Database query error:`, queryErr.message);
+      return res.status(500).json({ 
+        error: 'Database error',
+        detail: queryErr.message,
+        hint: 'Check if students table exists'
+      });
+    }
+
+    if (studentResult.rows.length === 0) {
+      console.log(`⚠️ [STUDENT RESULTS] No student found for userId: ${parsedUserId}`);
+      // Return empty results instead of 404 - student might not have taken exams yet
+      return res.json({ data: [] });
+    }
+
+    const studentId = studentResult.rows[0].id;
+    console.log(`📍 [STUDENT RESULTS] Student ID: ${studentId}`);
+
+    // Fetch results for this student only
+    let results;
+    try {
+      results = await pool.query(
+        `SELECT r.*, s.name AS "studentName", s."classLevel", s."rollNumber"
+         FROM results r
+         LEFT JOIN students s ON r."studentId" = s.id
+         WHERE r."studentId" = $1
+         ORDER BY r."createdAt" DESC`,
+        [studentId]
+      );
+    } catch (queryErr) {
+      console.error(`❌ [STUDENT RESULTS] Results query error:`, queryErr.message);
+      return res.status(500).json({ 
+        error: 'Database error',
+        detail: queryErr.message,
+        hint: 'Check if results table exists and columns are correct'
+      });
+    }
+
+    console.log(`✅ [STUDENT RESULTS] Found ${results.rows.length} results for student ${studentId}`);
+    res.json({ data: results.rows });
+  } catch (err) {
+    console.error(`❌ [STUDENT RESULTS] Unexpected error:`, err.message);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ 
+      error: 'Server error', 
+      detail: err.message,
+      hint: 'Check backend logs for more details'
+    });
+  }
+});
 
 /**
  * GET /api/student/:userId/homework

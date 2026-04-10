@@ -5,6 +5,7 @@
 
 import { studentAPI, downloadFile, materialsAPI, waitForBackend } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+import './student-results.js';
 
 // ===========================
 // Global Logout Handler

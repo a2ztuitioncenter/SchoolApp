@@ -197,19 +197,13 @@ async function fetchExamResultsFromAPI() {
     console.log('📡 Fetching exam results from backend...');
     
     // Call backend API to fetch all exam results
-    // Adjust endpoint based on your backend API structure
-    const response = await fetch('/api/results', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
+    // resultsAPI automatically includes JWT token in Authorization header
+    const data = await resultsAPI.getAll();
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    if (data.error) {
+      throw new Error(data.error);
     }
 
-    const data = await response.json();
     console.log('✅ Exam results fetched successfully:', data);
     
     // Transform API data to match our expected format

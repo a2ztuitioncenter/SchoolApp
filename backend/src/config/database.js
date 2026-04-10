@@ -10,6 +10,7 @@ import { notificationModel } from '../features/notifications/Notification.js';
 import { timetableModel } from '../features/student/Timetable.js';
 import { syllabusModel } from '../features/teacher/syllabusModel.js';
 import { examResultModel } from '../features/teacher/examResultModel.js';
+import { resultsModel } from '../features/results/resultsModel.js';
 
 import pool from './pool.js';
 
@@ -26,6 +27,7 @@ export async function initializeDatabase() {
     await pool.query(timetableModel.schema);
     await pool.query(syllabusModel.schema);
     await pool.query(examResultModel.schema);
+    await pool.query(resultsModel.schema);
     console.log('Tables checked/created.');
 
     await createDefaultAdmin();
@@ -78,4 +80,4 @@ async function seedDatabase() {
 }
 
 export { seedDatabase };
-export default pool;
+export default pool;
