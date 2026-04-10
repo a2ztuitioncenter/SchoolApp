@@ -144,6 +144,15 @@ function setupProfileMenu() {
       if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
       if (profileDropdown) profileDropdown.classList.remove('open');
     }
+
+    // Close mobile sidebar if clicking outside of it
+    const sidebar = document.querySelector('.sidebar');
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('active')) {
+      if (!sidebar.contains(e.target) && (!mobileToggle || !mobileToggle.contains(e.target))) {
+        sidebar.classList.remove('active');
+      }
+    }
   });
 }
 

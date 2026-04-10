@@ -107,6 +107,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!e.target.closest('.action-menu') && !e.target.closest('.action-dropdown')) {
             document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
         }
+
+        // Close mobile sidebar if clicking outside of it
+        const sidebar = document.querySelector('.sidebar');
+        const mobileToggle = document.getElementById('mobile-menu-toggle');
+        if (sidebar && sidebar.classList.contains('active')) {
+            // Check if the click was outside the sidebar and also outside the toggle button
+            if (!sidebar.contains(e.target) && (!mobileToggle || !mobileToggle.contains(e.target))) {
+                sidebar.classList.remove('active');
+            }
+        }
     });
 
     // Close modals when clicking on modal background (deprecated - use proper modal handlers)
@@ -597,7 +607,7 @@ function renderFeesChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -692,7 +702,7 @@ function renderClassDistributionLineChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { position: 'top', labels: { font: { size: 12, weight: '600' } } },
                     tooltip: {
@@ -795,7 +805,7 @@ function renderFeesOverviewChart() {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'bottom', labels: { font: { size: 12, weight: '600' }, padding: 15 } },
                         datalabels: {
@@ -879,7 +889,7 @@ function renderGrowthTrendChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { position: 'top', labels: { font: { size: 12, weight: '600' } } },
                     tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12, titleFont: { size: 12 } }
@@ -1097,7 +1107,7 @@ function renderTrendChart() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         position: 'top',

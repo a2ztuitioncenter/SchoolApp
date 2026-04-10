@@ -181,7 +181,7 @@
                             <p class="card-subtitle">Collected, Pending & Overdue</p>
                         </div>
                         <div class="card-body">
-                            <canvas id="fees-overview-chart" height="300"></canvas>
+                            <canvas id="fees-overview-chart"></canvas>
                             <div id="fees-overview-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
@@ -193,7 +193,7 @@
                             <p class="card-subtitle">Cumulative enrolment over time</p>
                         </div>
                         <div class="card-body">
-                            <canvas id="growth-trend-chart" height="300"></canvas>
+                            <canvas id="growth-trend-chart"></canvas>
                             <div id="growth-trend-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
@@ -208,7 +208,7 @@
                             <p class="card-subtitle">Paid vs Pending with percentages</p>
                         </div>
                         <div class="card-body">
-                            <canvas id="fees-chart" height="300"></canvas>
+                            <canvas id="fees-chart"></canvas>
                             <div id="fees-chart-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
@@ -220,7 +220,7 @@
                             <p class="card-subtitle">Student enrollment across classes</p>
                         </div>
                         <div class="card-body">
-                            <canvas id="class-distribution-line-chart" height="300"></canvas>
+                            <canvas id="class-distribution-line-chart"></canvas>
                             <div id="class-distribution-line-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
@@ -238,7 +238,7 @@
                             <p class="card-subtitle">Daily collection trend vs expected revenue</p>
                         </div>
                         <div class="card-body">
-                            <canvas id="trend-chart" height="80"></canvas>
+                            <canvas id="trend-chart"></canvas>
                             <div id="trend-chart-loading" class="chart-loading">Loading chart...</div>
                         </div>
                     </div>
@@ -255,7 +255,7 @@
                             <h3><i class="fas fa-history"></i> Recent Activity</h3>
                             <p class="card-subtitle">Latest updates</p>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body no-chart-height">
                             <div id="recent-activity-list" class="activity-list">
                                 <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading activity...</div>
                             </div>
@@ -276,7 +276,7 @@
                             <p class="card-subtitle">Sorted by due date - soonest first</p>
                             <button class="btn btn-small btn-secondary" onclick="showTab('fees')">View All →</button>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body no-chart-height">
                             <div id="unpaid-fees-table-container" class="table-container">
                                 <table class="dashboard-table">
                                     <thead>

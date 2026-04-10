@@ -2601,6 +2601,7 @@ textarea:focus {
   grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
   gap: 2rem;
   margin-bottom: 2rem;
+  min-width: 0;
 }
 
 /* Stat Cards */
@@ -3102,6 +3103,7 @@ textarea:focus {
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 2rem;
   margin-bottom: 2rem;
+  min-width: 0;
 }
 
 /* Dashboard Cards */
@@ -3114,6 +3116,7 @@ textarea:focus {
   transition: all var(--transition);
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .dashboard-card:hover {
@@ -3159,7 +3162,23 @@ textarea:focus {
 .card-body {
   padding: 1.5rem;
   flex: 1;
-  overflow: auto;
+  position: relative;
+  overflow: visible;
+  min-width: 0;
+  /* Default height so Chart.js (maintainAspectRatio:false) has a container size */
+  height: 360px;
+}
+
+/* Non-chart card bodies (activity, tables) should not have a fixed height */
+.card-body.no-chart-height {
+  height: auto;
+}
+
+/* Chart canvases fill their card-body container */
+.card-body canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 /* Tables in Dashboard */
@@ -3399,6 +3418,7 @@ textarea:focus {
 
   .card-body {
     padding: 1rem;
+    height: 420px;    /* Gives chart room to render on mobile */
   }
 
   .card-header {
@@ -3475,12 +3495,29 @@ textarea:focus {
 }
 
 @media (max-width: 480px) {
-  .dashboard-stats-grid {
-    grid-template-columns: 1fr;
+  .dashboard-stats-grid,
+  .quick-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .stat-card-value {
     font-size: 1.3rem;
+  }
+
+  .kpi-card {
+    padding: 1rem;
+  }
+
+  .kpi-value {
+    font-size: 1.3rem;
+  }
+
+  .kpi-label {
+    font-size: 0.75rem;
+  }
+
+  .kpi-footer {
+    font-size: 0.7rem;
   }
 
   .dashboard-section-title h2 {
@@ -3492,7 +3529,7 @@ textarea:focus {
   }
 
   .card-body {
-    max-height: 250px;
+    height: 360px;  /* Prevents 250px clipping on small screens */
     padding: 0.75rem;
   }
 
