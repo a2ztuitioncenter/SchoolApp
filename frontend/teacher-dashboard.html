@@ -137,15 +137,15 @@
             <span>TEACHER</span>
         </div>
         <nav>
-            <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
             <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-user-check"></i> Attendance</a>
             <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book-open"></i> Homework</a>
             <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-tasks"></i> Daily Practice</a>
-            <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-copy"></i> Study Materials</a>
+            <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
             <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
             <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> Syllabus</a>
-            <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-graduation-cap"></i> Exam Result</a>
-            <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-file-invoice"></i> Att. Summary</a>
+            <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> Exam Result</a>
+            <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-clipboard-list"></i> Att. Summary</a>
         </nav>
     </aside>
 
@@ -193,30 +193,45 @@
 
         <!-- =================== DASHBOARD TAB =================== -->
         <div id="tab-dashboard" class="tab-content active">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-th-large"></i> Overview</h2>
-                    <p class="section-subtitle">A quick snapshot of your teaching activity</p>
-                </div>
+            <div class="dashboard-section-title">
+                <h2><i class="fas fa-tachometer-alt"></i> Overview</h2>
+                <p class="section-subtitle">A quick snapshot of your teaching activity</p>
             </div>
 
             <div class="card-grid">
-                <div class="card">
-                    <h3><i class="fas fa-user-graduate"></i> My Students</h3>
-                    <div class="stat-value" id="stat-students">–</div>
+                <!-- My Students KPI -->
+                <div class="kpi-card kpi-info">
+                    <div class="kpi-header info">
+                        <i class="fas fa-user-graduate"></i>
+                        <span class="kpi-label">MY STUDENTS</span>
+                    </div>
+                    <div class="kpi-value" id="stat-students">0</div>
+                    <div class="kpi-footer">Total enrolled in your classes</div>
                 </div>
-                <div class="card">
-                    <h3><i class="fas fa-book-reader"></i> Active Homework</h3>
-                    <div class="stat-value" id="stat-homework">–</div>
+
+                <!-- Active Homework KPI -->
+                <div class="kpi-card kpi-success">
+                    <div class="kpi-header success">
+                        <i class="fas fa-book-reader"></i>
+                        <span class="kpi-label">ACTIVE HOMEWORK</span>
+                    </div>
+                    <div class="kpi-value" id="stat-homework">0</div>
+                    <div class="kpi-footer">Pending submission items</div>
                 </div>
-                <div class="card">
-                    <h3><i class="fas fa-archive"></i> Materials</h3>
-                    <div class="stat-value" id="stat-materials">–</div>
+
+                <!-- Materials KPI -->
+                <div class="kpi-card kpi-warning">
+                    <div class="kpi-header warning">
+                        <i class="fas fa-archive"></i>
+                        <span class="kpi-label">STUDY MATERIALS</span>
+                    </div>
+                    <div class="kpi-value" id="stat-materials">0</div>
+                    <div class="kpi-footer">Shared resources available</div>
                 </div>
             </div>
 
-            <div class="section-header" style="margin-top: 2rem; margin-bottom: 1rem;">
-                <h3><i class="fas fa-clock"></i> Today's Schedule</h3>
+            <div class="dashboard-section-title" style="margin-top: 2rem;">
+                <h2><i class="fas fa-calendar-alt"></i> Today's Schedule</h2>
                 <span id="today-label" class="section-subtitle"></span>
             </div>
             
@@ -429,11 +444,9 @@
 
         <!-- =================== SUMMARY TAB =================== -->
         <div id="tab-summary" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-file-invoice"></i> Attendance Summary</h2>
-                    <p class="section-subtitle">View monthly performance reports</p>
-                </div>
+            <div class="dashboard-section-title">
+                <h2><i class="fas fa-clipboard-list"></i> Attendance Summary</h2>
+                <p class="section-subtitle">View monthly performance reports</p>
             </div>
 
             <div class="card">
@@ -459,11 +472,9 @@
 
         <!-- =================== EXAM RESULT TAB =================== -->
         <div id="tab-exam" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-file-signature"></i> Exam Result Entry</h2>
-                    <p class="section-subtitle">Record and manage student examination results</p>
-                </div>
+            <div class="dashboard-section-title">
+                <h2><i class="fas fa-file-signature"></i> Exam Result Entry</h2>
+                <p class="section-subtitle">Record and manage student examination results</p>
             </div>
 
             <div class="card" style="margin-bottom: 2rem;">
