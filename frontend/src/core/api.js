@@ -3,7 +3,10 @@
  * Provides fetch() utilities and centralized configuration
  */
 
-const base_api_url = '/api';
+// Backend Connection Configuration
+// Development: '/api' (same server)
+// Production: Use full URL to Render backend
+const base_api_url = 'https://schoolapp-d9y5.onrender.com/api';
 
 /**
  * Get auth token from centralized auth manager
