@@ -285,25 +285,31 @@
         
         // Polyfill: Create placeholder functions in global scope for inline event handlers
         // These will be replaced by actual implementations when modules load
+        // Retry counter to prevent infinite loops
+        const retryAttempt = {};
+        
         window.openAuthModal = window.openAuthModal || function(type, role) {
-            console.warn('⚠️ openAuthModal called before auth-modal.js loaded');
-            console.log('Attempting retry in 100ms...');
-            setTimeout(() => window.openAuthModal(type, role), 100);
+            retryAttempt['openAuthModal'] = (retryAttempt['openAuthModal'] || 0) + 1;
+            if (retryAttempt['openAuthModal'] <= 2) {
+                setTimeout(() => window.openAuthModal(type, role), 100);
+            }
         };
         window.openAuthLoginSelector = window.openAuthLoginSelector || function(e) {
             e?.preventDefault?.();
-            console.warn('⚠️ openAuthLoginSelector called before auth-modal.js loaded');
-            console.log('Attempting retry in 100ms...');
-            setTimeout(() => window.openAuthLoginSelector(e), 100);
+            retryAttempt['openAuthLoginSelector'] = (retryAttempt['openAuthLoginSelector'] || 0) + 1;
+            if (retryAttempt['openAuthLoginSelector'] <= 2) {
+                setTimeout(() => window.openAuthLoginSelector(e), 100);
+            }
         };
         window.openAuthSignupSelector = window.openAuthSignupSelector || function(e) {
             e?.preventDefault?.();
-            console.warn('⚠️ openAuthSignupSelector called before auth-modal.js loaded');
-            console.log('Attempting retry in 100ms...');
-            setTimeout(() => window.openAuthSignupSelector(e), 100);
+            retryAttempt['openAuthSignupSelector'] = (retryAttempt['openAuthSignupSelector'] || 0) + 1;
+            if (retryAttempt['openAuthSignupSelector'] <= 2) {
+                setTimeout(() => window.openAuthSignupSelector(e), 100);
+            }
         };
         window.closeAuthModal = window.closeAuthModal || function() {
-            console.warn('⚠️ closeAuthModal called before auth-modal.js loaded');
+            // No retry needed for close
         };
     </script>
     <script type="module" src="./src/core/auth-modal.js"></script>

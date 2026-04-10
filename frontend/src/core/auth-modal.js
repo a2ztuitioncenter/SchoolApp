@@ -547,13 +547,3 @@ window.openAuthModal = openAuthModal;
 window.openAuthLoginSelector = openAuthLoginSelector;
 window.openAuthSignupSelector = openAuthSignupSelector;
 window.closeAuthModal = closeAuthModal;
-
-// Verify exports in production for debugging
-if (typeof window !== 'undefined') {
-    console.log('✅ Auth modal functions exported to window:', {
-        openAuthModal: typeof window.openAuthModal,
-        openAuthLoginSelector: typeof window.openAuthLoginSelector,
-        openAuthSignupSelector: typeof window.openAuthSignupSelector,
-        closeAuthModal: typeof window.closeAuthModal
-    });
-}
