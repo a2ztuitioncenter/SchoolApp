@@ -8,11 +8,10 @@ const publicDir = path.resolve(
 );
 
 const PORT = process.env.PORT || 8000;
-const BASE_API_URL = process.env.BASE_API_URL || "http://127.0.0.1:3000";
 
 console.log("[CONFIG] Frontend Server Configuration:");
 console.log(`  - Port: ${PORT}`);
-console.log(`  - Base API URL: ${BASE_API_URL}`);
+console.log(`  - NOTE: API calls are handled by frontend JavaScript directly`);
 const mimeTypes: { [key: string]: string } = {
   ".html": "text/html",
   ".css": "text/css",
@@ -37,33 +36,11 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
-    //  REVERSE PROXY FOR API AND UPLOADS
-    if (pathname.startsWith("/api") || pathname.startsWith("/uploads")) {
-      const targetUrl = `${BASE_API_URL}${pathname}${url.search}`;
-      console.log(`[PROXY] Forwarding ${req.method} ${pathname} -> ${targetUrl}`);
-      try {
-        const newHeaders = new Headers(req.headers);
-        newHeaders.delete("host");
-
-        // Use streaming for request body when possible
-        const hasBody = req.method !== "GET" && req.method !== "HEAD";
-        const proxyResponse = await fetch(targetUrl, {
-          method: req.method,
-          headers: newHeaders,
-          body: hasBody ? req.body : undefined,
-          // @ts-ignore - duplex is required for streaming request bodies in some environments
-          duplex: hasBody ? "half" : undefined,
-        });
-
-        console.log(`[PROXY] Backend responded with ${proxyResponse.status}`);
-
-        // Returning the Response object directly enables streaming of the response body
-        return proxyResponse;
-      } catch (error) {
-        console.error("[PROXY] Error:", error);
-        return new Response("API Gateway Error", { status: 502 });
-      }
-    }
+    // NOTE: API calls (/api/*) are handled entirely by frontend JavaScript
+    // The frontend makes direct fetch calls to the backend at:
+    // https://schoolapp-d9y5.onrender.com
+    // CORS is handled by the backend server
+    // This allows flexible API endpoint configuration without server proxying
 
     //  FORCE ROOT → INDEX
     if (pathname === "/") {

@@ -4,9 +4,24 @@
  */
 
 // Backend Connection Configuration
-// Development: '/api' (same server)
-// Production: Use full URL to Render backend
-const base_api_url = 'https://schoolapp-d9y5.onrender.com/api';
+// Uses environment variable or hardcoded production URL
+// For development, set BASE_API_URL to localhost:3000
+const getBaseApiUrl = () => {
+  // Check for environment variable (set in production)
+  if (typeof process !== 'undefined' && process.env && process.env.BASE_API_URL) {
+    return process.env.BASE_API_URL;
+  }
+  
+  // Production: Use hardcoded Render backend
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return 'https://schoolapp-d9y5.onrender.com';
+  }
+  
+  // Development: Use relative path (same origin)
+  return '';
+};
+
+const base_api_url = getBaseApiUrl();
 
 /**
  * Get auth token from centralized auth manager
@@ -32,7 +47,8 @@ export const waitForBackend = async () => true;
  * Automatically includes JWT token from auth-manager
  */
 export const apiCall = async (endpoint, options = {}) => {
-  const url = `${base_api_url}${endpoint}`;
+  // Construct full URL: base_api_url + /api + endpoint
+  let url = base_api_url ? `${base_api_url}/api${endpoint}` : `/api${endpoint}`;
   
   // Conditionally set Content-Type
   const headers = { ...options.headers };
