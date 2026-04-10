@@ -25,7 +25,7 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure upload directories exist
+// Ensure upload directories exist (relative to CWD, which is backend root)
 ['uploads/materials', 'uploads/homework', 'uploads/notifications'].forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
@@ -81,7 +81,7 @@ app.get('/', (req, res) => {
 
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../../frontend')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {

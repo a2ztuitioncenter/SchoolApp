@@ -17,7 +17,7 @@ export const downloadFile = async (req, res) => {
         }
 
         // Resolve absolute path and ensure it's within the uploads directory
-        const uploadsDir = path.resolve(__dirname, '../uploads');
+        const uploadsDir = path.resolve('uploads');
         const absolutePath = path.resolve(uploadsDir, filePath.replace(/^\/?uploads\//, ''));
 
         if (!absolutePath.startsWith(uploadsDir)) {
