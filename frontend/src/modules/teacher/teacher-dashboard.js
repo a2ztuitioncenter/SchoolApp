@@ -15,7 +15,6 @@ window.handleLogout = function () {
 // ─── Auth State (Managed in init) ───────────────────────────────────────────
 let teacherId = null;
 let teacherPhone = null;
-const teacherRole = 'teacher';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let allHomework = [];
@@ -83,7 +82,7 @@ function setupTabs() {
       const el = document.getElementById(`tab-${tab}`);
       if (el) el.style.display = 'block';
 
-      if (tab === 'homework') { loadHomework(); populateHwDropdowns(); }
+      if (tab === 'homework') { loadHomework(); populateSharedDropdowns('hw'); }
       if (tab === 'materials') loadMaterials();
       if (tab === 'timetable') renderWeeklyTimetable();
       if (tab === 'syllabus') loadSyllabus();
@@ -111,21 +110,11 @@ function init() {
   const profileMenu = document.getElementById('teacher-profile-dropdown');
 
   if (profileBtn && profileMenu) {
-    // Profile button and menu found
     profileBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const isExpanded = profileBtn.getAttribute('aria-expanded') === 'true';
       profileBtn.setAttribute('aria-expanded', !isExpanded);
       profileMenu.classList.toggle('open');
-      // Profile menu toggled
-    });
-
-    // Close profile menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
-        profileBtn.setAttribute('aria-expanded', 'false');
-        profileMenu.classList.remove('open');
-      }
     });
   } else {
     console.warn('⚠️ Profile button or menu not found');
@@ -1005,7 +994,7 @@ window.toggleActionMenu = function (event) {
 
   const isActive = dropdown.classList.contains('active');
 
-  // Close all other instances
+  // Close all other open menus first
   document.querySelectorAll('.action-menu-dropdown.active').forEach(d => {
     if (d !== dropdown) d.classList.remove('active');
   });
@@ -1016,46 +1005,30 @@ window.toggleActionMenu = function (event) {
     const winW = window.innerWidth;
     const margin = 8;
 
-    // Performance: Only perform layout reads when opening
-    // Use visibility trick to measure if height is unknown
-    dropdown.style.display = 'block';
-    dropdown.style.visibility = 'hidden';
-    const menuH = dropdown.scrollHeight || 150;
-    const menuW = dropdown.offsetWidth || 160;
-    dropdown.style.display = ''; // Reset
-    dropdown.style.visibility = '';
+    // Use fixed dimensions — avoids forced layout reflow (no scrollbar flash, no delay)
+    const menuW = 168;
+    const menuH = 130;
 
-    // Reset styles for calculation
-    dropdown.style.top = 'auto';
-    dropdown.style.bottom = 'auto';
-    dropdown.style.left = 'auto';
-    dropdown.style.right = 'auto';
+    // Reset inline styles
+    dropdown.style.cssText = 'position:fixed; z-index:9999;';
 
-    // 1. Vertical Positioning (Smart Flip)
-    const spaceBelow = winH - rect.bottom;
-    if (spaceBelow < menuH + margin && rect.top > menuH + margin) {
-      // Not enough space below, open UPWARD
+    // 1. Vertical: open downward by default, flip upward if not enough space
+    if (winH - rect.bottom < menuH + margin && rect.top > menuH + margin) {
+      dropdown.style.top = 'auto';
       dropdown.style.bottom = `${winH - rect.top + 4}px`;
       dropdown.style.transformOrigin = 'bottom right';
     } else {
-      // Default DOWNWARD
       dropdown.style.top = `${rect.bottom + 4}px`;
+      dropdown.style.bottom = 'auto';
       dropdown.style.transformOrigin = 'top right';
     }
 
-    // 2. Horizontal Positioning (Smart Alignment & Edge Protection)
+    // 2. Horizontal: right-align to button, clamp to viewport edges
     let left = rect.right - menuW;
-
-    // Shift left if it spills over right edge
-    if (left + menuW > winW - margin) {
-      left = winW - menuW - margin;
-    }
-    // Shift right if it spills over left edge
-    if (left < margin) {
-      left = margin;
-    }
-
+    if (left + menuW > winW - margin) left = winW - menuW - margin;
+    if (left < margin) left = margin;
     dropdown.style.left = `${left}px`;
+
     dropdown.classList.add('active');
   } else {
     dropdown.classList.remove('active');

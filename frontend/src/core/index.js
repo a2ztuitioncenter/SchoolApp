@@ -1,13 +1,12 @@
 // Master portal init — theme is handled automatically by CSS prefers-color-scheme
 function init() {
-  console.log('✅ Index JS Init');
   setupHeroTextAnimation();
   setupGetStartedTypingAnimation();
   setupGetStartedHandler();
   setupHeaderSignupHandler();
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
-  console.log('🚀 Index Page Loaded');
+  console.log('Index Page Loaded');
 }
 
 if (document.readyState === 'loading') {
@@ -170,7 +169,6 @@ function setupHeaderSignupHandler() {
   }
 }
 
-// alert("Welcome")
 /**
  * Setup login card click handlers
  */

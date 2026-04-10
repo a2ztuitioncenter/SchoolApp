@@ -328,10 +328,10 @@ async function loadDashboardData() {
         hideInfoAlert();
         console.log('✅ Dashboard loaded successfully');
 
-        // Setup auto-refresh: refresh dashboard every 30 seconds when dashboard tab is active
+        // Setup auto-refresh: only refresh when this tab is active AND page is visible
         if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
         dashboardRefreshInterval = setInterval(() => {
-            if (currentTab === 'dashboard') {
+            if (currentTab === 'dashboard' && !document.hidden) {
                 loadDashboardData();
             }
         }, 30000); // Refresh every 30 seconds

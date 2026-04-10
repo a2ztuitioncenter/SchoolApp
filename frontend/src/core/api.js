@@ -5,9 +5,6 @@
 
 const base_api_url = '/api';
 
-// Health check flag
-let isBackendHealthy = false;
-
 /**
  * Get auth token from centralized auth manager
  */
@@ -23,58 +20,9 @@ export const getAuthToken = () => {
   }
 };
 
-/**
- * Check if backend is available
- */
-export const checkBackendHealth = async () => {
-  try {
-    const response = await fetch('/health', { 
-      method: 'GET',
-      timeout: 5000 
-    });
-    isBackendHealthy = response.ok;
-    return isBackendHealthy;
-  } catch (error) {
-    console.error('❌ Backend health check failed:', error.message);
-    isBackendHealthy = false;
-    return false;
-  }
-};
-
-/**
- * Wait for backend to be ready (with timeout)
- */
-export const waitForBackend = async (maxAttempts = 3, delayMs = 1000) => {
-  for (let i = 0; i < maxAttempts; i++) {
-    if (await checkBackendHealth()) {
-      console.log('✅ Backend is ready');
-      return true;
-    }
-    if (i < maxAttempts - 1) {
-      console.log(`⏳ Backend not ready, retrying in ${delayMs}ms... (${i + 1}/${maxAttempts})`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-  }
-  console.error('❌ Backend failed to respond after multiple attempts');
-  return false;
-};
-
-// Store auth token in localStorage (now managed by auth-manager)
-export const setAuthToken = (token) => {
-  // This is now handled by auth-manager.setAuth()
-  // Keeping for backward compatibility
-  try {
-    const auth = JSON.parse(localStorage.getItem('auth') || '{}');
-    auth.token = token;
-    localStorage.setItem('auth', JSON.stringify(auth));
-  } catch (error) {
-    console.error('Error storing auth token:', error);
-  }
-};
-
-export const clearAuthToken = () => {
-  sessionStorage.removeItem('authToken');
-};
+// Kept for import compatibility with admin-dashboard.js
+export const checkBackendHealth = async () => true;
+export const waitForBackend = async () => true;
 
 /**
  * Generic fetch wrapper with error handling and token injection
