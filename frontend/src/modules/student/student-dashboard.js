@@ -22,10 +22,21 @@ if (!requireRole('student')) {
 }
 
 // ===========================
+// Remove Protection Screen
+// ===========================
+function hideProtectionScreen() {
+  const screen = document.getElementById('auth-protection-screen');
+  if (screen) {
+    screen.style.display = 'none';
+  }
+}
+
+// ===========================
 // Initialization on Page Load
 // ===========================
 document.addEventListener('DOMContentLoaded', async () => {
   // Dashboard initializing
+  hideProtectionScreen();
 
   try {
     // Check backend health before loading dashboard

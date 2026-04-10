@@ -14,6 +14,16 @@ if (!requireRole('admin')) {
   throw new Error('Unauthorized: Admin role required');
 }
 
+// ═══════════════════════════════════════════
+// Remove Protection Screen
+// ═══════════════════════════════════════════
+function hideProtectionScreen() {
+  const screen = document.getElementById('auth-protection-screen');
+  if (screen) {
+    screen.style.display = 'none';
+  }
+}
+
 // Global logout handler
 window.handleLogout = function() {
   // Admin logging out
@@ -32,6 +42,8 @@ let currentEditHwId = null;
 // INIT
 // =============================================
 document.addEventListener('DOMContentLoaded', async () => {
+    hideProtectionScreen();
+    
     const adminId = getUserId();
     const adminRole = 'admin';
     const adminPhone = sessionStorage.getItem('adminPhone');

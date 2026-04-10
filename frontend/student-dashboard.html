@@ -5,13 +5,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard | A2Z</title>
+    <!-- 🔒 AUTH CHECK MUST RUN IMMEDIATELY -->
+    <script>
+        // CRITICAL: Run auth check BEFORE any other resources load
+        (function() {
+            const performAuthCheck = function() {
+                try {
+                    const authStr = localStorage.getItem('auth');
+                    const auth = authStr ? JSON.parse(authStr) : null;
+                    const isStudent = auth && auth.isLoggedIn === true && auth.role === 'student';
+                    
+                    if (!isStudent) {
+                        // BLOCK EVERYTHING
+                        console.warn('🔒 STUDENT DASHBOARD: Unauthorized - blocking access');
+                        // Prevent any content from rendering
+                        document.open();
+                        document.write('');
+                        document.close();
+                        // Force redirect
+                        setTimeout(() => {
+                            window.location.replace('/');
+                        }, 100);
+                        // Stop execution
+                        throw new Error('UNAUTHORIZED_ACCESS');
+                    }
+                    // Auth passed - safe to continue
+                    return true;
+                } catch (e) {
+                    if (e.message !== 'UNAUTHORIZED_ACCESS') {
+                        console.error('Auth error:', e);
+                    }
+                    document.open();
+                    document.write('');
+                    document.close();
+                    setTimeout(() => {
+                        window.location.replace('/');
+                    }, 100);
+                    throw new Error('AUTH_ERROR');
+                }
+            };
+            
+            // Execute IMMEDIATELY
+            if (!performAuthCheck()) {
+                throw new Error('Auth failed');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="./src/assets/css/student-dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>document.documentElement.setAttribute('data-theme', 'light');</script>
+    <style>
+        #auth-protection-screen {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+    </style>
 </head>
 
 <body>
+    <!-- Protection screen shows while auth is being verified -->
+    <div id="auth-protection-screen">
+        <div style="text-align: center;">
+            <p style="font-size: 1.2rem; color: #666;">Loading...</p>
+        </div>
+    </div>
 
     <div class="dashboard-container">
         <aside class="sidebar">

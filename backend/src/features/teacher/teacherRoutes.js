@@ -9,6 +9,7 @@ import {
   deleteHomework,
 } from '../homework/Homework.js';
 import { syllabusModel, getSyllabusByTeacher, createSyllabusEntry, updateSyllabusEntry, deleteSyllabusEntry } from './syllabusModel.js';
+import { createExamResult, getExamResults } from './examController.js';
 
 const router = express.Router();
 
@@ -475,5 +476,15 @@ router.delete('/syllabus/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete syllabus entry', detail: err.message });
   }
 });
+
+// ============================================
+// EXAM RESULTS — teacher-scoped
+// ============================================
+
+// POST /api/teacher/exam-results
+router.post('/exam-results', createExamResult);
+
+// GET /api/teacher/exam-results
+router.get('/exam-results', getExamResults);
 
 export default router;

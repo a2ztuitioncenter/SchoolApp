@@ -126,8 +126,70 @@
             pointer-events: auto;
         }
     </style>
+    <script>
+        // ⚠️ IMMEDIATE AUTH CHECK - MUST RUN FIRST
+        (function() {
+            const performAuthCheck = function() {
+                try {
+                    const authStr = localStorage.getItem('auth');
+                    const auth = authStr ? JSON.parse(authStr) : null;
+                    const isTeacher = auth && auth.isLoggedIn === true && auth.role === 'teacher';
+                    
+                    if (!isTeacher) {
+                        // BLOCK EVERYTHING
+                        console.warn('🔒 TEACHER DASHBOARD: Unauthorized - blocking access');
+                        // Prevent any content from rendering
+                        document.open();
+                        document.write('');
+                        document.close();
+                        // Force redirect
+                        setTimeout(() => {
+                            window.location.replace('/');
+                        }, 100);
+                        // Stop execution
+                        throw new Error('UNAUTHORIZED_ACCESS');
+                    }
+                    // Auth passed - safe to continue
+                    return true;
+                } catch (e) {
+                    if (e.message !== 'UNAUTHORIZED_ACCESS') {
+                        console.error('Auth error:', e);
+                    }
+                    document.open();
+                    document.write('');
+                    document.close();
+                    setTimeout(() => {
+                        window.location.replace('/');
+                    }, 100);
+                    throw new Error('AUTH_ERROR');
+                }
+            };
+            
+            // Execute IMMEDIATELY
+            if (!performAuthCheck()) {
+                throw new Error('Auth failed');
+            }
+        })();
+    </script>
+    <style>
+        #auth-protection-screen {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+    </style>
 </head>
 <body>
+    <!-- Protection screen shows while auth is being verified -->
+    <div id="auth-protection-screen">
+        <div style="text-align: center;">
+            <p style="font-size: 1.2rem; color: #666;">Loading...</p>
+        </div>
+    </div>
 <div class="admin-container">
 
     <!-- Sidebar -->

@@ -66,7 +66,6 @@ app.use((req, res, next) => {
   req.db = pool;
   next();
 });
-app.use(express.urlencoded({ extended: true }));
 
 // Global Request Logger
 app.use((req, res, next) => {

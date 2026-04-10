@@ -1,13 +1,3 @@
-# ============================================
-# TUITION APP - PRODUCTION .gitignore
-# ============================================
-# Security-focused git ignore configuration for production deployment
-# Last Updated: January 2025
-
-# ============================================
-# CRITICAL: Environment & Credentials
-# ============================================
-# NEVER commit files containing secrets, API keys, or credentials
 .env
 .env.local
 .env.*.local
@@ -20,9 +10,8 @@
 !.env.example
 !.env.production.example
 
-# ============================================
 # Dependencies & Lock Files
-# ============================================
+
 node_modules/
 *.lock
 package-lock.json
@@ -88,9 +77,6 @@ ENV/
 env.bak/
 venv.bak/
 
-# ============================================
-# Temporary & Test Files (IMPORTANT)
-# ============================================
 # Remove temporary test/debug files
 test-connection.js
 tmp_*.json

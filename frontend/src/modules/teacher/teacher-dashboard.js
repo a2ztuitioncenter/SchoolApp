@@ -6,6 +6,16 @@ import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } fr
 // ═══════════════════════════════════════════
 requireRole('teacher');
 
+// ═══════════════════════════════════════════
+// Remove Protection Screen
+// ═══════════════════════════════════════════
+function hideProtectionScreen() {
+  const screen = document.getElementById('auth-protection-screen');
+  if (screen) {
+    screen.style.display = 'none';
+  }
+}
+
 // Global logout handler
 window.handleLogout = function () {
   // Teacher logging out
@@ -95,6 +105,7 @@ function setupTabs() {
 
 function init() {
   // Teacher Dashboard initializing
+  hideProtectionScreen();
   syncToSessionStorage('teacher');
   teacherId = getUserId();
 

@@ -120,6 +120,7 @@ router.post('/register', async (req, res) => {
 
     // Create user account
     const user = await createUser(pool, {
+      name,
       phone,
       email: `${phone}@student.local`,
       password,
