@@ -293,23 +293,34 @@
             </div>
 
             <div id="att-sheet-container" style="display:none;">
-                <div class="section-header">
-                    <h3>Attendance Sheet — <span id="att-sheet-label"></span></h3>
-                    <button class="btn btn-success btn-lg" onclick="saveAttendance()">
-                        <i class="fas fa-save"></i> Submit Attendance
+                <div class="att-summary-bar">
+                    <div class="att-stats">
+                        <div class="att-stat-item">
+                            <span class="text-muted">Total:</span>
+                            <span id="att-total-count">0</span>
+                        </div>
+                        <div class="att-stat-item">
+                            <span style="color: var(--success)">P:</span>
+                            <b id="att-present-count">0</b>
+                        </div>
+                        <div class="att-stat-item">
+                            <span style="color: var(--danger)">A:</span>
+                            <b id="att-absent-count">0</b>
+                        </div>
+                    </div>
+                    <button class="att-btn-mark-all" id="btn-mark-all-present">
+                        <i class="fas fa-check-double"></i> Mark All Present
                     </button>
                 </div>
-                
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th style="text-align: center;">Status Selection</th>
-                            </tr>
-                        </thead>
-                        <tbody id="att-sheet-body"></tbody>
-                    </table>
+
+                <div id="att-list-container" class="att-list-container">
+                    <!-- Cards will be rendered here -->
+                </div>
+
+                <div class="att-submit-container">
+                    <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="saveAttendance()">
+                        <i class="fas fa-cloud-upload-alt"></i> Submit Attendance Sheet
+                    </button>
                 </div>
             </div>
         </div>

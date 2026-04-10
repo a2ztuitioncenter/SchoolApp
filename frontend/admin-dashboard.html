@@ -671,23 +671,34 @@
                 </div>
 
                 <div id="attendance-sheet" style="display:none; margin-top:1.5rem;">
-                    <div class="table-container">
-                        <table class="data-table" id="att-sheet-table">
-                            <thead>
-                                <tr>
-                                    <th>Roll No.</th>
-                                    <th>Student Name</th>
-                                    <th>Present</th>
-                                    <th>Absent</th>
-                                    <th>Late</th>
-                                </tr>
-                            </thead>
-                            <tbody id="att-sheet-body"></tbody>
-                        </table>
-                        <div style="margin-top:1.5rem; display: flex; gap: 1rem;">
-                            <button class="btn btn-success" onclick="submitAttendance()"><i class="fas fa-check"></i> Save Attendance</button>
-                            <button class="btn btn-secondary" onclick="document.getElementById('attendance-sheet').style.display='none';">Cancel</button>
+                    <div class="att-summary-bar">
+                        <div class="att-stats">
+                            <div class="att-stat-item">
+                                <span class="text-muted">Total:</span>
+                                <span id="att-total-count">0</span>
+                            </div>
+                            <div class="att-stat-item">
+                                <span style="color: var(--success)">P:</span>
+                                <b id="att-present-count">0</b>
+                            </div>
+                            <div class="att-stat-item">
+                                <span style="color: var(--danger)">A:</span>
+                                <b id="att-absent-count">0</b>
+                            </div>
                         </div>
+                        <button class="att-btn-mark-all" id="btn-mark-all-present">
+                            <i class="fas fa-check-double"></i> Mark All Present
+                        </button>
+                    </div>
+
+                    <div id="att-list-container" class="att-list-container">
+                        <!-- Cards will be rendered here -->
+                    </div>
+
+                    <div class="att-submit-container">
+                        <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="submitAttendance()">
+                            <i class="fas fa-save"></i> Save Attendance Sheet
+                        </button>
                     </div>
                 </div>
 

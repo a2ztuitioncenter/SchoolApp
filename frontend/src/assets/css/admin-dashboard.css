@@ -3567,5 +3567,212 @@ textarea:focus {
     font-size: 0.9rem;
   }
 }
-@media (max-width: 768px) { .subject-row-entry > div { grid-template-columns: 1fr !important; gap: 0.8rem !important; } .remove-sub-btn { width: 100%; margin-top: 0.5rem; } } .subject-row-entry { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 12px !important; } .subject-row-entry:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); border-color: var(--accent-blue) !important; } .subject-row-entry input { background: var(--bg-secondary) !important; border: 1px solid var(--border-subtle) !important; font-weight: 500; } .subject-row-entry input:focus { background: #fff !important; border-color: var(--accent-blue) !important; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important; } .remove-sub-btn { transition: all 0.2s ease; background: rgba(220, 38, 38, 0.05) !important; color: #dc2626 !important; border: 1px solid rgba(220, 38, 38, 0.1) !important; } .remove-sub-btn:hover { background: #dc2626 !important; color: #fff !important; } #exam-add-subject-btn { background: rgba(37, 99, 235, 0.05); color: var(--accent-blue); border: 1px dashed var(--accent-blue); padding: 0.8rem 1.5rem; font-weight: 600; width: 100%; margin-top: 1rem; } #exam-add-subject-btn:hover { background: var(--accent-blue); color: #fff; border-style: solid; }
-.sub-grade { text-align: center; font-weight: 700 !important; font-size: 1.1rem !important; cursor: default; }
+
+@media (max-width: 768px) {
+    .subject-row-entry > div {
+        grid-template-columns: 1fr !important;
+        gap: 0.8rem !important;
+    }
+    .remove-sub-btn {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+}
+
+.subject-row-entry {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px !important;
+}
+
+.subject-row-entry:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    border-color: var(--accent-blue) !important;
+}
+
+.subject-row-entry input {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    font-weight: 500;
+}
+
+.subject-row-entry input:focus {
+    background: #fff !important;
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+.remove-sub-btn {
+    transition: all 0.2s ease;
+    background: rgba(220, 38, 38, 0.05) !important;
+    color: #dc2626 !important;
+    border: 1px solid rgba(220, 38, 38, 0.1) !important;
+}
+
+.remove-sub-btn:hover {
+    background: #dc2626 !important;
+    color: #fff !important;
+}
+
+#exam-add-subject-btn {
+    background: rgba(37, 99, 235, 0.05);
+    color: var(--accent-blue);
+    border: 1px dashed var(--accent-blue);
+    padding: 0.8rem 1.5rem;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+#exam-add-subject-btn:hover {
+    background: var(--accent-blue);
+    color: #fff;
+    border-style: solid;
+}
+
+.sub-grade {
+    text-align: center;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    cursor: default;
+}
+
+/* ==========================================================================
+   ATTENDANCE MODULE - MOBILE OPTIMIZED
+   ========================================================================== */
+
+.att-summary-bar {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.att-stats {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.att-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.att-btn-mark-all {
+    background: var(--accent-blue-faded);
+    color: var(--accent-blue);
+    border: 1px solid var(--accent-blue);
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.att-btn-mark-all:hover {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.att-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.att-student-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    border: 1px solid var(--border-subtle);
+    transition: all 0.2s ease;
+}
+
+.att-student-card:hover {
+    border-color: var(--accent-blue);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.att-student-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.att-student-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 1rem;
+}
+
+.att-student-roll {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.att-toggles {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.att-toggle-btn {
+    flex: 1;
+    height: 42px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-primary);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.att-toggle-btn.active[data-status="present"] {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+.att-toggle-btn.active[data-status="absent"] {
+    background: var(--danger);
+    color: white;
+    border-color: var(--danger);
+}
+
+.att-toggle-btn.active[data-status="late"] {
+    background: var(--warning);
+    color: white;
+    border-color: var(--warning);
+}
+
+.att-submit-container {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 1rem;
+}
+
+@media (max-width: 480px) {
+    .att-summary-bar {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    .att-stats {
+        justify-content: space-between;
+    }
+}

@@ -419,81 +419,123 @@ async function initAttendanceTab() {
 
 window.onAttClassChange = function () { };
 
+let attendanceData = {}; // studentId -> status
+
 window.loadAttendanceSheet = async function () {
-  const classLevel = document.getElementById('att-class-select').value;
-  const date = document.getElementById('att-date').value;
-  if (!classLevel || !date) { showError('Select a class and date.'); return; }
+    const classLevel = document.getElementById('att-class-select').value;
+    const date = document.getElementById('att-date').value;
+    if (!classLevel || !date) { showError('Please select a class and date.'); return; }
 
-  try {
-    showInfo('Loading students...');
-    const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
-    hideInfo();
+    try {
+        showInfo('Loading students...');
+        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
+        hideInfo();
 
-    const container = document.getElementById('att-sheet-container');
-    const label = document.getElementById('att-sheet-label');
-    const tbody = document.getElementById('att-sheet-body');
+        const container = document.getElementById('att-sheet-container');
+        const list = document.getElementById('att-list-container');
+        
+        const students = res.students || [];
+        const existingMap = res.existing || {};
 
-    label.textContent = `Class ${classLevel} — ${date}`;
-    const students = res.students || [];
-    const existingMap = res.existing || {};
+        if (!students.length) {
+            container.style.display = 'block';
+            list.innerHTML = renderEmptyState(1, 'No students found in this class.');
+            return;
+        }
 
-    if (!students.length) {
-      container.style.display = 'block';
-      tbody.innerHTML = renderEmptyState(4, 'No students found in this class.');
-      return;
+        // Reset data
+        attendanceData = {};
+        list.innerHTML = "";
+        document.getElementById('att-total-count').textContent = students.length;
+
+        students.forEach(s => {
+            const currentStatus = existingMap[s.id] || null;
+            attendanceData[s.id] = currentStatus;
+
+            const card = document.createElement('div');
+            card.className = 'att-student-card';
+            card.innerHTML = `
+                <div class="att-student-info">
+                    <div>
+                        <div class="att-student-name">${s.name}</div>
+                        <div class="att-student-roll">ID: #${s.id}</div>
+                    </div>
+                </div>
+                <div class="att-toggles">
+                    <button class="att-toggle-btn ${currentStatus === 'present' ? 'active' : ''}" data-id="${s.id}" data-status="present">P</button>
+                    <button class="att-toggle-btn ${currentStatus === 'absent' ? 'active' : ''}" data-id="${s.id}" data-status="absent">A</button>
+                    <button class="att-toggle-btn ${currentStatus === 'late' ? 'active' : ''}" data-id="${s.id}" data-status="late">L</button>
+                </div>
+            `;
+
+            const buttons = card.querySelectorAll('.att-toggle-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    buttons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    attendanceData[s.id] = btn.dataset.status;
+                    updateAttStats();
+                });
+            });
+
+            list.appendChild(card);
+        });
+
+        container.style.display = 'block';
+        updateAttStats();
+
+        // Setup "Mark All"
+        document.getElementById('btn-mark-all-present').onclick = () => {
+             document.querySelectorAll('.att-toggle-btn[data-status="present"]').forEach(btn => {
+                 if (!btn.classList.contains('active')) btn.click();
+             });
+        };
+
+    } catch (err) {
+        hideInfo();
+        showError('Failed to load attendance: ' + err.message);
     }
-
-    tbody.innerHTML = students.map(s => {
-      const cur = existingMap[s.id] || 'present';
-      return `<tr>
-        <td style="vertical-align: middle;">
-            <div style="font-weight: 600; color: var(--text-main);">${s.name}</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">ID: #${s.id}</div>
-        </td>
-        <td style="text-align: center;">
-            <div class="att-radio-group" style="justify-content: center;">
-                <label class="att-label present-label">
-                    <input type="radio" name="att_${s.id}" value="present" ${cur === 'present' ? 'checked' : ''}> Present
-                </label>
-                <label class="att-label absent-label">
-                    <input type="radio" name="att_${s.id}" value="absent"  ${cur === 'absent' ? 'checked' : ''}> Absent
-                </label>
-                <label class="att-label late-label">
-                    <input type="radio" name="att_${s.id}" value="late"    ${cur === 'late' ? 'checked' : ''}> Late
-                </label>
-            </div>
-        </td>
-      </tr>`;
-    }).join('');
-    container.style.display = 'block';
-  } catch (err) {
-    hideInfo();
-    showError('Failed to load attendance: ' + err.message);
-  }
 };
 
+function updateAttStats() {
+    let p = 0, a = 0;
+    Object.values(attendanceData).forEach(status => {
+        if (status === 'present' || status === 'late') p++;
+        if (status === 'absent') a++;
+    });
+    document.getElementById('att-present-count').textContent = p;
+    document.getElementById('att-absent-count').textContent = a;
+}
+
 window.saveAttendance = async function () {
-  const classLevel = document.getElementById('att-class-select').value;
-  const date = document.getElementById('att-date').value;
-  const radios = document.querySelectorAll('#att-sheet-body input[type=radio]:checked');
-  const records = [];
+    const classLevel = document.getElementById('att-class-select').value;
+    const date = document.getElementById('att-date').value;
+    
+    // Check if any nulls
+    const pendingCount = Object.values(attendanceData).filter(v => v === null).length;
+    if (pendingCount > 0) {
+        showError(`Please mark attendance for all students (${pendingCount} remaining).`);
+        return;
+    }
 
-  radios.forEach(r => {
-    const studentId = parseInt(r.name.replace('att_', ''));
-    records.push({ studentId, classLevel, date, status: r.value });
-  });
+    const records = Object.entries(attendanceData).map(([id, status]) => ({
+        studentId: parseInt(id),
+        classLevel,
+        date,
+        status
+    }));
 
-  if (!records.length) { showError('No data to save.'); return; }
+    if (!records.length) { showError('No students to save.'); return; }
 
-  try {
-    showInfo('Saving attendance...');
-    await teacherAPI.markBulkAttendance(teacherId, records);
-    hideInfo();
-    showSuccess(`Attendance saved for ${records.length} students.`);
-  } catch (err) {
-    hideInfo();
-    showError('Failed to save attendance: ' + err.message);
-  }
+    try {
+        showInfo('Saving attendance...');
+        await teacherAPI.markBulkAttendance(teacherId, records);
+        hideInfo();
+        showSuccess(`Successfully saved attendance for ${records.length} students.`);
+    } catch (err) {
+        hideInfo();
+        showError('Failed to save attendance: ' + err.message);
+    }
 };
 
 // ─── HOMEWORK ─────────────────────────────────────────────────────────────────
