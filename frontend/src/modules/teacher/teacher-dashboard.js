@@ -7,7 +7,7 @@ import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } fr
 requireRole('teacher');
 
 // Global logout handler
-window.handleLogout = function() {
+window.handleLogout = function () {
   // Teacher logging out
   authLogout();
 };
@@ -18,14 +18,14 @@ let teacherPhone = null;
 const teacherRole = 'teacher';
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let allHomework  = [];
+let allHomework = [];
 let allMaterials = [];
-let allSyllabus  = [];
+let allSyllabus = [];
 let allTimetable = [];
 let availableClasses = [];
 
 // ─── Day helpers ──────────────────────────────────────────────────────────────
-const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function todayName() { return DAY_NAMES[new Date().getDay()]; }
 
@@ -83,12 +83,12 @@ function setupTabs() {
       const el = document.getElementById(`tab-${tab}`);
       if (el) el.style.display = 'block';
 
-      if (tab === 'homework')  { loadHomework(); populateHwDropdowns(); }
+      if (tab === 'homework') { loadHomework(); populateHwDropdowns(); }
       if (tab === 'materials') loadMaterials();
       if (tab === 'timetable') renderWeeklyTimetable();
-      if (tab === 'syllabus')  loadSyllabus();
+      if (tab === 'syllabus') loadSyllabus();
       if (tab === 'attendance') initAttendanceTab();
-      if (tab === 'summary')   initSummaryTab();
+      if (tab === 'summary') initSummaryTab();
     });
   });
 }
@@ -97,19 +97,19 @@ function init() {
   // Teacher Dashboard initializing
   syncToSessionStorage('teacher');
   teacherId = getUserId();
-  
+
   if (!teacherId || teacherId === 'null') {
     console.warn('⚠️ No valid teacher session found, redirecting to login...');
     window.location.href = './index.html';
     return;
   }
-  
+
   teacherPhone = sessionStorage.getItem('teacherPhone');
 
   // Setup profile menu
   const profileBtn = document.getElementById('teacher-profile-btn');
   const profileMenu = document.getElementById('teacher-profile-dropdown');
-  
+
   if (profileBtn && profileMenu) {
     // Profile button and menu found
     profileBtn.addEventListener('click', (e) => {
@@ -119,7 +119,7 @@ function init() {
       profileMenu.classList.toggle('open');
       // Profile menu toggled
     });
-    
+
     // Close profile menu when clicking outside
     document.addEventListener('click', (e) => {
       if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
@@ -146,13 +146,13 @@ function init() {
     initialEl.textContent = 'T';
     // Teacher avatar initial updated
   }
-  
+
   const ddName = document.getElementById('dropdown-teacher-name');
   if (ddName) ddName.textContent = `Teacher`;
-  
+
   const ddEmail = document.getElementById('dropdown-teacher-email');
   if (ddEmail) ddEmail.textContent = teacherPhone || `teacher@a2z.local`;
-  
+
   // Mobile Sidebar Toggle
   const mobileToggle = document.getElementById('mobile-menu-toggle');
   const sidebar = document.querySelector('.sidebar');
@@ -169,10 +169,35 @@ function init() {
       });
     });
   }
-  
+
   setupTabs();
   setupFormListeners();
   loadDashboard();
+
+  // Unified global click handler for closing dropdowns
+  document.addEventListener('click', (e) => {
+    // Close profile menu if clicking outside
+    const profileBtn = document.getElementById('teacher-profile-btn');
+    const profileMenu = document.getElementById('teacher-profile-dropdown');
+    if (profileBtn && profileMenu) {
+      if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
+        profileBtn.setAttribute('aria-expanded', 'false');
+        profileMenu.classList.remove('open');
+      }
+    }
+
+    // Close any open action menu dropdowns if clicking outside
+    if (!e.target.closest('.action-menu')) {
+      document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
+    }
+
+    // Close sidebar on mobile if clicking outside
+    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('active')) {
+      if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
+        sidebar.classList.remove('active');
+      }
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -182,7 +207,7 @@ async function loadDashboard() {
   try {
     showInfo('Loading dashboard...');
     // Loading dashboard for teacher
-    
+
     const [dashRes, matRes] = await Promise.all([
       teacherAPI.getDashboard(teacherId),
       teacherAPI.getMaterials(teacherId),
@@ -195,13 +220,13 @@ async function loadDashboard() {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
       setText('stat-homework', dashRes.homework?.length ?? 0);
       allTimetable = dashRes.timetable || [];
-      allHomework  = dashRes.homework  || [];
-      
+      allHomework = dashRes.homework || [];
+
       // Timetable and homework loaded
     } else {
       console.warn('⚠️ Dashboard response not successful:', dashRes.error);
     }
-    
+
     if (matRes.success) {
       allMaterials = matRes.data || [];
       setText('stat-materials', allMaterials.length);
@@ -220,7 +245,7 @@ function renderTodayTimetable() {
   const today = todayName();
   document.getElementById('today-label').textContent = `— ${today}`;
   const tbody = document.getElementById('today-timetable-body');
-  
+
   // Normalize dayOfWeek values in timetable and match with today
   const todayEntries = allTimetable.filter(e => {
     const normalized = normalizeDayName(e.dayOfWeek);
@@ -228,9 +253,9 @@ function renderTodayTimetable() {
   });
 
   // Rendering Today's Timetable
-  
+
   const now = nowMinutes();
-  
+
   // Filter only ongoing and upcoming classes (exclude done classes)
   const upcomingEntries = todayEntries.filter(e => {
     const end = timeToMinutes(e.endTime);
@@ -246,14 +271,20 @@ function renderTodayTimetable() {
     .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
     .map(e => {
       const start = timeToMinutes(e.startTime);
-      const end   = timeToMinutes(e.endTime);
-      const isNow  = now >= start && now < end;
-      const chip   = isNow ? '<span style="margin-left:8px; font-size:0.75rem; background:rgba(63,185,80,0.15); color:#3fb950; padding:2px 6px; border-radius:3px;">Now</span>' : '';
-      return `<tr style="border-bottom:1px solid var(--border-subtle); padding:0;">
-        <td style="padding:10px 12px; font-size:0.9rem;">${e.classLevel || '–'}</td>
-        <td style="padding:10px 12px; font-size:0.9rem;">${e.subject || '–'}${chip}</td>
-        <td style="padding:10px 12px; font-size:0.9rem;">${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
-        <td style="padding:10px 12px; font-size:0.85rem; color:var(--text-muted);">${isNow ? 'In Session' : 'Upcoming'}</td>
+      const end = timeToMinutes(e.endTime);
+      const isNow = now >= start && now < end;
+      const statusClass = isNow ? 'status-active' : 'status-pending';
+      const statusText = isNow ? 'In Session' : 'Upcoming';
+
+      return `
+      <tr class="timetable-card ${isNow ? 'timetable-now' : ''}">
+        <td><strong>${e.classLevel || '–'}</strong></td>
+        <td>
+            ${e.subject || '–'}
+            ${isNow ? '<span class="status-badge status-active" style="margin-left:8px; font-size:0.65rem;">NOW</span>' : ''}
+        </td>
+        <td><i class="far fa-clock"></i> ${formatTime(e.startTime)} – ${formatTime(e.endTime)}</td>
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
       </tr>`;
     }).join('');
 }
@@ -266,7 +297,7 @@ setInterval(() => {
 // Full weekly timetable - Admin style design
 function renderWeeklyTimetable() {
   const container = document.getElementById('weekly-timetable');
-  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const today = todayName();
   let selectedDay = today;
 
@@ -311,10 +342,10 @@ function renderWeeklyTimetable() {
 
   // Render classes in 2-column grid
   const classesHtml = sortedClasses.map(classLevel => {
-    const entries = classesByLevel[classLevel].sort((a, b) => 
+    const entries = classesByLevel[classLevel].sort((a, b) =>
       timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
     );
-    
+
     return `
       <div style="flex: 1; min-width: 350px; margin-bottom: 2rem;">
         <div style="
@@ -352,7 +383,7 @@ function renderWeeklyTimetable() {
     `;
   }).join('');
 
-  const noDataHtml = sortedClasses.length === 0 ? 
+  const noDataHtml = sortedClasses.length === 0 ?
     '<p style="color:var(--text-muted); padding: 2rem; text-align: center;">No classes scheduled for ' + selectedDay + '</p>' : '';
 
   const html = `
@@ -396,11 +427,11 @@ async function initAttendanceTab() {
   }
 }
 
-window.onAttClassChange = function() {};
+window.onAttClassChange = function () { };
 
-window.loadAttendanceSheet = async function() {
+window.loadAttendanceSheet = async function () {
   const classLevel = document.getElementById('att-class-select').value;
-  const date       = document.getElementById('att-date').value;
+  const date = document.getElementById('att-date').value;
   if (!classLevel || !date) { showError('Select a class and date.'); return; }
 
   try {
@@ -409,11 +440,11 @@ window.loadAttendanceSheet = async function() {
     hideInfo();
 
     const container = document.getElementById('att-sheet-container');
-    const label     = document.getElementById('att-sheet-label');
-    const tbody     = document.getElementById('att-sheet-body');
+    const label = document.getElementById('att-sheet-label');
+    const tbody = document.getElementById('att-sheet-body');
 
     label.textContent = `Class ${classLevel} — ${date}`;
-    const students  = res.students || [];
+    const students = res.students || [];
     const existingMap = res.existing || {};
 
     if (!students.length) {
@@ -425,10 +456,23 @@ window.loadAttendanceSheet = async function() {
     tbody.innerHTML = students.map(s => {
       const cur = existingMap[s.id] || 'present';
       return `<tr>
-        <td><strong>${s.name}</strong></td>
-        <td><label class="att-radio-group"><input type="radio" name="att_${s.id}" value="present" ${cur==='present'?'checked':''}> Present</label></td>
-        <td><label class="att-radio-group"><input type="radio" name="att_${s.id}" value="absent"  ${cur==='absent' ?'checked':''}> Absent</label></td>
-        <td><label class="att-radio-group"><input type="radio" name="att_${s.id}" value="late"    ${cur==='late'   ?'checked':''}> Late</label></td>
+        <td style="vertical-align: middle;">
+            <div style="font-weight: 600; color: var(--text-main);">${s.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">ID: #${s.id}</div>
+        </td>
+        <td style="text-align: center;">
+            <div class="att-radio-group" style="justify-content: center;">
+                <label class="att-label present-label">
+                    <input type="radio" name="att_${s.id}" value="present" ${cur === 'present' ? 'checked' : ''}> Present
+                </label>
+                <label class="att-label absent-label">
+                    <input type="radio" name="att_${s.id}" value="absent"  ${cur === 'absent' ? 'checked' : ''}> Absent
+                </label>
+                <label class="att-label late-label">
+                    <input type="radio" name="att_${s.id}" value="late"    ${cur === 'late' ? 'checked' : ''}> Late
+                </label>
+            </div>
+        </td>
       </tr>`;
     }).join('');
     container.style.display = 'block';
@@ -438,11 +482,11 @@ window.loadAttendanceSheet = async function() {
   }
 };
 
-window.saveAttendance = async function() {
+window.saveAttendance = async function () {
   const classLevel = document.getElementById('att-class-select').value;
-  const date       = document.getElementById('att-date').value;
-  const radios     = document.querySelectorAll('#att-sheet-body input[type=radio]:checked');
-  const records    = [];
+  const date = document.getElementById('att-date').value;
+  const radios = document.querySelectorAll('#att-sheet-body input[type=radio]:checked');
+  const records = [];
 
   radios.forEach(r => {
     const studentId = parseInt(r.name.replace('att_', ''));
@@ -476,42 +520,56 @@ async function loadHomework() {
 
 function renderHomeworkTable() {
   const tbody = document.getElementById('hw-table-body');
-    const onlyHws = allHomework.filter(h => h.type === 'homework');
-    if (!onlyHws.length) {
-      tbody.innerHTML = renderEmptyState(5, 'No homework yet. Add one!');
-      return;
-    }
-    tbody.innerHTML = onlyHws.map(hw => {
-      const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
-      const att = hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-paperclip"></i></a>` : '';
-      return `<tr>
-        <td><span class="badge">${hw.classLevel || '–'}</span></td>
-        <td>${hw.subject || '–'}</td>
+  const onlyHws = allHomework.filter(h => h.type === 'homework');
+  if (!onlyHws.length) {
+    tbody.innerHTML = renderEmptyState(5, 'No homework yet. Add one!');
+    return;
+  }
+  tbody.innerHTML = onlyHws.map(hw => {
+    const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
+    const attAction = hw.attachmentUrl ? `
+        <button class="action-menu-item" onclick="window.open('${hw.attachmentUrl}', '_blank')">
+          <i class="fas fa-paperclip" style="width:16px;"></i> View Attachment
+        </button>` : '';
+
+    return `<tr>
+        <td><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">${hw.classLevel || '–'}</span></td>
+        <td><strong>${hw.subject || '–'}</strong></td>
         <td>${hw.title}</td>
         <td>${due}</td>
-        <td>
-          ${att}
-          <button class="btn-sm btn-edit"   onclick="editHomework(${hw.id})"><i class="fas fa-pen"></i></button>
-          <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash"></i></button>
+        <td style="text-align: right;">
+          <div class="action-menu">
+            <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
+            <div class="action-menu-dropdown">
+              <button class="action-menu-item" onclick="editHomework(${hw.id})">
+                <i class="fas fa-pen" style="width:16px;"></i> Edit
+              </button>
+              ${attAction}
+              <div class="action-menu-divider"></div>
+              <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
+                <i class="fas fa-trash" style="width:16px;"></i> Delete
+              </button>
+            </div>
+          </div>
         </td>
       </tr>`;
-    }).join('');
+  }).join('');
 }
 
 async function populateSharedDropdowns(prefix = 'hw') {
   const classSel = document.getElementById(`${prefix}-classLevel`);
-  const secSel   = document.getElementById(`${prefix}-section`);
+  const secSel = document.getElementById(`${prefix}-section`);
   if (!classSel || !secSel) return;
-  
+
   if (classSel.options.length > 1 && secSel.options.length > 1) return;
 
   try {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     const classes = res.data || [];
-    
+
     const classSet = new Set();
-    const secSet   = new Set();
-    
+    const secSet = new Set();
+
     classes.forEach(c => {
       const match = c.match(/^(\d+)([A-Z])$/i);
       if (match) {
@@ -522,9 +580,9 @@ async function populateSharedDropdowns(prefix = 'hw') {
       }
     });
 
-    const classOptions = '<option value="">Select Class</option>' + 
+    const classOptions = '<option value="">Select Class</option>' +
       Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
-    const secOptions = '<option value="">Select Section</option>' + 
+    const secOptions = '<option value="">Select Section</option>' +
       Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
 
     classSel.innerHTML = classOptions;
@@ -534,30 +592,44 @@ async function populateSharedDropdowns(prefix = 'hw') {
 
 function renderDppTable() {
   const tbody = document.getElementById('dpp-table-body');
-  if(!tbody) return;
+  if (!tbody) return;
   const onlyDpps = allHomework.filter(h => h.type === 'daily_practice');
   if (!onlyDpps.length) {
     tbody.innerHTML = renderEmptyState(5, 'No practice problems yet.');
     return;
   }
   tbody.innerHTML = onlyDpps.map(hw => {
-    const posted = `Posted: ${new Date(hw.createdAt).toLocaleDateString('en-IN')}`;
-    const att = hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-paperclip"></i></a>` : '';
+    const posted = new Date(hw.createdAt).toLocaleDateString('en-IN');
+    const attAction = hw.attachmentUrl ? `
+      <button class="action-menu-item" onclick="window.open('${hw.attachmentUrl}', '_blank')">
+        <i class="fas fa-paperclip" style="width:16px;"></i> View Attachment
+      </button>` : '';
+
     return `<tr>
-      <td><span class="badge">${hw.classLevel || '–'}</span></td>
-      <td>${hw.subject || '–'}</td>
+      <td><span class="status-badge" style="background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border-subtle);">${hw.classLevel || '–'}</span></td>
+      <td><strong>${hw.subject || '–'}</strong></td>
       <td>${hw.title}</td>
-      <td>${posted}</td>
-      <td>
-        ${att}
-        <button class="btn-sm btn-edit"   onclick="editHomework(${hw.id})"><i class="fas fa-pen"></i></button>
-        <button class="btn-sm btn-delete" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash"></i></button>
+      <td><i class="far fa-calendar-alt"></i> ${posted}</td>
+      <td style="text-align: right;">
+        <div class="action-menu">
+          <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
+          <div class="action-menu-dropdown">
+            <button class="action-menu-item" onclick="editHomework(${hw.id})">
+              <i class="fas fa-pen" style="width:16px;"></i> Edit
+            </button>
+            ${attAction}
+            <div class="action-menu-divider"></div>
+            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
+              <i class="fas fa-trash" style="width:16px;"></i> Delete
+            </button>
+          </div>
+        </div>
       </td>
     </tr>`;
   }).join('');
 }
 
-window.openHwModal = async function(typeOrHw = 'homework') {
+window.openHwModal = async function (typeOrHw = 'homework') {
   await populateSharedDropdowns('hw');
   document.getElementById('hw-form').reset();
   const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
@@ -570,11 +642,11 @@ window.openHwModal = async function(typeOrHw = 'homework') {
   const dueDateInput = document.getElementById('hw-dueDate');
 
   if (hw) {
-    document.getElementById('hw-classLevel').value   = hw.classLevel || '';
-    document.getElementById('hw-section').value      = hw.section    || '';
-    document.getElementById('hw-subject').value      = hw.subject    || '';
-    document.getElementById('hw-title').value        = hw.title      || '';
-    document.getElementById('hw-description').value  = hw.description|| '';
+    document.getElementById('hw-classLevel').value = hw.classLevel || '';
+    document.getElementById('hw-section').value = hw.section || '';
+    document.getElementById('hw-subject').value = hw.subject || '';
+    document.getElementById('hw-title').value = hw.title || '';
+    document.getElementById('hw-description').value = hw.description || '';
   }
 
   if (dueDateInput) {
@@ -598,7 +670,7 @@ window.openHwModal = async function(typeOrHw = 'homework') {
   }
 };
 
-window.closeHwModal = function() {
+window.closeHwModal = function () {
   const modal = document.getElementById('hw-modal');
   if (modal) {
     modal.classList.remove('open');
@@ -606,12 +678,12 @@ window.closeHwModal = function() {
   }
 };
 
-window.editHomework = function(id) {
+window.editHomework = function (id) {
   const hw = allHomework.find(h => h.id === id);
   if (hw) openHwModal(hw);
 };
 
-window.deleteHomework = async function(id) {
+window.deleteHomework = async function (id) {
   if (!confirm('Delete this homework?')) return;
   try {
     await teacherAPI.deleteHomework(id, parseInt(teacherId));
@@ -625,21 +697,21 @@ function setupFormListeners() {
     e.preventDefault();
     const id = document.getElementById('hw-edit-id').value;
     const fd = new FormData();
-    fd.append('teacherId',   teacherId);
-    fd.append('classLevel',  document.getElementById('hw-classLevel').value);
-    fd.append('section',     document.getElementById('hw-section').value);
-    fd.append('subject',     document.getElementById('hw-subject').value);
-    fd.append('type',        document.getElementById('hw-type')?.value || 'homework');
-    fd.append('title',       document.getElementById('hw-title').value);
+    fd.append('teacherId', teacherId);
+    fd.append('classLevel', document.getElementById('hw-classLevel').value);
+    fd.append('section', document.getElementById('hw-section').value);
+    fd.append('subject', document.getElementById('hw-subject').value);
+    fd.append('type', document.getElementById('hw-type')?.value || 'homework');
+    fd.append('title', document.getElementById('hw-title').value);
     fd.append('description', document.getElementById('hw-description').value);
-    fd.append('dueDate',     document.getElementById('hw-dueDate').value);
+    fd.append('dueDate', document.getElementById('hw-dueDate').value);
     const file = document.getElementById('hw-file').files[0];
     if (file) fd.append('attachment', file);
 
     try {
       showInfo(id ? 'Updating homework...' : 'Adding homework...');
       if (id) await teacherAPI.updateHomework(id, fd);
-      else    await teacherAPI.createHomework(fd);
+      else await teacherAPI.createHomework(fd);
       hideInfo();
       showSuccess(id ? 'Homework updated!' : 'Homework added!');
       closeHwModal();
@@ -651,12 +723,12 @@ function setupFormListeners() {
     e.preventDefault();
     const id = document.getElementById('mat-edit-id').value;
     const fd = new FormData();
-    fd.append('teacherId',    teacherId);
-    fd.append('classLevel',   document.getElementById('mat-classLevel').value);
-    fd.append('section',      document.getElementById('mat-section').value);
-    fd.append('subject',      document.getElementById('mat-subject').value);
-    fd.append('title',        document.getElementById('mat-title').value);
-    fd.append('description',  document.getElementById('mat-description').value);
+    fd.append('teacherId', teacherId);
+    fd.append('classLevel', document.getElementById('mat-classLevel').value);
+    fd.append('section', document.getElementById('mat-section').value);
+    fd.append('subject', document.getElementById('mat-subject').value);
+    fd.append('title', document.getElementById('mat-title').value);
+    fd.append('description', document.getElementById('mat-description').value);
     if (id) fd.append('currentFileUrl', document.getElementById('mat-current-file').value);
     const file = document.getElementById('mat-file').files[0];
     if (file) fd.append('materialFile', file);
@@ -664,7 +736,7 @@ function setupFormListeners() {
     try {
       showInfo(id ? 'Updating material...' : 'Uploading material...');
       if (id) await teacherAPI.updateMaterial(id, fd);
-      else    await teacherAPI.createMaterial(fd);
+      else await teacherAPI.createMaterial(fd);
       hideInfo();
       showSuccess(id ? 'Material updated!' : 'Material uploaded!');
       closeMatModal();
@@ -676,10 +748,10 @@ function setupFormListeners() {
     e.preventDefault();
     const data = {
       teacherId: parseInt(teacherId),
-      classLevel:  document.getElementById('syl-classLevel').value,
-      section:     document.getElementById('syl-section').value,
-      subject:     document.getElementById('syl-subject').value,
-      chapter:     document.getElementById('syl-chapter').value,
+      classLevel: document.getElementById('syl-classLevel').value,
+      section: document.getElementById('syl-section').value,
+      subject: document.getElementById('syl-subject').value,
+      chapter: document.getElementById('syl-chapter').value,
       description: document.getElementById('syl-description').value,
     };
     try {
@@ -711,18 +783,30 @@ function renderMaterialsTable() {
   }
   tbody.innerHTML = allMaterials.map(m => `
     <tr>
-      <td>${m.title}</td>
+      <td><strong>${m.title}</strong></td>
       <td>${m.subject}</td>
-      <td><span class="badge">Class ${m.classLevel}${m.section ? '-' + m.section : ''}</span></td>
-      <td><a href="${m.fileUrl}" target="_blank" class="btn-sm" style="background:#238636; color:#fff; text-decoration:none;"><i class="fas fa-download"></i></a></td>
-      <td>
-        <button class="btn-sm btn-edit"   onclick="editMaterial(${m.id})"><i class="fas fa-pen"></i></button>
-        <button class="btn-sm btn-delete" onclick="deleteMaterial(${m.id})"><i class="fas fa-trash"></i></button>
+      <td><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">Class ${m.classLevel}${m.section ? '-' + m.section : ''}</span></td>
+      <td style="text-align: right;">
+        <div class="action-menu">
+          <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
+          <div class="action-menu-dropdown">
+            <button class="action-menu-item" onclick="window.open('${m.fileUrl}', '_blank')">
+              <i class="fas fa-download" style="width:16px;"></i> Download
+            </button>
+            <button class="action-menu-item" onclick="editMaterial(${m.id})">
+              <i class="fas fa-pen" style="width:16px;"></i> Edit
+            </button>
+            <div class="action-menu-divider"></div>
+            <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})">
+              <i class="fas fa-trash" style="width:16px;"></i> Delete
+            </button>
+          </div>
+        </div>
       </td>
     </tr>`).join('');
 }
 
-window.openMatModal = async function(m = null) {
+window.openMatModal = async function (m = null) {
   await populateSharedDropdowns('mat');
   document.getElementById('mat-form').reset();
   document.getElementById('mat-edit-id').value = m?.id || '';
@@ -730,16 +814,16 @@ window.openMatModal = async function(m = null) {
   document.getElementById('mat-modal-title').textContent = m ? 'Edit Material' : 'Upload Study Material';
   document.getElementById('mat-file-hint').style.display = m ? 'inline' : 'none';
   if (m) {
-    document.getElementById('mat-classLevel').value  = m.classLevel   || '';
-    document.getElementById('mat-section').value     = m.section      || '';
-    document.getElementById('mat-subject').value     = m.subject      || '';
-    document.getElementById('mat-title').value       = m.title        || '';
-    document.getElementById('mat-description').value = m.description  || '';
+    document.getElementById('mat-classLevel').value = m.classLevel || '';
+    document.getElementById('mat-section').value = m.section || '';
+    document.getElementById('mat-subject').value = m.subject || '';
+    document.getElementById('mat-title').value = m.title || '';
+    document.getElementById('mat-description').value = m.description || '';
   }
   document.getElementById('mat-modal').classList.add('open');
 };
-window.closeMatModal  = () => document.getElementById('mat-modal').classList.remove('open');
-window.editMaterial   = id => { const m = allMaterials.find(x => x.id === id); if (m) openMatModal(m); };
+window.closeMatModal = () => document.getElementById('mat-modal').classList.remove('open');
+window.editMaterial = id => { const m = allMaterials.find(x => x.id === id); if (m) openMatModal(m); };
 window.deleteMaterial = async id => {
   if (!confirm('Delete this material?')) return;
   try {
@@ -773,9 +857,9 @@ function renderSyllabus() {
     bySubject[key].push(s);
   });
 
-  const total    = allSyllabus.length;
-  const done     = allSyllabus.filter(s => s.completed).length;
-  const pct      = total ? Math.round(done * 100 / total) : 0;
+  const total = allSyllabus.length;
+  const done = allSyllabus.filter(s => s.completed).length;
+  const pct = total ? Math.round(done * 100 / total) : 0;
 
   container.innerHTML = `
     <div style="margin-bottom:1.5rem;">
@@ -784,36 +868,58 @@ function renderSyllabus() {
       </div>
       <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
     </div>
-    ${Object.entries(bySubject).map(([subj, chapters]) => `
-      <div class="syllabus-subject-header">${subj}</div>
-      ${chapters.map(c => `
-        <div class="chapter-row ${c.completed ? 'done' : ''}" style="padding:0.6rem 0; border-bottom:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <input type="checkbox" ${c.completed ? 'checked' : ''} onchange="toggleChapter(${c.id}, this.checked)" style="width:16px; height:16px; cursor:pointer;">
-            <div>
-              <span class="chapter-text" style="font-size:0.9rem;">${c.chapter}</span>
-              ${c.description ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${c.description}</div>` : ''}
-            </div>
-          </div>
-          <div style="display:flex; gap:0.5rem; align-items:center;">
-            <span class="badge ${c.completed ? 'badge-complete' : 'badge-pending'}">${c.completed ? 'Done' : 'Pending'}</span>
-            <button class="btn-sm btn-delete" onclick="deleteChapter(${c.id})"><i class="fas fa-trash"></i></button>
-          </div>
-        </div>`).join('')}
-    `).join('')}`;
+    ${Object.entries(bySubject).map(([subj, chapters]) => {
+    const subjTotal = chapters.length;
+    const subjDone = chapters.filter(c => c.completed).length;
+    const subjPct = Math.round(subjDone * 100 / subjTotal);
+
+    return `
+      <div class="syllabus-subject-card">
+        <div class="subject-header-row">
+            <div class="subject-title"><i class="fas fa-book-open"></i> ${subj}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">${subjPct}% Complete</div>
+        </div>
+        <div class="chapter-list">
+            ${chapters.map(c => `
+                <div class="chapter-item ${c.completed ? 'done' : ''}">
+                    <div class="chapter-info">
+                        <input type="checkbox" ${c.completed ? 'checked' : ''} onchange="toggleChapter(${c.id}, this.checked)" style="width:16px; height:16px; cursor:pointer;">
+                        <div>
+                            <div class="chapter-text">${c.chapter}</div>
+                            ${c.description ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${c.description}</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="status-badge ${c.completed ? 'status-active' : 'status-pending'}" style="font-size: 0.7rem;">${c.completed ? 'Completed' : 'Planned'}</span>
+                        <button class="btn-sm btn-delete" style="padding: 2px 6px;" onclick="deleteChapter(${c.id})"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+      </div>`;
+  }).join('')}`;
 }
 
-window.openSyllabusModal  = () => { document.getElementById('syl-form').reset(); document.getElementById('syl-modal').classList.add('open'); };
-window.closeSyllabusModal = () => document.getElementById('syl-modal').classList.remove('open');
+window.openSyllabusModal = () => {
+  document.getElementById('syl-form').reset();
+  const modal = document.getElementById('syl-modal');
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+};
+window.closeSyllabusModal = () => {
+  const modal = document.getElementById('syl-modal');
+  modal.classList.remove('open');
+  setTimeout(() => { modal.style.display = 'none'; }, 300);
+};
 
-window.toggleChapter = async function(id, completed) {
+window.toggleChapter = async function (id, completed) {
   try {
     await teacherAPI.updateSyllabus(id, { teacherId: parseInt(teacherId), completed });
     await loadSyllabus();
   } catch (err) { showError(err.message); }
 };
 
-window.deleteChapter = async function(id) {
+window.deleteChapter = async function (id) {
   if (!confirm('Delete this chapter?')) return;
   try {
     await teacherAPI.deleteSyllabus(id, parseInt(teacherId));
@@ -836,9 +942,9 @@ async function initSummaryTab() {
   } catch { /* silent */ }
 }
 
-window.loadAttendanceSummary = async function() {
+window.loadAttendanceSummary = async function () {
   const classLevel = document.getElementById('sum-class-select').value;
-  const month      = document.getElementById('sum-month').value;
+  const month = document.getElementById('sum-month').value;
   if (!classLevel || !month) { showError('Select class and month.'); return; }
 
   try {
@@ -852,21 +958,21 @@ window.loadAttendanceSummary = async function() {
 
     container.innerHTML = `
       <div class="table-container">
-        <table>
-          <thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>%</th></tr></thead>
+        <table class="data-table">
+          <thead><tr><th>Student Name</th><th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>Attendance %</th></tr></thead>
           <tbody>
             ${data.map(r => {
-              const pct = r.attendancePercent || 0;
-              const color = pct >= 75 ? '#3fb950' : pct >= 50 ? '#f0883e' : '#f85149';
-              return `<tr>
-                <td>${r.name}</td>
+      const pct = r.attendancePercent || 0;
+      const statusClass = pct >= 75 ? 'status-active' : pct >= 50 ? 'status-pending' : 'status-overdue';
+      return `<tr>
+                <td><strong>${r.name}</strong></td>
                 <td>${r.presentCount}</td>
                 <td>${r.absentCount}</td>
                 <td>${r.lateCount}</td>
                 <td>${r.totalDays}</td>
-                <td><strong style="color:${color}">${pct}%</strong></td>
+                <td><span class="status-badge ${statusClass}">${pct}%</span></td>
               </tr>`;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>`;
@@ -875,9 +981,9 @@ window.loadAttendanceSummary = async function() {
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 function showSuccess(msg) { showAlert('success-alert', 'success-text', msg); }
-function showError(msg)   { showAlert('error-alert', 'error-text', msg); }
-function showInfo(msg)    { const el = document.getElementById('info-alert'); if (el) { document.getElementById('info-text').textContent = msg; el.style.display = 'flex'; } }
-function hideInfo()       { const el = document.getElementById('info-alert'); if (el) el.style.display = 'none'; }
+function showError(msg) { showAlert('error-alert', 'error-text', msg); }
+function showInfo(msg) { const el = document.getElementById('info-alert'); if (el) { document.getElementById('info-text').textContent = msg; el.style.display = 'flex'; } }
+function hideInfo() { const el = document.getElementById('info-alert'); if (el) el.style.display = 'none'; }
 function showAlert(id, tid, msg) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -889,5 +995,71 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 function renderEmptyState(colspan, message, icon = 'fa-inbox') {
   return `<tr><td colspan="${colspan}" class="empty-state"><i class="fas ${icon}"></i><p>${message}</p></td></tr>`;
 }
+
+// ─── Dropdown Positioning & Logic ──────────────────────────────────────────
+window.toggleActionMenu = function (event) {
+  event.stopPropagation();
+  const btn = event.currentTarget;
+  const dropdown = btn.nextElementSibling;
+  if (!dropdown) return;
+
+  const isActive = dropdown.classList.contains('active');
+
+  // Close all other instances
+  document.querySelectorAll('.action-menu-dropdown.active').forEach(d => {
+    if (d !== dropdown) d.classList.remove('active');
+  });
+
+  if (!isActive) {
+    const rect = btn.getBoundingClientRect();
+    const winH = window.innerHeight;
+    const winW = window.innerWidth;
+    const margin = 8;
+
+    // Performance: Only perform layout reads when opening
+    // Use visibility trick to measure if height is unknown
+    dropdown.style.display = 'block';
+    dropdown.style.visibility = 'hidden';
+    const menuH = dropdown.scrollHeight || 150;
+    const menuW = dropdown.offsetWidth || 160;
+    dropdown.style.display = ''; // Reset
+    dropdown.style.visibility = '';
+
+    // Reset styles for calculation
+    dropdown.style.top = 'auto';
+    dropdown.style.bottom = 'auto';
+    dropdown.style.left = 'auto';
+    dropdown.style.right = 'auto';
+
+    // 1. Vertical Positioning (Smart Flip)
+    const spaceBelow = winH - rect.bottom;
+    if (spaceBelow < menuH + margin && rect.top > menuH + margin) {
+      // Not enough space below, open UPWARD
+      dropdown.style.bottom = `${winH - rect.top + 4}px`;
+      dropdown.style.transformOrigin = 'bottom right';
+    } else {
+      // Default DOWNWARD
+      dropdown.style.top = `${rect.bottom + 4}px`;
+      dropdown.style.transformOrigin = 'top right';
+    }
+
+    // 2. Horizontal Positioning (Smart Alignment & Edge Protection)
+    let left = rect.right - menuW;
+
+    // Shift left if it spills over right edge
+    if (left + menuW > winW - margin) {
+      left = winW - menuW - margin;
+    }
+    // Shift right if it spills over left edge
+    if (left < margin) {
+      left = margin;
+    }
+
+    dropdown.style.left = `${left}px`;
+    dropdown.classList.add('active');
+  } else {
+    dropdown.classList.remove('active');
+  }
+};
 
 export { loadDashboard, loadHomework, loadMaterials, loadSyllabus };

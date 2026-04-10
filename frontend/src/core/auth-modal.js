@@ -241,10 +241,14 @@ async function handleStudentLoginModal(e) {
                 token: response.token
             });
             
-            closeAuthModal();
+            const successDiv = modal.querySelector('#studentLoginSuccess');
+            showSuccess(successDiv, 'User verified! Redirecting to dashboard...');
+            btn.textContent = 'Redirecting...';
+            
             setTimeout(() => {
+                closeAuthModal();
                 window.location.href = '/student-dashboard.html';
-            }, 500);
+            }, 1500);
         } else {
             console.warn('❌ Student Login Failed:', response.error);
             showError(errorDiv, response.error || 'Login failed');
@@ -297,10 +301,14 @@ async function handleTeacherLoginModal(e) {
                 token: response.token
             });
             
-            closeAuthModal();
+            const successDiv = modal.querySelector('#teacherLoginSuccess');
+            showSuccess(successDiv, 'Teacher verified! Redirecting to portal...');
+            btn.textContent = 'Redirecting...';
+            
             setTimeout(() => {
+                closeAuthModal();
                 window.location.href = '/teacher-dashboard.html';
-            }, 500);
+            }, 1500);
         } else {
             console.warn('❌ Teacher Login Failed:', response.error);
             showError(errorDiv, 'Access Denied or invalid credentials');
@@ -353,10 +361,14 @@ async function handleAdminLoginModal(e) {
                 token: response.token
             });
             
-            closeAuthModal();
+            const successDiv = modal.querySelector('#adminLoginSuccess');
+            showSuccess(successDiv, 'Admin verified! Redirecting to panel...');
+            btn.textContent = 'Redirecting...';
+            
             setTimeout(() => {
+                closeAuthModal();
                 window.location.href = '/admin-dashboard.html';
-            }, 500);
+            }, 1500);
         } else {
             console.warn('❌ Admin Login Failed:', response.error);
             showError(errorDiv, 'Access Denied or invalid credentials');

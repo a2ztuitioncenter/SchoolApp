@@ -3,7 +3,7 @@
  * Provides fetch() utilities and centralized configuration
  */
 
-const API_BASE_URL = '/api';
+const base_api_url = '/api';
 
 // Health check flag
 let isBackendHealthy = false;
@@ -81,7 +81,7 @@ export const clearAuthToken = () => {
  * Automatically includes JWT token from auth-manager
  */
 const apiCall = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${base_api_url}${endpoint}`;
   
   // Conditionally set Content-Type
   const headers = { ...options.headers };
