@@ -6,6 +6,7 @@
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 import './admin-pending-approvals.js';
+import './exam-results.js';
 
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first

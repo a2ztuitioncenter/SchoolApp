@@ -1458,18 +1458,65 @@
             <div id="results" class="tab-content">
                 <div class="card-grid">
                     <div class="card" style="grid-column: 1 / -1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <h2>📊 Exam Results</h2>
-                        </div>
-                        <div class="table-container" style="margin-top:20px;">
-                            <table class="data-table">
-                                <thead>
-                                    <tr><th>Student</th><th>Exam</th><th>Subject</th><th>Marks</th><th>Remarks</th><th>Actions</th></tr>
-                                </thead>
-                                <tbody id="results-list">
-                                    <tr><td colspan="6" class="empty-state">No results found.</td></tr>
-                                </tbody>
-                            </table>
+                        <!-- Exam Results Module Section -->
+                        <div class="exam-results-section">
+                            <!-- Header -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                <h2 style="margin: 0;"><i class="fas fa-chart-bar"></i> Exam Results</h2>
+                            </div>
+
+                            <!-- Summary Cards -->
+                            <div class="summary-cards">
+                                <div class="summary-card">
+                                    <h4>Total Students</h4>
+                                    <p id="exam-total-students">0</p>
+                                </div>
+                                <div class="summary-card">
+                                    <h4>Pass %</h4>
+                                    <p id="exam-pass-percent">0%</p>
+                                </div>
+                                <div class="summary-card">
+                                    <h4>Fails</h4>
+                                    <p id="exam-fail-count">0</p>
+                                </div>
+                            </div>
+
+                            <!-- Filters -->
+                            <div class="filters">
+                                <select id="exam-filter-class">
+                                    <option value="">All Classes</option>
+                                    <option value="10">Class 10</option>
+                                    <option value="12">Class 12</option>
+                                </select>
+                                <select id="exam-filter-result">
+                                    <option value="">All Results</option>
+                                    <option value="Pass">Pass</option>
+                                    <option value="Fail">Fail</option>
+                                </select>
+                            </div>
+
+                            <!-- Results Table -->
+                            <div class="table-container">
+                                <table class="results-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Roll</th>
+                                            <th>Name</th>
+                                            <th>Marks</th>
+                                            <th>%</th>
+                                            <th>Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="exam-results-tbody">
+                                        <tr class="expand-row">
+                                            <td colspan="5" class="empty-state">
+                                                <i class="fas fa-hourglass-end"></i>
+                                                <p>Loading exam results...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
