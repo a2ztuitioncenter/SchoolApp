@@ -280,13 +280,21 @@
         <template id="teacherSignupForm">
             <div class="modal-header">
                 <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
-                <div class="teacher-badge">Teacher</div>
+                <div class="teacher-badge">Teacher/Staff</div>
                 <h2>Teacher Registration</h2>
                 <p class="modal-subtitle">Join A2Z Tuition and inspire students to learn!</p>
             </div>
             <div class="error-message" id="teacherSignupError"></div>
             <div class="success-message" id="teacherSignupSuccess"></div>
             <form id="teacherSignupFormElement">
+                <div class="form-group">
+                    <label for="teacher-signup-role">I am a *</label>
+                    <select id="teacher-signup-role" required>
+                        <option value="">-- Select role --</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label for="teacher-signup-name">Full Name</label>
                     <input type="text" id="teacher-signup-name" name="name" placeholder="John Smith" required>

@@ -62,11 +62,6 @@ function openAuthSignupSelector(event) {
             <p class="modal-subtitle">Choose your role to get started</p>
         </div>
         <div class="auth-selector-grid signup">
-            <div class="auth-selector-card" onclick="openAuthModal('signup', 'unified')">
-                <div class="auth-selector-card-icon"><i class="fas fa-user-plus"></i></div>
-                <h3>All Users</h3>
-                <p>Register as student, teacher, or staff</p>
-            </div>
             <div class="auth-selector-card" onclick="openAuthModal('signup', 'student')">
                 <div class="auth-selector-card-icon"><i class="fas fa-graduation-cap"></i></div>
                 <h3>Student</h3>
@@ -487,6 +482,7 @@ async function handleTeacherSignupModal(e) {
     e.preventDefault();
     const form = e.target;
     
+    const role = form.querySelector('#teacher-signup-role')?.value?.trim();
     const name = form.querySelector('#teacher-signup-name')?.value?.trim();
     const email = form.querySelector('#teacher-signup-email')?.value?.trim();
     const phone = form.querySelector('#teacher-signup-phone')?.value?.trim();
@@ -496,12 +492,13 @@ async function handleTeacherSignupModal(e) {
     const successDiv = form.querySelector('#teacherSignupSuccess');
     const btn = form.querySelector('#teacherSignupBtn');
     
-    console.log('🔹 Teacher Signup attempt:', { name, email, phone });
+    console.log('🔹 Teacher Signup attempt:', { role, name, email, phone });
     
     clearMessages(errorDiv, successDiv);
     
-    if (!name || !email || !phone || !password || !confirmPassword) {
+    if (!role || !name || !email || !phone || !password || !confirmPassword) {
         console.warn('⚠️ Teacher Signup missing fields:', { 
+            role: role || 'MISSING',
             name: name || 'MISSING', 
             email: email || 'MISSING', 
             phone: phone || 'MISSING', 
@@ -521,12 +518,13 @@ async function handleTeacherSignupModal(e) {
     btn.textContent = 'Creating Account...';
     
     try {
-        const response = await window.authAPI.teacherRegister({
+        const response = await window.authAPI.register({
             name,
             email,
             phone,
             password,
-            confirmPassword
+            confirmPassword,
+            role
         });
         
         if (response.success) {

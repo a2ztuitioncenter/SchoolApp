@@ -611,7 +611,7 @@ body.modal-open {
 .modal-logo {
     font-size: 2.5rem;
     margin-bottom: var(--spacing-md);
-    color: var(--accent-color);
+    color: #000000;
 }
 
 .modal-header h2 {

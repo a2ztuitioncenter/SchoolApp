@@ -146,17 +146,86 @@ async function fetchPendingUsers() {
 }
 
 /**
- * Render pending users as beautiful cards
+ * Render pending users with a dual-view system: 
+ * Table for desktop (seamless design) and cards for mobile
  */
 function renderPendingUsers() {
     const listContainer = document.getElementById('pending-users-list');
+    const mobileContainer = document.getElementById('pending-users-mobile-list');
+    const tableElement = document.getElementById('pending-users-table')?.closest('.table-container');
     
-    listContainer.style.display = 'grid';
-    listContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(340px, 1fr))';
-    listContainer.style.gap = '20px';
-    listContainer.style.padding = '0';
-    
+    if (!listContainer || !mobileContainer) return;
+
+    // Handle responsive visibility
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        if (tableElement) tableElement.style.display = 'none';
+        mobileContainer.style.display = 'grid';
+        mobileContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(320px, 1fr))';
+        mobileContainer.style.gap = '1rem';
+    } else {
+        if (tableElement) tableElement.style.display = 'block';
+        mobileContainer.style.display = 'none';
+    }
+
+    // Render Table Body
     listContainer.innerHTML = pendingUsers.map(user => {
+        const createdDate = new Date(user.createdAt).toLocaleDateString('en-IN', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+
+        const roleLower = (user.role || '').toLowerCase();
+        const roleIcon = roleLower === 'teacher' ? 'fas fa-chalkboard-teacher' : 'fas fa-user-graduate';
+        const roleColor = roleLower === 'teacher' ? 'var(--accent-blue)' : 'var(--success)';
+
+        return `
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${roleColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
+                            ${(user.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div style="font-weight: 600;">${user.name || 'N/A'}</div>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size: 0.85rem;">
+                        <div><i class="fas fa-envelope" style="width: 14px; opacity: 0.6;"></i> ${user.email || '-'}</div>
+                        <div><i class="fas fa-phone" style="width: 14px; opacity: 0.6;"></i> ${user.phone || '-'}</div>
+                    </div>
+                </td>
+                <td>
+                    ${user.classLevel ? `
+                        <div class="badge-green" style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                            Class ${user.classLevel}${user.section ? ` - ${user.section}` : ''}
+                        </div>
+                    ` : '<span style="color: var(--text-muted); font-size: 0.8rem;">-</span>'}
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500;">
+                        <i class="${roleIcon}" style="color: ${roleColor};"></i>
+                        ${user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
+                    </div>
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
+                <td>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-primary btn-sm" title="Approve" onclick="approveUserHandler(${user.id})">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-secondary btn-sm" title="Reject" onclick="showRejectModal(${user.id})" style="color: var(--danger);">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Render Mobile Cards
+    mobileContainer.innerHTML = pendingUsers.map(user => {
         const createdDate = new Date(user.createdAt).toLocaleDateString('en-IN', {
             month: 'short',
             day: 'numeric',
@@ -166,147 +235,45 @@ function renderPendingUsers() {
         });
 
         const roleLower = (user.role || '').toLowerCase();
-        const initials = (user.name || user.phone || '?').charAt(0).toUpperCase();
         const roleIcon = roleLower === 'teacher' ? '👨‍🏫' : '👤';
-        const roleColor = roleLower === 'teacher' ? '#667eea' : '#3b82f6';
 
         return `
-            <div class="approval-card-modern" data-user-id="${user.id}" style="
-                background: var(--bg-secondary);
-                border: 1px solid var(--border-color);
-                border-radius: 12px;
-                padding: 20px;
-                transition: all 0.3s ease;
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            ">
-                <!-- Header with Avatar and Basic Info -->
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <!-- Avatar -->
-                    <div style="
-                        width: 56px;
-                        height: 56px;
-                        border-radius: 50%;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-weight: 700;
-                        font-size: 24px;
-                        flex-shrink: 0;
-                    ">${initials}</div>
-                    
-                    <!-- Name and Role -->
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="
-                            font-size: 15px;
-                            font-weight: 700;
-                            color: var(--text-main);
-                            margin-bottom: 4px;
-                            word-break: break-word;
-                        ">${user.name || 'N/A'}</div>
-                        <div style="
-                            font-size: 13px;
-                            color: var(--text-muted);
-                            display: flex;
-                            align-items: center;
-                            gap: 6px;
-                        ">
-                            <span>${roleIcon}</span>
-                            <span style="font-weight: 600; color: ${roleColor};">${user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Unknown'}</span>
+            <div class="card" style="padding: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                            ${roleIcon}
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 1rem;">${user.name || 'N/A'}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${user.role?.toUpperCase()}</div>
                         </div>
                     </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${createdDate}</div>
                 </div>
                 
-                <!-- Contact Info -->
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    ${user.email ? `
-                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted);">
-                        <i class="fas fa-envelope" style="color: var(--accent-blue); width: 16px; text-align: center;"></i>
-                        <span style="word-break: break-all;">${user.email}</span>
+                <div style="display: grid; gap: 8px; margin-bottom: 1.25rem; font-size: 0.9rem;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <i class="fas fa-envelope" style="width: 16px; color: var(--accent-blue);"></i>
+                        <span>${user.email || 'No email provided'}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <i class="fas fa-phone" style="width: 16px; color: var(--success);"></i>
+                        <span>${user.phone || 'No phone provided'}</span>
+                    </div>
+                    ${user.classLevel ? `
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <i class="fas fa-graduation-cap" style="width: 16px; color: var(--accent-blue);"></i>
+                        <span>Class ${user.classLevel} ${user.section ? `- ${user.section}` : ''}</span>
                     </div>
                     ` : ''}
-                    ${user.phone ? `
-                    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted);">
-                        <i class="fas fa-phone" style="color: var(--accent-green); width: 16px; text-align: center;"></i>
-                        <span>${user.phone}</span>
-                    </div>
-                    ` : ''}
                 </div>
                 
-                <!-- Class Info (if student) -->
-                ${user.classLevel ? `
-                <div style="
-                    padding: 10px 12px;
-                    background: rgba(99, 102, 241, 0.08);
-                    border-left: 3px solid #667eea;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: #667eea;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                ">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>Class: ${user.classLevel}${user.section ? ` - Section ${user.section}` : ''}</span>
-                </div>
-                ` : ''}
-                
-                <!-- Date -->
-                <div style="
-                    font-size: 12px;
-                    color: var(--text-muted);
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                ">
-                    <i class="fas fa-calendar-alt" style="width: 14px; text-align: center;"></i>
-                    <span>Applied on ${createdDate}</span>
-                </div>
-                
-                <!-- Action Buttons -->
-                <div style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 10px;
-                    margin-top: 8px;
-                ">
-                    <button class="approval-btn-approve" onclick="approveUserHandler(${user.id})" style="
-                        padding: 10px 16px;
-                        border: none;
-                        border-radius: 8px;
-                        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-                        color: white;
-                        font-weight: 600;
-                        font-size: 13px;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 6px;
-                        transition: all 0.2s ease;
-                    ">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="btn btn-primary" onclick="approveUserHandler(${user.id})">
                         <i class="fas fa-check"></i> Approve
                     </button>
-                    <button class="approval-btn-reject" onclick="showRejectModal(${user.id})" style="
-                        padding: 10px 16px;
-                        border: 1px solid #ef4444;
-                        border-radius: 8px;
-                        background: rgba(239, 68, 68, 0.05);
-                        color: #ef4444;
-                        font-weight: 600;
-                        font-size: 13px;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 6px;
-                        transition: all 0.2s ease;
-                    ">
+                    <button class="btn btn-secondary" onclick="showRejectModal(${user.id})" style="color: var(--danger);">
                         <i class="fas fa-times"></i> Reject
                     </button>
                 </div>
@@ -316,54 +283,46 @@ function renderPendingUsers() {
 }
 
 /**
- * Render empty state when no pending users
+ * Handle window resize to switch between table and card view
+ */
+window.addEventListener('resize', () => {
+    if (pendingUsers.length > 0) {
+        renderPendingUsers();
+    }
+});
+
+/**
+ * Render empty state
  */
 function renderEmptyState() {
     const listContainer = document.getElementById('pending-users-list');
-    
-    listContainer.style.display = 'flex';
-    listContainer.style.alignItems = 'center';
-    listContainer.style.justifyContent = 'center';
-    listContainer.style.minHeight = '300px';
-    listContainer.style.padding = '0';
-    
-    listContainer.innerHTML = `
-        <div style="
-            text-align: center;
-            padding: 60px 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-        ">
-            <div style="
-                width: 80px;
-                height: 80px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 40px;
-            ">
-                ✓
+    const mobileContainer = document.getElementById('pending-users-mobile-list');
+    const tableElement = document.getElementById('pending-users-table')?.closest('.table-container');
+
+    const emptyHtml = `
+        <div style="text-align: center; padding: 4rem 2rem; width: 100%;">
+            <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem; color: var(--success);">
+                <i class="fas fa-check"></i>
             </div>
-            <div>
-                <h3 style="
-                    margin: 0 0 8px 0;
-                    font-size: 18px;
-                    font-weight: 700;
-                    color: var(--text-main);
-                ">All Caught Up!</h3>
-                <p style="
-                    margin: 0;
-                    font-size: 14px;
-                    color: var(--text-muted);
-                    max-width: 300px;
-                ">No pending approvals right now. All new registrations have been reviewed.</p>
-            </div>
+            <h3 style="margin-bottom: 0.5rem; font-weight: 700;">All Caught Up!</h3>
+            <p style="color: var(--text-muted);">No pending registration approvals at the moment.</p>
         </div>
     `;
+
+    if (listContainer) {
+        listContainer.innerHTML = `<tr><td colspan="6">${emptyHtml}</td></tr>`;
+    }
+    
+    if (mobileContainer) {
+        mobileContainer.innerHTML = emptyHtml;
+        mobileContainer.style.display = 'block';
+    }
+    
+    if (tableElement && window.innerWidth > 768) {
+        tableElement.style.display = 'block';
+    } else if (tableElement) {
+        tableElement.style.display = 'none';
+    }
 }
 
 /**

@@ -238,13 +238,24 @@ body {
   background-color: var(--bg-primary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  overflow: hidden;
+  overflow-x: auto;
+  position: relative;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  white-space: nowrap; /* Keep table rows on one line for seamless look on desktop */
 }
 
 th {
