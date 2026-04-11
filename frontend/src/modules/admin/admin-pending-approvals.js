@@ -27,11 +27,44 @@ styleSheet.textContent = `
     .approval-btn-reject:active {
         transform: scale(0.98);
     }
+
+    .class-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .class-checkbox:hover {
+        background: var(--bg-primary);
+        border-color: #667eea;
+    }
+
+    .class-checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .class-checkbox label {
+        flex: 1;
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--text-main);
+    }
 `;
 document.head.appendChild(styleSheet);
 
 let pendingUsers = [];
 let currentRejectingUserId = null;
+let currentClassAssignmentUserId = null;
+let availableClassLevels = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔄 Initializing Pending Approvals...');
@@ -52,6 +85,23 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmRejectBtn.addEventListener('click', async () => {
             const reason = document.getElementById('rejection-reason').value;
             await rejectUser(currentRejectingUserId, reason);
+        });
+    }
+
+    // Setup class assignment modal handler
+    const confirmClassAssignmentBtn = document.getElementById('confirm-class-assignment-btn');
+    if (confirmClassAssignmentBtn) {
+        confirmClassAssignmentBtn.addEventListener('click', async () => {
+            const selectedClasses = Array.from(
+                document.querySelectorAll('#class-checkboxes-container input[type="checkbox"]:checked')
+            ).map(checkbox => checkbox.value);
+
+            if (selectedClasses.length === 0) {
+                alert('Please select at least one class');
+                return;
+            }
+
+            await approveUserWithClasses(currentClassAssignmentUserId, selectedClasses);
         });
     }
 });
@@ -320,12 +370,93 @@ function renderEmptyState() {
  * Approve user handler
  */
 window.approveUserHandler = async function(userId) {
-    if (!confirm('Are you sure you want to approve this user?')) {
+    const user = pendingUsers.find(u => u.id === userId);
+    
+    if (!user) {
+        showMessage('User not found', 'error');
         return;
     }
 
-    await approveUser(userId);
+    // For teacher/staff, show class assignment modal
+    if (user.role === 'teacher' || user.role === 'staff') {
+        await showClassAssignmentModal(userId);
+    } else {
+        // For student, simple approval
+        if (!confirm('Are you sure you want to approve this user?')) {
+            return;
+        }
+        await approveUser(userId);
+    }
 };
+
+/**
+ * Show class assignment modal for teacher/staff approval
+ */
+async function showClassAssignmentModal(userId) {
+    currentClassAssignmentUserId = userId;
+
+    // Fetch available class levels if not already loaded
+    if (availableClassLevels.length === 0) {
+        try {
+            const authStr = localStorage.getItem('auth');
+            const auth = authStr ? JSON.parse(authStr) : {};
+            const token = auth.token;
+            
+            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
+            const response = await fetch(`${baseUrl}/api/auth/admin/class-levels`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                availableClassLevels = data.classLevels || [];
+            } else {
+                showMessage('Failed to fetch class levels', 'error');
+                return;
+            }
+        } catch (error) {
+            console.error('Error fetching class levels:', error);
+            showMessage('Error fetching class levels', 'error');
+            return;
+        }
+    }
+
+    // Populate checkboxes
+    const container = document.getElementById('class-checkboxes-container');
+    container.innerHTML = availableClassLevels.map(classLevel => `
+        <div class="class-checkbox">
+            <input type="checkbox" id="class-${classLevel}" value="${classLevel}">
+            <label for="class-${classLevel}">Class ${classLevel}</label>
+        </div>
+    `).join('');
+
+    // Show modal
+    const modal = document.getElementById('class-assignment-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+/**
+ * Close class assignment modal
+ */
+window.closeClassAssignmentModal = function() {
+    const modal = document.getElementById('class-assignment-modal');
+    if (modal) modal.style.display = 'none';
+    currentClassAssignmentUserId = null;
+};
+
+/**
+ * Import apiCall if not already available
+ */
+let apiCall;
+try {
+    const apiModule = await import('../../core/api.js');
+    apiCall = apiModule.apiCall;
+} catch (e) {
+    // Fallback - will use the one from API if needed
+}
 
 /**
  * Show rejection modal
@@ -376,6 +507,58 @@ async function approveUser(userId) {
         }
     } catch (error) {
         console.error('❌ Error approving user:', error);
+        showMessage('Error approving user: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Approve user with class assignments (teacher/staff)
+ */
+async function approveUserWithClasses(userId, classesAssigned) {
+    try {
+        window.closeClassAssignmentModal();
+
+        const authStr = localStorage.getItem('auth');
+        const auth = authStr ? JSON.parse(authStr) : {};
+        const token = auth.token;
+
+        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
+
+        // Make API call with class assignments
+        const response = await fetch(`${baseUrl}/api/auth/admin/approve-user/${userId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ classesAssigned })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showMessage(`✅ ${pendingUsers.find(u => u.id === userId)?.role || 'User'} approved with class assignments!`, 'success');
+            
+            // Remove the card from UI
+            const card = document.querySelector(`[data-user-id="${userId}"]`);
+            if (card) {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(() => card.remove(), 300);
+            }
+
+            // Check if no more pending users
+            pendingUsers = pendingUsers.filter(u => u.id !== userId);
+            if (pendingUsers.length === 0) {
+                setTimeout(() => {
+                    renderEmptyState();
+                }, 500);
+            }
+        } else {
+            showMessage(data.error || 'Failed to approve user', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error approving user with classes:', error);
         showMessage('Error approving user: ' + error.message, 'error');
     }
 }

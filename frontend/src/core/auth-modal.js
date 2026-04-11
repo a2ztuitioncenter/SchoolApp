@@ -62,6 +62,11 @@ function openAuthSignupSelector(event) {
             <p class="modal-subtitle">Choose your role to get started</p>
         </div>
         <div class="auth-selector-grid signup">
+            <div class="auth-selector-card" onclick="openAuthModal('signup', 'unified')">
+                <div class="auth-selector-card-icon"><i class="fas fa-user-plus"></i></div>
+                <h3>All Users</h3>
+                <p>Register as student, teacher, or staff</p>
+            </div>
             <div class="auth-selector-card" onclick="openAuthModal('signup', 'student')">
                 <div class="auth-selector-card-icon"><i class="fas fa-graduation-cap"></i></div>
                 <h3>Student</h3>
@@ -69,8 +74,8 @@ function openAuthSignupSelector(event) {
             </div>
             <div class="auth-selector-card" onclick="openAuthModal('signup', 'teacher')">
                 <div class="auth-selector-card-icon"><i class="fas fa-chalkboard-user"></i></div>
-                <h3>Teacher</h3>
-                <p>Join as a teacher and share knowledge</p>
+                <h3>Teacher/Staff</h3>
+                <p>Join as an educator and share knowledge</p>
             </div>
         </div>
     `;
@@ -96,6 +101,7 @@ function openAuthModal(type, role) {
     } else if (type === 'signup') {
         if (role === 'student') formContainerId = 'studentSignupForm';
         else if (role === 'teacher') formContainerId = 'teacherSignupForm';
+        else if (role === 'unified') formContainerId = 'unifiedSignupForm';
     }
     
     if (!formContainerId) {
@@ -155,6 +161,9 @@ function rebindFormListeners(type, role) {
         } else if (role === 'teacher') {
             const form = modal.querySelector('#teacherSignupFormElement');
             if (form) form.addEventListener('submit', handleTeacherSignupModal);
+        } else if (role === 'unified') {
+            // Unified signup form is handled by its own module (unified-register.js)
+            // Just mark that it's loaded
         }
     }
 }

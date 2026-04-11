@@ -28,14 +28,14 @@ export const getUserById = async (pool, id) => {
   return result.rows[0] || null;
 };
 
-export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001' }) => {
+export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null }) => {
   // Hash the password before storing
   const hashedPassword = await bcrypt.hash(password, 10);
   
   const result = await pool.query(
-    `INSERT INTO users (name, phone, email, password, role, status, "schoolId")
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, phone, email, role, status, "isActive", "createdAt"`,
-    [name || null, phone, email || null, hashedPassword, role, 'pending', schoolId]
+    `INSERT INTO users (name, phone, email, password, role, status, "schoolId", "teacherId")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, phone, email, role, status, "teacherId", "isActive", "createdAt"`,
+    [name || null, phone, email || null, hashedPassword, role, 'pending', schoolId, teacherId]
   );
   return result.rows[0];
 };
@@ -103,4 +103,62 @@ export const updateUserStatus = async (pool, userId, newStatus, approvedByAdminI
     [userId, newStatus, approvedByAdminId, rejectionReason]
   );
   return result.rows[0] || null;
+};
+
+/**
+ * Generate unique teacherId in format T##### or S##### (5 random digits)
+ * T = teacher, S = staff
+ */
+export const generateTeacherId = async (pool, role) => {
+  const prefix = role === 'teacher' ? 'T' : role === 'staff' ? 'S' : 'T';
+  let teacherId;
+  let isUnique = false;
+  
+  // Keep trying until we find a unique ID (extremely rare collisions)
+  while (!isUnique) {
+    const randomDigits = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+    teacherId = `${prefix}${randomDigits}`;
+    
+    const result = await pool.query('SELECT id FROM users WHERE "teacherId" = $1', [teacherId]);
+    isUnique = result.rows.length === 0;
+  }
+  
+  return teacherId;
+};
+
+/**
+ * Assign teacher/staff to classes
+ * Creates entries in teacher_class_assignment table
+ */
+export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, schoolId = 'school-001') => {
+  if (!Array.isArray(classesAssigned) || classesAssigned.length === 0) {
+    throw new Error('classesAssigned must be a non-empty array');
+  }
+  
+  try {
+    for (const classLevel of classesAssigned) {
+      await pool.query(
+        `INSERT INTO teacher_class_assignment ("teacherId", "classLevel", "schoolId")
+         VALUES ($1, $2, $3)
+         ON CONFLICT ("teacherId", "classLevel", section) DO NOTHING`,
+        [teacherId, classLevel, schoolId]
+      );
+    }
+    return true;
+  } catch (error) {
+    console.error('Error assigning teacher to classes:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get list of all unique class levels
+ * Used by admin when assigning classes to teachers/staff
+ */
+export const getClassLevels = async (pool, schoolId = 'school-001') => {
+  const result = await pool.query(
+    `SELECT DISTINCT "classLevel" FROM students WHERE "schoolId" = $1 ORDER BY "classLevel" ASC`,
+    [schoolId]
+  );
+  return result.rows.map(row => row.classLevel);
 };

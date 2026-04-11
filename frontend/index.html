@@ -313,6 +313,98 @@
                 <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'teacher')">Log in</a></p>
             </div>
         </template>
+
+        <!-- Unified Registration Form (Student, Teacher, Staff) -->
+        <template id="unifiedSignupForm">
+            <div class="modal-header modal-header-dark">
+                <div class="modal-logo"><i class="fas fa-user-plus"></i></div>
+                <h2>Register for A2Z Tuition</h2>
+                <p class="modal-subtitle">Select your role to get started.</p>
+            </div>
+            <div class="error-message" id="error-message"></div>
+            <div class="success-message" id="success-message"></div>
+            <form id="register-form">
+                <!-- Role Selection -->
+                <div class="form-group">
+                    <label for="role-select">Select Your Role *</label>
+                    <select id="role-select" required>
+                        <option value="">-- Choose a role --</option>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+
+                <!-- Common Fields -->
+                <div class="form-group">
+                    <label for="name-input">Full Name *</label>
+                    <input type="text" id="name-input" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone-input">Phone Number *</label>
+                    <input type="tel" id="phone-input" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+                </div>
+
+                <!-- Student-Specific Fields -->
+                <div id="student-fields" style="display: none;">
+                    <div class="form-section-title">Academic Information</div>
+                    <div class="form-row" style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="class-level-select">Class Level *</label>
+                            <select id="class-level-select">
+                                <option value="">Select</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="section-input">Section *</label>
+                            <input type="text" id="section-input" placeholder="A, B, C, etc." maxlength="1">
+                        </div>
+                    </div>
+
+                    <div class="form-section-title">Parent Information</div>
+                    <div class="form-row" style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="father-name-input">Father's Name *</label>
+                            <input type="text" id="father-name-input" placeholder="Father's full name">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="mother-name-input">Mother's Name *</label>
+                            <input type="text" id="mother-name-input" placeholder="Mother's full name">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teacher/Staff-Specific Fields -->
+                <div id="teacher-staff-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="email-input">Email Address *</label>
+                        <input type="email" id="email-input" placeholder="your.email@example.com">
+                    </div>
+                </div>
+
+                <!-- Common Password Fields -->
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="password-input">Password *</label>
+                        <input type="password" id="password-input" placeholder="Create a password" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="confirm-password-input">Confirm Password *</label>
+                        <input type="password" id="confirm-password-input" placeholder="Confirm your password" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="register-btn" class="btn-submit">Sign Up</button>
+            </form>
+            <div class="modal-footer">
+                <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'student')">Log in</a></p>
+            </div>
+        </template>
     </main>
 
     <footer>
@@ -353,6 +445,7 @@
         };
     </script>
     <script type="module" src="./src/core/auth-modal.js"></script>
+    <script type="module" src="./src/core/unified-register.js"></script>
     <script type="module" src="./src/core/index.js"></script>
 </body>
 </html>

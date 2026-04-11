@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255),
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'staff', 'admin')) NOT NULL,
+    "teacherId" VARCHAR(20) UNIQUE,
     "isActive" BOOLEAN DEFAULT TRUE,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'rejected')),
     "approvedBy" INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -133,7 +134,20 @@ CREATE TABLE IF NOT EXISTS results (
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Teacher-Class Assignment Table
+CREATE TABLE IF NOT EXISTS teacher_class_assignment (
+    id SERIAL PRIMARY KEY,
+    "teacherId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "classLevel" VARCHAR(50) NOT NULL,
+    section VARCHAR(10),
+    "assignedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "schoolId" VARCHAR(50) DEFAULT 'school-001',
+    UNIQUE("teacherId", "classLevel", section)
+);
+
 -- Indices
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_fees_student ON fees("studentId");
 CREATE INDEX IF NOT EXISTS idx_students_user ON students("userId");
+CREATE INDEX IF NOT EXISTS idx_teacher_class_assignment ON teacher_class_assignment("teacherId");
+CREATE INDEX IF NOT EXISTS idx_teacher_class_level ON teacher_class_assignment("classLevel");
