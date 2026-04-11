@@ -112,6 +112,12 @@ function openAuthModal(type, role) {
     // Clear existing content
     content.innerHTML = '';
     
+    // Manage specific styling classes
+    modal.classList.remove('student-signup-active');
+    if (formContainerId === 'studentSignupForm') {
+        modal.classList.add('student-signup-active');
+    }
+    
     // If it's a template, clone it. Otherwise use innerHTML for backward compatibility.
     if (formContainer.tagName === 'TEMPLATE') {
         const clone = formContainer.content.cloneNode(true);
@@ -178,6 +184,7 @@ function closeAuthModal() {
     
     setTimeout(() => {
         modal.classList.add('hidden');
+        modal.classList.remove('student-signup-active');
         document.body.classList.remove('modal-open');
         document.getElementById('authContent').innerHTML = '';
         currentAuthType = null;
@@ -388,22 +395,46 @@ async function handleStudentSignupModal(e) {
     e.preventDefault();
     const form = e.target;
     
-    const name = form.querySelector('#student-signup-name')?.value?.trim();
+    // Improved data collection matching the updated form
+    const firstName = form.querySelector('#student-signup-firstName')?.value?.trim();
+    const lastName = form.querySelector('#student-signup-lastName')?.value?.trim();
     const phone = form.querySelector('#student-signup-phone')?.value?.trim();
+    const email = form.querySelector('#student-signup-email')?.value?.trim();
     const password = form.querySelector('#student-signup-password')?.value?.trim();
+    const confirmPassword = form.querySelector('#student-signup-confirm')?.value?.trim();
     const classLevel = form.querySelector('#student-signup-class')?.value;
     const section = form.querySelector('#student-signup-section')?.value;
+    const fatherName = form.querySelector('#student-signup-fatherName')?.value?.trim();
+    const motherName = form.querySelector('#student-signup-motherName')?.value?.trim();
+    
     const errorDiv = form.querySelector('#studentSignupError');
     const successDiv = form.querySelector('#studentSignupSuccess');
     const btn = form.querySelector('#studentSignupBtn');
     
-    console.log('🔹 Student Signup attempt:', { name, phone, classLevel, section });
+    console.log('🔹 Student Signup attempt:', { phone, classLevel, section });
     
     clearMessages(errorDiv, successDiv);
     
-    if (!name || !phone || !password || !classLevel) {
-        console.warn('⚠️ Student Signup missing fields:', { name, phone, password: password?'***':'empty', classLevel, section });
-        showError(errorDiv, 'All fields are required');
+    // Validation
+    const requiredFields = [
+        { val: firstName, name: 'First Name' },
+        { val: phone, name: 'Phone' },
+        { val: password, name: 'Password' },
+        { val: confirmPassword, name: 'Confirm Password' },
+        { val: classLevel, name: 'Class Level' },
+        { val: section, name: 'Section' },
+        { val: fatherName, name: 'Father Name' },
+        { val: motherName, name: 'Mother Name' }
+    ];
+    
+    const missing = requiredFields.filter(f => !f.val);
+    if (missing.length > 0) {
+        showError(errorDiv, `Missing required fields: ${missing.map(m => m.name).join(', ')}`);
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showError(errorDiv, 'Passwords do not match');
         return;
     }
     
@@ -412,17 +443,21 @@ async function handleStudentSignupModal(e) {
     
     try {
         const response = await window.authAPI.register({
-            name,
+            firstName,
+            lastName,
             phone,
+            email: email || null,
             password,
             classLevel,
-            section
+            section,
+            fatherName,
+            motherName
         });
         
         if (response.success) {
             showSuccess(successDiv, 'Account created successfully! Redirecting...');
-            closeAuthModal();
             setTimeout(() => {
+                closeAuthModal();
                 window.location.href = '/';
             }, 2000);
         } else {

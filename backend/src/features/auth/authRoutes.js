@@ -93,18 +93,20 @@ router.post('/login', async (req, res) => {
 // Register New Students
 
 router.post('/register', async (req, res) => {
-  const { name, phone, password, classLevel, section } = req.body;
+  const { firstName, lastName, phone, password, classLevel, section, fatherName, motherName, email } = req.body;
   const pool = req.db;
 
   try {
     // Validation
-    if (!name || !phone || !password || !classLevel) {
-      return res.status(400).json({ error: 'All fields (name, phone, password, classLevel) are required' });
+    if (!firstName || !phone || !password || !classLevel || !section || !fatherName || !motherName) {
+      return res.status(400).json({ error: 'Missing required fields (Name, Phone, Password, Class, Section, and Parent names are mandatory)' });
     }
 
     if (!/^\d{10}$/.test(phone)) {
       return res.status(400).json({ error: 'Phone must be a 10-digit number' });
     }
+
+    const fullName = `${firstName} ${lastName || ''}`.trim();
 
     // Check if phone number already exists
     const existingUser = await getUserByPhone(pool, phone);
@@ -114,23 +116,38 @@ router.post('/register', async (req, res) => {
 
     // Create user account
     const user = await createUser(pool, {
-      name,
+      name: fullName,
       phone,
-      email: `${phone}@student.local`,
+      email: email || `${phone}@student.local`,
       password,
       role: 'student',
       schoolId: 'school-001',
     });
 
-    // Create student record using double-quoted camelCase for database mapping
-    const joiningDate = new Date().toISOString().split('T')[0];
-    const rollNumber = 'REG-' + Math.floor(1000 + Math.random() * 9000);
+    // 2. Generate Unique Formatted Roll Number
+    // Format: <class(2)><section(1)><serial(3)> e.g. 12B025
+    const classPart = classLevel.toString().padStart(2, '0'); 
+    const sectionPart = section.toUpperCase();
+    const prefix = `${classPart}${sectionPart}`;
 
+    // Find how many students already exist with this prefix in their roll number
+    const countResult = await pool.query(
+        `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
+        [`${prefix}%`]
+    );
+    const nextSerial = parseInt(countResult.rows[0].count) + 1;
+    const serialPart = nextSerial.toString().padStart(3, '0'); // 1 -> "001"
+    const rollNumber = `${prefix}${serialPart}`;
+
+    // Create student record
+    const joiningDate = new Date().toISOString().split('T')[0];
     const student = await createStudent(pool, {
       userId: user.id,
-      name,
-      classLevel,
-      section: section || null,
+      name: fullName,
+      classLevel: classLevel.toString(),
+      section,
+      fatherName,
+      motherName,
       phone,
       email: user.email,
       joiningDate,
@@ -154,6 +171,7 @@ router.post('/register', async (req, res) => {
       student: {
         id: student.id,
         name: student.name,
+        rollNumber: student.rollNumber,
         classLevel: student.classLevel,
       },
     });

@@ -1100,3 +1100,29 @@ input:focus-visible {
         transition-duration: 0.01ms !important;
     }
 }
+    /* ============================================
+       DARK HEADER FOR MODALS
+       ============================================ */
+    .modal-header-dark {
+        background: #1a1a1a !important;
+        color: white !important;
+        padding: 2.5rem 1.5rem !important;
+        margin: -1.5rem -1.5rem 1.5rem -1.5rem !important;
+        border-radius: var(--spacing-sm) var(--spacing-sm) 0 0;
+        text-align: center;
+    }
+
+    .modal-header-dark h2,
+    .modal-header-dark .modal-subtitle,
+    .modal-header-dark .modal-logo i {
+        color: white !important;
+    }
+
+    .modal-header-dark .modal-logo {
+        margin-bottom: 0.75rem;
+    }
+
+    /* Ensure close button is visible on dark header */
+    .student-signup-active .modal-close {
+        color: white !important;
+    }

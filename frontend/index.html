@@ -189,46 +189,86 @@
 
         <!-- Student Signup Form -->
         <template id="studentSignupForm">
-            <div class="modal-header">
-                <div class="modal-logo"><i class="fas fa-graduation-cap"></i></div>
+            <div class="modal-header modal-header-dark">
+                <div class="modal-logo"><i class="fas fa-user-plus"></i></div>
                 <h2>Student Registration</h2>
                 <p class="modal-subtitle">Join A2Z Tuition today and start your learning journey.</p>
             </div>
             <div class="error-message" id="studentSignupError"></div>
             <div class="success-message" id="studentSignupSuccess"></div>
             <form id="studentSignupFormElement">
-                <div class="form-group">
-                    <label for="student-signup-name">Full Name</label>
-                    <input type="text" id="student-signup-name" name="name" placeholder="John Doe" required>
+                <!-- Personal Information -->
+                <div class="form-section-title">Personal Information</div>
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-firstName">First Name *</label>
+                        <input type="text" id="student-signup-firstName" placeholder="First name" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-lastName">Last Name</label>
+                        <input type="text" id="student-signup-lastName" placeholder="Last name (optional)">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="student-signup-phone">Phone Number</label>
-                    <input type="tel" id="student-signup-phone" name="phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+
+                <!-- Academic Information -->
+                <div class="form-section-title">Academic Information</div>
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-class">Class Level *</label>
+                        <select id="student-signup-class" required>
+                            <option value="">Select</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-section">Section *</label>
+                        <select id="student-signup-section" required>
+                            <option value="">Select</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="student-signup-password">Password</label>
-                    <input type="password" id="student-signup-password" name="password" placeholder="Create a password" required>
+
+                <!-- Contact & Login -->
+                <div class="form-section-title">Contact & Credentials</div>
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-phone">Phone Number *</label>
+                        <input type="tel" id="student-signup-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-email">Email</label>
+                        <input type="email" id="student-signup-email" placeholder="student@a2z.local">
+                    </div>
                 </div>
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-class">Class Level</label>
-                        <select id="student-signup-class" name="classLevel" required>
-                            <option value="">Select your class</option>
-                            <option value="9">Class 9</option>
-                            <option value="10">Class 10</option>
-                            <option value="11">Class 11</option>
-                            <option value="12">Class 12</option>
-                        </select>
+                        <label for="student-signup-password">Password *</label>
+                        <input type="password" id="student-signup-password" placeholder="Create password" required>
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-section">Section</label>
-                        <select id="student-signup-section" name="section">
-                            <option value="">None / All</option>
-                            <option value="A">Section A</option>
-                            <option value="B">Section B</option>
-                        </select>
+                        <label for="student-signup-confirm">Confirm Password *</label>
+                        <input type="password" id="student-signup-confirm" placeholder="Confirm password" required>
                     </div>
                 </div>
+
+                <!-- Parent Information -->
+                <div class="form-section-title">Parent Information</div>
+                <div class="form-row" style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-fatherName">Father's Name *</label>
+                        <input type="text" id="student-signup-fatherName" placeholder="Father's full name" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="student-signup-motherName">Mother's Name *</label>
+                        <input type="text" id="student-signup-motherName" placeholder="Mother's full name" required>
+                    </div>
+                </div>
+
                 <button type="submit" id="studentSignupBtn" class="btn-submit">Sign Up</button>
             </form>
             <div class="modal-footer">
