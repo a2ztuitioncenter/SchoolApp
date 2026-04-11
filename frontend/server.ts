@@ -36,11 +36,6 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
-    // NOTE: API calls (/api/*) are handled entirely by frontend JavaScript
-    // The frontend makes direct fetch calls to the backend at:
-    // https://schoolapp-d9y5.onrender.com
-    // CORS is handled by the backend server
-    // This allows flexible API endpoint configuration without server proxying
 
     //  FORCE ROOT → INDEX
     if (pathname === "/") {

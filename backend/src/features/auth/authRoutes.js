@@ -61,11 +61,8 @@ router.post('/login', async (req, res) => {
 
     // Verify password using bcryptjs
     const passwordMatch = await bcrypt.compare(password, user.password);
-    
-    // Development fallback (keep for compatibility with existing plain text tests if any)
-    const isMockPassword = password === 'student123' || password === 'password123';
 
-    if (!passwordMatch && !isMockPassword) {
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -93,11 +90,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/**
- * Student Registration - Create new student account
- * POST /api/auth/register
- * Payload: { name, phone, password, classLevel }
- */
+// Register New Students
+
 router.post('/register', async (req, res) => {
   const { name, phone, password, classLevel, section } = req.body;
   const pool = req.db;
@@ -182,7 +176,34 @@ router.post('/admin-login', async (req, res) => {
       return res.status(400).json({ error: 'Phone and password are required' });
     }
 
-    // Find user by phone
+    // 1. MASTER ADMIN CHECK (Direct from .env for modularity)
+    const masterPhone = process.env.ADMIN_PHONE;
+    const masterPassword = process.env.ADMIN_PASSWORD;
+
+    if (masterPhone && masterPassword && phone === masterPhone && password === masterPassword) {
+      console.log(`⭐ Master Admin login detected for ${phone}`);
+      let user = await getUserByPhone(pool, phone);
+      
+      if (!user) {
+        console.log("🛠️ Creating Master Admin in database on-the-fly...");
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await pool.query(
+          `INSERT INTO users (phone, email, password, role, status) VALUES ($1, $2, $3, $4, $5)`,
+          [phone, 'admin@a2z.local', hashedPassword, 'admin', 'active']
+        );
+        user = await getUserByPhone(pool, phone);
+      }
+
+      const token = generateToken(user.id, 'admin', phone);
+      return res.json({
+        success: true,
+        message: 'Admin login successful (Master Access)',
+        token,
+        user: { id: user.id, phone: user.phone, role: 'admin' }
+      });
+    }
+
+    // 2. STANDARD DATABASE CHECK
     const user = await getUserByPhone(pool, phone);
 
     if (!user) {

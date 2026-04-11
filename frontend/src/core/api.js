@@ -7,17 +7,17 @@
 // Uses environment variable or hardcoded production URL
 // For development, set BASE_API_URL to localhost:3000
 const getBaseApiUrl = () => {
-  // Check for environment variable (set in production)
-  if (typeof process !== 'undefined' && process.env && process.env.BASE_API_URL) {
-    return process.env.BASE_API_URL;
+  // 1. Check if we are on localhost
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:3000';
   }
-  
-  // Production: Use hardcoded Render backend
+
+  // 2. Production: Use hardcoded Render backend
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return 'https://schoolapp-d9y5.onrender.com';
   }
-  
-  // Development: Use relative path (same origin)
+
+  // Fallback
   return '';
 };
 
@@ -33,7 +33,7 @@ export const getAuthToken = () => {
     const auth = JSON.parse(authStr);
     return auth?.token || null;
   } catch (error) {
-    console.error('❌ Error reading auth token from localStorage:', error);
+    console.error('Error reading auth token from localStorage:', error);
     return null;
   }
 };
@@ -49,7 +49,7 @@ export const waitForBackend = async () => true;
 export const apiCall = async (endpoint, options = {}) => {
   // Construct full URL: base_api_url + /api + endpoint
   let url = base_api_url ? `${base_api_url}/api${endpoint}` : `/api${endpoint}`;
-  
+
   // Conditionally set Content-Type
   const headers = { ...options.headers };
   if (!(options.body instanceof FormData)) {
@@ -73,24 +73,24 @@ export const apiCall = async (endpoint, options = {}) => {
     // Handle 401 Unauthorized
     if (response.status === 401) {
       const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/teacher-login') || url.includes('/auth/admin-login') || url.includes('/auth/register');
-      
+
       if (!isAuthRequest) {
         console.warn('⚠️ Unauthorized: Token expired or invalid. Redirecting to login...');
         try {
           const { clearAuth } = await import('./auth-manager.js');
           clearAuth();
         } catch (error) {
-          console.error('❌ Error during 401 cleanup:', error);
+          console.error('Error during 401 cleanup:', error);
           localStorage.removeItem('auth');
           sessionStorage.clear();
         }
-        
+
         if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
           window.location.href = '/';
         }
         return { error: 'Session expired. Please login again.' };
       }
-      
+
       // For login requests, let the specific handler show the "Invalid credentials" error
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || 'Invalid credentials' };
@@ -98,14 +98,14 @@ export const apiCall = async (endpoint, options = {}) => {
 
     // Handle 403 Forbidden (insufficient permissions)
     if (response.status === 403) {
-      console.warn('⚠️ Forbidden: Insufficient permissions');
+      console.warn('Forbidden: Insufficient permissions');
       return { error: 'You do not have permission to access this resource.' };
     }
 
     // Handle 429 Rate Limit
     if (response.status === 429) {
       const retryAfter = response.headers.get('X-RateLimit-Remaining') || 60;
-      console.warn(`⚠️ Rate limited: Please try again in ${retryAfter} seconds`);
+      console.warn(`Rate limited: Please try again in ${retryAfter} seconds`);
       return { error: `Too many requests. Please try again in ${retryAfter} seconds.` };
     }
 
@@ -125,7 +125,7 @@ export const apiCall = async (endpoint, options = {}) => {
         data = await response.text();
       }
     } catch (parseError) {
-      console.error(`⚠️ Response parse error [${endpoint}]:`, parseError.message);
+      console.error(`Response parse error [${endpoint}]:`, parseError.message);
       data = { error: 'Invalid response format' };
     }
 
@@ -136,7 +136,7 @@ export const apiCall = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error(`❌ API Error [${endpoint}]:`, error.message);
+    console.error(`API Error [${endpoint}]:`, error.message);
     throw error;
   }
 };
@@ -157,13 +157,13 @@ const attendanceAPI = {
  */
 const homeworkAPI = {
   getAll: (class_name = '') => apiCall(`/admin/homework${class_name ? '?class_name=' + encodeURIComponent(class_name) : ''}`, { method: 'GET' }),
-  create: (formData) => apiCall('/admin/homework', { 
-    method: 'POST', 
-    body: formData 
+  create: (formData) => apiCall('/admin/homework', {
+    method: 'POST',
+    body: formData
   }),
-  update: (id, formData) => apiCall(`/admin/homework/${id}`, { 
-    method: 'PUT', 
-    body: formData 
+  update: (id, formData) => apiCall(`/admin/homework/${id}`, {
+    method: 'PUT',
+    body: formData
   }),
   delete: (id) => apiCall(`/admin/homework/${id}`, { method: 'DELETE' }),
 };
@@ -195,8 +195,8 @@ const materialsAPI = {
 
 const notificationsAPI = {
   getAll: () => apiCall('/admin/notifications', { method: 'GET' }),
-  create: (data) => apiCall('/admin/notifications', { 
-    method: 'POST', 
+  create: (data) => apiCall('/admin/notifications', {
+    method: 'POST',
     body: data // Send data directly (JSON string or FormData)
   }),
 };
@@ -263,35 +263,35 @@ export const adminAPI = {
 export const teacherAPI = {
   // Dashboard
   getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId}`, { method: 'GET' }),
-  getTimetable:  (teacherId) => apiCall(`/teacher/timetable/${teacherId}`, { method: 'GET' }),
+  getTimetable: (teacherId) => apiCall(`/teacher/timetable/${teacherId}`, { method: 'GET' }),
 
   // Attendance
   getAttendanceClasses: (teacherId) => apiCall(`/teacher/attendance/classes?teacherId=${teacherId}`, { method: 'GET' }),
-  getAttendanceSheet:   (teacherId, classLevel, date) => apiCall(`/teacher/attendance/sheet?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&date=${date}`, { method: 'GET' }),
-  markBulkAttendance:   (teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }) }),
+  getAttendanceSheet: (teacherId, classLevel, date) => apiCall(`/teacher/attendance/sheet?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&date=${date}`, { method: 'GET' }),
+  markBulkAttendance: (teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }) }),
   getAttendanceSummary: (teacherId, classLevel, month) => apiCall(`/teacher/attendance/summary?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&month=${month}`, { method: 'GET' }),
 
   // Homework
-  getHomework:    (teacherId) => apiCall(`/teacher/homework?teacherId=${teacherId}`, { method: 'GET' }),
-  createHomework: (formData)  => apiCall('/teacher/homework', { method: 'POST', body: formData }),
+  getHomework: (teacherId) => apiCall(`/teacher/homework?teacherId=${teacherId}`, { method: 'GET' }),
+  createHomework: (formData) => apiCall('/teacher/homework', { method: 'POST', body: formData }),
   updateHomework: (id, formData) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData }),
   deleteHomework: (id, teacherId) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
 
   // Study Materials
-  getMaterials:    (teacherId) => apiCall(`/teacher/materials?teacherId=${teacherId}`, { method: 'GET' }),
-  createMaterial:  (formData)  => apiCall('/teacher/materials', { method: 'POST', body: formData }),
-  updateMaterial:  (id, formData) => apiCall(`/teacher/materials/${id}`, { method: 'PUT', body: formData }),
-  deleteMaterial:  (id, teacherId) => apiCall(`/teacher/materials/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
+  getMaterials: (teacherId) => apiCall(`/teacher/materials?teacherId=${teacherId}`, { method: 'GET' }),
+  createMaterial: (formData) => apiCall('/teacher/materials', { method: 'POST', body: formData }),
+  updateMaterial: (id, formData) => apiCall(`/teacher/materials/${id}`, { method: 'PUT', body: formData }),
+  deleteMaterial: (id, teacherId) => apiCall(`/teacher/materials/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
 
   // Syllabus
-  getSyllabus:    (teacherId) => apiCall(`/teacher/syllabus?teacherId=${teacherId}`, { method: 'GET' }),
-  createSyllabus: (data)      => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
-  updateSyllabus: (id, data)  => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getSyllabus: (teacherId) => apiCall(`/teacher/syllabus?teacherId=${teacherId}`, { method: 'GET' }),
+  createSyllabus: (data) => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
+  updateSyllabus: (id, data) => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSyllabus: (id, teacherId) => apiCall(`/teacher/syllabus/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
 
   // Exam Results
   createExamResult: (data) => apiCall('/teacher/exam-results', { method: 'POST', body: JSON.stringify(data) }),
-  getExamResults:    ()      => apiCall('/teacher/exam-results', { method: 'GET' }),
+  getExamResults: () => apiCall('/teacher/exam-results', { method: 'GET' }),
 };
 
 /**
@@ -300,7 +300,7 @@ export const teacherAPI = {
  */
 export const downloadFile = async (filePath, fileName = 'download') => {
   try {
-    console.log(`📂 Downloading file: ${filePath}`);
+    console.log(`Downloading file: ${filePath}`);
     const blob = await apiCall(`/download?filePath=${encodeURIComponent(filePath)}`, {
       method: 'GET',
       responseType: 'blob'
@@ -314,13 +314,13 @@ export const downloadFile = async (filePath, fileName = 'download') => {
     a.download = fileName; // Force download with original filename
     document.body.appendChild(a);
     a.click();
-    
+
     // Cleanup
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
-    console.log('✅ File download triggered successfully');
+    console.log('File download triggered successfully');
   } catch (err) {
-    console.error('❌ Download failed:', err.message);
+    console.error('Download failed:', err.message);
     throw err;
   }
 };

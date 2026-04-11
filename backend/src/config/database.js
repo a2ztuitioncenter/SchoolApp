@@ -1,4 +1,5 @@
 import pkg from 'pg';
+import bcrypt from 'bcryptjs';
 
 import { userModel } from '../features/auth/User.js';
 import { studentModel } from '../features/student/Student.js';
@@ -16,7 +17,7 @@ import pool from './pool.js';
 
 export async function initializeDatabase() {
   try {
-    console.log('📋 Creating database tables...');
+    console.log('Checking/Creating database tables...');
     await pool.query(userModel.schema);
     await pool.query(studentModel.schema);
     await pool.query(feeModel.schema);
@@ -31,53 +32,43 @@ export async function initializeDatabase() {
     console.log('Tables checked/created.');
 
     await createDefaultAdmin();
-    if (process.env.SEED_DB === 'true') {
-      await seedDatabase();
-    }
   } catch (err) {
     console.error('Database Initialization Error:', err.message);
   }
 }
 
 async function createDefaultAdmin() {
-    const phone = '9999999999';
-    const exists = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
-    if (exists.rows.length === 0) {
-        await pool.query(
-            `INSERT INTO users (phone, email, password, role) VALUES ($1, $2, $3, $4)`,
-            [phone, 'admin@a2z.local', 'admin123', 'admin']
-        );
-        console.log('Default admin created.');
+    const adminPhone = process.env.ADMIN_PHONE || '7086795477';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'muslim';
+    
+    // Mask phone for privacy (e.g. ********77)
+    const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);
+    console.log(`👤 Configuring Admin Account for phone: ${maskedPhone}...`);
+    
+    try {
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        
+        // Check if this specific admin exists
+        const exists = await pool.query('SELECT id, role FROM users WHERE phone = $1', [adminPhone]);
+        
+        if (exists.rows.length === 0) {
+            // Create new admin
+            await pool.query(
+                `INSERT INTO users (phone, email, password, role, status) VALUES ($1, $2, $3, $4, $5)`,
+                [adminPhone, 'admin@a2z.local', hashedPassword, 'admin', 'active']
+            );
+            console.log(`SUCCESS: Admin account created with phone ${maskedPhone}`);
+        } else {
+            // Update existing user to be admin with correct password
+            await pool.query(
+                `UPDATE users SET password = $1, role = 'admin', status = 'active' WHERE phone = $2`,
+                [hashedPassword, adminPhone]
+            );
+            console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);
+        }
+    } catch (err) {
+        console.error('ERROR configuring admin account:', err.message);
     }
 }
 
-async function seedDatabase() {
-  try {
-    const studentCount = await pool.query('SELECT COUNT(*) as count FROM students');
-    if (parseInt(studentCount.rows[0].count) > 0) return;
-
-    const sample = [
-      { phone: '9999999991', name: 'Arun Kumar', classLevel: '10' },
-      { phone: '9999999992', name: 'Priya Sharma', classLevel: '10' }
-    ];
-
-    for (const s of sample) {
-      const uRes = await pool.query(
-        `INSERT INTO users (phone, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id`,
-        [s.phone, `${s.phone}@student.local`, 'password123', 'student']
-      );
-      const userId = uRes.rows[0].id;
-      await pool.query(
-        `INSERT INTO students ("userId", name, "classLevel", phone, email, "joiningDate") 
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)`,
-        [userId, s.name, s.classLevel, s.phone, `${s.phone}@student.local`]
-      );
-    }
-    console.log('Database seeded.');
-  } catch (err) {
-    console.error('Seeding Error:', err.message);
-  }
-}
-
-export { seedDatabase };
 export default pool;

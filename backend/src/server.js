@@ -46,11 +46,6 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-// IMPORTANT: Disable compression to prevent ERR_CONTENT_DECODING_FAILED errors
-// Comment out if you need it for large files
-// app.use(compression());
-
 // Security middleware first
 app.use(corsSecure());
 app.use(validateInput);
@@ -172,6 +167,7 @@ const startServer = async () => {
       console.log(`  • Admin Login: http://localhost:${PORT}/admin-login.html`);
       console.log(`  • Teacher Login: http://localhost:${PORT}/teacher-login.html`);
       console.log(`  • Health Check: http://localhost:${PORT}/health\n`);
+      console.log("Server is RUnning ...")
     });
   } catch (error) {
     console.error('Failed to start server:', error);

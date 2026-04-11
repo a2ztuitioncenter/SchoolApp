@@ -37,7 +37,7 @@ export const authenticate = (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('❌ Auth middleware error:', error.message);
+    console.error('Auth middleware error:', error.message);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
@@ -72,7 +72,7 @@ export const authorize = (allowedRoles) => {
     const allowedRolesLower = roles.map(r => r.toLowerCase());
 
     if (!allowedRolesLower.includes(userRole)) {
-      console.warn(`⚠️ Authorization failed: User role '${userRole}' not in allowed roles [${allowedRolesLower.join(', ')}]`);
+      console.warn(`Authorization failed: User role '${userRole}' not in allowed roles [${allowedRolesLower.join(', ')}]`);
       return res.status(403).json({ 
         error: `Forbidden: User role '${userRole}' does not have access to this resource`,
         code: 'FORBIDDEN',
@@ -118,7 +118,7 @@ export const checkOwnership = (paramName = 'userId', getOwnerId = null) => {
 
     // For non-admin users, check ownership
     if (resourceOwnerId && String(resourceOwnerId) !== String(requestingUserId)) {
-      console.warn(`⚠️ Ownership check failed: User ${requestingUserId} tried to access resource owned by ${resourceOwnerId}`);
+      console.warn(`Ownership check failed: User ${requestingUserId} tried to access resource owned by ${resourceOwnerId}`);
       return res.status(403).json({ 
         error: 'Forbidden: You can only access your own data',
         code: 'OWNERSHIP_VIOLATION'
@@ -151,7 +151,7 @@ export const rateLimiter = (maxRequests = 100, windowMs = 60000) => {
     );
 
     if (requestCounts[identifier].length >= maxRequests) {
-      console.warn(`⚠️ Rate limit exceeded for ${identifier}`);
+      console.warn(`Rate limit exceeded for ${identifier}`);
       return res.status(429).json({ 
         error: 'Too many requests. Please try again later.',
         code: 'RATE_LIMIT_EXCEEDED',
@@ -185,7 +185,7 @@ export const validateInput = (req, res, next) => {
       if (typeof value === 'string') {
         // Check for SQL injection patterns
         if (/(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|;|\/\*|\*\/|'|")/gi.test(value)) {
-          console.warn(`⚠️ Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
+          console.warn(`Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
           throw new Error(`Suspicious input in field: ${fullPath}`);
         }
       } else if (value && typeof value === 'object') {
@@ -217,29 +217,29 @@ export const validateInput = (req, res, next) => {
  * Restrict API access to trusted origins
  */
 export const corsSecure = () => {
-  const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    ...(process.env.NODE_ENV === 'development' ? [
-      'http://localhost:5173',
-      'http://localhost:8000',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:8000'
-    ] : [])
-  ];
-
   return (req, res, next) => {
     const origin = req.headers.origin;
     
+    // Define allowed origins dynamically
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      process.env.FRONTEND_URL
+    ];
+
+    // Add development-specific ports if in dev mode
+    if (process.env.NODE_ENV === 'development') {
+      allowedOrigins.push('http://localhost:8000', 'http://127.0.0.1:8000');
+      allowedOrigins.push('http://localhost:5173', 'http://127.0.0.1:5173');
+    }
+
     if (allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id');
+      res.header('Access-Control-Allow-Credentials', 'true');
     }
-    
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
+
     // Prevent MIME type sniffing
     res.header('X-Content-Type-Options', 'nosniff');
     // Enable XSS protection
@@ -262,7 +262,7 @@ export const securityLogger = (req, res, next) => {
   const userId = req.user?.userId || 'ANONYMOUS';
   const userRole = req.user?.role || 'GUEST';
   
-  console.log(`🔐 [AUTH] User: ${userId} | Role: ${userRole} | ${req.method} ${req.path}`);
+  console.log(`[AUTH] User: ${userId} | Role: ${userRole} | ${req.method} ${req.path}`);
   
   next();
 };
