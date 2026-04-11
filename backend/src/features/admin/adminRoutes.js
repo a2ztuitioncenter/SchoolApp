@@ -95,22 +95,64 @@ router.get('/students', async (req, res) => {
 });
 
 router.post('/students/create', async (req, res) => {
-    const { name, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, password } = req.body;
+    const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, password } = req.body;
     try {
-        if (!name || !phone || !classLevel) return res.status(400).json({ error: 'Missing fields' });
+        if (!firstName || !phone || !classLevel || !section || !password || !fatherName || !motherName) {
+            return res.status(400).json({ error: 'Missing required fields (Name, Phone, Class, Section, Password, and Parent Names are mandatory)' });
+        }
+
+        const fullName = `${firstName} ${lastName || ''}`.trim();
+        
+        // 1. Handle User Creation
         let user = await getUserByPhone(req.db, phone);
         if (!user) {
-            const studentPassword = password || 'student123';
-            user = await createUser(req.db, { name, phone, email, password: studentPassword, role: 'student' });
+            // Student role is created with the provided password
+            user = await createUser(req.db, { 
+                name: fullName, 
+                phone, 
+                email: email || null, 
+                password, 
+                role: 'student' 
+            });
+            
+            // Auto-approve student user
+            await req.db.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
         }
+
+        // 2. Generate Unique Formatted Roll Number
+        // Format: <class(2)><section(1)><serial(3)> e.g. 09A001
+        // Even if classLevel is "9", we use "09" for the roll number prefix
+        const classPart = classLevel.toString().padStart(2, '0'); 
+        const sectionPart = section.toUpperCase();
+        const prefix = `${classPart}${sectionPart}`;
+
+        // Find how many students already exist with this prefix in their roll number
+        const countResult = await req.db.query(
+            `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
+            [`${prefix}%`]
+        );
+        const nextSerial = parseInt(countResult.rows[0].count) + 1;
+        const serialPart = nextSerial.toString().padStart(3, '0'); // 1 -> "001"
+        const rollNumber = `${prefix}${serialPart}`;
+
+        // 3. Create Student record
         const student = await createStudent(req.db, {
-            userId: user.id, name, classLevel, section, fatherName, motherName, phone, email,
+            userId: user.id,
+            name: fullName,
+            classLevel: classLevel.toString(), // Store as "9", "10" etc.
+            section,
+            fatherName,
+            motherName,
+            phone,
+            email: email || null,
             joiningDate: joiningDate || new Date().toISOString().split('T')[0],
             status: status || 'active',
-            rollNumber: Math.floor(Math.random() * 10000).toString()
+            rollNumber
         });
+
         res.status(201).json({ success: true, student });
     } catch (err) {
+        console.error('[STUDENT CREATE] Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

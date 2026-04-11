@@ -1664,6 +1664,7 @@ window.openEditStudentModal = function(id) {
     document.getElementById('edit-student-phone').value = s.phone || '';
     document.getElementById('edit-student-email').value = s.email || '';
     document.getElementById('edit-student-fatherName').value = s.fatherName || '';
+    document.getElementById('edit-student-motherName').value = s.motherName || '';
     
     document.getElementById('edit-student-modal').style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -2715,23 +2716,39 @@ function setupForms() {
 
     document.getElementById('add-student-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        const firstName = document.getElementById('student-firstName')?.value.trim();
+        const lastName = document.getElementById('student-lastName')?.value.trim();
+        const email = document.getElementById('student-email')?.value.trim();
+        const password = document.getElementById('student-password')?.value;
+        const confirmPassword = document.getElementById('student-confirmPassword')?.value;
+
+        // Basic validation
+        if (password !== confirmPassword) {
+            showErrorAlert('Passwords do not match!');
+            return;
+        }
+
         const payload = {
-            name:        `${document.getElementById('student-firstName')?.value || ''} ${document.getElementById('student-lastName')?.value || ''}`.trim(),
+            firstName,
+            lastName,
             phone:       document.getElementById('student-phone')?.value,
-            email:       document.getElementById('student-email')?.value,
+            email:       email || null, // Optional
             classLevel:  document.getElementById('student-classLevel')?.value,
             section:     document.getElementById('student-section')?.value,
             fatherName:  document.getElementById('student-fatherName')?.value,
             motherName:  document.getElementById('student-motherName')?.value,
+            password:    password,
             joiningDate: new Date().toISOString().split('T')[0],
             status:      'active'
         };
+
         try {
             showInfoAlert('Adding student...');
             const res = await adminAPI.addStudent(payload);
             if (res.success) { 
                 hideInfoAlert();
-                showSuccessAlert('Student added successfully!'); 
+                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`); 
                 closeAddStudentModal();
                 e.target.reset(); 
                 await loadStudents(); 
@@ -2756,6 +2773,7 @@ function setupForms() {
             phone:       document.getElementById('edit-student-phone')?.value,
             email:       document.getElementById('edit-student-email')?.value,
             fatherName:  document.getElementById('edit-student-fatherName')?.value,
+            motherName:  document.getElementById('edit-student-motherName')?.value,
         };
         try {
             showInfoAlert('Updating student...');

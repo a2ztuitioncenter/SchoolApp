@@ -586,8 +586,8 @@
                                     <input type="text" id="student-firstName" placeholder="First name" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Last Name *</label>
-                                    <input type="text" id="student-lastName" placeholder="Last name" required>
+                                    <label>Last Name</label>
+                                    <input type="text" id="student-lastName" placeholder="Last name (optional)">
                                 </div>
                             </div>
 
@@ -596,11 +596,21 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Class Level *</label>
-                                    <input type="text" id="student-classLevel" placeholder="e.g., 10A, 12B" required>
+                                    <select id="student-classLevel" required>
+                                        <option value="">Select</option>
+                                        <option value="9">9</option>
+                                        <option value="10">10</option>
+                                        <option value="11">11</option>
+                                        <option value="12">12</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Section *</label>
-                                    <input type="text" id="student-section" placeholder="e.g., A, B, C" required>
+                                    <select id="student-section" required>
+                                        <option value="">Select</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -612,8 +622,21 @@
                                     <input type="tel" id="student-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Email *</label>
-                                    <input type="email" id="student-email" placeholder="student@a2z.local" required>
+                                    <label>Email</label>
+                                    <input type="email" id="student-email" placeholder="student@a2z.local">
+                                </div>
+                            </div>
+
+                            <!-- Login Credentials -->
+                            <div class="form-section-title">Login Credentials</div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Password *</label>
+                                    <input type="password" id="student-password" placeholder="Create password" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirm Password *</label>
+                                    <input type="password" id="student-confirmPassword" placeholder="Confirm password" required>
                                 </div>
                             </div>
 
@@ -621,12 +644,12 @@
                             <div class="form-section-title">Parent Information</div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Father's Name</label>
-                                    <input type="text" id="student-fatherName" placeholder="Father's full name">
+                                    <label>Father's Name *</label>
+                                    <input type="text" id="student-fatherName" placeholder="Father's full name" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Mother's Name</label>
-                                    <input type="text" id="student-motherName" placeholder="Mother's full name">
+                                    <label>Mother's Name *</label>
+                                    <input type="text" id="student-motherName" placeholder="Mother's full name" required>
                                 </div>
                             </div>
 
@@ -664,11 +687,21 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Class Level *</label>
-                                    <input type="text" id="edit-student-classLevel" placeholder="e.g., 10A" required>
+                                    <select id="edit-student-classLevel" required>
+                                        <option value="">Select</option>
+                                        <option value="9">9</option>
+                                        <option value="10">10</option>
+                                        <option value="11">11</option>
+                                        <option value="12">12</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Section *</label>
-                                    <input type="text" id="edit-student-section" placeholder="e.g., A" required>
+                                    <select id="edit-student-section" required>
+                                        <option value="">Select</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -688,8 +721,12 @@
                             <div class="form-section-title">Parent Information</div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Father's Name</label>
-                                    <input type="text" id="edit-student-fatherName" placeholder="Father's full name">
+                                    <label>Father's Name *</label>
+                                    <input type="text" id="edit-student-fatherName" placeholder="Father's full name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Mother's Name *</label>
+                                    <input type="text" id="edit-student-motherName" placeholder="Mother's full name" required>
                                 </div>
                             </div>
 
