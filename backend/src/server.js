@@ -1,10 +1,18 @@
 import express from 'express';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load env vars as early as possible
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 import cors from 'cors';
 import compression from 'compression';
 
-import pkg from 'pg';
-import path from 'path';
-import { fileURLToPath } from 'url';
+
 import authRoutes from './features/auth/authRoutes.js';
 import studentRoutes from './features/student/studentRoutes.js';
 import adminRoutes from './features/admin/adminRoutes.js';
@@ -22,8 +30,6 @@ import { initializeDatabase } from './config/database.js';
 
 import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Ensure upload directories exist (relative to CWD, which is backend root)
 ['uploads/materials', 'uploads/homework', 'uploads/notifications'].forEach(dir => {
