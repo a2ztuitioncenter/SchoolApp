@@ -206,7 +206,8 @@ const resultsAPI = {
 export const authAPI = {
   register: (userData) => apiCall('/auth/register', { method: 'POST', body: JSON.stringify(userData) }),
   teacherRegister: (userData) => apiCall('/auth/teacher-register', { method: 'POST', body: JSON.stringify(userData) }),
-  login: (phone, password, role = 'student') => apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password, role }) }),
+  // Student login uses DOB, not password
+  login: (phone, dateOfBirth) => apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ phone, dateOfBirth }) }),
   adminLogin: (phone, password) => apiCall('/auth/admin-login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
   teacherLogin: (phone, password) => apiCall('/auth/teacher-login', { method: 'POST', body: JSON.stringify({ phone, password }) }),
   verify: () => apiCall('/auth/verify', { method: 'POST' }),

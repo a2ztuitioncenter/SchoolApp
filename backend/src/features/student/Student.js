@@ -15,6 +15,7 @@ export const studentModel = {
       email VARCHAR(255),
       "rollNumber" VARCHAR(20),
       "joiningDate" DATE NOT NULL,
+      "dateOfBirth" DATE DEFAULT NULL,
       status VARCHAR(20) DEFAULT 'active',
       "schoolId" VARCHAR(50) DEFAULT 'school-001',
       "createdAt" TIMESTAMP DEFAULT NOW()
@@ -25,13 +26,13 @@ export const studentModel = {
 export const createStudent = async (pool, data) => {
   const {
     userId, name, classLevel, section, fatherName, motherName,
-    phone, email, rollNumber, joiningDate, status, schoolId = 'school-001'
+    phone, email, rollNumber, joiningDate, dateOfBirth, status, schoolId = 'school-001'
   } = data;
   const result = await pool.query(
-    `INSERT INTO students ("userId", name, "classLevel", section, "fatherName", "motherName", phone, email, "rollNumber", "joiningDate", status, "schoolId")
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+    `INSERT INTO students ("userId", name, "classLevel", section, "fatherName", "motherName", phone, email, "rollNumber", "joiningDate", "dateOfBirth", status, "schoolId")
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [userId, name, classLevel, section || null, fatherName || null, motherName || null,
-     phone || null, email || null, rollNumber || null, joiningDate, status || 'active', schoolId]
+     phone || null, email || null, rollNumber || null, joiningDate, dateOfBirth || null, status || 'active', schoolId]
   );
   return result.rows[0];
 };

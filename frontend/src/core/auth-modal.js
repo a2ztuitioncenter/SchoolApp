@@ -219,49 +219,50 @@ async function handleStudentLoginModal(e) {
     if (e) e.preventDefault();
     const modal = document.getElementById('authModal');
     const phone = modal.querySelector('#student-login-phone')?.value?.trim();
-    const password = modal.querySelector('#student-login-password')?.value?.trim();
+    const dobRaw = modal.querySelector('#student-login-dob')?.value; // YYYY-MM-DD from date input
     const errorDiv = modal.querySelector('#studentLoginError');
     const btn = modal.querySelector('#studentLoginBtn');
-    
-    console.log('🔹 Student Login attempt:', { phone: phone ? '***' : 'empty' });
-    
-    if (!phone || !password) {
-        showError(errorDiv, 'Phone and password are required');
+
+    if (!phone || !dobRaw) {
+        showError(errorDiv, 'Phone and date of birth are required');
         return;
     }
-    
+
     if (phone.length < 10) {
         showError(errorDiv, 'Phone must be at least 10 digits');
         return;
     }
-    
+
+    // Format YYYY-MM-DD -> DD/MM/YY for backend
+    const [yyyy, mm, dd] = dobRaw.split('-');
+    const yy = yyyy.slice(2);
+    const dateOfBirth = `${dd}/${mm}/${yy}`;
+
     btn.disabled = true;
     btn.textContent = 'Logging in...';
-    
+
     try {
-        const response = await window.authAPI.login(phone, password, 'student');
-        
+        const response = await window.authAPI.login(phone, dateOfBirth);
+
         if (response.success) {
-            console.log('✅ Student Login Success:', response.userId);
             window.setAuth({
                 isLoggedIn: true,
                 role: 'student',
                 userId: response.userId || response.user?.id,
-                name: response.user?.name || '',
+                name: response.student?.name || '',
                 phone: phone,
                 token: response.token
             });
-            
+
             const successDiv = modal.querySelector('#studentLoginSuccess');
-            showSuccess(successDiv, 'User verified! Redirecting to dashboard...');
+            showSuccess(successDiv, 'Verified! Redirecting to dashboard...');
             btn.textContent = 'Redirecting...';
-            
+
             setTimeout(() => {
                 closeAuthModal();
                 window.location.href = '/student-dashboard.html';
             }, 1500);
         } else {
-            console.warn('❌ Student Login Failed:', response.error);
             showError(errorDiv, response.error || 'Login failed');
             btn.disabled = false;
             btn.textContent = 'Log In';
@@ -398,66 +399,59 @@ async function handleAdminLoginModal(e) {
 async function handleStudentSignupModal(e) {
     e.preventDefault();
     const form = e.target;
-    
-    // Improved data collection matching the updated form
-    const firstName = form.querySelector('#student-signup-firstName')?.value?.trim();
-    const lastName = form.querySelector('#student-signup-lastName')?.value?.trim();
-    const phone = form.querySelector('#student-signup-phone')?.value?.trim();
-    const email = form.querySelector('#student-signup-email')?.value?.trim();
-    const password = form.querySelector('#student-signup-password')?.value?.trim();
-    const confirmPassword = form.querySelector('#student-signup-confirm')?.value?.trim();
-    const classLevel = form.querySelector('#student-signup-class')?.value;
-    const section = form.querySelector('#student-signup-section')?.value;
-    const fatherName = form.querySelector('#student-signup-fatherName')?.value?.trim();
-    const motherName = form.querySelector('#student-signup-motherName')?.value?.trim();
-    
-    const errorDiv = form.querySelector('#studentSignupError');
+
+    const firstName    = form.querySelector('#student-signup-firstName')?.value?.trim();
+    const lastName     = form.querySelector('#student-signup-lastName')?.value?.trim();
+    const phone        = form.querySelector('#student-signup-phone')?.value?.trim();
+    const email        = form.querySelector('#student-signup-email')?.value?.trim();
+    const dobRaw       = form.querySelector('#student-signup-dob')?.value; // YYYY-MM-DD
+    const classLevel   = form.querySelector('#student-signup-class')?.value;
+    const section      = form.querySelector('#student-signup-section')?.value;
+    const fatherName   = form.querySelector('#student-signup-fatherName')?.value?.trim();
+    const motherName   = form.querySelector('#student-signup-motherName')?.value?.trim();
+
+    const errorDiv  = form.querySelector('#studentSignupError');
     const successDiv = form.querySelector('#studentSignupSuccess');
-    const btn = form.querySelector('#studentSignupBtn');
-    
-    console.log('🔹 Student Signup attempt:', { phone, classLevel, section });
-    
+    const btn       = form.querySelector('#studentSignupBtn');
+
     clearMessages(errorDiv, successDiv);
-    
-    // Validation
-    const requiredFields = [
-        { val: firstName, name: 'First Name' },
-        { val: phone, name: 'Phone' },
-        { val: password, name: 'Password' },
-        { val: confirmPassword, name: 'Confirm Password' },
+
+    const missing = [
+        { val: firstName,  name: 'First Name' },
+        { val: phone,      name: 'Phone' },
+        { val: dobRaw,     name: 'Date of Birth' },
         { val: classLevel, name: 'Class Level' },
-        { val: section, name: 'Section' },
+        { val: section,    name: 'Section' },
         { val: fatherName, name: 'Father Name' },
         { val: motherName, name: 'Mother Name' }
-    ];
-    
-    const missing = requiredFields.filter(f => !f.val);
+    ].filter(f => !f.val);
+
     if (missing.length > 0) {
         showError(errorDiv, `Missing required fields: ${missing.map(m => m.name).join(', ')}`);
         return;
     }
-    
-    if (password !== confirmPassword) {
-        showError(errorDiv, 'Passwords do not match');
-        return;
-    }
-    
+
+    // Format YYYY-MM-DD -> DD/MM/YY
+    const [yyyy, mm, dd] = dobRaw.split('-');
+    const yy = yyyy.slice(2);
+    const dateOfBirth = `${dd}/${mm}/${yy}`;
+
     btn.disabled = true;
     btn.textContent = 'Creating Account...';
-    
+
     try {
         const response = await window.authAPI.register({
             firstName,
             lastName,
             phone,
             email: email || null,
-            password,
+            dateOfBirth,
             classLevel,
             section,
             fatherName,
             motherName
         });
-        
+
         if (response.success) {
             btn.textContent = 'Sign Up';
             showRegistrationPopup('success',

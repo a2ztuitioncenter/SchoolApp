@@ -95,57 +95,65 @@ router.get('/students', async (req, res) => {
 });
 
 router.post('/students/create', async (req, res) => {
-    const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, password } = req.body;
+    const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, dateOfBirth } = req.body;
     try {
-        if (!firstName || !phone || !classLevel || !section || !password || !fatherName || !motherName) {
-            return res.status(400).json({ error: 'Missing required fields (Name, Phone, Class, Section, Password, and Parent Names are mandatory)' });
+        if (!firstName || !phone || !classLevel || !section || !dateOfBirth || !fatherName || !motherName) {
+            return res.status(400).json({ error: 'Missing required fields (Name, Phone, Class, Section, Date of Birth, and Parent Names are mandatory)' });
+        }
+
+        // Parse DD/MM/YY -> ISO YYYY-MM-DD
+        let dobISO;
+        const parts = dateOfBirth.split('/');
+        if (parts.length === 3) {
+            const [dd, mm, yy] = parts;
+            const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+            dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+        } else {
+            return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
         }
 
         const fullName = `${firstName} ${lastName || ''}`.trim();
         
-        // 1. Handle User Creation
+        // 1. Handle User Creation — store a random dummy password (DOB is the real auth factor)
         let user = await getUserByPhone(req.db, phone);
         if (!user) {
-            // Student role is created with the provided password
+            const crypto = await import('crypto');
+            const dummyPassword = crypto.randomBytes(32).toString('hex');
             user = await createUser(req.db, { 
                 name: fullName, 
                 phone, 
                 email: email || null, 
-                password, 
+                password: dummyPassword, 
                 role: 'student' 
             });
-            
-            // Auto-approve student user
-            await req.db.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
         }
 
-        // 2. Generate Unique Formatted Roll Number
-        // Format: <class(2)><section(1)><serial(3)> e.g. 09A001
-        // Even if classLevel is "9", we use "09" for the roll number prefix
+        // Auto-approve student added by admin
+        await req.db.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
+
+        // 2. Generate Unique Roll Number: format 09A001
         const classPart = classLevel.toString().padStart(2, '0'); 
         const sectionPart = section.toUpperCase();
         const prefix = `${classPart}${sectionPart}`;
-
-        // Find how many students already exist with this prefix in their roll number
         const countResult = await req.db.query(
             `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
             [`${prefix}%`]
         );
         const nextSerial = parseInt(countResult.rows[0].count) + 1;
-        const serialPart = nextSerial.toString().padStart(3, '0'); // 1 -> "001"
-        const rollNumber = `${prefix}${serialPart}`;
+        const rollNumber = `${prefix}${nextSerial.toString().padStart(3, '0')}`;
 
-        // 3. Create Student record
+        // 3. Create Student record with DOB
         const student = await createStudent(req.db, {
             userId: user.id,
             name: fullName,
-            classLevel: classLevel.toString(), // Store as "9", "10" etc.
+            classLevel: classLevel.toString(),
             section,
             fatherName,
             motherName,
             phone,
             email: email || null,
             joiningDate: joiningDate || new Date().toISOString().split('T')[0],
+            dateOfBirth: dobISO,
             status: status || 'active',
             rollNumber
         });

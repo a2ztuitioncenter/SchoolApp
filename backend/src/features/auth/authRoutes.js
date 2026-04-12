@@ -28,60 +28,68 @@ const generateToken = (userId, role, phone) => {
 
 // Student login endpoint
 router.post('/login', async (req, res) => {
-  const { phone, password } = req.body;
+  const { phone, dateOfBirth } = req.body;
   const pool = req.db;
 
   try {
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Phone and password are required' });
+    if (!phone || !dateOfBirth) {
+      return res.status(400).json({ error: 'Phone and date of birth are required' });
+    }
+
+    // Parse DD/MM/YY -> YYYY-MM-DD
+    let dobISO;
+    const parts = dateOfBirth.split('/');
+    if (parts.length === 3) {
+      const [dd, mm, yy] = parts;
+      // Support both YY (2-digit) and YYYY (4-digit)
+      const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+      dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    } else {
+      return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
     }
 
     // Find user by phone
     const user = await getUserByPhone(pool, phone);
-
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Role check for student (frontend uses this endpoint for student login)
-    // Normalize role to lowercase for comparison
+    // Students only: authenticate via DOB
     const userRole = user.role ? user.role.toLowerCase() : '';
     if (userRole !== 'student') {
-        return res.status(403).json({ error: 'Unauthorized role' });
+      return res.status(403).json({ error: 'Unauthorized role' });
     }
 
-    // Check if user account is approved (status = 'active')
-    if (user.status !== 'active') {
-      if (user.status === 'pending') {
-        return res.status(403).json({ error: 'Your account is awaiting admin approval. Please try again later.' });
-      } else if (user.status === 'rejected') {
-        return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
-      }
+    if (user.status === 'pending') {
+      return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
+    } else if (user.status === 'rejected') {
+      return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
     }
 
-    // Verify password using bcryptjs
-    const passwordMatch = await bcrypt.compare(password, user.password);
-
-    if (!passwordMatch) {
+    // Verify DOB against students table
+    const dobResult = await pool.query(
+      `SELECT id FROM students WHERE "userId" = $1 AND "dateOfBirth" = $2 LIMIT 1`,
+      [user.id, dobISO]
+    );
+    if (dobResult.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Get student details
     const studentData = await getStudentByUserId(pool, user.id);
-
-    // Generate JWT token
     const token = generateToken(user.id, user.role, phone);
 
-    res.json({ 
+    // Return DOB-free response
+    res.json({
       success: true,
       message: 'Login successful',
       token,
-      user: {
-        id: user.id,
-        role: user.role,
-        phone: user.phone
-      },
-      student: studentData,
+      user: { id: user.id, role: user.role, phone: user.phone },
+      student: studentData ? {
+        id: studentData.id,
+        name: studentData.name,
+        rollNumber: studentData.rollNumber,
+        classLevel: studentData.classLevel,
+      } : null,
       userId: user.id
     });
   } catch (error) {
@@ -90,20 +98,30 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register New Students
-
+// Register New Students (DOB-based, no password required)
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, password, classLevel, section, fatherName, motherName, email } = req.body;
+  const { firstName, lastName, phone, dateOfBirth, classLevel, section, fatherName, motherName, email } = req.body;
   const pool = req.db;
 
   try {
-    // Validation
-    if (!firstName || !phone || !password || !classLevel || !section || !fatherName || !motherName) {
-      return res.status(400).json({ error: 'Missing required fields (Name, Phone, Password, Class, Section, and Parent names are mandatory)' });
+    // Validation — no password required for students
+    if (!firstName || !phone || !dateOfBirth || !classLevel || !section || !fatherName || !motherName) {
+      return res.status(400).json({ error: 'Missing required fields (Name, Phone, Date of Birth, Class, Section, and Parent names are mandatory)' });
     }
 
     if (!/^\d{10}$/.test(phone)) {
       return res.status(400).json({ error: 'Phone must be a 10-digit number' });
+    }
+
+    // Parse DD/MM/YY -> ISO YYYY-MM-DD
+    let dobISO;
+    const parts = dateOfBirth.split('/');
+    if (parts.length === 3) {
+      const [dd, mm, yy] = parts;
+      const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+      dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+    } else {
+      return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
     }
 
     const fullName = `${firstName} ${lastName || ''}`.trim();
@@ -114,32 +132,30 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Phone number already registered' });
     }
 
-    // Create user account
+    // Create user account with a random dummy password (DOB is the real auth factor)
+    const crypto = await import('crypto');
+    const dummyPassword = crypto.randomBytes(32).toString('hex');
+
     const user = await createUser(pool, {
       name: fullName,
       phone,
       email: email || `${phone}@student.local`,
-      password,
+      password: dummyPassword,
       role: 'student',
       schoolId: 'school-001',
     });
 
-    // 2. Generate Unique Formatted Roll Number
-    // Format: <class(2)><section(1)><serial(3)> e.g. 12B025
-    const classPart = classLevel.toString().padStart(2, '0'); 
+    // Generate Unique Roll Number (format: 12B025)
+    const classPart = classLevel.toString().padStart(2, '0');
     const sectionPart = section.toUpperCase();
     const prefix = `${classPart}${sectionPart}`;
-
-    // Find how many students already exist with this prefix in their roll number
     const countResult = await pool.query(
-        `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
-        [`${prefix}%`]
+      `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
+      [`${prefix}%`]
     );
     const nextSerial = parseInt(countResult.rows[0].count) + 1;
-    const serialPart = nextSerial.toString().padStart(3, '0'); // 1 -> "001"
-    const rollNumber = `${prefix}${serialPart}`;
+    const rollNumber = `${prefix}${nextSerial.toString().padStart(3, '0')}`;
 
-    // Create student record
     const joiningDate = new Date().toISOString().split('T')[0];
     const student = await createStudent(pool, {
       userId: user.id,
@@ -151,29 +167,20 @@ router.post('/register', async (req, res) => {
       phone,
       email: user.email,
       joiningDate,
+      dateOfBirth: dobISO,
       status: 'active',
       rollNumber,
       schoolId: 'school-001',
     });
 
-    // Generate JWT token
     const token = generateToken(user.id, user.role, phone);
 
     return res.json({
       success: true,
       message: 'Registration successful',
       token,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        role: user.role,
-      },
-      student: {
-        id: student.id,
-        name: student.name,
-        rollNumber: student.rollNumber,
-        classLevel: student.classLevel,
-      },
+      user: { id: user.id, phone: user.phone, role: user.role },
+      student: { id: student.id, name: student.name, rollNumber: student.rollNumber, classLevel: student.classLevel },
     });
   } catch (error) {
     console.error('Registration error:', error);

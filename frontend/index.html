@@ -109,7 +109,6 @@
         <!-- Hidden Form Containers (for modal injection) -->
         
         <!-- Student Login Form -->
-        <!-- Student Login Form -->
         <template id="studentLoginForm">
             <div class="modal-header">
                 <div class="modal-logo"><i class="fas fa-graduation-cap"></i></div>
@@ -125,8 +124,9 @@
                     <input type="tel" id="student-login-phone" name="phone" placeholder="Enter your 10-digit phone number" pattern="[0-9]{10}" required>
                 </div>
                 <div class="form-group">
-                    <label for="student-login-password">Password</label>
-                    <input type="password" id="student-login-password" name="password" placeholder="Enter your password" required>
+                    <label for="student-login-dob">Date of Birth</label>
+                    <input type="date" id="student-login-dob" name="dateOfBirth" required max="2020-01-01">
+                    <small style="color:#888;font-size:0.8rem">Your date of birth is used to verify your identity.</small>
                 </div>
                 <button type="submit" id="studentLoginBtn" class="btn-submit">Log In</button>
             </form>
@@ -185,10 +185,7 @@
             <div class="modal-footer">
                 <p><a href="#" onclick="openAuthModal('login', 'student')">← Back to Login</a></p>
             </div>
-        </template>
-
-        <!-- Student Signup Form -->
-        <template id="studentSignupForm">
+        </template>        <template id="studentSignupForm">
             <div class="modal-header modal-header-dark">
                 <div class="modal-logo"><i class="fas fa-user-plus"></i></div>
                 <h2>Student Registration</h2>
@@ -208,6 +205,12 @@
                         <label for="student-signup-lastName">Last Name</label>
                         <input type="text" id="student-signup-lastName" placeholder="Last name (optional)">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="student-signup-dob">Date of Birth *</label>
+                    <input type="date" id="student-signup-dob" name="dateOfBirth" required max="2020-01-01">
+                    <small style="color:#888;font-size:0.8rem">Used for login verification instead of a password.</small>
                 </div>
 
                 <!-- Academic Information -->
@@ -234,7 +237,7 @@
                 </div>
 
                 <!-- Contact & Login -->
-                <div class="form-section-title">Contact & Credentials</div>
+                <div class="form-section-title">Contact</div>
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
                         <label for="student-signup-phone">Phone Number *</label>
@@ -243,16 +246,6 @@
                     <div class="form-group" style="flex: 1;">
                         <label for="student-signup-email">Email</label>
                         <input type="email" id="student-signup-email" placeholder="student@a2z.local">
-                    </div>
-                </div>
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-password">Password *</label>
-                        <input type="password" id="student-signup-password" placeholder="Create password" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-confirm">Confirm Password *</label>
-                        <input type="password" id="student-signup-confirm" placeholder="Confirm password" required>
                     </div>
                 </div>
 

@@ -2728,25 +2728,28 @@ function setupForms() {
         const firstName = document.getElementById('student-firstName')?.value.trim();
         const lastName = document.getElementById('student-lastName')?.value.trim();
         const email = document.getElementById('student-email')?.value.trim();
-        const password = document.getElementById('student-password')?.value;
-        const confirmPassword = document.getElementById('student-confirmPassword')?.value;
+        const dobRaw = document.getElementById('student-dob')?.value; // YYYY-MM-DD
 
-        // Basic validation
-        if (password !== confirmPassword) {
-            showErrorAlert('Passwords do not match!');
+        if (!dobRaw) {
+            showErrorAlert('Date of Birth is required!');
             return;
         }
+
+        // Format YYYY-MM-DD -> DD/MM/YY for the backend
+        const [yyyy, mm, dd] = dobRaw.split('-');
+        const yy = yyyy.slice(2);
+        const dateOfBirth = `${dd}/${mm}/${yy}`;
 
         const payload = {
             firstName,
             lastName,
             phone:       document.getElementById('student-phone')?.value,
-            email:       email || null, // Optional
+            email:       email || null,
             classLevel:  document.getElementById('student-classLevel')?.value,
             section:     document.getElementById('student-section')?.value,
             fatherName:  document.getElementById('student-fatherName')?.value,
             motherName:  document.getElementById('student-motherName')?.value,
-            password:    password,
+            dateOfBirth,
             joiningDate: new Date().toISOString().split('T')[0],
             status:      'active'
         };
