@@ -65,8 +65,39 @@ export const updateUser = async (pool, id, { name, phone, email, role }) => {
 };
 
 export const deleteUser = async (pool, id) => {
-  const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
-  return result.rows[0] || null;
+  // Start a transaction for a clean deletion process
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Manual cleanup of foreign key dependencies
+    // Use SET NULL for historical tracking records
+    await client.query('UPDATE attendance SET "userId" = NULL WHERE "userId" = $1', [id]);
+    await client.query('UPDATE homework SET "teacherId" = NULL WHERE "teacherId" = $1', [id]);
+    await client.query('UPDATE fees SET "userId" = NULL WHERE "userId" = $1', [id]);
+    await client.query('UPDATE results SET "recordedBy" = NULL WHERE "recordedBy" = $1', [id]);
+    await client.query('UPDATE exam_results SET "teacherId" = NULL WHERE "teacherId" = $1', [id]);
+    await client.query('UPDATE notifications SET "createdBy" = NULL WHERE "createdBy" = $1', [id]);
+    await client.query('UPDATE users SET "approvedBy" = NULL WHERE "approvedBy" = $1', [id]);
+
+    // Delete child records that shouldn't exist without a user
+    await client.query('DELETE FROM timetable WHERE "teacherId" = $1', [id]);
+    await client.query('DELETE FROM syllabus WHERE "teacherId" = $1', [id]);
+    await client.query('DELETE FROM teacher_class_assignment WHERE "teacherId" = $1', [id]);
+    await client.query('DELETE FROM students WHERE "userId" = $1', [id]);
+
+    // Finally delete the user
+    const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    
+    await client.query('COMMIT');
+    return result.rows[0] || null;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[deleteUser] Transaction failed:', err.message);
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 export const toggleUserStatus = async (pool, id, isActive) => {

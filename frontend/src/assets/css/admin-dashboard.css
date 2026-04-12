@@ -909,16 +909,15 @@ textarea:focus {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   min-width: 160px;
-  z-index: 10000;
+  z-index: 9999999 !important;
   display: none;
-  overflow: hidden;
+  pointer-events: auto;
 }
 
-.action-menu-dropdown.open {
+.action-menu-dropdown.active {
   display: block;
-  animation: slideDown 0.15s ease-out;
 }
 
 @keyframes slideDown {
@@ -1406,7 +1405,7 @@ textarea:focus {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 2rem;
 }
 

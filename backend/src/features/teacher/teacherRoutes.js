@@ -43,6 +43,18 @@ async function requireTeacher(pool, teacherId) {
 }
 
 // ============================================
+// HELPER — Parse Class & Section
+// ============================================
+function parseClassSection(input) {
+  if (!input) return { classLevel: null, section: null };
+  const match = input.match(/^(\d+)([A-Z])$/i);
+  if (match) {
+    return { classLevel: match[1], section: match[2] };
+  }
+  return { classLevel: input, section: null };
+}
+
+// ============================================
 // DASHBOARD — enriched with timetable & stats
 // ============================================
 router.get('/dashboard/:teacherId', async (req, res) => {
@@ -63,10 +75,13 @@ router.get('/dashboard/:teacherId', async (req, res) => {
 
     // 1. Get Assigned Classes from teacher_class_assignment table (NEW)
     const assignRes = await pool.query(
-      'SELECT DISTINCT "classLevel" FROM teacher_class_assignment WHERE "teacherId" = $1 ORDER BY "classLevel"',
+      `SELECT DISTINCT "classLevel", section 
+       FROM teacher_class_assignment 
+       WHERE "teacherId" = $1 
+       ORDER BY "classLevel", "section"`,
       [parsedTeacherId]
     );
-    let classes = assignRes.rows.map(r => r.classLevel);
+    let classes = assignRes.rows.map(r => r.section ? `${r.classLevel}${r.section}` : r.classLevel);
     console.log(`📚 Assigned classes from teacher_class_assignment: ${classes.join(', ') || 'none'}`);
 
     // 2. Fallback: If no assignments found, get from timetable (backwards compatibility)
@@ -87,17 +102,30 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     console.log(`📅 Timetable entries found: ${ttRes.rows.length}`);
 
     // 4. Get Homework & Student Count based on assigned classes
+    // We need to count students who match ANY of the teacher's (classLevel, section) assignments
     const [hwRes, studRes] = await Promise.all([
       pool.query(
         'SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC',
         [parsedTeacherId]
       ),
-      classes.length > 0 
+      assignRes.rows.length > 0 
         ? pool.query(
-            `SELECT COUNT(id) AS "totalStudents" FROM students WHERE "classLevel" = ANY($1)`,
-            [classes]
+            `SELECT COUNT(id) AS "totalStudents" FROM students 
+             WHERE id IN (
+               SELECT s.id FROM students s
+               JOIN teacher_class_assignment tca ON s."classLevel" = tca."classLevel"
+               WHERE tca."teacherId" = $1 
+               AND (tca.section IS NULL OR tca.section = s.section)
+             )`,
+            [parsedTeacherId]
           )
-        : Promise.resolve({ rows: [{ totalStudents: 0 }] })
+        : (classes.length > 0 
+            ? pool.query(
+                `SELECT COUNT(id) AS "totalStudents" FROM students WHERE "classLevel" = ANY($1)`,
+                [classes]
+              )
+            : Promise.resolve({ rows: [{ totalStudents: 0 }] })
+          )
     ]);
 
     console.log(`📝 Homework entries: ${hwRes.rows.length}, Students in assigned classes: ${studRes.rows[0].totalStudents}`);
@@ -152,14 +180,14 @@ router.get('/attendance/classes', async (req, res) => {
 
     // Get teacher's assigned classes
     const result = await pool.query(
-      `SELECT DISTINCT "classLevel" FROM teacher_class_assignment 
+      `SELECT DISTINCT "classLevel", section FROM teacher_class_assignment 
        WHERE "teacherId" = $1 
-       ORDER BY "classLevel"`,
+       ORDER BY "classLevel", "section"`,
       [teacherId]
     );
 
     // Fallback to timetable if no assignments
-    let classes = result.rows.map(r => r.classLevel);
+    let classes = result.rows.map(r => r.section ? `${r.classLevel}${r.section}` : r.classLevel);
     if (classes.length === 0) {
       const ttResult = await pool.query(
         `SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"`,
@@ -177,18 +205,29 @@ router.get('/attendance/classes', async (req, res) => {
 // GET /api/teacher/attendance/sheet?teacherId=X&classLevel=10&date=2026-03-30
 router.get('/attendance/sheet', async (req, res) => {
   try {
-    const { teacherId, classLevel, date } = req.query;
+    const { teacherId, classLevel: classInput, date } = req.query;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
-    if (!classLevel || !date) return res.status(400).json({ error: 'classLevel and date required' });
+    if (!classInput || !date) return res.status(400).json({ error: 'classLevel and date required' });
+
+    const { classLevel, section } = parseClassSection(classInput);
 
     // Verify teacher is assigned to this class
-    const assignmentCheck = await pool.query(
-      `SELECT id FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2`,
-      [teacherId, classLevel]
-    );
+    let assignmentCheck;
+    if (section) {
+        assignmentCheck = await pool.query(
+            `SELECT id FROM teacher_class_assignment 
+             WHERE "teacherId" = $1 AND "classLevel" = $2 AND "section" = $3`,
+            [teacherId, classLevel, section]
+        );
+    } else {
+        assignmentCheck = await pool.query(
+            `SELECT id FROM teacher_class_assignment 
+             WHERE "teacherId" = $1 AND "classLevel" = $2`,
+            [teacherId, classLevel]
+        );
+    }
 
     if (assignmentCheck.rows.length === 0) {
       // Fallback check: see if teacher teaches this class via timetable
@@ -203,17 +242,28 @@ router.get('/attendance/sheet', async (req, res) => {
       }
     }
 
+    let studentsQuery = `SELECT s.id, s.name, s."rollNumber" FROM students s WHERE s."classLevel" = $1`;
+    let studentsParams = [classLevel];
+    if (section) {
+        studentsQuery += ` AND s."section" = $2`;
+        studentsParams.push(section);
+    }
+    studentsQuery += ` ORDER BY s.name`;
+
+    let existingQuery = `SELECT a."studentId", a.status FROM attendance a
+                        JOIN students s ON a."studentId" = s.id
+                        WHERE s."classLevel" = $1`;
+    let existingParams = [classLevel];
+    if (section) {
+        existingQuery += ` AND s."section" = $2`;
+        existingParams.push(section);
+    }
+    existingQuery += ` AND a.date = $${existingParams.length + 1}`;
+    existingParams.push(date);
+
     const [students, existing] = await Promise.all([
-      pool.query(
-        `SELECT s.id, s.name, s."rollNumber" FROM students s WHERE s."classLevel" = $1 ORDER BY s.name`,
-        [classLevel]
-      ),
-      pool.query(
-        `SELECT a."studentId", a.status FROM attendance a
-         JOIN students s ON a."studentId" = s.id
-         WHERE s."classLevel" = $1 AND a.date = $2`,
-        [classLevel, date]
-      ),
+      pool.query(studentsQuery, studentsParams),
+      pool.query(existingQuery, existingParams),
     ]);
 
     const attMap = {};
@@ -257,17 +307,28 @@ router.post('/attendance/mark-bulk', async (req, res) => {
 // GET /api/teacher/attendance/summary?teacherId=X&classLevel=10&month=2026-03
 router.get('/attendance/summary', async (req, res) => {
   try {
-    const { teacherId, classLevel, month } = req.query;
+    const { teacherId, classLevel: classInput, month } = req.query;
     const pool = req.db;
     const teacher = await requireTeacher(pool, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
+    const { classLevel, section } = parseClassSection(classInput);
+
     // Verify teacher is assigned to this class
-    const assignmentCheck = await pool.query(
-      `SELECT id FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2`,
-      [teacherId, classLevel]
-    );
+    let assignmentCheck;
+    if (section) {
+        assignmentCheck = await pool.query(
+            `SELECT id FROM teacher_class_assignment 
+             WHERE "teacherId" = $1 AND "classLevel" = $2 AND "section" = $3`,
+            [teacherId, classLevel, section]
+        );
+    } else {
+        assignmentCheck = await pool.query(
+            `SELECT id FROM teacher_class_assignment 
+             WHERE "teacherId" = $1 AND "classLevel" = $2`,
+            [teacherId, classLevel]
+        );
+    }
 
     if (assignmentCheck.rows.length === 0) {
       // Fallback check: see if teacher teaches this class via timetable
@@ -282,8 +343,7 @@ router.get('/attendance/summary', async (req, res) => {
       }
     }
 
-    const result = await pool.query(
-      `SELECT s.name, s.id AS "studentId",
+    let query = `SELECT s.name, s.id AS "studentId",
          COUNT(CASE WHEN a.status = 'present' THEN 1 END) AS "presentCount",
          COUNT(CASE WHEN a.status = 'absent'  THEN 1 END) AS "absentCount",
          COUNT(CASE WHEN a.status = 'late'    THEN 1 END) AS "lateCount",
@@ -292,12 +352,18 @@ router.get('/attendance/summary', async (req, res) => {
            COUNT(CASE WHEN a.status = 'present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1
          ) AS "attendancePercent"
        FROM students s
-       LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $2
-       WHERE s."classLevel" = $1
-       GROUP BY s.id, s.name
-       ORDER BY s.name`,
-      [classLevel, month]
-    );
+       LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $${section ? 3 : 2}
+       WHERE s."classLevel" = $1`;
+    
+    let params = [classLevel, month];
+    if (section) {
+        query += ` AND s."section" = $2`;
+        // Rearrange params: [classLevel, section, month]
+        params = [classLevel, section, month];
+    }
+    query += ` GROUP BY s.id, s.name ORDER BY s.name`;
+
+    const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load summary', detail: err.message });

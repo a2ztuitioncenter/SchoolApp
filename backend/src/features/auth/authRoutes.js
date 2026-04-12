@@ -67,6 +67,11 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
     }
 
+    // Check if user account is active
+    if (user.isActive === false) {
+      return res.status(403).json({ error: 'Your account has been deactivated. Please contact admin.' });
+    }
+
     // Verify DOB against students table
     const dobResult = await pool.query(
       `SELECT id FROM students WHERE "userId" = $1 AND "dateOfBirth" = $2 LIMIT 1`,
@@ -417,6 +422,11 @@ router.post('/admin-login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Check if admin is active
+    if (user.isActive === false) {
+      return res.status(403).json({ error: 'This admin account has been deactivated.' });
+    }
+
     // Generate JWT token
     const token = generateToken(user.id, user.role, phone);
 
@@ -466,9 +476,12 @@ router.post('/teacher-login', async (req, res) => {
       });
     }
 
-    // Check if user account is approved (isActive = true)
-    if (!user.isActive) {
-      return res.status(403).json({ error: 'Your account is awaiting admin approval or has been deactivated. Please contact admin.' });
+    // Check if user account is approved and active
+    if (!user.isActive || user.status !== 'active') {
+      const msg = user.status === 'pending' 
+        ? 'Your account is awaiting admin approval.'
+        : (user.status === 'rejected' ? 'Your account has been rejected.' : 'Your account has been deactivated.');
+      return res.status(403).json({ error: `${msg} Please contact admin.` });
     }
 
     // Verify password using bcryptjs

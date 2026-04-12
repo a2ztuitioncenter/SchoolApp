@@ -1350,8 +1350,8 @@ window.toggleUserActionsMenu = function(id, event) {
 
 // Global click to close open dropdowns
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.table-actions')) {
-        document.querySelectorAll('.actions-dropdown-menu.active').forEach(menu => {
+    if (!e.target.closest('.action-menu')) {
+        document.querySelectorAll('.action-menu-dropdown.active').forEach(menu => {
             menu.classList.remove('active');
         });
     }
@@ -1364,7 +1364,7 @@ function renderUsersTable(users) {
     if (!tbody) return;
 
     if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No users found. Click "Add User" to get started.</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-inbox"></i><p>No users found. Click "Add User" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
@@ -1386,12 +1386,15 @@ function renderUsersTable(users) {
         countText.textContent = `Showing ${toShow.length} of ${users.length} user(s)`;
     }
 
-    tbody.innerHTML = toShow.map(u => `
+    tbody.innerHTML = toShow.map((u, index) => `
         <tr>
-            <td><strong>${u.name || u.phone || '-'}</strong></td>
+            <td>${index + 1}</td>
+            <td><code>${u.teacherId || '-'}</code></td>
+            <td><strong>${u.name || '-'}</strong></td>
             <td>${u.phone || '-'}</td>
+            <td>${u.email || '-'}</td>
             <td>${u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : '-'}</td>
-            <td><span class="status-badge ${u.isActive ? 'status-active' : 'status-pending'}">${u.isActive ? 'active' : 'inactive'}</span></td>
+            <td><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${u.status || (u.isActive ? 'active' : 'inactive')}</span></td>
             <td>
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleUserMenu(event);">⋮</button>
@@ -1403,8 +1406,8 @@ function renderUsersTable(users) {
                             <i class="fas fa-${u.isActive ? 'ban' : 'check'}" style="width: 16px;"></i> ${u.isActive ? 'Disable' : 'Enable'}
                         </button>
                         <div class="action-menu-divider"></div>
-                        <button class="action-menu-item danger" onclick="deleteUserById(${u.id})">
-                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        <button class="action-menu-item danger" onclick="deleteUserById(${u.id}, '${u.name}')">
+                            <i class="fas fa-trash-alt" style="width: 16px;"></i> Delete User
                         </button>
                     </div>
                 </div>
@@ -1425,6 +1428,10 @@ window.toggleUserMenu = function(event) {
     document.querySelectorAll('.action-menu-dropdown').forEach(d => {
         if (d !== dropdown) d.classList.remove('active');
     });
+    
+    if (!dropdown.classList.contains('active')) {
+        positionDropdown(btn, dropdown);
+    }
     
     dropdown.classList.toggle('active');
 };
@@ -1499,11 +1506,14 @@ window.cancelEditUser = function () {
     closeEditUserModal();
 };
 
-window.deleteUserById = async function (id) {
+window.deleteUserById = async function (id, name = 'this user') {
     closeAllUserMenus();
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+    if (!confirm(`Are you sure you want to PERMANENTLY DELETE "${name}"?\n\nThis action cannot be undone and will remove all associated records.`)) return;
+    
+    showInfoAlert(`Deleting user ${name}...`);
     try {
         const res = await adminAPI.deleteUser(id);
+        hideInfoAlert();
         if (res.success) {
             showSuccessAlert('User deleted successfully');
             await loadUsers();
@@ -1511,6 +1521,7 @@ window.deleteUserById = async function (id) {
             showErrorAlert(res.error || 'Failed to delete user');
         }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to delete user');
     }
 };
@@ -1600,7 +1611,7 @@ function renderStudentsTable(students) {
     if (!tbody) return;
 
     if (!students.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No students found. Click "Add Student" to get started.</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>No students found. Click "Add Student" to get started.</p></td></tr>';
         if(toggleBtn) toggleBtn.style.display = 'none';
         if(countText) countText.textContent = '';
         return;
@@ -1625,6 +1636,13 @@ function renderStudentsTable(students) {
     tbody.innerHTML = toShow.map(s => `
         <tr>
             <td><strong>${s.name}</strong></td>
+            <td><code>${s.rollNumber || '-'}</code></td>
+            <td>
+                <div style="font-size: 0.8rem;">
+                    <div>${s.fatherName || '-'}</div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">${s.motherName || ''}</div>
+                </div>
+            </td>
             <td>${s.phone || '-'}</td>
             <td>${s.classLevel || '-'}${s.section ? ' - ' + s.section : ''}</td>
             <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
@@ -1639,8 +1657,8 @@ function renderStudentsTable(students) {
                             <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}" style="width: 16px;"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
                         </button>
                         <div class="action-menu-divider"></div>
-                        <button class="action-menu-item danger" onclick="deleteStudentById(${s.id})">
-                            <i class="fas fa-trash" style="width: 16px;"></i> Delete
+                        <button class="action-menu-item danger" onclick="deleteStudentById(${s.id}, '${s.name}')">
+                            <i class="fas fa-trash-alt" style="width: 16px;"></i> Delete Student
                         </button>
                     </div>
                 </div>
@@ -1691,15 +1709,18 @@ window.toggleStudentMenu = function(event) {
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
     
     // Close other menus
-    closeAllStudentMenus();
+    const wasActive = dropdown.classList.contains('active');
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
     
-    // Position and toggle current menu
-    positionDropdown(btn, dropdown);
-    dropdown.classList.add('open');
+    if (!wasActive) {
+        // Position and show
+        positionDropdown(btn, dropdown);
+        dropdown.classList.add('active');
+    }
 };
 
 window.closeAllStudentMenus = function() {
-    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
 window.editStudent = function (id) {
@@ -1710,13 +1731,22 @@ window.cancelEditStudent = function () {
     closeEditStudentModal();
 };
 
-window.deleteStudentById = async function (id) {
-    if (!confirm('Delete this student? This will remove all their records.')) return;
+window.deleteStudentById = async function (id, name = 'this student') {
+    closeAllStudentMenus();
+    if (!confirm(`Are you sure you want to PERMANENTLY DELETE student "${name}"?\n\nThis will remove all their enrollment, attendance, and fee records forever.`)) return;
+    
+    showInfoAlert(`Deleting student ${name}...`);
     try {
         const res = await adminAPI.deleteStudent(id);
-        if (res.success) { showSuccessAlert('Student deleted'); await loadStudents(); }
-        else showErrorAlert(res.error || 'Failed to delete student');
+        hideInfoAlert();
+        if (res.success) {
+            showSuccessAlert('Student record deleted successfully');
+            await loadStudents();
+        } else {
+            showErrorAlert(res.error || 'Failed to delete student');
+        }
     } catch (err) {
+        hideInfoAlert();
         showErrorAlert(err.message || 'Failed to delete student');
     }
 };
@@ -2217,11 +2247,13 @@ window.toggleFeeMenu = function(event) {
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
     
     // Close other menus
-    closeAllFeeMenus();
+    const wasActive = dropdown.classList.contains('active');
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
     
-    // Position and toggle current menu
-    positionDropdown(btn, dropdown);
-    dropdown.classList.add('open');
+    if (!wasActive) {
+        positionDropdown(btn, dropdown);
+        dropdown.classList.add('active');
+    }
 };
 
 /**
@@ -2229,11 +2261,19 @@ window.toggleFeeMenu = function(event) {
  * Handles overflow detection to flip menu direction if needed
  */
 window.positionDropdown = function(btn, dropdown) {
+    // Temporarily show to get height
+    const originalDisplay = dropdown.style.display;
+    dropdown.style.display = 'block';
+    dropdown.style.visibility = 'hidden';
+    
     const btnRect = btn.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
+    const dropdownHeight = dropdown.offsetHeight || 160;
     
-    // Calculate if dropdown would overflow bottom
-    const estimatedDropdownHeight = dropdown.offsetHeight || 100;
+    // Restore display
+    dropdown.style.display = originalDisplay;
+    dropdown.style.visibility = '';
+    
     const spaceBelow = viewportHeight - btnRect.bottom;
     const spaceAbove = btnRect.top;
     
@@ -2242,8 +2282,8 @@ window.positionDropdown = function(btn, dropdown) {
     let left = btnRect.right - 160; // Align to right
     
     // If not enough space below, flip to above
-    if (spaceBelow < estimatedDropdownHeight + 20 && spaceAbove > estimatedDropdownHeight) {
-        top = btnRect.top - estimatedDropdownHeight - 5;
+    if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight) {
+        top = btnRect.top - dropdownHeight - 5;
     }
     
     // Prevent going off-screen horizontally
@@ -2257,10 +2297,11 @@ window.positionDropdown = function(btn, dropdown) {
     dropdown.style.position = 'fixed';
     dropdown.style.top = top + 'px';
     dropdown.style.left = left + 'px';
+    dropdown.style.right = 'auto'; // Reset right if any
 };
 
 window.closeAllFeeMenus = function() {
-    document.querySelectorAll('.fees-table .action-menu-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
 window.saveFee = async function () {
@@ -2443,15 +2484,17 @@ window.toggleMaterialMenu = function(event) {
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
     
     // Close other menus
-    closeAllMaterialMenus();
+    const wasActive = dropdown.classList.contains('active');
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
     
-    // Position and toggle current menu
-    positionDropdown(btn, dropdown);
-    dropdown.classList.add('open');
+    if (!wasActive) {
+        positionDropdown(btn, dropdown);
+        dropdown.classList.add('active');
+    }
 };
 
 window.closeAllMaterialMenus = function() {
-    document.querySelectorAll('.materials-table .action-menu-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
 function getFilteredMaterials() {

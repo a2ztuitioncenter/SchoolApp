@@ -13,8 +13,8 @@ const router = express.Router();
 router.get('/users', async (req, res) => {
     try {
         const result = await req.db.query(
-            'SELECT id, phone, email, role, "isActive", "createdAt" FROM users WHERE role IN ($1, $2, $3)',
-            ['teacher', 'staff', 'admin']
+            'SELECT id, name, phone, email, role, status, "teacherId", "isActive", "createdAt" FROM users WHERE role IN ($1, $2) ORDER BY "createdAt" DESC',
+            ['teacher', 'staff']
         );
         res.json({ success: true, users: result.rows });
     } catch (err) {
@@ -206,13 +206,21 @@ router.patch('/students/:id/status', async (req, res) => {
 router.delete('/students/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await req.db.query(
-            `DELETE FROM students WHERE id = $1 RETURNING id`,
-            [id]
-        );
-        if (!result.rows[0]) return res.status(404).json({ error: 'Student not found' });
-        res.json({ success: true, message: 'Student deleted' });
+        // First get the userId for this student
+        const studentResult = await req.db.query('SELECT "userId" FROM students WHERE id = $1', [id]);
+        if (studentResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        
+        const userId = studentResult.rows[0].userId;
+        
+        // Delete the user record using the model helper (handles manual cleanup)
+        const deleted = await deleteUser(req.db, userId);
+        
+        if (!deleted) return res.status(404).json({ error: 'Associated user not found' });
+        res.json({ success: true, message: 'Student and associated user account deleted' });
     } catch (err) {
+        console.error('[STUDENT DELETE] Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

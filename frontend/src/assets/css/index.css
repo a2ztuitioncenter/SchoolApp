@@ -231,7 +231,7 @@ header {
 
 .flow-line {
     opacity: 0.4;
-    animation: flowAnimation linear infinite;
+    /* animation: flowAnimation linear infinite; */
 }
 
 .flow-line-1 {
@@ -290,8 +290,8 @@ header {
     text-align: center;
     max-width: 600px;
     padding: var(--spacing-md);
-    animation: fadeInUp 1s ease-out 0.3s forwards;
-    opacity: 0;
+    /* animation: fadeInUp 1s ease-out 0.3s forwards; */
+    opacity: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -307,14 +307,14 @@ header {
     line-height: 1.2;
     margin: 0;
     color: var(--text-primary);
-    animation: fadeInUp 0.8s ease-out;
+    /* animation: fadeInUp 0.8s ease-out; */
 }
 
 
 
 .hero-title-animated .letter {
     display: inline-block;
-    animation: letterFadeIn 0.6s ease-out backwards;
+    /* animation: letterFadeIn 0.6s ease-out backwards; */
 }
 
 @keyframes letterFadeIn {
@@ -335,8 +335,8 @@ header {
     font-weight: 500;
     line-height: 1.5;
     margin: 0;
-    animation: fadeInUp 0.8s ease-out 0.1s forwards;
-    opacity: 0;
+    /* animation: fadeInUp 0.8s ease-out 0.1s forwards; */
+    opacity: 1;
     max-width: 500px;
 }
 
@@ -348,8 +348,8 @@ header {
     color: var(--text-secondary);
     line-height: 1.6;
     margin: 0;
-    animation: fadeInUp 0.8s ease-out 0.2s forwards;
-    opacity: 0;
+    /* animation: fadeInUp 0.8s ease-out 0.2s forwards; */
+    opacity: 1;
     max-width: 500px;
 }
 
@@ -361,8 +361,8 @@ header {
     flex-direction: column;
     gap: var(--spacing-sm);
     width: 100%;
-    animation: fadeInUp 0.8s ease-out 0.3s forwards;
-    opacity: 0;
+    /* animation: fadeInUp 0.8s ease-out 0.3s forwards; */
+    opacity: 1;
 }
 
 @keyframes popIn {
@@ -431,8 +431,12 @@ header {
     transform: translateX(4px);
 }
 
-.btn-text {
-    display: inline-block;
+#btn-get-started-hero, 
+#btn-get-started-hero * {
+    transition: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
 }
 
 /* Outline Button */
@@ -472,7 +476,7 @@ header {
     border-radius: 50%;
     opacity: 0.08;
     mix-blend-mode: multiply;
-    animation: float 6s ease-in-out infinite;
+    /* animation: float 6s ease-in-out infinite; */
 }
 
 .element-1 {
@@ -1104,25 +1108,34 @@ input:focus-visible {
        DARK HEADER FOR MODALS
        ============================================ */
     .modal-header-dark {
-        background: #1a1a1a !important;
-        color: white !important;
-        padding: 2.5rem 1.5rem !important;
-        margin: -1.5rem -1.5rem 1.5rem -1.5rem !important;
-        border-radius: var(--spacing-sm) var(--spacing-sm) 0 0;
+        background: transparent !important;
+        color: var(--text-primary) !important;
+        padding: 1.5rem 0 1rem 0 !important;
+        margin: 0 0 1.5rem 0 !important;
+        border-bottom: 1px solid var(--border-color);
         text-align: center;
     }
 
-    .modal-header-dark h2,
-    .modal-header-dark .modal-subtitle,
-    .modal-header-dark .modal-logo i {
-        color: white !important;
+    .modal-header-dark h2 {
+        color: var(--text-primary) !important;
+        font-size: 1.4rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    .modal-header-dark .modal-subtitle {
+        color: var(--text-secondary) !important;
+        font-size: 0.9rem !important;
     }
 
     .modal-header-dark .modal-logo {
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
     }
 
-    /* Ensure close button is visible on dark header */
+    .modal-header-dark .modal-logo i {
+        color: var(--accent-color) !important;
+        font-size: 1.5rem !important;
+    }
+
     .student-signup-active .modal-close {
-        color: white !important;
+        color: var(--text-primary) !important;
     }
