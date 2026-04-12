@@ -115,7 +115,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
                SELECT s.id FROM students s
                JOIN teacher_class_assignment tca ON s."classLevel" = tca."classLevel"
                WHERE tca."teacherId" = $1 
-               AND (tca.section IS NULL OR tca.section = s.section)
+               AND (tca.section IS NULL OR tca.section = 'ALL' OR tca.section = s.section)
              )`,
             [parsedTeacherId]
           )
@@ -187,7 +187,8 @@ router.get('/attendance/classes', async (req, res) => {
     );
 
     // Fallback to timetable if no assignments
-    let classes = result.rows.map(r => r.section ? `${r.classLevel}${r.section}` : r.classLevel);
+    // Handle 'ALL' section or null section as full class level access
+    let classes = result.rows.map(r => (r.section && r.section !== 'ALL') ? `${r.classLevel}${r.section}` : r.classLevel);
     if (classes.length === 0) {
       const ttResult = await pool.query(
         `SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"`,
@@ -218,7 +219,7 @@ router.get('/attendance/sheet', async (req, res) => {
     if (section) {
         assignmentCheck = await pool.query(
             `SELECT id FROM teacher_class_assignment 
-             WHERE "teacherId" = $1 AND "classLevel" = $2 AND "section" = $3`,
+             WHERE "teacherId" = $1 AND "classLevel" = $2 AND ("section" = $3 OR "section" = 'ALL' OR "section" IS NULL)`,
             [teacherId, classLevel, section]
         );
     } else {
@@ -319,7 +320,7 @@ router.get('/attendance/summary', async (req, res) => {
     if (section) {
         assignmentCheck = await pool.query(
             `SELECT id FROM teacher_class_assignment 
-             WHERE "teacherId" = $1 AND "classLevel" = $2 AND "section" = $3`,
+             WHERE "teacherId" = $1 AND "classLevel" = $2 AND ("section" = $3 OR "section" = 'ALL' OR "section" IS NULL)`,
             [teacherId, classLevel, section]
         );
     } else {

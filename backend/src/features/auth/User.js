@@ -177,24 +177,46 @@ export const generateTeacherId = async (pool, role) => {
  * Creates entries in teacher_class_assignment table
  */
 export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, schoolId = 'school-001') => {
-  if (!Array.isArray(classesAssigned) || classesAssigned.length === 0) {
-    throw new Error('classesAssigned must be a non-empty array');
+  if (!Array.isArray(classesAssigned)) {
+    throw new Error('classesAssigned must be an array');
   }
   
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    
+    // First clear old assignments
+    await client.query('DELETE FROM teacher_class_assignment WHERE "teacherId" = $1', [teacherId]);
+    
+    // Then add new ones if any
     for (const classLevel of classesAssigned) {
-      await pool.query(
+      await client.query(
         `INSERT INTO teacher_class_assignment ("teacherId", "classLevel", "schoolId")
-         VALUES ($1, $2, $3)
-         ON CONFLICT ("teacherId", "classLevel", section) DO NOTHING`,
+         VALUES ($1, $2, $3)`,
         [teacherId, classLevel, schoolId]
       );
     }
+    
+    await client.query('COMMIT');
     return true;
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error assigning teacher to classes:', error);
     throw error;
+  } finally {
+    client.release();
   }
+};
+
+/**
+ * Get current class assignments for a teacher/staff
+ */
+export const getTeacherAssignments = async (pool, teacherId) => {
+  const result = await pool.query(
+    'SELECT "classLevel" FROM teacher_class_assignment WHERE "teacherId" = $1',
+    [teacherId]
+  );
+  return result.rows.map(row => row.classLevel);
 };
 
 /**

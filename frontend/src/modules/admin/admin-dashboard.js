@@ -1491,16 +1491,89 @@ function renderUsersCards(list) {
     }).join('') : '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No users found</p>';
 }
 
-window.editUser = function (id) {
+window.editUser = async function (id) {
     const user = allUsersData.find(u => u.id === id);
     if (!user) return;
     closeAllUserMenus();
+    
+    // Fill basic info
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-phone').value = user.phone || '';
     document.getElementById('edit-user-email').value = user.email || '';
-    document.getElementById('edit-user-role').value = user.role || 'teacher';
+    
+    const roleSelect = document.getElementById('edit-user-role');
+    const assignmentSection = document.getElementById('edit-user-assignment-section');
+    roleSelect.value = user.role || 'teacher';
+    
+    // Show/Hide assignment section based on role
+    if (user.role === 'teacher' || user.role === 'staff') {
+        assignmentSection.style.display = 'block';
+        await populateEditUserAssignments(user.id);
+    } else {
+        assignmentSection.style.display = 'none';
+    }
+
+    // Add listener to role select to show/hide assignment section
+    if (!roleSelect.dataset.listenerAdded) {
+        roleSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'teacher' || e.target.value === 'staff') {
+                assignmentSection.style.display = 'block';
+                populateEditUserAssignments(document.getElementById('edit-user-id').value);
+            } else {
+                assignmentSection.style.display = 'none';
+            }
+        });
+        roleSelect.dataset.listenerAdded = 'true';
+    }
+
     openEditUserModal();
 };
+
+/**
+ * Populate class checkboxes for user edit modal
+ */
+async function populateEditUserAssignments(userId) {
+    const container = document.getElementById('edit-user-class-checkboxes');
+    container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Loading classes...</p>';
+
+    try {
+        // 1. Fetch available class levels
+        const authStr = localStorage.getItem('auth');
+        const auth = authStr ? JSON.parse(authStr) : {};
+        const token = auth.token;
+        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
+        
+        const [classesRes, currentRes] = await Promise.all([
+            fetch(`${baseUrl}/api/auth/admin/class-levels`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${baseUrl}/api/admin/users/${userId}/assignments`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        const classesData = await classesRes.json();
+        const currentData = await currentRes.json();
+
+        if (classesData.success) {
+            const availableClasses = classesData.classLevels || [];
+            const currentAssignments = currentData.success ? (currentData.assignments || []) : [];
+
+            if (availableClasses.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; font-size: 0.8rem;">No classes found in system.</p>';
+                return;
+            }
+
+            container.innerHTML = availableClasses.map(cl => `
+                <div style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox" id="edit-cl-${cl}" value="${cl}" ${currentAssignments.includes(cl) ? 'checked' : ''} style="cursor: pointer;">
+                    <label for="edit-cl-${cl}" style="margin: 0; cursor: pointer; font-size: 0.85rem; font-weight: 500;">Class ${cl}</label>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color: var(--danger); font-size: 0.8rem;">Failed to load classes.</p>';
+        }
+    } catch (error) {
+        console.error('Error populating assignments:', error);
+        container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color: var(--danger); font-size: 0.8rem;">Error loading classes.</p>';
+    }
+}
 
 window.cancelEditUser = function () {
     closeEditUserModal();
@@ -2746,10 +2819,21 @@ function setupForms() {
     document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('edit-user-id')?.value;
+        const role = document.getElementById('edit-user-role')?.value;
+        
+        // Collect checked classes if it's a teacher/staff
+        let classesAssigned = null;
+        if (role === 'teacher' || role === 'staff') {
+            classesAssigned = Array.from(
+                document.querySelectorAll('#edit-user-class-checkboxes input[type="checkbox"]:checked')
+            ).map(cb => cb.value);
+        }
+
         const payload = {
             phone: document.getElementById('edit-user-phone')?.value,
             email: document.getElementById('edit-user-email')?.value,
-            role:  document.getElementById('edit-user-role')?.value
+            role:  role,
+            classesAssigned: classesAssigned
         };
         try {
             showInfoAlert('Updating user...');

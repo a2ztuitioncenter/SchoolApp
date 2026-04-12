@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus } from '../auth/User.js';
+import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses } from '../auth/User.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
@@ -43,11 +43,28 @@ router.post('/users/create', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { phone, email, role } = req.body;
+    const { phone, email, role, classesAssigned } = req.body;
     try {
         const user = await updateUser(req.db, id, { phone, email, role });
         if (!user) return res.status(404).json({ error: 'User not found' });
+        
+        // Handle teacher/staff class assignments if role is teacher/staff
+        if ((role === 'teacher' || role === 'staff') && classesAssigned) {
+            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId);
+        }
+        
         res.json({ success: true, user });
+    } catch (err) {
+        console.error('[USER UPDATE] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/users/:id/assignments', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const assignments = await getTeacherAssignments(req.db, id);
+        res.json({ success: true, assignments });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
