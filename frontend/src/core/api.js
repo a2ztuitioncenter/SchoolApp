@@ -64,49 +64,34 @@ export const apiCall = async (endpoint, options = {}) => {
     headers.Authorization = `Bearer ${token}`;
   }
 
+  // Set up timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
   try {
+    console.log(`📡 API [${options.method || 'GET'}] ${endpoint}`);
     const response = await fetch(url, {
       ...options,
       headers,
+      signal: controller.signal
     });
 
-    // Handle 401 Unauthorized
-    if (response.status === 401) {
+    clearTimeout(timeoutId);
+
+    // Handle 401/403 (Unauthorized/Forbidden)
+    if (response.status === 401 || response.status === 403) {
       const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/teacher-login') || url.includes('/auth/admin-login') || url.includes('/auth/register');
-
+      
       if (!isAuthRequest) {
-        console.warn('⚠️ Unauthorized: Token expired or invalid. Redirecting to login...');
-        try {
-          const { clearAuth } = await import('./auth-manager.js');
-          clearAuth();
-        } catch (error) {
-          console.error('Error during 401 cleanup:', error);
-          localStorage.removeItem('auth');
-          sessionStorage.clear();
-        }
-
-        if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-          window.location.href = '/';
-        }
-        return { error: 'Session expired. Please login again.' };
+        console.warn(`🛑 Auth Revoked (${response.status}) at ${endpoint}. Redirecting...`);
+        // Use timeout to allow current operation to process the error response
+        setTimeout(() => {
+          if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+            localStorage.removeItem('auth');
+            window.location.href = '/';
+          }
+        }, 100);
       }
-
-      // For login requests, let the specific handler show the "Invalid credentials" error
-      const errorData = await response.json().catch(() => ({}));
-      return { error: errorData.error || 'Invalid credentials' };
-    }
-
-    // Handle 403 Forbidden (insufficient permissions)
-    if (response.status === 403) {
-      console.warn('Forbidden: Insufficient permissions');
-      return { error: 'You do not have permission to access this resource.' };
-    }
-
-    // Handle 429 Rate Limit
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('X-RateLimit-Remaining') || 60;
-      console.warn(`Rate limited: Please try again in ${retryAfter} seconds`);
-      return { error: `Too many requests. Please try again in ${retryAfter} seconds.` };
     }
 
     // Handle binary or JSON responses
@@ -125,19 +110,27 @@ export const apiCall = async (endpoint, options = {}) => {
         data = await response.text();
       }
     } catch (parseError) {
-      console.error(`Response parse error [${endpoint}]:`, parseError.message);
+      console.error(`❌ Parse error [${endpoint}]:`, parseError.message);
       data = { error: 'Invalid response format' };
     }
 
+    console.log(`📦 Received (${response.status}) from ${endpoint}`);
+
     if (!response.ok) {
       const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
-      throw new Error(errorMsg);
+      return { ...data, error: errorMsg, status: response.status, success: false };
     }
 
     return data;
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error.message);
-    throw error;
+    if (error.name === 'AbortError') {
+      console.error(`🕒 Timeout [${endpoint}] after 15s`);
+      return { error: 'Request timed out', success: false };
+    }
+    console.error(`🚨 Fetch Error [${endpoint}]:`, error.message);
+    return { error: error.message, success: false };
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 

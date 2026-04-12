@@ -459,21 +459,19 @@ async function handleStudentSignupModal(e) {
         });
         
         if (response.success) {
-            showSuccess(successDiv, 'Account created successfully! Redirecting...');
-            setTimeout(() => {
-                closeAuthModal();
-                window.location.href = '/';
-            }, 2000);
+            btn.textContent = 'Sign Up';
+            showRegistrationPopup('success',
+                'Your student account has been created. An admin will review and activate your account shortly.');
         } else {
-            showError(errorDiv, response.error || 'Signup failed');
             btn.disabled = false;
             btn.textContent = 'Sign Up';
+            showRegistrationPopup('error', response.error || 'Registration failed. Please try again.');
         }
     } catch (error) {
         console.error('Signup error:', error);
-        showError(errorDiv, error.message || 'Signup failed');
         btn.disabled = false;
         btn.textContent = 'Sign Up';
+        showRegistrationPopup('error', error.message || 'An unexpected error occurred. Please try again.');
     }
 }
 
@@ -518,7 +516,7 @@ async function handleTeacherSignupModal(e) {
     btn.textContent = 'Creating Account...';
     
     try {
-        const response = await window.authAPI.register({
+        const response = await window.authAPI.teacherRegister({
             name,
             email,
             phone,
@@ -528,21 +526,19 @@ async function handleTeacherSignupModal(e) {
         });
         
         if (response.success) {
-            showSuccess(successDiv, '✅ Account created! Awaiting admin approval...');
-            closeAuthModal();
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 3000);
+            btn.textContent = 'Sign Up';
+            showRegistrationPopup('success',
+                'Your account has been created and is awaiting admin approval. You will be able to log in once approved.');
         } else {
-            showError(errorDiv, response.error || 'Signup failed');
             btn.disabled = false;
             btn.textContent = 'Sign Up';
+            showRegistrationPopup('error', response.error || 'Registration failed. Please try again.');
         }
     } catch (error) {
         console.error('Signup error:', error);
-        showError(errorDiv, error.message || 'Signup failed');
         btn.disabled = false;
         btn.textContent = 'Sign Up';
+        showRegistrationPopup('error', error.message || 'An unexpected error occurred. Please try again.');
     }
 }
 
@@ -582,6 +578,103 @@ function clearMessages(errorDiv, successDiv) {
         successDiv.textContent = '';
     }
 }
+
+/**
+ * Show a full-screen registration result popup
+ * @param {'success'|'error'} type
+ * @param {string} message
+ */
+function showRegistrationPopup(type, message) {
+    // Remove any existing popup
+    const existing = document.getElementById('reg-result-popup');
+    if (existing) existing.remove();
+
+    const isSuccess = type === 'success';
+
+    const popup = document.createElement('div');
+    popup.id = 'reg-result-popup';
+    popup.innerHTML = `
+        <div class="reg-popup-overlay"></div>
+        <div class="reg-popup-card">
+            <div class="reg-popup-icon ${isSuccess ? 'reg-popup-icon--success' : 'reg-popup-icon--error'}">
+                <i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+            </div>
+            <h2 class="reg-popup-title">${isSuccess ? 'Registration Successful!' : 'Registration Failed'}</h2>
+            <p class="reg-popup-message">${message}</p>
+            ${isSuccess ? '<div class="reg-popup-badge"><i class="fas fa-clock"></i> Pending Admin Approval</div>' : ''}
+            <button class="reg-popup-btn ${isSuccess ? 'reg-popup-btn--success' : 'reg-popup-btn--error'}" id="reg-popup-close">
+                ${isSuccess ? 'Got it!' : 'Try Again'}
+            </button>
+        </div>
+    `;
+
+    // Styles injected once
+    if (!document.getElementById('reg-popup-styles')) {
+        const style = document.createElement('style');
+        style.id = 'reg-popup-styles';
+        style.textContent = `
+            #reg-result-popup {
+                position: fixed; inset: 0; z-index: 99999;
+                display: flex; align-items: center; justify-content: center;
+                animation: regPopupFadeIn 0.25s ease;
+            }
+            @keyframes regPopupFadeIn {
+                from { opacity: 0; } to { opacity: 1; }
+            }
+            .reg-popup-overlay {
+                position: absolute; inset: 0;
+                background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            }
+            .reg-popup-card {
+                position: relative; z-index: 1;
+                background: #fff; border-radius: 20px;
+                padding: 40px 36px; max-width: 420px; width: 90%;
+                text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+                animation: regCardSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            }
+            @keyframes regCardSlideUp {
+                from { transform: translateY(40px) scale(0.95); opacity: 0; }
+                to   { transform: translateY(0) scale(1);       opacity: 1; }
+            }
+            .reg-popup-icon { font-size: 64px; margin-bottom: 16px; }
+            .reg-popup-icon--success { color: #16a34a; }
+            .reg-popup-icon--error   { color: #dc2626; }
+            .reg-popup-title {
+                font-size: 1.5rem; font-weight: 700; margin: 0 0 10px;
+                color: #111;
+            }
+            .reg-popup-message {
+                font-size: 0.95rem; color: #555; margin: 0 0 20px; line-height: 1.55;
+            }
+            .reg-popup-badge {
+                display: inline-flex; align-items: center; gap: 6px;
+                background: #fef9c3; color: #854d0e;
+                border: 1px solid #fde68a; border-radius: 999px;
+                padding: 6px 16px; font-size: 0.85rem; font-weight: 600;
+                margin-bottom: 24px;
+            }
+            .reg-popup-btn {
+                width: 100%; padding: 13px; border: none; border-radius: 10px;
+                font-size: 1rem; font-weight: 600; cursor: pointer;
+                transition: transform 0.15s, box-shadow 0.15s;
+            }
+            .reg-popup-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+            .reg-popup-btn--success { background: #16a34a; color: #fff; }
+            .reg-popup-btn--error   { background: #dc2626; color: #fff; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(popup);
+
+    document.getElementById('reg-popup-close').addEventListener('click', () => {
+        popup.style.animation = 'regPopupFadeIn 0.2s ease reverse';
+        setTimeout(() => popup.remove(), 200);
+        if (isSuccess) closeAuthModal();
+    });
+}
+
+window.showRegistrationPopup = showRegistrationPopup;
 
 // Export functions for use in HTML onclick handlers
 // These MUST be global for inline event handlers (onclick="...") to work

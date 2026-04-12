@@ -4,7 +4,7 @@
  */
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
-import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
 import './admin-pending-approvals.js';
 import './exam-results.js';
 
@@ -15,16 +15,6 @@ if (!requireRole('admin')) {
   throw new Error('Unauthorized: Admin role required');
 }
 
-// ═══════════════════════════════════════════
-// Remove Protection Screen
-// ═══════════════════════════════════════════
-function hideProtectionScreen() {
-  const screen = document.getElementById('auth-protection-screen');
-  if (screen) {
-    screen.style.display = 'none';
-  }
-}
-
 // Global logout handler
 window.handleLogout = function() {
   // Admin logging out
@@ -32,17 +22,28 @@ window.handleLogout = function() {
 };
 
 syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
+window.adminAPI = adminAPI; // Expose for debugging
+window.resultsAPI = resultsAPI;
+
+// Remove full-screen "Loading..." overlay as soon as this module runs (deferred modules execute
+// after the document is parsed, so #auth-protection-screen already exists). Relying only on
+// DOMContentLoaded misses bfcache restores and edge cases where the event already fired.
+hideProtectionScreen();
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) hideProtectionScreen();
+});
 
 
 let currentTab = 'dashboard';
 let allHomeworkData = [];
 let allFeesData = [];
 let currentEditHwId = null;
+console.log('🚀 admin-dashboard.js loaded. Global state exposed.');
 
 // =============================================
 // INIT
 // =============================================
-document.addEventListener('DOMContentLoaded', async () => {
+async function initDashboard() {
     hideProtectionScreen();
     
     const adminId = getUserId();
@@ -176,7 +177,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Default tab
     await showTab('dashboard');
-
     // Timetable form is now handled via modal (see saveTimetableEntry function)
 
     // Wire up Notice form
@@ -215,7 +215,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             showErrorAlert('Failed to send notice: ' + err.message);
         }
     });
-});
+}
+
+// Execute initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+    initDashboard();
+}
 
 // =============================================
 // TAB NAVIGATION
@@ -288,6 +295,7 @@ let dashboardData = {
     latestHomework: []
 };
 
+window.dashboardData = dashboardData;
 let dashboardRefreshInterval = null;
 
 async function loadDashboardData() {
