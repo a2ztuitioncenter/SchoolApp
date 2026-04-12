@@ -16,53 +16,53 @@ import { resultsModel } from '../features/results/resultsModel.js';
 import pool from './pool.js';
 
 export async function initializeDatabase() {
-  try {
-    console.log('Checking/Creating database tables...');
-    await pool.query(userModel.schema);
-    await pool.query(studentModel.schema);
-    await pool.query(feeModel.schema);
-    await pool.query(homeworkModel.schema);
-    await pool.query(attendanceModel.schema);
-    await pool.query(materialModel.schema);
-    await pool.query(notificationModel.schema);
-    await pool.query(timetableModel.schema);
-    await pool.query(syllabusModel.schema);
-    await pool.query(examResultModel.schema);
-    await pool.query(resultsModel.schema);
-    console.log('Tables checked/created.');
+    try {
+        console.log('Checking/Creating database tables...');
+        await pool.query(userModel.schema);
+        await pool.query(studentModel.schema);
+        await pool.query(feeModel.schema);
+        await pool.query(homeworkModel.schema);
+        await pool.query(attendanceModel.schema);
+        await pool.query(materialModel.schema);
+        await pool.query(notificationModel.schema);
+        await pool.query(timetableModel.schema);
+        await pool.query(syllabusModel.schema);
+        await pool.query(examResultModel.schema);
+        await pool.query(resultsModel.schema);
+        console.log('Tables checked/created.');
 
-    await createDefaultAdmin();
-  } catch (err) {
-    console.error('Database Initialization Error:', err.message);
-  }
+        await createDefaultAdmin();
+    } catch (err) {
+        console.error('Database Initialization Error:', err.message);
+    }
 }
 
 async function createDefaultAdmin() {
     const adminPhone = process.env.ADMIN_PHONE || '7086795477';
     const adminPassword = process.env.ADMIN_PASSWORD || 'muslim';
-    
+
     // Mask phone for privacy (e.g. ********77)
     const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);
     console.log(`👤 Configuring Admin Account for phone: ${maskedPhone}...`);
-    
+
     try {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
-        
+
         // Check if this specific admin exists
         const exists = await pool.query('SELECT id, role FROM users WHERE phone = $1', [adminPhone]);
-        
+
         if (exists.rows.length === 0) {
             // Create new admin
             await pool.query(
-                `INSERT INTO users (phone, email, password, role, status) VALUES ($1, $2, $3, $4, $5)`,
-                [adminPhone, 'admin@a2z.local', hashedPassword, 'admin', 'active']
+                `INSERT INTO users (phone, email, password, role, "isActive") VALUES ($1, $2, $3, $4, $5)`,
+                [adminPhone, 'admin@a2z.local', hashedPassword, 'admin', true]
             );
             console.log(`SUCCESS: Admin account created with phone ${maskedPhone}`);
         } else {
             // Update existing user to be admin with correct password
             await pool.query(
-                `UPDATE users SET password = $1, role = 'admin', status = 'active' WHERE phone = $2`,
-                [hashedPassword, adminPhone]
+                `UPDATE users SET password = $1, role = 'admin', "isActive" = $3 WHERE phone = $2`,
+                [hashedPassword, adminPhone, true]
             );
             console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);
         }

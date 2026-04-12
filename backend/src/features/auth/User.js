@@ -15,6 +15,21 @@ export const userModel = {
       "schoolId" VARCHAR(50) DEFAULT 'school-001',
       "createdAt" TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS "teacherId" VARCHAR(20);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS "approvedBy" INTEGER;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS "rejectionReason" TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS "statusUpdatedAt" TIMESTAMP;
+
+    CREATE TABLE IF NOT EXISTS teacher_class_assignment (
+      id SERIAL PRIMARY KEY,
+      "teacherId" INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      "classLevel" VARCHAR(20) NOT NULL,
+      section VARCHAR(10) DEFAULT 'ALL',
+      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      UNIQUE("teacherId", "classLevel", section)
+    );
   `,
 };
 

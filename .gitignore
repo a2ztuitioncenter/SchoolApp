@@ -11,7 +11,7 @@
 .myenv
 .myenv.local
 .myenv.*.local
-
+backend/seed.js
 # But DO commit example files for developers
 !.env.example
 !.env.production.example

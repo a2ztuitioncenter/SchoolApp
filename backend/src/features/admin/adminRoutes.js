@@ -107,24 +107,24 @@ router.post('/students/create', async (req, res) => {
         if (parts.length === 3) {
             const [dd, mm, yy] = parts;
             const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
-            dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+            dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
         } else {
             return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
         }
 
         const fullName = `${firstName} ${lastName || ''}`.trim();
-        
+
         // 1. Handle User Creation — store a random dummy password (DOB is the real auth factor)
         let user = await getUserByPhone(req.db, phone);
         if (!user) {
             const crypto = await import('crypto');
             const dummyPassword = crypto.randomBytes(32).toString('hex');
-            user = await createUser(req.db, { 
-                name: fullName, 
-                phone, 
-                email: email || null, 
-                password: dummyPassword, 
-                role: 'student' 
+            user = await createUser(req.db, {
+                name: fullName,
+                phone,
+                email: email || null,
+                password: dummyPassword,
+                role: 'student'
             });
         }
 
@@ -132,7 +132,7 @@ router.post('/students/create', async (req, res) => {
         await req.db.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
 
         // 2. Generate Unique Roll Number: format 09A001
-        const classPart = classLevel.toString().padStart(2, '0'); 
+        const classPart = classLevel.toString().padStart(2, '0');
         const sectionPart = section.toUpperCase();
         const prefix = `${classPart}${sectionPart}`;
         const countResult = await req.db.query(
@@ -265,7 +265,7 @@ router.get('/financials/trends', async (req, res) => {
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
+
         const result = await req.db.query(
             `SELECT 
                 DATE("createdAt") as date,
@@ -277,14 +277,14 @@ router.get('/financials/trends', async (req, res) => {
              ORDER BY date ASC`,
             [thirtyDaysAgo]
         );
-        
+
         // Calculate summary stats
         const totalCollected = result.rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
         const average = result.rows.length > 0 ? totalCollected / result.rows.length : 0;
         const peak = result.rows.length > 0 ? Math.max(...result.rows.map(r => parseFloat(r.amount))) : 0;
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             trends: result.rows,
             summary: {
                 totalCollected,

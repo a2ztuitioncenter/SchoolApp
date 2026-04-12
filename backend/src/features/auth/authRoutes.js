@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { getUserByPhone, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
@@ -208,12 +209,15 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid role. Must be student, teacher, or staff.' });
     }
 
-    // Common validation
-    if (!name || !phone || !password || !confirmPassword) {
-      return res.status(400).json({ error: 'Name, phone, password are required' });
+    // Common validation for non-student roles
+    if (role !== 'student' && (!name || !phone || !password || !confirmPassword)) {
+      return res.status(400).json({ error: 'Name, phone, and password are required' });
+    }
+    if (role === 'student' && (!name || !phone || !req.body.dateOfBirth)) {
+      return res.status(400).json({ error: 'Name, phone, and Date of Birth are required' });
     }
 
-    if (password !== confirmPassword) {
+    if (role !== 'student' && password !== confirmPassword) {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
 
@@ -243,12 +247,17 @@ router.post('/register', async (req, res) => {
 
     // STUDENT REGISTRATION
     if (role === 'student') {
+      const { dateOfBirth } = req.body;
       const fullName = name;
+      
+      // Generate a dummy password since students log in with DOB
+      const dummyPassword = crypto.randomBytes(32).toString('hex');
+      
       const user = await createUser(pool, {
         name: fullName,
         phone,
         email: email || `${phone}@student.local`,
-        password,
+        password: dummyPassword,
         role: 'student',
         schoolId: 'school-001',
       });
@@ -266,6 +275,14 @@ router.post('/register', async (req, res) => {
       const serialPart = nextSerial.toString().padStart(3, '0');
       const rollNumber = `${prefix}${serialPart}`;
 
+      // Format DD/MM/YY to YYYY-MM-DD for database storage
+      let dobISO = null;
+      if (dateOfBirth) {
+        const [dd, mm, yy] = dateOfBirth.split('/');
+        // Assuming 2000s for students
+        dobISO = `20${yy}-${mm}-${dd}`;
+      }
+
       const joiningDate = new Date().toISOString().split('T')[0];
       const student = await createStudent(pool, {
         userId: user.id,
@@ -277,6 +294,7 @@ router.post('/register', async (req, res) => {
         phone,
         email: user.email,
         joiningDate,
+        dateOfBirth: dobISO,
         status: 'active',
         rollNumber,
         schoolId: 'school-001',
@@ -448,13 +466,9 @@ router.post('/teacher-login', async (req, res) => {
       });
     }
 
-    // Check if user account is approved (status = 'active')
-    if (user.status !== 'active') {
-      if (user.status === 'pending') {
-        return res.status(403).json({ error: 'Your account is awaiting admin approval. Please try again later.' });
-      } else if (user.status === 'rejected') {
-        return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
-      }
+    // Check if user account is approved (isActive = true)
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Your account is awaiting admin approval or has been deactivated. Please contact admin.' });
     }
 
     // Verify password using bcryptjs
