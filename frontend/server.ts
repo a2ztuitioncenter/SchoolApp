@@ -72,5 +72,3 @@ const server = Bun.serve({
 
 console.log(`\nFrontend server running on port ${PORT}`);
 console.log(`  Local: http://localhost:${PORT}`);
-console.log(`  Network: http://0.0.0.0:${PORT}`);
-console.log(`  Tunnel: Use your cloudflared tunnel URL\n`);

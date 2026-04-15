@@ -52,7 +52,7 @@
         })();
     </script>
     <link rel="stylesheet" href="./src/assets/css/student-dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         #auth-protection-screen {
@@ -81,15 +81,15 @@
                 <i class="fas fa-book-open"></i>
                 <span>A2Z</span>
             </div>
-            <nav id=nav_left_sidebar>
-                <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> Home</a>
-                <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-edit"></i> Daily Practice</a>
-                <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> Subjects</a>
-                <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
-                <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-alt"></i> Syllabus</a>
-                <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
-                <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> Notifications</a>
-                <a href="#" class="nav-link" data-tab="results"><i class="fas fa-chart-bar"></i> My Results</a>
+            <nav id="nav_left_sidebar" class="bottom-nav">
+                <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> <span>Home</span></a>
+                <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-edit"></i> <span>Practice</span></a>
+                <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> <span>Subjects</span></a>
+                <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
+                <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-alt"></i> <span>Syllabus</span></a>
+                <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> <span>Timetable</span></a>
+                <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> <span>Alerts</span></a>
+                <a href="#" class="nav-link" data-tab="results"><i class="fas fa-chart-bar"></i> <span>Results</span></a>
             </nav>
         </aside>
 
@@ -123,7 +123,7 @@
                                     <span class="detail-value" id="dropdown-student-section">N/A</span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="detail-label">ID:</span>
+                                    <span class="detail-label">Roll:</span>
                                     <span class="detail-value" id="dropdown-student-id">N/A</span>
                                 </div>
                             </div>
@@ -243,12 +243,7 @@
                     </section>
 
                     <section class="right-col">
-                        <div class="stats-card">
-                            <div class="progress-circle" style="--percent: 0;" id="course-progress">
-                                <div class="inner-text">0%</div>
-                            </div>
-                            <h4>Course Progress</h4>
-                        </div>
+                        <!-- Removed Course Progress Card -->
 
                         <div class="stats-card">
                             <h4>Attendance Summary</h4>

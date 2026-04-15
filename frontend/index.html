@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="./src/assets/css/index.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
 </head>
+
 <body>
 
     <header>
@@ -18,8 +20,10 @@
                 </div>
                 <nav style="display: flex; align-items: center; gap: 20px;">
                     <ul>
-                        <li><a id="header-login" href="#" onclick="openAuthLoginSelector(event)"><i class="fa fa-user"></i> Log in</a></li>
-                        <li><a id="header-signup" href="#" onclick="openAuthSignupSelector(event)"><i class="fa fa-plus-square"></i> Sign up</a></li>
+                        <li><a id="header-login" href="#" onclick="openAuthLoginSelector(event)"><i
+                                    class="fa fa-user"></i> Log in</a></li>
+                        <li><a id="header-signup" href="#" onclick="openAuthSignupSelector(event)"><i
+                                    class="fa fa-plus-square"></i> Sign up</a></li>
                     </ul>
                 </nav>
             </div>
@@ -50,19 +54,24 @@
                         <stop offset="100%" style="stop-color:#0052cc;stop-opacity:0.4" />
                     </linearGradient>
                     <filter id="glow">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
                         <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
                         </feMerge>
                     </filter>
                 </defs>
                 <!-- Animated flowing lines -->
-                <path class="flow-line flow-line-1" d="M 0 100 Q 300 50, 600 100 T 1200 100" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
-                <path class="flow-line flow-line-2" d="M 0 250 Q 300 200, 600 250 T 1200 250" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
-                <path class="flow-line flow-line-3" d="M 0 400 Q 300 350, 600 400 T 1200 400" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
-                <path class="flow-line flow-line-4" d="M 0 550 Q 300 500, 600 550 T 1200 550" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
-                <path class="flow-line flow-line-5" d="M 0 700 Q 300 650, 600 700 T 1200 700" stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+                <path class="flow-line flow-line-1" d="M 0 100 Q 300 50, 600 100 T 1200 100" stroke="url(#lineGradient)"
+                    stroke-width="2" fill="none" filter="url(#glow)" />
+                <path class="flow-line flow-line-2" d="M 0 250 Q 300 200, 600 250 T 1200 250"
+                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
+                <path class="flow-line flow-line-3" d="M 0 400 Q 300 350, 600 400 T 1200 400"
+                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
+                <path class="flow-line flow-line-4" d="M 0 550 Q 300 500, 600 550 T 1200 550"
+                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
+                <path class="flow-line flow-line-5" d="M 0 700 Q 300 650, 600 700 T 1200 700"
+                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
             </svg>
 
             <!-- Hero Content -->
@@ -70,20 +79,23 @@
                 <div class="content-wrapper">
                     <!-- Animated Title -->
                     <h1 class="hero-title-animated" id="heroTitle">Welcome to A2Z Tuition</h1>
-                    
+
                     <!-- Subtitle -->
-                    <p class="hero-subtitle-modern" id="heroSubtitle">Empowering students through quality online education</p>
-                    
+                    <p class="hero-subtitle-modern" id="heroSubtitle">Empowering students through quality online
+                        education</p>
+
                     <!-- Description -->
-                    <p class="hero-description">Join thousands of students and teachers for an enhanced learning experience</p>
-                    
+                    <p class="hero-description">Join thousands of students and teachers for an enhanced learning
+                        experience</p>
+
                     <!-- CTA Buttons -->
                     <div class="hero-cta-group">
                         <button class="btn-glass" id="btn-get-started-hero" onclick="openAuthLoginSelector(event)">
                             <span class="btn-text">Get Started</span>
                             <span class="btn-arrow">→</span>
                         </button>
-                        <button class="btn-outline" onclick="const el = document.getElementById('programs'); if(el) el.scrollIntoView({behavior: 'smooth'})">
+                        <button class="btn-outline"
+                            onclick="const el = document.getElementById('programs'); if(el) el.scrollIntoView({behavior: 'smooth'})">
                             <span class="btn-text">Learn More</span>
                         </button>
                     </div>
@@ -95,19 +107,20 @@
                 <div class="floating-element element-3"></div>
             </div>
         </section>
-        
+
 
         <!-- Central Auth Modal -->
         <div class="auth-modal hidden" id="authModal">
             <div class="modal-overlay" onclick="closeAuthModal()"></div>
             <div class="modal-container">
-                <button class="modal-close" onclick="closeAuthModal()" aria-label="Close modal"><i class="fas fa-times"></i></button>
+                <button class="modal-close" onclick="closeAuthModal()" aria-label="Close modal"><i
+                        class="fas fa-times"></i></button>
                 <div id="authContent"></div>
             </div>
         </div>
 
         <!-- Hidden Form Containers (for modal injection) -->
-        
+
         <!-- Student Login Form -->
         <template id="studentLoginForm">
             <div class="modal-header">
@@ -121,12 +134,16 @@
             <form id="studentLoginFormElement">
                 <div class="form-group">
                     <label for="student-login-phone">Phone Number</label>
-                    <input type="tel" id="student-login-phone" name="phone" placeholder="Enter your 10-digit phone number" pattern="[0-9]{10}" required>
+                    <input type="tel" id="student-login-phone" name="phone"
+                        placeholder="Enter your 10-digit phone number" pattern="[0-9]{10}" required>
                 </div>
                 <div class="form-group">
-                    <label for="student-login-dob">Date of Birth</label>
-                    <input type="date" id="student-login-dob" name="dateOfBirth" required max="2020-01-01">
-                    <small style="color:#888;font-size:0.8rem">Your date of birth is used to verify your identity.</small>
+                    <label for="student-login-dob">Password (Date of Birth)</label>
+                    <input type="password" id="student-login-dob" name="dateOfBirth" placeholder="Enter your password"
+                        required>
+                    <small style="color:#888;font-size:0.8rem">Enter your password
+
+                    </small>
                 </div>
                 <button type="submit" id="studentLoginBtn" class="btn-submit">Log In</button>
             </form>
@@ -148,11 +165,13 @@
             <form id="teacherLoginFormElement">
                 <div class="form-group">
                     <label for="teacher-login-phone">Phone Number</label>
-                    <input type="tel" id="teacher-login-phone" name="phone" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+                    <input type="tel" id="teacher-login-phone" name="phone" placeholder="10-digit mobile number"
+                        pattern="[0-9]{10}" required>
                 </div>
                 <div class="form-group">
                     <label for="teacher-login-password">Password</label>
-                    <input type="password" id="teacher-login-password" name="password" placeholder="Enter your password" required>
+                    <input type="password" id="teacher-login-password" name="password" placeholder="Enter your password"
+                        required>
                 </div>
                 <button type="button" id="teacherLoginBtn" class="btn-submit">Login as Teacher</button>
             </form>
@@ -174,18 +193,20 @@
             <form id="adminLoginFormElement">
                 <div class="form-group">
                     <label for="admin-login-phone">Phone Number</label>
-                    <input type="tel" id="admin-login-phone" name="phone" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+                    <input type="tel" id="admin-login-phone" name="phone" placeholder="10-digit mobile number"
+                        pattern="[0-9]{10}" required>
                 </div>
                 <div class="form-group">
                     <label for="admin-login-password">Password</label>
-                    <input type="password" id="admin-login-password" name="password" placeholder="Enter your password" required>
+                    <input type="password" id="admin-login-password" name="password" placeholder="Enter your password"
+                        required>
                 </div>
                 <button type="button" id="adminLoginBtn" class="btn-submit">Login as Admin</button>
             </form>
             <div class="modal-footer">
                 <p><a href="#" onclick="openAuthModal('login', 'student')">← Back to Login</a></p>
             </div>
-        </template>        <template id="studentSignupForm">
+        </template> <template id="studentSignupForm">
             <div class="modal-header modal-header-dark">
                 <div class="modal-logo"><i class="fas fa-user-plus"></i></div>
                 <h2>Student Registration</h2>
@@ -210,7 +231,8 @@
                 <div class="form-group">
                     <label for="student-signup-dob">Date of Birth *</label>
                     <input type="date" id="student-signup-dob" name="dateOfBirth" required max="2020-01-01">
-                    <small style="color:#888;font-size:0.8rem">Used for login verification instead of a password.</small>
+                    <small style="color:#888;font-size:0.8rem">Used for login verification instead of a
+                        password.</small>
                 </div>
 
                 <!-- Academic Information -->
@@ -241,7 +263,8 @@
                 <div class="form-row" style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
                         <label for="student-signup-phone">Phone Number *</label>
-                        <input type="tel" id="student-signup-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                        <input type="tel" id="student-signup-phone" placeholder="10-digit number" pattern="[0-9]{10}"
+                            required>
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label for="student-signup-email">Email</label>
@@ -298,15 +321,18 @@
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-phone">Phone Number</label>
-                    <input type="tel" id="teacher-signup-phone" name="phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                    <input type="tel" id="teacher-signup-phone" name="phone" placeholder="10-digit number"
+                        pattern="[0-9]{10}" required>
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-password">Password</label>
-                    <input type="password" id="teacher-signup-password" name="password" placeholder="Create a password" required>
+                    <input type="password" id="teacher-signup-password" name="password" placeholder="Create a password"
+                        required>
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-confirm">Confirm Password</label>
-                    <input type="password" id="teacher-signup-confirm" name="confirmPassword" placeholder="Confirm your password" required>
+                    <input type="password" id="teacher-signup-confirm" name="confirmPassword"
+                        placeholder="Confirm your password" required>
                 </div>
                 <button type="submit" id="teacherSignupBtn" class="btn-submit">Sign Up</button>
             </form>
@@ -344,7 +370,8 @@
 
                 <div class="form-group">
                     <label for="phone-input">Phone Number *</label>
-                    <input type="tel" id="phone-input" placeholder="10-digit mobile number" pattern="[0-9]{10}" required>
+                    <input type="tel" id="phone-input" placeholder="10-digit mobile number" pattern="[0-9]{10}"
+                        required>
                 </div>
 
                 <!-- Student-Specific Fields -->
@@ -415,33 +442,33 @@
     <!-- Light mode only: Force light theme -->
     <script>
         document.documentElement.setAttribute('data-theme', 'light');
-        
+
         // Polyfill: Create placeholder functions in global scope for inline event handlers
         // These will be replaced by actual implementations when modules load
         // Retry counter to prevent infinite loops
         const retryAttempt = {};
-        
-        window.openAuthModal = window.openAuthModal || function(type, role) {
+
+        window.openAuthModal = window.openAuthModal || function (type, role) {
             retryAttempt['openAuthModal'] = (retryAttempt['openAuthModal'] || 0) + 1;
             if (retryAttempt['openAuthModal'] <= 2) {
                 setTimeout(() => window.openAuthModal(type, role), 100);
             }
         };
-        window.openAuthLoginSelector = window.openAuthLoginSelector || function(e) {
+        window.openAuthLoginSelector = window.openAuthLoginSelector || function (e) {
             e?.preventDefault?.();
             retryAttempt['openAuthLoginSelector'] = (retryAttempt['openAuthLoginSelector'] || 0) + 1;
             if (retryAttempt['openAuthLoginSelector'] <= 2) {
                 setTimeout(() => window.openAuthLoginSelector(e), 100);
             }
         };
-        window.openAuthSignupSelector = window.openAuthSignupSelector || function(e) {
+        window.openAuthSignupSelector = window.openAuthSignupSelector || function (e) {
             e?.preventDefault?.();
             retryAttempt['openAuthSignupSelector'] = (retryAttempt['openAuthSignupSelector'] || 0) + 1;
             if (retryAttempt['openAuthSignupSelector'] <= 2) {
                 setTimeout(() => window.openAuthSignupSelector(e), 100);
             }
         };
-        window.closeAuthModal = window.closeAuthModal || function() {
+        window.closeAuthModal = window.closeAuthModal || function () {
             // No retry needed for close
         };
     </script>
@@ -449,4 +476,5 @@
     <script type="module" src="./src/core/unified-register.js"></script>
     <script type="module" src="./src/core/index.js"></script>
 </body>
+
 </html>

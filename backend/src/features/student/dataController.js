@@ -69,6 +69,8 @@ export const getStudentDashboard = async (req, res) => {
           userId: student.userId,
           name: student.name,
           classLevel: student.classLevel,
+          section: student.section,
+          rollNumber: student.rollNumber,
           fatherName: student.fatherName,
           joiningDate: student.joiningDate,
           status: student.status,

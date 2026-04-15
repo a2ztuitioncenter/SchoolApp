@@ -1,21 +1,31 @@
 :root {
-    --bg-primary: #f8f9fa;
-    --bg-secondary: #ffffff;
-    --text-main: #1a1a1a;
-    --text-muted: #666666;
-    --border-subtle: #e5e7eb;
-    --accent-blue: #0052cc;
-    --accent-green: #1a7f37;
-    --shadow: 0 1px 3px rgba(0,0,0,0.05);
-    --radius-sm: 12px;
+    --bg-primary: #f8f9fa; /* surface */
+    --bg-secondary: #ffffff; /* surface_container_lowest */
+    --bg-low: #f1f4f5; /* surface_container_low */
+    --text-main: #2d3335;
+    --text-muted: #5a6062;
+    --border-subtle: transparent; /* No lines rule */
+    --ghost-border: rgba(118, 124, 126, 0.15); /* outline_variant at 15% */
+    --accent-blue: #0060b0;
+    --accent-blue-dim: #00549b;
+    --accent-green: #10b981;
+    --shadow: 0 4px 32px -4px rgba(0, 96, 176, 0.06); /* Ambient blue shadow */
+    --radius-sm: 16px;
+    --radius-xl: 24px;
+    --gradient-primary: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-dim) 100%);
 }
-
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 body {
@@ -157,12 +167,13 @@ body {
 }
 
 .card {
-    background: white;
+    background: var(--bg-secondary);
     padding: 1.5rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-xl);
     text-align: center;
-    border: 1px solid var(--border-subtle);
-    transition: transform 0.2s;
+    border: none;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .card:hover { transform: translateY(-5px); }
@@ -173,8 +184,8 @@ body {
 }
 
 .card-clickable:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
     border-color: var(--accent-blue);
 }
 
@@ -231,11 +242,12 @@ body {
 
 /* Homework & List */
 .section-container {
-    background: white;
+    background: var(--bg-secondary);
     padding: 1.5rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    margin-bottom: 1.5rem;
+    border-radius: var(--radius-xl);
+    border: none;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
 }
 
 .homework-item {
@@ -243,7 +255,10 @@ body {
     align-items: center;
     gap: 1rem;
     padding: 1rem 0;
-    border-bottom: 1px solid #F1F2F6;
+    margin-bottom: 12px;
+    border-bottom: none;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
 }
 
 .subject-icon {
@@ -277,11 +292,12 @@ body {
 
 /* Stats (Circular Progress) */
 .stats-card {
-    background: white;
+    background: var(--bg-secondary);
     padding: 2rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    text-align: center;
+    border-radius: var(--radius-xl);
+    border: none;
+    box-shadow: var(--shadow);
+    text-align: left;
     margin-bottom: 1.5rem;
 }
 
@@ -317,49 +333,95 @@ body {
 @media (max-width: 768px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
 
     .action-cards {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .sidebar {
-        width: 200px;
-        padding: 1rem;
+        grid-template-columns: 1fr; /* Stack cards on mobile */
+        gap: 1rem;
     }
 
     .content {
-        padding: 1.5rem;
+        padding: 1rem;
+        padding-bottom: 80px; /* Space for bottom nav */
     }
 
     .top-header {
-        padding: 1rem;
+        padding: 0.75rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 999;
     }
 
+    /* Transform Sidebar into Bottom Bar */
     .sidebar {
         position: fixed;
         left: 0;
-        top: 0;
-        height: 100vh;
-        width: 250px;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
+        bottom: 0;
+        width: 100%;
+        height: 65px;
+        padding: 0;
+        flex-direction: row;
+        border-right: none;
+        border-top: 1px solid var(--border-subtle);
+        background-color: var(--bg-secondary);
         z-index: 1001;
-        padding-top: 5rem; /* Space for close button if needed or header */
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .sidebar .logo {
+        display: none;
     }
 
-    .sidebar.active {
-        transform: translateX(0);
+    .sidebar nav.bottom-nav {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-around;
+        align-items: center;
+    }
+
+    .sidebar nav a {
+        flex-direction: column;
+        padding: 6px 0;
+        margin-bottom: 0;
+        gap: 4px;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        border-radius: 0;
+        flex: 1;
+        color: var(--text-muted);
+    }
+
+    .sidebar nav a.active {
+        color: var(--accent-blue);
+        background: transparent;
+        border-top: 2px solid var(--accent-blue);
+    }
+
+    .sidebar nav a i {
+        font-size: 1.2rem;
+    }
+
+    .sidebar nav a span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .main-wrapper {
         margin-left: 0;
         width: 100%;
-        transition: filter 0.3s ease;
     }
 
     .table-container {
         overflow-x: auto;
+    }
+
+    .mobile-toggle {
+        display: none !important; /* Hide hamburger icon since we use bottom nav */
     }
 }
 
@@ -497,28 +559,31 @@ body {
 .timetable-preview-item {
     font-size: 0.875rem;
     color: var(--text-muted, #636E72);
-    padding: 4px 0;
-    border-bottom: 1px solid var(--border-subtle, #e1e4e8);
+    padding: 8px 0;
+    margin-bottom: 12px;
+    border-bottom: none;
 }
 
 .timetable-preview-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 /* ============================================
    NOTIFICATION CARDS
    ============================================ */
 .notification-card {
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--border-subtle, #e1e4e8);
-    border-radius: 6px;
+    padding: 1.25rem;
+    border: none;
+    border-radius: var(--radius-sm);
     background: var(--bg-secondary, #ffffff);
-    margin-bottom: 0.75rem;
-    transition: background 0.15s;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+    transition: background 0.15s, transform 0.2s;
 }
 
 .notification-card:hover {
-    background: var(--bg-hover, #f6f8fa);
+    transform: scale(1.02);
+    background: var(--bg-secondary);
 }
 
 .notification-header {
@@ -757,40 +822,37 @@ body {
 
 .timetable-table {
   width: 100%;
-  border-collapse: collapse;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-collapse: separate;
+  border-spacing: 0 12px;
+  background: transparent;
+  border: none;
 }
 
 .timetable-table thead {
-  background: linear-gradient(135deg, var(--accent-blue) 0%, #0043a0 100%);
-  color: white;
+  background: transparent;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
 .timetable-table th {
-  padding: 1rem 1.25rem;
+  padding: 0.5rem 1.25rem;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
 }
 
 .timetable-table tbody tr {
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   transition: all 0.2s ease;
 }
 
 .timetable-table tbody tr:hover {
-  background-color: var(--bg-primary);
-}
-
-.timetable-table tbody tr:last-child {
-  border-bottom: none;
+  transform: scale(1.02);
+  box-shadow: var(--shadow);
 }
 
 .timetable-table td {

@@ -219,12 +219,12 @@ async function handleStudentLoginModal(e) {
     if (e) e.preventDefault();
     const modal = document.getElementById('authModal');
     const phone = modal.querySelector('#student-login-phone')?.value?.trim();
-    const dobRaw = modal.querySelector('#student-login-dob')?.value; // YYYY-MM-DD from date input
+    const dateOfBirth = modal.querySelector('#student-login-dob')?.value?.trim();
     const errorDiv = modal.querySelector('#studentLoginError');
     const btn = modal.querySelector('#studentLoginBtn');
 
-    if (!phone || !dobRaw) {
-        showError(errorDiv, 'Phone and date of birth are required');
+    if (!phone || !dateOfBirth) {
+        showError(errorDiv, 'Phone and password are required');
         return;
     }
 
@@ -232,11 +232,6 @@ async function handleStudentLoginModal(e) {
         showError(errorDiv, 'Phone must be at least 10 digits');
         return;
     }
-
-    // Format YYYY-MM-DD -> DD/MM/YY for backend
-    const [yyyy, mm, dd] = dobRaw.split('-');
-    const yy = yyyy.slice(2);
-    const dateOfBirth = `${dd}/${mm}/${yy}`;
 
     btn.disabled = true;
     btn.textContent = 'Logging in...';

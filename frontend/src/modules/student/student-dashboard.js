@@ -92,8 +92,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Fetch and populate dashboard data
     const dashboardData = await loadDashboardData(userId);
-    if (dashboardData && dashboardData.data && dashboardData.data.profile) {
-        const profile = dashboardData.data.profile;
+    if (dashboardData && dashboardData.profile) {
+        const profile = dashboardData.profile;
         // Student Profile loaded
         
         // Populate profile dropdown with initial values
@@ -107,11 +107,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sectionEl) sectionEl.textContent = profile.section || 'N/A';
         
         const idEl = document.getElementById('dropdown-student-id');
-        if (idEl) idEl.textContent = profile.id || 'N/A';
+        if (idEl) idEl.textContent = profile.rollNumber || profile.id || 'N/A';
         
         const initialEl = document.getElementById('student-avatar-initial');
-        const nameParts = (profile.name || 'S').split(' ');
-        if (initialEl) initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
+        const nameParts = (profile.name || 'S').trim().split(' ');
+        if (initialEl && nameParts.length > 0 && nameParts[0]) {
+            initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
+        }
         
         await loadMaterials(profile.classLevel);
     }
