@@ -356,8 +356,8 @@ router.get('/timetable', async (req, res) => {
 router.post('/timetable', async (req, res) => {
     const { dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId } = req.body;
     try {
-        if (!dayOfWeek || !startTime || !endTime || !subject || !classLevel || !teacherId) {
-            return res.status(400).json({ error: 'Missing required fields' });
+        if (!dayOfWeek || !startTime || !endTime || !subject || !classLevel || !section || !teacherId) {
+            return res.status(400).json({ error: 'Missing required fields, including section.' });
         }
 
         // Collision Check: Find any class for the SAME teacher on the SAME day that conflicts in time.
@@ -377,7 +377,7 @@ router.post('/timetable', async (req, res) => {
         const result = await req.db.query(
             `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", section, "teacherId", "schoolId")
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [dayOfWeek, startTime, endTime, subject, classLevel, section || null, teacherId, 'school-001']
+            [dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId, 'school-001']
         );
         res.status(201).json({ success: true, timetable: result.rows[0] });
     } catch (err) {

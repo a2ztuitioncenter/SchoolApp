@@ -3172,12 +3172,12 @@ window.saveTimetableEntry = async function() {
         endTime: document.getElementById('tt-end')?.value,
         subject: document.getElementById('tt-subject')?.value.trim(),
         classLevel: document.getElementById('tt-class')?.value,
-        section: document.getElementById('tt-section')?.value || null,
+        section: document.getElementById('tt-section')?.value,
         teacherId: document.getElementById('tt-teacher')?.value,
     };
 
-    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.teacherId) {
-        showErrorAlert('All fields are required.');
+    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.section || !payload.teacherId) {
+        showErrorAlert('All fields including Section are required.');
         return;
     }
 

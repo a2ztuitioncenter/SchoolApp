@@ -8,8 +8,9 @@ const pool = new pg.Pool({
 
 async function run() {
     try {
-        await pool.query('ALTER TABLE timetable ADD COLUMN IF NOT EXISTS section VARCHAR(20);');
-        console.log('Added section to timetable');
+        await pool.query("UPDATE timetable SET section = 'A' WHERE section IS NULL OR section = '';");
+        await pool.query('ALTER TABLE timetable ALTER COLUMN section SET NOT NULL;');
+        console.log('Altered table constraint!');
     } catch(e) {
         console.error(e);
     }

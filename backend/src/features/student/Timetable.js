@@ -8,6 +8,7 @@ export const timetableModel = {
         "endTime" TIME NOT NULL,
         subject VARCHAR(100) NOT NULL,
         "classLevel" VARCHAR(50) NOT NULL,
+        section VARCHAR(20) NOT NULL,
         "teacherId" INTEGER REFERENCES users(id),
         "schoolId" VARCHAR(50) DEFAULT 'school-001',
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
