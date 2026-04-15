@@ -3106,6 +3106,8 @@ window.closeAllTimetableMenus = function() {
     document.querySelectorAll('[id^="tt-menu-"]').forEach(m => m.classList.remove('open'));
 };
 
+let allTeachersForTimetable = [];
+
 async function loadTimetableDropdowns() {
     try {
         const [classesRes, usersRes] = await Promise.all([
@@ -3120,11 +3122,42 @@ async function loadTimetableDropdowns() {
             classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
-        // Populate Teacher Dropdown
-        const teachers = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
+        // Store teachers globally for filtering
+        allTeachersForTimetable = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
+        
         const teacherSel = document.getElementById('tt-teacher');
+        
+        // Initial populate: all teachers or disabled until class is selected
         if (teacherSel) {
-            teacherSel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.id}">${t.phone}</option>`).join('');
+            teacherSel.innerHTML = '<option value="">Select Class First</option>';
+            teacherSel.disabled = true;
+        }
+
+        // Add event listener to filter teachers when class is selected
+        if (classSel) {
+            classSel.addEventListener('change', function() {
+                const selectedClass = this.value;
+                if (!selectedClass) {
+                    teacherSel.innerHTML = '<option value="">Select Class First</option>';
+                    teacherSel.disabled = true;
+                    return;
+                }
+
+                // Filter teachers who have the selected class in their classesAssigned array
+                const availableTeachers = allTeachersForTimetable.filter(t => {
+                    if (!t.classesAssigned || t.classesAssigned.length === 0) return false;
+                    return t.classesAssigned.includes(selectedClass);
+                });
+
+                if (availableTeachers.length > 0) {
+                    teacherSel.disabled = false;
+                    teacherSel.innerHTML = '<option value="">Select Teacher</option>' + 
+                        availableTeachers.map(t => `<option value="${t.id}">${t.name || t.phone}</option>`).join('');
+                } else {
+                    teacherSel.disabled = true;
+                    teacherSel.innerHTML = '<option value="">No Teacher Available</option>';
+                }
+            });
         }
     } catch (err) {
         console.error('Failed to load dropdowns:', err);
@@ -3139,6 +3172,7 @@ window.saveTimetableEntry = async function() {
         endTime: document.getElementById('tt-end')?.value,
         subject: document.getElementById('tt-subject')?.value.trim(),
         classLevel: document.getElementById('tt-class')?.value,
+        section: document.getElementById('tt-section')?.value || null,
         teacherId: document.getElementById('tt-teacher')?.value,
     };
 
@@ -3249,14 +3283,15 @@ function renderTimetableByClass(items) {
         return;
     }
 
-    // Group entries by class level
+    // Group entries by class level and section
     const classByLevel = {};
     filteredEntries.forEach(entry => {
         const classLevel = entry.classLevel || 'Unassigned';
-        if (!classByLevel[classLevel]) {
-            classByLevel[classLevel] = [];
+        const sectionKey = entry.section ? `${classLevel} (${entry.section})` : classLevel;
+        if (!classByLevel[sectionKey]) {
+            classByLevel[sectionKey] = [];
         }
-        classByLevel[classLevel].push(entry);
+        classByLevel[sectionKey].push(entry);
     });
 
     // Sort each class's entries by start time
@@ -3271,14 +3306,14 @@ function renderTimetableByClass(items) {
     let html = '';
 
     // Create cards for each class
-    Object.keys(classByLevel).sort().forEach(classLevel => {
-        const classEntries = classByLevel[classLevel];
+    Object.keys(classByLevel).sort().forEach(groupKey => {
+        const classEntries = classByLevel[groupKey];
         
         html += `
             <div class="class-timetable-card">
                 <div class="class-timetable-header">
                     <i class="fas fa-chalkboard"></i>
-                    <h4 class="class-timetable-title">Class ${classLevel}</h4>
+                    <h4 class="class-timetable-title">Class ${groupKey}</h4>
                 </div>
                 <table class="class-timetable-table">
                     <thead>

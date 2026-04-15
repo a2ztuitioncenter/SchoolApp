@@ -16,7 +16,17 @@ router.get('/users', async (req, res) => {
             'SELECT id, name, phone, email, role, status, "teacherId", "isActive", "createdAt" FROM users WHERE role IN ($1, $2) ORDER BY "createdAt" DESC',
             ['teacher', 'staff']
         );
-        res.json({ success: true, users: result.rows });
+        const users = result.rows;
+
+        // Fetch classes assigned for each teacher
+        for (let user of users) {
+             if (user.role === 'teacher' || user.role === 'staff') {
+                  const classRes = await req.db.query('SELECT "classLevel" FROM teacher_class_assignment WHERE "teacherId" = $1', [user.id]);
+                  user.classesAssigned = classRes.rows.map(r => r.classLevel);
+             }
+        }
+
+        res.json({ success: true, users: users });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch users' });
     }
@@ -344,7 +354,7 @@ router.get('/timetable', async (req, res) => {
 });
 
 router.post('/timetable', async (req, res) => {
-    const { dayOfWeek, startTime, endTime, subject, classLevel, teacherId } = req.body;
+    const { dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId } = req.body;
     try {
         if (!dayOfWeek || !startTime || !endTime || !subject || !classLevel || !teacherId) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -365,9 +375,9 @@ router.post('/timetable', async (req, res) => {
         }
 
         const result = await req.db.query(
-            `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", "teacherId", "schoolId")
-             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-            [dayOfWeek, startTime, endTime, subject, classLevel, teacherId, 'school-001']
+            `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", section, "teacherId", "schoolId")
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [dayOfWeek, startTime, endTime, subject, classLevel, section || null, teacherId, 'school-001']
         );
         res.status(201).json({ success: true, timetable: result.rows[0] });
     } catch (err) {
