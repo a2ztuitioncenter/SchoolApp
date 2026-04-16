@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A2Z Tuition - Premier Online Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./src/assets/css/index.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
@@ -12,99 +13,125 @@
 
 <body>
 
-    <header>
-        <div class="header-top">
-            <div class="container">
-                <div class="logo">
-                    <span>A2Z Tuition</span>
-                </div>
-                <nav style="display: flex; align-items: center; gap: 20px;">
-                    <ul>
-                        <li><a id="header-login" href="#" onclick="openAuthLoginSelector(event)"><i
-                                    class="fa fa-user"></i> Log in</a></li>
-                        <li><a id="header-signup" href="#" onclick="openAuthSignupSelector(event)"><i
-                                    class="fa fa-plus-square"></i> Sign up</a></li>
-                    </ul>
-                </nav>
+    <header class="erp-header">
+        <div class="container erp-header-container">
+            <div class="erp-logo">
+                <i class="fa fa-graduation-cap"></i>
+                <span>A2Z Tuition</span>
             </div>
+            <nav class="erp-nav-desktop">
+                <ul>
+                    <li><a href="#programs">Programs</a></li>
+                    <li><a href="#resources">Resources</a></li>
+                    <li><a href="#contact">Contact Us</a></li>
+                    <li><a href="#privacy">Privacy</a></li>
+                </ul>
+            </nav>
+            <div class="erp-header-auth">
+                <a class="erp-btn erp-btn-ghost" id="header-login" href="#" onclick="openAuthLoginSelector(event)">Log in</a>
+                <a class="erp-btn erp-btn-primary" id="header-signup" href="#" onclick="openAuthSignupSelector(event)">Sign up</a>
+            </div>
+            <button class="erp-mobile-menu-btn" aria-label="Menu" onclick="document.body.classList.toggle('menu-open')">
+                <i class="fa fa-bars"></i>
+            </button>
         </div>
-        <div class="header-bottom">
-            <div class="container">
-                <nav>
-                    <ul>
-                        <li><a href="#programs">Programs</a></li>
-                        <li><a href="#resources">Resources</a></li>
-                        <li><a href="#contact">Contact Us</a></li>
-                        <li><a href="#privacy">Privacy</a></li>
-                    </ul>
-                </nav>
-            </div>
+        <div class="erp-mobile-nav">
+            <ul>
+                <li><a href="#programs">Programs</a></li>
+                <li><a href="#resources">Resources</a></li>
+                <li><a href="#contact">Contact Us</a></li>
+                <li><a href="#" onclick="openAuthLoginSelector(event)">Log in</a></li>
+                <li><a href="#" onclick="openAuthSignupSelector(event)">Sign up</a></li>
+            </ul>
         </div>
     </header>
 
     <main>
-        <!-- Modern Animated Hero Section -->
-        <section class="hero-animated" id="heroSection">
-            <!-- Animated Background SVG -->
-            <svg class="hero-background" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
-                <defs>
-                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" style="stop-color:#0052cc;stop-opacity:0.4" />
-                        <stop offset="50%" style="stop-color:#7c3aed;stop-opacity:0.6" />
-                        <stop offset="100%" style="stop-color:#0052cc;stop-opacity:0.4" />
-                    </linearGradient>
-                    <filter id="glow">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                        <feMerge>
-                            <feMergeNode in="coloredBlur" />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                    </filter>
-                </defs>
-                <!-- Animated flowing lines -->
-                <path class="flow-line flow-line-1" d="M 0 100 Q 300 50, 600 100 T 1200 100" stroke="url(#lineGradient)"
-                    stroke-width="2" fill="none" filter="url(#glow)" />
-                <path class="flow-line flow-line-2" d="M 0 250 Q 300 200, 600 250 T 1200 250"
-                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
-                <path class="flow-line flow-line-3" d="M 0 400 Q 300 350, 600 400 T 1200 400"
-                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
-                <path class="flow-line flow-line-4" d="M 0 550 Q 300 500, 600 550 T 1200 550"
-                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
-                <path class="flow-line flow-line-5" d="M 0 700 Q 300 650, 600 700 T 1200 700"
-                    stroke="url(#lineGradient)" stroke-width="2" fill="none" filter="url(#glow)" />
-            </svg>
+        <!-- Modern ERP Hero Section -->
+        <section class="erp-hero" id="heroSection">
+            <div class="container erp-hero-container">
+                <div class="erp-badge">A2Z Enterprise Education</div>
+                <h1 class="erp-title">Manage Your School <span>Efficiently.</span></h1>
+                <p class="erp-subtitle">A modern ecosystem designed for high-performance learning and academic excellence. Empowering students and streamlining faculty management.</p>
+                <div class="erp-hero-cta">
+                    <button class="erp-btn erp-btn-primary erp-btn-large" id="btn-get-started-hero" onclick="openAuthLoginSelector(event)">
+                        Get Started <i class="fa fa-arrow-right"></i>
+                    </button>
+                    <a href="#modules" class="erp-btn erp-btn-outline erp-btn-large">Learn More</a>
+                </div>
+            </div>
+        </section>
 
-            <!-- Hero Content -->
-            <div class="hero-content-modern">
-                <div class="content-wrapper">
-                    <!-- Animated Title -->
-                    <h1 class="hero-title-animated" id="heroTitle">Welcome to A2Z Tuition</h1>
+        <!-- ERP Modules Overview -->
+        <section class="erp-modules-section" id="modules">
+            <div class="container">
+                <div class="erp-section-header">
+                    <h2>Enterprise Modules</h2>
+                    <p>Comprehensive solutions for every aspect of your educational institution.</p>
+                </div>
+                
+                <div class="erp-grid">
+                    <div class="erp-card erp-card-featured">
+                        <div class="erp-card-icon" style="background-color: var(--primary-light); color: var(--primary);">
+                            <i class="fa fa-user-graduate"></i>
+                        </div>
+                        <div class="erp-card-content">
+                            <h3>Students</h3>
+                            <p>Comprehensive management for student profiles, personalized learning paths, and progress tracking analytics.</p>
+                            <a href="#" class="erp-card-link" onclick="openAuthLoginSelector(event)">Explore Module <i class="fa fa-arrow-right"></i></a>
+                        </div>
+                    </div>
 
-                    <!-- Subtitle -->
-                    <p class="hero-subtitle-modern" id="heroSubtitle">Empowering students through quality online
-                        education</p>
+                    <div class="erp-card">
+                        <div class="erp-card-icon" style="background-color: var(--secondary-light); color: var(--secondary);">
+                            <i class="fa fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="erp-card-content">
+                            <h3>Teachers & Staff</h3>
+                            <p>Centralized hub for faculty scheduling, resource sharing, and performance monitoring.</p>
+                        </div>
+                    </div>
 
-                    <!-- Description -->
-                    <p class="hero-description">Join thousands of students and teachers for an enhanced learning
-                        experience</p>
+                    <div class="erp-card">
+                        <div class="erp-card-icon" style="background-color: #f1f5f9; color: #475569;">
+                            <i class="fa fa-building"></i>
+                        </div>
+                        <div class="erp-card-content">
+                            <h3>Admin Control</h3>
+                            <p>Fine-grained access controls, global dashboards, and system-wide configurations.</p>
+                        </div>
+                    </div>
 
-                    <!-- CTA Buttons -->
-                    <div class="hero-cta-group">
-                        <button class="btn-glass" id="btn-get-started-hero" onclick="openAuthLoginSelector(event)">
-                            <span class="btn-text">Get Started</span>
-                            <span class="btn-arrow">→</span>
-                        </button>
-                        <button class="btn-outline"
-                            onclick="const el = document.getElementById('programs'); if(el) el.scrollIntoView({behavior: 'smooth'})">
-                            <span class="btn-text">Learn More</span>
-                        </button>
+                    <div class="erp-card">
+                        <div class="erp-card-icon" style="background-color: #f0fdf4; color: #15803d;">
+                            <i class="fa fa-wallet"></i>
+                        </div>
+                        <div class="erp-card-content">
+                            <h3>Fees & Billing</h3>
+                            <p>Automated billing cycles, secure payment gateways, and comprehensive financial reporting.</p>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <!-- Floating Elements -->
-                <div class="floating-element element-1"></div>
-                <div class="floating-element element-2"></div>
-                <div class="floating-element element-3"></div>
+        <!-- Social Proof Stats -->
+        <section class="erp-stats">
+            <div class="container">
+                <div class="erp-stats-grid">
+                    <div class="erp-stat-item">
+                        <div class="stat-number">15k+</div>
+                        <div class="stat-label">Active Students</div>
+                    </div>
+                    <div class="erp-stat-item">
+                        <div class="stat-number">250+</div>
+                        <div class="stat-label">Expert Educators</div>
+                    </div>
+                    <div class="erp-stat-item">
+                        <div class="stat-number">4.9/5</div>
+                        <div class="stat-label">Average Satisfaction Rating</div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -435,8 +462,46 @@
         </template>
     </main>
 
-    <footer>
-
+    <footer class="erp-footer">
+        <div class="container erp-footer-container">
+            <div class="erp-footer-brand">
+                <div class="erp-logo"><i class="fa fa-graduation-cap"></i> A2Z Tuition</div>
+                <p>Enterprise education management solutions for the modern academic institution.</p>
+            </div>
+            <div class="erp-footer-links">
+                <div class="erp-footer-col">
+                    <h4>Platform</h4>
+                    <ul>
+                        <li><a href="#programs">Programs</a></li>
+                        <li><a href="#resources">Resources</a></li>
+                    </ul>
+                </div>
+                <div class="erp-footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="erp-footer-col">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#privacy">Privacy Policy</a></li>
+                        <li><a href="#terms">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="erp-footer-bottom">
+            <div class="container">
+                <p>&copy; 2026 A2Z Tuition. All rights reserved.</p>
+                <div class="erp-social-links">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                    <a href="#"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
     </footer>
 
     <!-- Light mode only: Force light theme -->
