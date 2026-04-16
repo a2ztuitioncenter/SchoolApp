@@ -153,12 +153,13 @@ function rebindFormListeners(type, role) {
         if (role === 'student') {
             const form = modal.querySelector('#studentSignupFormElement');
             if (form) form.addEventListener('submit', handleStudentSignupModal);
+            setupUsernameValidation(modal, '#student-signup-username', '#student-signup-username-status');
         } else if (role === 'teacher') {
             const form = modal.querySelector('#teacherSignupFormElement');
             if (form) form.addEventListener('submit', handleTeacherSignupModal);
+            setupUsernameValidation(modal, '#teacher-signup-username', '#teacher-signup-username-status');
         } else if (role === 'unified') {
             // Unified signup form is handled by its own module (unified-register.js)
-            // Just mark that it's loaded
         }
     }
 }
@@ -218,18 +219,13 @@ function setupModalCloseHandlers() {
 async function handleStudentLoginModal(e) {
     if (e) e.preventDefault();
     const modal = document.getElementById('authModal');
-    const phone = modal.querySelector('#student-login-phone')?.value?.trim();
+    const identifier = modal.querySelector('#student-login-identifier')?.value?.trim();
     const dateOfBirth = modal.querySelector('#student-login-dob')?.value?.trim();
     const errorDiv = modal.querySelector('#studentLoginError');
     const btn = modal.querySelector('#studentLoginBtn');
 
-    if (!phone || !dateOfBirth) {
-        showError(errorDiv, 'Phone and password are required');
-        return;
-    }
-
-    if (phone.length < 10) {
-        showError(errorDiv, 'Phone must be at least 10 digits');
+    if (!identifier || !dateOfBirth) {
+        showError(errorDiv, 'Phone/Username and password are required');
         return;
     }
 
@@ -237,7 +233,7 @@ async function handleStudentLoginModal(e) {
     btn.textContent = 'Logging in...';
 
     try {
-        const response = await window.authAPI.login(phone, dateOfBirth);
+        const response = await window.authAPI.login(identifier, dateOfBirth);
 
         if (response.success) {
             window.setAuth({
@@ -245,7 +241,7 @@ async function handleStudentLoginModal(e) {
                 role: 'student',
                 userId: response.userId || response.user?.id,
                 name: response.student?.name || '',
-                phone: phone,
+                phone: response.user?.phone || identifier,
                 token: response.token
             });
 
@@ -274,20 +270,13 @@ async function handleStudentLoginModal(e) {
 async function handleTeacherLoginModal(e) {
     if (e) e.preventDefault?.();
     const modal = document.getElementById('authModal');
-    const phone = modal.querySelector('#teacher-login-phone')?.value?.trim();
+    const identifier = modal.querySelector('#teacher-login-identifier')?.value?.trim();
     const password = modal.querySelector('#teacher-login-password')?.value?.trim();
     const errorDiv = modal.querySelector('#teacherLoginError');
     const btn = modal.querySelector('#teacherLoginBtn');
     
-    console.log('🔹 Teacher Login attempt:', { phone: phone ? '***' : 'empty' });
-    
-    if (!phone || !password) {
-        showError(errorDiv, 'Phone and password are required');
-        return;
-    }
-    
-    if (phone.length < 10) {
-        showError(errorDiv, 'Phone must be 10 digits');
+    if (!identifier || !password) {
+        showError(errorDiv, 'Phone/Username and password are required');
         return;
     }
     
@@ -295,16 +284,15 @@ async function handleTeacherLoginModal(e) {
     btn.textContent = 'Verifying...';
     
     try {
-        const response = await window.authAPI.teacherLogin(phone, password);
+        const response = await window.authAPI.teacherLogin(identifier, password);
         
         if (response.success && response.user.role === 'teacher') {
-            console.log('✅ Teacher Login Success:', response.userId);
             window.setAuth({
                 isLoggedIn: true,
                 role: 'teacher',
                 userId: response.user?.id || response.userId,
                 name: response.user?.name || '',
-                phone: phone,
+                phone: response.user?.phone || identifier,
                 token: response.token
             });
             
@@ -317,7 +305,6 @@ async function handleTeacherLoginModal(e) {
                 window.location.href = '/teacher-dashboard.html';
             }, 1500);
         } else {
-            console.warn('❌ Teacher Login Failed:', response.error);
             showError(errorDiv, 'Access Denied or invalid credentials');
             btn.disabled = false;
             btn.textContent = 'Login as Teacher';
@@ -334,20 +321,13 @@ async function handleTeacherLoginModal(e) {
 async function handleAdminLoginModal(e) {
     if (e) e.preventDefault?.();
     const modal = document.getElementById('authModal');
-    const phone = modal.querySelector('#admin-login-phone')?.value?.trim();
+    const identifier = modal.querySelector('#admin-login-identifier')?.value?.trim();
     const password = modal.querySelector('#admin-login-password')?.value?.trim();
     const errorDiv = modal.querySelector('#adminLoginError');
     const btn = modal.querySelector('#adminLoginBtn');
     
-    console.log('🔹 Admin Login attempt:', { phone: phone ? '***' : 'empty' });
-    
-    if (!phone || !password) {
-        showError(errorDiv, 'Phone and password are required');
-        return;
-    }
-    
-    if (phone.length < 10) {
-        showError(errorDiv, 'Phone must be 10 digits');
+    if (!identifier || !password) {
+        showError(errorDiv, 'Phone/Username and password are required');
         return;
     }
     
@@ -355,16 +335,15 @@ async function handleAdminLoginModal(e) {
     btn.textContent = 'Verifying...';
     
     try {
-        const response = await window.authAPI.adminLogin(phone, password);
+        const response = await window.authAPI.adminLogin(identifier, password);
         
         if (response.success && response.user.role === 'admin') {
-            console.log('✅ Admin Login Success:', response.userId);
             window.setAuth({
                 isLoggedIn: true,
                 role: 'admin',
                 userId: response.user?.id || response.userId,
                 name: response.user?.name || '',
-                phone: phone,
+                phone: response.user?.phone || identifier,
                 token: response.token
             });
             
@@ -377,7 +356,6 @@ async function handleAdminLoginModal(e) {
                 window.location.href = '/admin-dashboard.html';
             }, 1500);
         } else {
-            console.warn('❌ Admin Login Failed:', response.error);
             showError(errorDiv, 'Access Denied or invalid credentials');
             btn.disabled = false;
             btn.textContent = 'Login as Admin';
@@ -399,6 +377,7 @@ async function handleStudentSignupModal(e) {
     const lastName     = form.querySelector('#student-signup-lastName')?.value?.trim();
     const phone        = form.querySelector('#student-signup-phone')?.value?.trim();
     const email        = form.querySelector('#student-signup-email')?.value?.trim();
+    const username     = form.querySelector('#student-signup-username')?.value?.trim();
     const dobRaw       = form.querySelector('#student-signup-dob')?.value; // YYYY-MM-DD
     const classLevel   = form.querySelector('#student-signup-class')?.value;
     const section      = form.querySelector('#student-signup-section')?.value;
@@ -426,6 +405,18 @@ async function handleStudentSignupModal(e) {
         return;
     }
 
+    // Validate username if provided
+    if (username) {
+        if (username.length < 5) {
+            showError(errorDiv, 'Username must be at least 5 characters');
+            return;
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            showError(errorDiv, 'Username can only contain letters, numbers, and underscores');
+            return;
+        }
+    }
+
     // Format YYYY-MM-DD -> DD/MM/YY
     const [yyyy, mm, dd] = dobRaw.split('-');
     const yy = yyyy.slice(2);
@@ -444,7 +435,8 @@ async function handleStudentSignupModal(e) {
             classLevel,
             section,
             fatherName,
-            motherName
+            motherName,
+            username: username || undefined
         });
 
         if (response.success) {
@@ -471,6 +463,7 @@ async function handleTeacherSignupModal(e) {
     
     const role = form.querySelector('#teacher-signup-role')?.value?.trim();
     const name = form.querySelector('#teacher-signup-name')?.value?.trim();
+    const username = form.querySelector('#teacher-signup-username')?.value?.trim();
     const email = form.querySelector('#teacher-signup-email')?.value?.trim();
     const phone = form.querySelector('#teacher-signup-phone')?.value?.trim();
     const password = form.querySelector('#teacher-signup-password')?.value?.trim();
@@ -479,21 +472,23 @@ async function handleTeacherSignupModal(e) {
     const successDiv = form.querySelector('#teacherSignupSuccess');
     const btn = form.querySelector('#teacherSignupBtn');
     
-    console.log('🔹 Teacher Signup attempt:', { role, name, email, phone });
-    
     clearMessages(errorDiv, successDiv);
     
     if (!role || !name || !email || !phone || !password || !confirmPassword) {
-        console.warn('⚠️ Teacher Signup missing fields:', { 
-            role: role || 'MISSING',
-            name: name || 'MISSING', 
-            email: email || 'MISSING', 
-            phone: phone || 'MISSING', 
-            password: password ? 'OK' : 'MISSING', 
-            confirmPassword: confirmPassword ? 'OK' : 'MISSING' 
-        });
         showError(errorDiv, 'All fields are required');
         return;
+    }
+
+    // Validate username if provided
+    if (username) {
+        if (username.length < 5) {
+            showError(errorDiv, 'Username must be at least 5 characters');
+            return;
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            showError(errorDiv, 'Username can only contain letters, numbers, and underscores');
+            return;
+        }
     }
     
     if (password !== confirmPassword) {
@@ -511,7 +506,8 @@ async function handleTeacherSignupModal(e) {
             phone,
             password,
             confirmPassword,
-            role
+            role,
+            username: username || undefined
         });
         
         if (response.success) {
@@ -534,6 +530,56 @@ async function handleTeacherSignupModal(e) {
 /**
  * Helper functions
  */
+
+/**
+ * Setup real-time username validation on blur
+ */
+function setupUsernameValidation(modal, inputSelector, statusSelector) {
+    const input = modal.querySelector(inputSelector);
+    const status = modal.querySelector(statusSelector);
+    if (!input || !status) return;
+
+    let debounceTimer;
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const val = input.value.trim();
+
+        if (!val) {
+            status.textContent = 'Letters, numbers, and underscores only. Optional but recommended.';
+            status.style.color = '#888';
+            return;
+        }
+        if (val.length < 5) {
+            status.textContent = 'Must be at least 5 characters';
+            status.style.color = '#dc2626';
+            return;
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(val)) {
+            status.textContent = 'Only letters, numbers, and underscores allowed';
+            status.style.color = '#dc2626';
+            return;
+        }
+
+        status.textContent = 'Checking availability...';
+        status.style.color = '#888';
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                const res = await window.authAPI.checkUsername(val);
+                if (res.available) {
+                    status.textContent = '✅ Username is available';
+                    status.style.color = '#16a34a';
+                } else {
+                    status.textContent = '❌ ' + (res.error || 'Username is taken');
+                    status.style.color = '#dc2626';
+                }
+            } catch {
+                status.textContent = 'Could not check availability';
+                status.style.color = '#888';
+            }
+        }, 500);
+    });
+}
 
 function showError(element, message) {
     if (!element) return;

@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getUserByPhone, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels } from './User.js';
+import { getUserByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 
@@ -27,14 +27,28 @@ const generateToken = (userId, role, phone) => {
   );
 };
 
-// Student login endpoint
+/**
+ * Username validation helper
+ * Rules: 5-50 chars, a-z A-Z 0-9 underscore only, no spaces
+ */
+const validateUsername = (username) => {
+  if (!username || typeof username !== 'string') return 'Username is required';
+  username = username.trim();
+  if (username.length < 5) return 'Username must be at least 5 characters';
+  if (username.length > 50) return 'Username must be at most 50 characters';
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) return 'Username can only contain letters, numbers, and underscores';
+  return null; // valid
+};
+
+// Student login endpoint — supports phone OR username + DOB
 router.post('/login', async (req, res) => {
-  const { phone, dateOfBirth } = req.body;
+  const { phone, identifier, dateOfBirth } = req.body;
+  const loginId = identifier || phone; // support both field names
   const pool = req.db;
 
   try {
-    if (!phone || !dateOfBirth) {
-      return res.status(400).json({ error: 'Phone and date of birth are required' });
+    if (!loginId || !dateOfBirth) {
+      return res.status(400).json({ error: 'Phone/Username and date of birth are required' });
     }
 
     // Parse DD/MM/YY -> YYYY-MM-DD
@@ -42,20 +56,19 @@ router.post('/login', async (req, res) => {
     const parts = dateOfBirth.split('/');
     if (parts.length === 3) {
       const [dd, mm, yy] = parts;
-      // Support both YY (2-digit) and YYYY (4-digit)
       const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
       dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
     } else {
       return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
     }
 
-    // Find user by phone
-    const user = await getUserByPhone(pool, phone);
+    // Find user by phone OR username
+    const user = await getUserByPhoneOrUsername(pool, loginId);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Students only: authenticate via DOB
+    // Students only
     const userRole = user.role ? user.role.toLowerCase() : '';
     if (userRole !== 'student') {
       return res.status(403).json({ error: 'Unauthorized role' });
@@ -67,7 +80,6 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
     }
 
-    // Check if user account is active
     if (user.isActive === false) {
       return res.status(403).json({ error: 'Your account has been deactivated. Please contact admin.' });
     }
@@ -82,9 +94,8 @@ router.post('/login', async (req, res) => {
     }
 
     const studentData = await getStudentByUserId(pool, user.id);
-    const token = generateToken(user.id, user.role, phone);
+    const token = generateToken(user.id, user.role, user.phone);
 
-    // Return DOB-free response
     res.json({
       success: true,
       message: 'Login successful',
@@ -104,22 +115,28 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register New Students (DOB-based, no password required)
+// Register New Students (DOB-based, no password required) — now with username
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, dateOfBirth, classLevel, section, fatherName, motherName, email } = req.body;
+  const { firstName, lastName, phone, dateOfBirth, classLevel, section, fatherName, motherName, email, username } = req.body;
   const pool = req.db;
 
   try {
-    // Validation — no password required for students
     if (!firstName || !phone || !dateOfBirth || !classLevel || !section || !fatherName || !motherName) {
       return res.status(400).json({ error: 'Missing required fields (Name, Phone, Date of Birth, Class, Section, and Parent names are mandatory)' });
+    }
+
+    // Validate username if provided
+    if (username) {
+      const usernameError = validateUsername(username);
+      if (usernameError) return res.status(400).json({ error: usernameError });
+      const taken = await isUsernameTaken(pool, username);
+      if (taken) return res.status(409).json({ error: 'Username already taken' });
     }
 
     if (!/^\d{10}$/.test(phone)) {
       return res.status(400).json({ error: 'Phone must be a 10-digit number' });
     }
 
-    // Parse DD/MM/YY -> ISO YYYY-MM-DD
     let dobISO;
     const parts = dateOfBirth.split('/');
     if (parts.length === 3) {
@@ -132,13 +149,11 @@ router.post('/register', async (req, res) => {
 
     const fullName = `${firstName} ${lastName || ''}`.trim();
 
-    // Check if phone number already exists
     const existingUser = await getUserByPhone(pool, phone);
     if (existingUser) {
       return res.status(409).json({ error: 'Phone number already registered' });
     }
 
-    // Create user account with a random dummy password (DOB is the real auth factor)
     const crypto = await import('crypto');
     const dummyPassword = crypto.randomBytes(32).toString('hex');
 
@@ -149,9 +164,14 @@ router.post('/register', async (req, res) => {
       password: dummyPassword,
       role: 'student',
       schoolId: 'school-001',
+      username: username || null,
     });
 
-    // Generate Unique Roll Number (format: 12B025)
+    // Auto-generate username if not provided
+    if (!username) {
+      await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+    }
+
     const classPart = classLevel.toString().padStart(2, '0');
     const sectionPart = section.toUpperCase();
     const prefix = `${classPart}${sectionPart}`;
@@ -185,7 +205,7 @@ router.post('/register', async (req, res) => {
       success: true,
       message: 'Registration successful',
       token,
-      user: { id: user.id, phone: user.phone, role: user.role },
+      user: { id: user.id, phone: user.phone, role: user.role, username: username || `user_${user.id}` },
       student: { id: student.id, name: student.name, rollNumber: student.rollNumber, classLevel: student.classLevel },
     });
   } catch (error) {
@@ -205,16 +225,22 @@ router.post('/register', async (req, res) => {
  * }
  */
 router.post('/register', async (req, res) => {
-  const { role, name, phone, password, confirmPassword, email, classLevel, section, fatherName, motherName } = req.body;
+  const { role, name, phone, password, confirmPassword, email, classLevel, section, fatherName, motherName, username } = req.body;
   const pool = req.db;
 
   try {
-    // Validate role
     if (!role || !['student', 'teacher', 'staff'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be student, teacher, or staff.' });
     }
 
-    // Common validation for non-student roles
+    // Validate username if provided
+    if (username) {
+      const usernameError = validateUsername(username);
+      if (usernameError) return res.status(400).json({ error: usernameError });
+      const taken = await isUsernameTaken(pool, username);
+      if (taken) return res.status(409).json({ error: 'Username already taken' });
+    }
+
     if (role !== 'student' && (!name || !phone || !password || !confirmPassword)) {
       return res.status(400).json({ error: 'Name, phone, and password are required' });
     }
@@ -230,13 +256,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Phone must be a 10-digit number' });
     }
 
-    // Check if phone already exists
     const existingUser = await getUserByPhone(pool, phone);
     if (existingUser) {
       return res.status(409).json({ error: 'Phone number already registered' });
     }
 
-    // Role-specific validation
     if (role === 'student') {
       if (!classLevel || !section || !fatherName || !motherName) {
         return res.status(400).json({ error: 'For student role: classLevel, section, fatherName, motherName are required' });
@@ -254,8 +278,6 @@ router.post('/register', async (req, res) => {
     if (role === 'student') {
       const { dateOfBirth } = req.body;
       const fullName = name;
-      
-      // Generate a dummy password since students log in with DOB
       const dummyPassword = crypto.randomBytes(32).toString('hex');
       
       const user = await createUser(pool, {
@@ -265,9 +287,14 @@ router.post('/register', async (req, res) => {
         password: dummyPassword,
         role: 'student',
         schoolId: 'school-001',
+        username: username || null,
       });
 
-      // Generate unique roll number
+      // Auto-generate username if not provided
+      if (!username) {
+        await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+      }
+
       const classPart = classLevel.toString().padStart(2, '0');
       const sectionPart = section.toUpperCase();
       const prefix = `${classPart}${sectionPart}`;
@@ -280,11 +307,9 @@ router.post('/register', async (req, res) => {
       const serialPart = nextSerial.toString().padStart(3, '0');
       const rollNumber = `${prefix}${serialPart}`;
 
-      // Format DD/MM/YY to YYYY-MM-DD for database storage
       let dobISO = null;
       if (dateOfBirth) {
         const [dd, mm, yy] = dateOfBirth.split('/');
-        // Assuming 2000s for students
         dobISO = `20${yy}-${mm}-${dd}`;
       }
 
@@ -311,17 +336,8 @@ router.post('/register', async (req, res) => {
         success: true,
         message: 'Student registration successful',
         token,
-        user: {
-          id: user.id,
-          phone: user.phone,
-          role: user.role,
-        },
-        student: {
-          id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          classLevel: student.classLevel,
-        },
+        user: { id: user.id, phone: user.phone, role: user.role, username: username || `user_${user.id}` },
+        student: { id: student.id, name: student.name, rollNumber: student.rollNumber, classLevel: student.classLevel },
       });
     }
 
@@ -337,7 +353,13 @@ router.post('/register', async (req, res) => {
         role,
         schoolId: 'school-001',
         teacherId,
+        username: username || null,
       });
+
+      // Auto-generate username if not provided
+      if (!username) {
+        await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+      }
 
       const token = generateToken(user.id, user.role, phone);
 
@@ -345,13 +367,7 @@ router.post('/register', async (req, res) => {
         success: true,
         message: `${role.charAt(0).toUpperCase() + role.slice(1)} registration successful. Your account is awaiting admin approval.`,
         token,
-        user: {
-          id: user.id,
-          phone: user.phone,
-          role: user.role,
-          status: user.status,
-          teacherId: user.teacherId,
-        },
+        user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
       });
     }
   } catch (error) {
@@ -365,33 +381,38 @@ router.post('/register', async (req, res) => {
  * POST /api/auth/admin-login
  */
 router.post('/admin-login', async (req, res) => {
-  const { phone, password } = req.body;
+  const { phone, identifier, password } = req.body;
+  const loginId = identifier || phone; // support both field names
   const pool = req.db;
 
   try {
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Phone and password are required' });
+    if (!loginId || !password) {
+      return res.status(400).json({ error: 'Phone/Username and password are required' });
     }
 
-    // 1. MASTER ADMIN CHECK (Direct from .env for modularity)
+    // 1. MASTER ADMIN CHECK — supports phone or username from .env
     const masterPhone = process.env.ADMIN_PHONE;
     const masterPassword = process.env.ADMIN_PASSWORD;
+    const masterUsername = process.env.ADMIN_USERNAME;
 
-    if (masterPhone && masterPassword && phone === masterPhone && password === masterPassword) {
-      console.log(`⭐ Master Admin login detected for ${phone}`);
-      let user = await getUserByPhone(pool, phone);
+    const isMasterByPhone = masterPhone && loginId === masterPhone;
+    const isMasterByUsername = masterUsername && loginId.toLowerCase() === masterUsername.toLowerCase();
+
+    if ((isMasterByPhone || isMasterByUsername) && masterPassword && password === masterPassword) {
+      console.log(`⭐ Master Admin login detected for ${loginId}`);
+      let user = await getUserByPhone(pool, masterPhone);
       
       if (!user) {
         console.log("🛠️ Creating Master Admin in database on-the-fly...");
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query(
-          `INSERT INTO users (phone, email, password, role, status) VALUES ($1, $2, $3, $4, $5)`,
-          [phone, 'admin@a2z.local', hashedPassword, 'admin', 'active']
+          `INSERT INTO users (phone, email, password, role, status, username) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [masterPhone, 'admin@a2z.local', hashedPassword, 'admin', 'active', masterUsername || 'admin']
         );
-        user = await getUserByPhone(pool, phone);
+        user = await getUserByPhone(pool, masterPhone);
       }
 
-      const token = generateToken(user.id, 'admin', phone);
+      const token = generateToken(user.id, 'admin', masterPhone);
       return res.json({
         success: true,
         message: 'Admin login successful (Master Access)',
@@ -400,14 +421,13 @@ router.post('/admin-login', async (req, res) => {
       });
     }
 
-    // 2. STANDARD DATABASE CHECK
-    const user = await getUserByPhone(pool, phone);
+    // 2. STANDARD DATABASE CHECK — by phone or username
+    const user = await getUserByPhoneOrUsername(pool, loginId);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if user is admin
     const userRole = user.role ? user.role.toLowerCase() : '';
     if (userRole !== 'admin') {
       return res.status(403).json({ 
@@ -416,30 +436,22 @@ router.post('/admin-login', async (req, res) => {
       });
     }
 
-    // Verify password using bcryptjs
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if admin is active
     if (user.isActive === false) {
       return res.status(403).json({ error: 'This admin account has been deactivated.' });
     }
 
-    // Generate JWT token
-    const token = generateToken(user.id, user.role, phone);
+    const token = generateToken(user.id, user.role, user.phone);
 
-    // Return success with user data
     return res.json({
       success: true,
       message: 'Admin login successful',
       token,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        role: user.role,
-      },
+      user: { id: user.id, phone: user.phone, role: user.role },
     });
   } catch (error) {
     console.error('Admin login error:', error);
@@ -452,22 +464,21 @@ router.post('/admin-login', async (req, res) => {
  * POST /api/auth/teacher-login
  */
 router.post('/teacher-login', async (req, res) => {
-  const { phone, password } = req.body;
+  const { phone, identifier, password } = req.body;
+  const loginId = identifier || phone;
   const pool = req.db;
 
   try {
-    if (!phone || !password) {
-      return res.status(400).json({ error: 'Phone and password are required' });
+    if (!loginId || !password) {
+      return res.status(400).json({ error: 'Phone/Username and password are required' });
     }
 
-    // Find user by phone
-    const user = await getUserByPhone(pool, phone);
+    const user = await getUserByPhoneOrUsername(pool, loginId);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if user is teacher
     const userRole = user.role ? user.role.toLowerCase() : '';
     if (userRole !== 'teacher') {
       return res.status(403).json({ 
@@ -476,7 +487,6 @@ router.post('/teacher-login', async (req, res) => {
       });
     }
 
-    // Check if user account is approved and active
     if (!user.isActive || user.status !== 'active') {
       const msg = user.status === 'pending' 
         ? 'Your account is awaiting admin approval.'
@@ -484,25 +494,18 @@ router.post('/teacher-login', async (req, res) => {
       return res.status(403).json({ error: `${msg} Please contact admin.` });
     }
 
-    // Verify password using bcryptjs
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
-    const token = generateToken(user.id, user.role, phone);
+    const token = generateToken(user.id, user.role, user.phone);
 
-    // Return success with user data
     return res.json({
       success: true,
       message: 'Teacher login successful',
       token,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        role: user.role,
-      },
+      user: { id: user.id, phone: user.phone, role: user.role },
     });
   } catch (error) {
     console.error('Teacher login error:', error);
@@ -516,13 +519,20 @@ router.post('/teacher-login', async (req, res) => {
  * Payload: { name, phone, email, password, confirmPassword }
  */
 router.post('/teacher-register', async (req, res) => {
-  const { name, phone, email, password, confirmPassword } = req.body;
+  const { name, phone, email, password, confirmPassword, username } = req.body;
   const pool = req.db;
 
   try {
-    // Validation
     if (!name || !phone || !email || !password || !confirmPassword) {
       return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Validate username if provided
+    if (username) {
+      const usernameError = validateUsername(username);
+      if (usernameError) return res.status(400).json({ error: usernameError });
+      const taken = await isUsernameTaken(pool, username);
+      if (taken) return res.status(409).json({ error: 'Username already taken' });
     }
 
     if (password !== confirmPassword) {
@@ -537,16 +547,13 @@ router.post('/teacher-register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Check if phone number already exists
     const existingUser = await getUserByPhone(pool, phone);
     if (existingUser) {
       return res.status(409).json({ error: 'Phone number already registered' });
     }
 
-    // Generate unique teacherId
     const teacherId = await generateTeacherId(pool, 'teacher');
 
-    // Create user account with status = 'pending' and teacherId
     const user = await createUser(pool, {
       name,
       phone,
@@ -555,22 +562,21 @@ router.post('/teacher-register', async (req, res) => {
       role: 'teacher',
       schoolId: 'school-001',
       teacherId,
+      username: username || null,
     });
 
-    // Generate JWT token (for pending approval)
+    // Auto-generate username if not provided
+    if (!username) {
+      await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+    }
+
     const token = generateToken(user.id, user.role, phone);
 
     return res.json({
       success: true,
       message: 'Registration successful. Your account is awaiting admin approval.',
       token,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        role: user.role,
-        status: user.status,
-        teacherId: user.teacherId,
-      },
+      user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
     });
   } catch (error) {
     console.error('Teacher registration error:', error);
@@ -709,6 +715,32 @@ router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), asyn
   } catch (error) {
     console.error('Error rejecting user:', error);
     return res.status(500).json({ error: 'Server error rejecting user' });
+  }
+});
+
+/**
+ * GET /api/auth/check-username?username=xyz
+ * Real-time username availability check
+ */
+router.get('/check-username', async (req, res) => {
+  const { username } = req.query;
+  const pool = req.db;
+
+  try {
+    if (!username) {
+      return res.status(400).json({ error: 'Username query parameter is required' });
+    }
+
+    const validationError = validateUsername(username);
+    if (validationError) {
+      return res.json({ available: false, error: validationError });
+    }
+
+    const taken = await isUsernameTaken(pool, username);
+    return res.json({ available: !taken });
+  } catch (error) {
+    console.error('Check username error:', error);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 

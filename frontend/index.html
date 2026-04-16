@@ -160,9 +160,9 @@
             <div class="success-message" id="studentLoginSuccess"></div>
             <form id="studentLoginFormElement">
                 <div class="form-group">
-                    <label for="student-login-phone">Phone Number</label>
-                    <input type="tel" id="student-login-phone" name="phone"
-                        placeholder="Enter your 10-digit phone number" pattern="[0-9]{10}" required>
+                    <label for="student-login-identifier">Phone Number or Username</label>
+                    <input type="text" id="student-login-identifier" name="identifier"
+                        placeholder="Enter phone number or username" required>
                 </div>
                 <div class="form-group">
                     <label for="student-login-dob">Password (Date of Birth)</label>
@@ -191,9 +191,9 @@
             <div class="success-message" id="teacherLoginSuccess"></div>
             <form id="teacherLoginFormElement">
                 <div class="form-group">
-                    <label for="teacher-login-phone">Phone Number</label>
-                    <input type="tel" id="teacher-login-phone" name="phone" placeholder="10-digit mobile number"
-                        pattern="[0-9]{10}" required>
+                    <label for="teacher-login-identifier">Phone Number or Username</label>
+                    <input type="text" id="teacher-login-identifier" name="identifier"
+                        placeholder="Enter phone number or username" required>
                 </div>
                 <div class="form-group">
                     <label for="teacher-login-password">Password</label>
@@ -219,9 +219,9 @@
             <div class="success-message" id="adminLoginSuccess"></div>
             <form id="adminLoginFormElement">
                 <div class="form-group">
-                    <label for="admin-login-phone">Phone Number</label>
-                    <input type="tel" id="admin-login-phone" name="phone" placeholder="10-digit mobile number"
-                        pattern="[0-9]{10}" required>
+                    <label for="admin-login-identifier">Phone Number or Username</label>
+                    <input type="text" id="admin-login-identifier" name="identifier"
+                        placeholder="Enter phone number or username" required>
                 </div>
                 <div class="form-group">
                     <label for="admin-login-password">Password</label>
@@ -253,6 +253,12 @@
                         <label for="student-signup-lastName">Last Name</label>
                         <input type="text" id="student-signup-lastName" placeholder="Last name (optional)">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="student-signup-username">Username</label>
+                    <input type="text" id="student-signup-username" placeholder="Choose a username (min 5 chars)" minlength="5" maxlength="50">
+                    <small id="student-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and underscores only. Optional but recommended.</small>
                 </div>
 
                 <div class="form-group">
@@ -341,6 +347,11 @@
                 <div class="form-group">
                     <label for="teacher-signup-name">Full Name</label>
                     <input type="text" id="teacher-signup-name" name="name" placeholder="John Smith" required>
+                </div>
+                <div class="form-group">
+                    <label for="teacher-signup-username">Username</label>
+                    <input type="text" id="teacher-signup-username" placeholder="Choose a username (min 5 chars)" minlength="5" maxlength="50">
+                    <small id="teacher-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and underscores only. Optional but recommended.</small>
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-email">Email Address</label>

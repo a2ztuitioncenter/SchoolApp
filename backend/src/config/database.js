@@ -40,6 +40,7 @@ export async function initializeDatabase() {
 async function createDefaultAdmin() {
     const adminPhone = process.env.ADMIN_PHONE || '7086795477';
     const adminPassword = process.env.ADMIN_PASSWORD || 'muslim';
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin123';
 
     // Mask phone for privacy (e.g. ********77)
     const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);
@@ -52,17 +53,17 @@ async function createDefaultAdmin() {
         const exists = await pool.query('SELECT id, role FROM users WHERE phone = $1', [adminPhone]);
 
         if (exists.rows.length === 0) {
-            // Create new admin
+            // Create new admin with username
             await pool.query(
-                `INSERT INTO users (phone, email, password, role, "isActive") VALUES ($1, $2, $3, $4, $5)`,
-                [adminPhone, 'admin@a2z.local', hashedPassword, 'admin', true]
+                `INSERT INTO users (phone, email, password, role, "isActive", username) VALUES ($1, $2, $3, $4, $5, $6)`,
+                [adminPhone, 'admin@a2z.local', hashedPassword, 'admin', true, adminUsername]
             );
-            console.log(`SUCCESS: Admin account created with phone ${maskedPhone}`);
+            console.log(`SUCCESS: Admin account created with phone ${maskedPhone}, username: ${adminUsername}`);
         } else {
-            // Update existing user to be admin with correct password
+            // Update existing user to be admin with correct password and username
             await pool.query(
-                `UPDATE users SET password = $1, role = 'admin', "isActive" = $3 WHERE phone = $2`,
-                [hashedPassword, adminPhone, true]
+                `UPDATE users SET password = $1, role = 'admin', "isActive" = $3, username = COALESCE(NULLIF($4, ''), username, CONCAT('user_', id)) WHERE phone = $2`,
+                [hashedPassword, adminPhone, true, adminUsername]
             );
             console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);
         }

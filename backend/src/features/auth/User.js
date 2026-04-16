@@ -19,6 +19,7 @@ export const userModel = {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS "teacherId" VARCHAR(20);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS "approvedBy" INTEGER;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS "rejectionReason" TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS "statusUpdatedAt" TIMESTAMP;
 
     CREATE TABLE IF NOT EXISTS teacher_class_assignment (
@@ -38,19 +39,47 @@ export const getUserByPhone = async (pool, phone) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Find user by username (case-insensitive)
+ */
+export const getUserByUsername = async (pool, username) => {
+  const result = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Find user by phone OR username (for unified login)
+ * Detects input type: if all digits → phone lookup, otherwise → username lookup
+ */
+export const getUserByPhoneOrUsername = async (pool, identifier) => {
+  const isPhone = /^\d{10}$/.test(identifier);
+  if (isPhone) {
+    return getUserByPhone(pool, identifier);
+  }
+  return getUserByUsername(pool, identifier);
+};
+
+/**
+ * Check if a username is already taken (case-insensitive)
+ */
+export const isUsernameTaken = async (pool, username) => {
+  const result = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [username]);
+  return result.rows.length > 0;
+};
+
 export const getUserById = async (pool, id) => {
   const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
   return result.rows[0] || null;
 };
 
-export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null }) => {
+export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null, username = null }) => {
   // Hash the password before storing
   const hashedPassword = await bcrypt.hash(password, 10);
   
   const result = await pool.query(
-    `INSERT INTO users (name, phone, email, password, role, status, "schoolId", "teacherId")
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, phone, email, role, status, "teacherId", "isActive", "createdAt"`,
-    [name || null, phone, email || null, hashedPassword, role, 'pending', schoolId, teacherId]
+    `INSERT INTO users (name, phone, email, password, role, status, "schoolId", "teacherId", username)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, name, phone, email, role, status, "teacherId", "isActive", "createdAt", username`,
+    [name || null, phone, email || null, hashedPassword, role, 'pending', schoolId, teacherId, username]
   );
   return result.rows[0];
 };
