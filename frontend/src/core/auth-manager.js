@@ -18,6 +18,8 @@
 const AUTH_STORAGE_KEY = 'auth';
 const AUTH_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 
+const readStoredAuth = () => sessionStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(AUTH_STORAGE_KEY);
+
 /**
  * Store authentication data in localStorage
  * @param {Object} authData - Auth data to store
@@ -37,7 +39,9 @@ export const setAuth = (authData) => {
     token: authData.token || null,
     timestamp: Date.now()
   };
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
+  const serializedAuth = JSON.stringify(auth);
+  sessionStorage.setItem(AUTH_STORAGE_KEY, serializedAuth);
+  localStorage.removeItem(AUTH_STORAGE_KEY);
   console.log('✅ Auth state saved:', { role: auth.role, userId: auth.userId });
 };
 
@@ -47,7 +51,7 @@ export const setAuth = (authData) => {
  */
 export const getAuth = () => {
   try {
-    const authStr = localStorage.getItem(AUTH_STORAGE_KEY);
+    const authStr = readStoredAuth();
     if (!authStr) return null;
 
     const auth = JSON.parse(authStr);
@@ -71,6 +75,7 @@ export const getAuth = () => {
  */
 export const clearAuth = () => {
   localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.clear();
   console.log('✅ Auth state cleared (logged out)');
 };

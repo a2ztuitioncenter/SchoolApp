@@ -54,13 +54,11 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware first
 app.use(corsSecure());
-app.use(validateInput);
-app.use(rateLimiter(100, 60000)); // 100 requests per minute
-app.use(securityLogger);
-
-// Standard middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(validateInput);
+app.use(rateLimiter(100, 60000));
+app.use(securityLogger);
 
 // Attach Database Pool to Request
 app.use((req, res, next) => {
@@ -82,7 +80,6 @@ app.get('/', (req, res) => {
 
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../../frontend')));
-app.use('/uploads', express.static(path.resolve('uploads')));
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
@@ -124,7 +121,6 @@ app.get('/health', async (req, res) => {
       status: 'Unhealthy',
       server: 'Running',
       database: 'Disconnected',
-      error: error.message,
       timestamp: new Date().toISOString()
     });
   }
@@ -146,7 +142,6 @@ app.use((err, req, res, next) => {
   console.error('Unexpected error:', err);
   res.status(500).json({
     error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });
 

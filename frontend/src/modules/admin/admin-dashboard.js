@@ -5,6 +5,7 @@
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
+import { escapeAttr as escapeAttrValue, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
 import './admin-pending-approvals.js';
 import './exam-results.js';
 
@@ -1538,7 +1539,7 @@ async function populateEditUserAssignments(userId) {
 
     try {
         // 1. Fetch available class levels
-        const authStr = localStorage.getItem('auth');
+        const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
         const auth = authStr ? JSON.parse(authStr) : {};
         const token = auth.token;
         const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
@@ -2982,13 +2983,13 @@ async function loadNotifications() {
                 ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
                 : (n.recipientRole || 'All Users');
             const fileHtml = n.attachmentUrl 
-                ? `<a href="${n.attachmentUrl}" target="_blank" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</a>` 
+                ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>` 
                 : '<span style="color:var(--text-muted)">-</span>';
             return `
                 <tr>
                     <td>${date}</td>
-                    <td><strong>${n.title}</strong></td>
-                    <td style="max-width:250px; word-break:break-word;">${n.message}</td>
+                    <td><strong>${escapeMarkup(n.title)}</strong></td>
+                    <td style="max-width:250px; word-break:break-word;">${escapeMarkup(n.message)}</td>
                     <td><span class="badge">${recipient}</span></td>
                     <td>${fileHtml}</td>
                     <td>
@@ -3022,7 +3023,7 @@ window.deleteNotification = async function(id) {
     if (!confirm('Delete this notification?')) return;
     try {
         // The notifications controller doesn't have a DELETE — call the API directly
-        await fetch(`/api/admin/notifications/${id}`, { method: 'DELETE' });
+        await notificationsAPI.delete(id);
         showSuccessAlert('Notification deleted');
         await loadNotifications();
     } catch (err) {
@@ -3049,11 +3050,11 @@ async function loadResults() {
         }
         list.innerHTML = items.map(r => `
             <tr>
-                <td>${r.studentName || 'Student'}</td>
-                <td>${r.exam_title}</td>
-                <td>${r.subject}</td>
+                <td>${escapeMarkup(r.studentName || 'Student')}</td>
+                <td>${escapeMarkup(r.exam_title)}</td>
+                <td>${escapeMarkup(r.subject)}</td>
                 <td>${r.marks_obtained}/${r.total_marks}</td>
-                <td>${r.remarks || 'No remarks'}</td>
+                <td>${escapeMarkup(r.remarks || 'No remarks')}</td>
                 <td>
                     <span style="color:var(--text-muted)">-</span>
                 </td>

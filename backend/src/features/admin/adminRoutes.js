@@ -13,20 +13,21 @@ const router = express.Router();
 router.get('/users', async (req, res) => {
     try {
         const result = await req.db.query(
-            'SELECT id, name, phone, email, role, status, "teacherId", "isActive", "createdAt" FROM users WHERE role IN ($1, $2) ORDER BY "createdAt" DESC',
+            `SELECT 
+                u.id, u.name, u.phone, u.email, u.role, u.status, u."teacherId", u."isActive", u."createdAt",
+                COALESCE(
+                    ARRAY_REMOVE(ARRAY_AGG(tca."classLevel" ORDER BY tca."classLevel"), NULL),
+                    ARRAY[]::varchar[]
+                ) AS "classesAssigned"
+             FROM users u
+             LEFT JOIN teacher_class_assignment tca ON tca."teacherId" = u.id
+             WHERE u.role IN ($1, $2)
+             GROUP BY u.id
+             ORDER BY u."createdAt" DESC`,
             ['teacher', 'staff']
         );
-        const users = result.rows;
 
-        // Fetch classes assigned for each teacher
-        for (let user of users) {
-             if (user.role === 'teacher' || user.role === 'staff') {
-                  const classRes = await req.db.query('SELECT "classLevel" FROM teacher_class_assignment WHERE "teacherId" = $1', [user.id]);
-                  user.classesAssigned = classRes.rows.map(r => r.classLevel);
-             }
-        }
-
-        res.json({ success: true, users: users });
+        res.json({ success: true, users: result.rows });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch users' });
     }

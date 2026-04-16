@@ -10,6 +10,7 @@ import {
 } from '../homework/Homework.js';
 import { syllabusModel, getSyllabusByTeacher, createSyllabusEntry, updateSyllabusEntry, deleteSyllabusEntry } from './syllabusModel.js';
 import { createExamResult, getExamResults } from './examController.js';
+import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
 
 const router = express.Router();
 
@@ -36,9 +37,21 @@ const uploadMaterial  = multer({ storage: makeStorage('materials'), fileFilter, 
 // ============================================
 // AUTH GUARD HELPER
 // ============================================
-async function requireTeacher(pool, teacherId) {
-  if (!teacherId || teacherId === 'null' || isNaN(parseInt(teacherId))) return null;
-  const teacher = await getUserById(pool, parseInt(teacherId));
+async function requireTeacher(req, suppliedTeacherId = null) {
+  const authenticatedTeacherId = parseInt(req.user?.userId, 10);
+  const requestedTeacherId = suppliedTeacherId === null || suppliedTeacherId === undefined || suppliedTeacherId === ''
+    ? authenticatedTeacherId
+    : parseInt(suppliedTeacherId, 10);
+
+  if (!authenticatedTeacherId || Number.isNaN(authenticatedTeacherId) || Number.isNaN(requestedTeacherId)) {
+    return null;
+  }
+
+  if (authenticatedTeacherId !== requestedTeacherId) {
+    return null;
+  }
+
+  const teacher = await getUserById(req.db, authenticatedTeacherId);
   return (teacher && teacher.role === 'teacher') ? teacher : null;
 }
 
@@ -61,11 +74,11 @@ router.get('/dashboard/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
     const pool = req.db;
-    const parsedTeacherId = parseInt(teacherId);
+    const parsedTeacherId = parseInt(req.user.userId, 10);
 
     console.log(`📊 Teacher Dashboard Request: teacherId=${teacherId} (parsed as ${parsedTeacherId})`);
 
-    const teacher = await requireTeacher(pool, parsedTeacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) {
       console.warn(`⚠️ Unauthorized: TeacherId ${parsedTeacherId} is not a valid teacher`);
       return res.status(403).json({ error: 'Unauthorized: Not a teacher' });
@@ -144,7 +157,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Teacher dashboard error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch dashboard data', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch dashboard data' });
   }
 });
 
@@ -153,16 +166,16 @@ router.get('/timetable/:teacherId', async (req, res) => {
   try {
     const { teacherId } = req.params;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const res2 = await pool.query(
       `SELECT * FROM timetable WHERE "teacherId" = $1 ORDER BY "dayOfWeek", "startTime"`,
-      [teacherId]
+      [teacher.id]
     );
     res.json({ success: true, data: res2.rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch timetable', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch timetable' });
   }
 });
 
@@ -175,7 +188,7 @@ router.get('/attendance/classes', async (req, res) => {
   try {
     const { teacherId } = req.query;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     // Get teacher's assigned classes
@@ -183,7 +196,7 @@ router.get('/attendance/classes', async (req, res) => {
       `SELECT DISTINCT "classLevel", section FROM teacher_class_assignment 
        WHERE "teacherId" = $1 
        ORDER BY "classLevel", "section"`,
-      [teacherId]
+      [teacher.id]
     );
 
     // Fallback to timetable if no assignments
@@ -192,14 +205,14 @@ router.get('/attendance/classes', async (req, res) => {
     if (classes.length === 0) {
       const ttResult = await pool.query(
         `SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"`,
-        [teacherId]
+        [teacher.id]
       );
       classes = ttResult.rows.map(r => r.classLevel);
     }
 
     res.json({ success: true, data: classes });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch classes', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch classes' });
   }
 });
 
@@ -208,7 +221,7 @@ router.get('/attendance/sheet', async (req, res) => {
   try {
     const { teacherId, classLevel: classInput, date } = req.query;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
     if (!classInput || !date) return res.status(400).json({ error: 'classLevel and date required' });
 
@@ -220,13 +233,13 @@ router.get('/attendance/sheet', async (req, res) => {
         assignmentCheck = await pool.query(
             `SELECT id FROM teacher_class_assignment 
              WHERE "teacherId" = $1 AND "classLevel" = $2 AND ("section" = $3 OR "section" = 'ALL' OR "section" IS NULL)`,
-            [teacherId, classLevel, section]
+            [teacher.id, classLevel, section]
         );
     } else {
         assignmentCheck = await pool.query(
             `SELECT id FROM teacher_class_assignment 
              WHERE "teacherId" = $1 AND "classLevel" = $2`,
-            [teacherId, classLevel]
+            [teacher.id, classLevel]
         );
     }
 
@@ -235,7 +248,7 @@ router.get('/attendance/sheet', async (req, res) => {
       const timetableCheck = await pool.query(
         `SELECT id FROM timetable 
          WHERE "teacherId" = $1 AND "classLevel" = $2`,
-        [teacherId, classLevel]
+        [teacher.id, classLevel]
       );
       
       if (timetableCheck.rows.length === 0) {
@@ -276,7 +289,7 @@ router.get('/attendance/sheet', async (req, res) => {
       existing: attMap,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch sheet', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch sheet' });
   }
 });
 
@@ -285,23 +298,33 @@ router.post('/attendance/mark-bulk', async (req, res) => {
   try {
     const { teacherId, records } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
     if (!Array.isArray(records) || records.length === 0)
       return res.status(400).json({ error: 'records array required' });
 
-    for (const r of records) {
-      await pool.query(
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const r of records) {
+        await client.query(
         `INSERT INTO attendance ("studentId", "classLevel", date, status)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT ("studentId", date)
          DO UPDATE SET status = EXCLUDED.status, "classLevel" = EXCLUDED."classLevel"`,
         [r.studentId, r.classLevel, r.date, r.status]
       );
+      }
+      await client.query('COMMIT');
+    } catch (bulkError) {
+      await client.query('ROLLBACK');
+      throw bulkError;
+    } finally {
+      client.release();
     }
     res.json({ success: true, message: `Saved ${records.length} attendance records` });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save attendance', detail: err.message });
+    res.status(500).json({ error: 'Failed to save attendance' });
   }
 });
 
@@ -310,7 +333,7 @@ router.get('/attendance/summary', async (req, res) => {
   try {
     const { teacherId, classLevel: classInput, month } = req.query;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const { classLevel, section } = parseClassSection(classInput);
@@ -321,13 +344,13 @@ router.get('/attendance/summary', async (req, res) => {
         assignmentCheck = await pool.query(
             `SELECT id FROM teacher_class_assignment 
              WHERE "teacherId" = $1 AND "classLevel" = $2 AND ("section" = $3 OR "section" = 'ALL' OR "section" IS NULL)`,
-            [teacherId, classLevel, section]
+            [teacher.id, classLevel, section]
         );
     } else {
         assignmentCheck = await pool.query(
             `SELECT id FROM teacher_class_assignment 
              WHERE "teacherId" = $1 AND "classLevel" = $2`,
-            [teacherId, classLevel]
+            [teacher.id, classLevel]
         );
     }
 
@@ -336,7 +359,7 @@ router.get('/attendance/summary', async (req, res) => {
       const timetableCheck = await pool.query(
         `SELECT id FROM timetable 
          WHERE "teacherId" = $1 AND "classLevel" = $2`,
-        [teacherId, classLevel]
+        [teacher.id, classLevel]
       );
       
       if (timetableCheck.rows.length === 0) {
@@ -367,7 +390,7 @@ router.get('/attendance/summary', async (req, res) => {
     const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to load summary', detail: err.message });
+    res.status(500).json({ error: 'Failed to load summary' });
   }
 });
 
@@ -380,32 +403,37 @@ router.get('/homework', async (req, res) => {
   try {
     const { teacherId } = req.query;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const homework = await getHomeworkByTeacher(pool, teacherId);
+    const homework = await getHomeworkByTeacher(pool, teacher.id);
     res.json({ success: true, data: homework });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch homework', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch homework' });
   }
 });
 
 // POST /api/teacher/homework  (multipart)
 router.post('/homework', uploadHomework.single('attachment'), async (req, res) => {
   try {
-    const { teacherId, classLevel, section, subject, title, description, dueDate, type } = req.body;
+    const { teacherId, dueDate, type } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+    const section = sanitizeNullableText(req.body.section, 10);
+    const subject = sanitizeNullableText(req.body.subject, 100);
+    const title = sanitizeText(req.body.title, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
     if (!classLevel || !title) return res.status(400).json({ error: 'classLevel and title required' });
     if (type !== 'daily_practice' && !dueDate) return res.status(400).json({ error: 'dueDate required' });
 
     const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : null;
     const finalDueDate = type === 'daily_practice' ? null : dueDate;
-    const hw = await createHomework(pool, { teacherId, classLevel, section, subject, title, description, dueDate: finalDueDate, attachmentUrl, type });
+    const hw = await createHomework(pool, { teacherId: teacher.id, classLevel, section, subject, title, description, dueDate: finalDueDate, attachmentUrl, type });
     res.status(201).json({ success: true, data: hw });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create homework', detail: err.message });
+    res.status(500).json({ error: 'Failed to create homework' });
   }
 });
 
@@ -413,21 +441,24 @@ router.post('/homework', uploadHomework.single('attachment'), async (req, res) =
 router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { teacherId, title, description, dueDate, subject, type } = req.body;
+    const { teacherId, dueDate, type } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    const title = sanitizeText(req.body.title, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
+    const subject = sanitizeNullableText(req.body.subject, 100);
 
     const own = await pool.query('SELECT "teacherId" FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
-    if (own.rows[0].teacherId !== parseInt(teacherId)) return res.status(403).json({ error: 'Not your homework' });
+    if (own.rows[0].teacherId !== teacher.id) return res.status(403).json({ error: 'Not your homework' });
 
     const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : undefined;
     const finalDueDate = type === 'daily_practice' ? null : dueDate;
     const updated = await updateHomework(pool, id, { title, description, dueDate: finalDueDate, subject, attachmentUrl, type });
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update homework', detail: err.message });
+    res.status(500).json({ error: 'Failed to update homework' });
   }
 });
 
@@ -437,17 +468,17 @@ router.delete('/homework/:id', async (req, res) => {
     const { id } = req.params;
     const { teacherId } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const own = await pool.query('SELECT "teacherId" FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
-    if (own.rows[0].teacherId !== parseInt(teacherId)) return res.status(403).json({ error: 'Not your homework' });
+    if (own.rows[0].teacherId !== teacher.id) return res.status(403).json({ error: 'Not your homework' });
 
     await deleteHomework(pool, id);
     res.json({ success: true, message: 'Homework deleted' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete homework', detail: err.message });
+    res.status(500).json({ error: 'Failed to delete homework' });
   }
 });
 
@@ -460,7 +491,7 @@ router.get('/materials', async (req, res) => {
   try {
     const { teacherId } = req.query;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const result = await pool.query(
@@ -469,17 +500,22 @@ router.get('/materials', async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch materials', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch materials' });
   }
 });
 
 // POST /api/teacher/materials  (multipart)
 router.post('/materials', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
-    const { teacherId, title, description, classLevel, section, subject } = req.body;
+    const { teacherId } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    const title = sanitizeText(req.body.title, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
+    const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+    const section = sanitizeNullableText(req.body.section, 10);
+    const subject = sanitizeText(req.body.subject, 100);
     if (!title || !classLevel || !subject) return res.status(400).json({ error: 'title, classLevel, subject required' });
     if (!req.file) return res.status(400).json({ error: 'File is required' });
 
@@ -491,7 +527,7 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to upload material', detail: err.message });
+    res.status(500).json({ error: 'Failed to upload material' });
   }
 });
 
@@ -499,10 +535,15 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { teacherId, title, description, classLevel, section, subject } = req.body;
+    const { teacherId } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    const title = sanitizeText(req.body.title, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
+    const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+    const section = sanitizeNullableText(req.body.section, 10);
+    const subject = sanitizeText(req.body.subject, 100);
 
     const own = await pool.query('SELECT "uploadedBy" FROM materials WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Material not found' });
@@ -517,7 +558,7 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update material', detail: err.message });
+    res.status(500).json({ error: 'Failed to update material' });
   }
 });
 
@@ -527,7 +568,7 @@ router.delete('/materials/:id', async (req, res) => {
     const { id } = req.params;
     const { teacherId } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const own = await pool.query('SELECT "uploadedBy" FROM materials WHERE id = $1', [id]);
@@ -537,7 +578,7 @@ router.delete('/materials/:id', async (req, res) => {
     await pool.query('DELETE FROM materials WHERE id = $1', [id]);
     res.json({ success: true, message: 'Material deleted' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete material', detail: err.message });
+    res.status(500).json({ error: 'Failed to delete material' });
   }
 });
 
@@ -550,29 +591,34 @@ router.get('/syllabus', async (req, res) => {
   try {
     const { teacherId } = req.query;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const data = await getSyllabusByTeacher(pool, teacherId);
+    const data = await getSyllabusByTeacher(pool, teacher.id);
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch syllabus', detail: err.message });
+    res.status(500).json({ error: 'Failed to fetch syllabus' });
   }
 });
 
 // POST /api/teacher/syllabus
 router.post('/syllabus', async (req, res) => {
   try {
-    const { teacherId, classLevel, section, subject, chapter, description } = req.body;
+    const { teacherId } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+    const section = sanitizeNullableText(req.body.section, 10);
+    const subject = sanitizeText(req.body.subject, 100);
+    const chapter = sanitizeText(req.body.chapter, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
     if (!classLevel || !subject || !chapter) return res.status(400).json({ error: 'classLevel, subject and chapter required' });
 
-    const entry = await createSyllabusEntry(pool, { teacherId, classLevel, section, subject, chapter, description });
+    const entry = await createSyllabusEntry(pool, { teacherId: teacher.id, classLevel, section, subject, chapter, description });
     res.status(201).json({ success: true, data: entry });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create syllabus entry', detail: err.message });
+    res.status(500).json({ error: 'Failed to create syllabus entry' });
   }
 });
 
@@ -580,19 +626,21 @@ router.post('/syllabus', async (req, res) => {
 router.put('/syllabus/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { teacherId, chapter, description, completed } = req.body;
+    const { teacherId, completed } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    const chapter = sanitizeNullableText(req.body.chapter, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
 
     const own = await pool.query('SELECT "teacherId" FROM syllabus WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Entry not found' });
-    if (own.rows[0].teacherId !== parseInt(teacherId)) return res.status(403).json({ error: 'Not your entry' });
+    if (own.rows[0].teacherId !== teacher.id) return res.status(403).json({ error: 'Not your entry' });
 
     const updated = await updateSyllabusEntry(pool, id, { chapter, description, completed });
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update syllabus entry', detail: err.message });
+    res.status(500).json({ error: 'Failed to update syllabus entry' });
   }
 });
 
@@ -602,17 +650,17 @@ router.delete('/syllabus/:id', async (req, res) => {
     const { id } = req.params;
     const { teacherId } = req.body;
     const pool = req.db;
-    const teacher = await requireTeacher(pool, teacherId);
+    const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const own = await pool.query('SELECT "teacherId" FROM syllabus WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Entry not found' });
-    if (own.rows[0].teacherId !== parseInt(teacherId)) return res.status(403).json({ error: 'Not your entry' });
+    if (own.rows[0].teacherId !== teacher.id) return res.status(403).json({ error: 'Not your entry' });
 
     await deleteSyllabusEntry(pool, id);
     res.json({ success: true, message: 'Entry deleted' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete syllabus entry', detail: err.message });
+    res.status(500).json({ error: 'Failed to delete syllabus entry' });
   }
 });
 

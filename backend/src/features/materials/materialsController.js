@@ -1,10 +1,12 @@
+import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
+
 export const getAllMaterials = async (req, res) => {
   try {
     const result = await req.db.query('SELECT * FROM materials ORDER BY "createdAt" DESC');
     res.json({ data: result.rows });
   } catch (err) {
     console.error('getAllMaterials:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -21,13 +23,18 @@ export const getClassMaterials = async (req, res) => {
         res.json({ data: result.rows });
     } catch (err) {
         console.error('getClassMaterials:', err);
-        res.status(500).json({ error: 'Server error', detail: err.message });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
 export const createMaterial = async (req, res) => {
   try {
-    const { title, description, classLevel, section, subject, uploadedBy } = req.body;
+    const title = sanitizeText(req.body.title, 200);
+    const description = sanitizeNullableText(req.body.description, 5000);
+    const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+    const section = sanitizeNullableText(req.body.section, 10);
+    const subject = sanitizeText(req.body.subject, 100);
+    const uploadedBy = sanitizeNullableText(req.user?.phone || req.body.uploadedBy, 100);
     const fileUrl = req.file ? `/uploads/materials/${req.file.filename}` : null;
 
     if (!title || !classLevel || !subject || !fileUrl) {
@@ -42,14 +49,18 @@ export const createMaterial = async (req, res) => {
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
     console.error('createMaterial:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
 export const updateMaterial = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, classLevel, section, subject } = req.body;
+        const title = sanitizeText(req.body.title, 200);
+        const description = sanitizeNullableText(req.body.description, 5000);
+        const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+        const section = sanitizeNullableText(req.body.section, 10);
+        const subject = sanitizeText(req.body.subject, 100);
         let fileUrl = req.body.fileUrl; // Keep existing if no new file
 
         if (req.file) {
@@ -70,7 +81,7 @@ export const updateMaterial = async (req, res) => {
         res.json({ data: result.rows[0] });
     } catch (err) {
         console.error('updateMaterial:', err);
-        res.status(500).json({ error: 'Server error', detail: err.message });
+        res.status(500).json({ error: 'Server error' });
     }
 };
 
@@ -80,6 +91,6 @@ export const deleteMaterial = async (req, res) => {
     res.json({ message: 'Material deleted' });
   } catch (err) {
     console.error('deleteMaterial:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };

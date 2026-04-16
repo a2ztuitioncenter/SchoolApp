@@ -8,7 +8,7 @@ export const createHomework = async (req, res) => {
     const classLevel = req.body.classLevel || req.body.class_name;
     const subject = req.body.subject;
     const dueDate = req.body.dueDate || req.body.due_date;
-    const assignedBy = req.body.assignedBy || req.body.assigned_by || req.user?.id || null;
+    const assignedBy = req.user?.userId || req.body.assignedBy || req.body.assigned_by || null;
     let attachmentUrl = null;
 
     if (req.file) {

@@ -38,9 +38,13 @@ export async function initializeDatabase() {
 }
 
 async function createDefaultAdmin() {
-    const adminPhone = process.env.ADMIN_PHONE || '7086795477';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'muslim';
-    const adminUsername = process.env.ADMIN_USERNAME || 'admin123';
+    const adminPhone = process.env.ADMIN_PHONE;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminUsername = process.env.ADMIN_USERNAME;
+
+    if (!adminPhone || !adminPassword || !adminUsername) {
+        throw new Error('ADMIN_PHONE, ADMIN_PASSWORD, and ADMIN_USERNAME are required when initializing the database');
+    }
 
     // Mask phone for privacy (e.g. ********77)
     const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);

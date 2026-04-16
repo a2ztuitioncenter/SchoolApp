@@ -5,6 +5,7 @@
 
 import { studentAPI, downloadFile, materialsAPI, waitForBackend } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+import { escapeAttr, escapeHtml, safeFileName } from '../../core/sanitize.js';
 import './student-results.js';
 
 // ===========================
@@ -285,14 +286,14 @@ async function loadMaterials(classLevel) {
             <div class="dashboard-card" style="margin-bottom: 15px; border-left: 4px solid #48bb78; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="flex: 1;">
-                        <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${m.title}</h4>
+                        <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${escapeHtml(m.title)}</h4>
                         <p style="margin:8px 0 0 0; color:#718096; font-size:0.9rem;">
-                            <span style="font-weight: 500;">${m.subject}</span>
+                            <span style="font-weight: 500;">${escapeHtml(m.subject)}</span>
                             ${m.section ? ` • Section ${m.section}` : ''}
                         </p>
-                        ${m.description ? `<p style="margin:5px 0 0 0; color:#718096; font-size:0.85rem;">${m.description}</p>` : ''}
+                        ${m.description ? `<p style="margin:5px 0 0 0; color:#718096; font-size:0.85rem;">${escapeHtml(m.description)}</p>` : ''}
                     </div>
-                    <button onclick="downloadFile('${m.fileUrl}', '${m.title}.pdf')" class="btn-sm" style="background:#48bb78; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px; white-space: nowrap; margin-left: 15px;">
+                    <button onclick="downloadFile('${escapeAttr(m.fileUrl)}', '${escapeAttr(safeFileName(m.title, 'material') + '.pdf')}')" class="btn-sm" style="background:#48bb78; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:8px; white-space: nowrap; margin-left: 15px;">
                         <i class="fas fa-download"></i> Download
                     </button>
                 </div>
@@ -327,12 +328,12 @@ async function loadSyllabus(userId) {
             <div class="dashboard-card" style="margin-bottom: 15px; border-left: 4px solid #667eea; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div>
-                        <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${item.subject} - Chapter ${item.chapter}</h4>
+                        <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${escapeHtml(item.subject)} - Chapter ${escapeHtml(item.chapter)}</h4>
                         <p style="margin:5px 0; color:#718096; font-size:0.9rem;">
-                           ${item.description || 'No description provided.'}
+                           ${escapeHtml(item.description || 'No description provided.')}
                         </p>
                         <small style="color:#a0aec0; display:block; margin-top:8px;">
-                            ${item.teacherPhone ? 'Teacher Contact: ' + item.teacherPhone : 'Teacher: Unknown'}
+                            ${item.teacherPhone ? 'Teacher Contact: ' + escapeHtml(item.teacherPhone) : 'Teacher: Unknown'}
                         </small>
                     </div>
                     <div>
@@ -384,10 +385,10 @@ function populateHomework(homework) {
     <div class="homework-item" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
       <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
       <div class="details" style="flex: 1;">
-        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${hw.subject || 'Homework'} - ${hw.title || 'Assignment'}</p>
+        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Homework')} - ${escapeHtml(hw.title || 'Assignment')}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
         ${hw.attachmentUrl ? `
-          <button onclick="downloadFile('${hw.attachmentUrl}', '${hw.title || 'homework'}.pdf')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
+          <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'homework') + '.pdf')}')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
             <i class="fas fa-download"></i> Download Attachment
           </button>
         ` : ''}
@@ -407,10 +408,10 @@ function populateDailyPractice(practiceList) {
     <div class="homework-item" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
       <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
       <div class="details" style="flex: 1;">
-        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${hw.subject || 'Practice'} - ${hw.title || 'Assignment'}</p>
+        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Practice')} - ${escapeHtml(hw.title || 'Assignment')}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Posted: ${new Date(hw.createdAt).toLocaleDateString()}</p>
         ${hw.attachmentUrl ? `
-          <button onclick="downloadFile('${hw.attachmentUrl}', '${hw.title || 'practice'}.pdf')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#48bb78; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
+          <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'practice') + '.pdf')}')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#48bb78; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
             <i class="fas fa-download"></i> Download Attachment
           </button>
         ` : ''}
@@ -781,13 +782,13 @@ function populateNotifications(notifications) {
     return `
     <div class="notification-card">
       <div class="notification-header">
-        <span class="notification-title">${n.title || 'Announcement'}</span>
+        <span class="notification-title">${escapeHtml(n.title || 'Announcement')}</span>
         <span class="notification-date">${formatDate(n.createdAt)}</span>
       </div>
-      <p class="notification-message">${message}</p>
+      <p class="notification-message">${escapeHtml(message)}</p>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-        ${n.classLevel ? `<span class="notification-badge">Class ${n.classLevel}</span>` : '<span class="notification-badge global">All Classes</span>'}
-        ${n.attachmentUrl ? `<a href="${n.attachmentUrl}" target="_blank" class="download-link" style="color:var(--accent-blue); font-size:0.85rem;"><i class="fas fa-file-download"></i> Attachment</a>` : ''}
+        ${n.classLevel ? `<span class="notification-badge">Class ${escapeHtml(n.classLevel)}</span>` : '<span class="notification-badge global">All Classes</span>'}
+        ${n.attachmentUrl ? `<button onclick="downloadFile('${escapeAttr(n.attachmentUrl)}', '${escapeAttr(safeFileName(n.title || 'notification') + '.pdf')}')" class="download-link" style="color:var(--accent-blue); font-size:0.85rem; background:none; border:none; cursor:pointer;"><i class="fas fa-file-download"></i> Attachment</button>` : ''}
       </div>
     </div>
   `;}).join('');
@@ -800,7 +801,7 @@ function populateNotifications(notifications) {
       const msg = n.message || '';
       return `
       <div style="margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle);">
-        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${n.title || 'Announcement'}</p>
+        <p style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); margin-bottom: 2px;">${escapeHtml(n.title || 'Announcement')}</p>
         <p style="font-size: 0.8rem; color: var(--text-muted);">${msg.substring(0, 80)}${msg.length > 80 ? '…' : ''}</p>
       </div>
     `;}).join('');

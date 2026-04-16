@@ -5,10 +5,14 @@ import jwt from 'jsonwebtoken';
 import { getUserByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
+import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tuition-app-dev-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is required');
+}
 const JWT_EXPIRY = '24h';
 
 /**
@@ -43,7 +47,7 @@ const validateUsername = (username) => {
 // Student login endpoint — supports phone OR username + DOB
 router.post('/login', async (req, res) => {
   const { phone, identifier, dateOfBirth } = req.body;
-  const loginId = identifier || phone; // support both field names
+  const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
 
   try {
@@ -117,122 +121,23 @@ router.post('/login', async (req, res) => {
 
 // Register New Students (DOB-based, no password required) — now with username
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, dateOfBirth, classLevel, section, fatherName, motherName, email, username } = req.body;
+  const { role, phone, password, confirmPassword } = req.body;
   const pool = req.db;
 
   try {
-    if (!firstName || !phone || !dateOfBirth || !classLevel || !section || !fatherName || !motherName) {
-      return res.status(400).json({ error: 'Missing required fields (Name, Phone, Date of Birth, Class, Section, and Parent names are mandatory)' });
-    }
-
-    // Validate username if provided
-    if (username) {
-      const usernameError = validateUsername(username);
-      if (usernameError) return res.status(400).json({ error: usernameError });
-      const taken = await isUsernameTaken(pool, username);
-      if (taken) return res.status(409).json({ error: 'Username already taken' });
-    }
-
-    if (!/^\d{10}$/.test(phone)) {
-      return res.status(400).json({ error: 'Phone must be a 10-digit number' });
-    }
-
-    let dobISO;
-    const parts = dateOfBirth.split('/');
-    if (parts.length === 3) {
-      const [dd, mm, yy] = parts;
-      const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
-      dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
-    } else {
-      return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
-    }
-
-    const fullName = `${firstName} ${lastName || ''}`.trim();
-
-    const existingUser = await getUserByPhone(pool, phone);
-    if (existingUser) {
-      return res.status(409).json({ error: 'Phone number already registered' });
-    }
-
-    const crypto = await import('crypto');
-    const dummyPassword = crypto.randomBytes(32).toString('hex');
-
-    const user = await createUser(pool, {
-      name: fullName,
-      phone,
-      email: email || `${phone}@student.local`,
-      password: dummyPassword,
-      role: 'student',
-      schoolId: 'school-001',
-      username: username || null,
-    });
-
-    // Auto-generate username if not provided
-    if (!username) {
-      await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
-    }
-
-    const classPart = classLevel.toString().padStart(2, '0');
-    const sectionPart = section.toUpperCase();
-    const prefix = `${classPart}${sectionPart}`;
-    const countResult = await pool.query(
-      `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
-      [`${prefix}%`]
-    );
-    const nextSerial = parseInt(countResult.rows[0].count) + 1;
-    const rollNumber = `${prefix}${nextSerial.toString().padStart(3, '0')}`;
-
-    const joiningDate = new Date().toISOString().split('T')[0];
-    const student = await createStudent(pool, {
-      userId: user.id,
-      name: fullName,
-      classLevel: classLevel.toString(),
-      section,
-      fatherName,
-      motherName,
-      phone,
-      email: user.email,
-      joiningDate,
-      dateOfBirth: dobISO,
-      status: 'active',
-      rollNumber,
-      schoolId: 'school-001',
-    });
-
-    const token = generateToken(user.id, user.role, phone);
-
-    return res.json({
-      success: true,
-      message: 'Registration successful',
-      token,
-      user: { id: user.id, phone: user.phone, role: user.role, username: username || `user_${user.id}` },
-      student: { id: student.id, name: student.name, rollNumber: student.rollNumber, classLevel: student.classLevel },
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Server error during registration' });
-  }
-});
-
-/**
- * Unified User Registration - Handles student, teacher, and staff registration
- * POST /api/auth/register
- * Payload: {
- *   role: 'student' | 'teacher' | 'staff',
- *   name, phone, password, confirmPassword,
- *   email (for teacher/staff),
- *   classLevel, section, fatherName, motherName (for student only)
- * }
- */
-router.post('/register', async (req, res) => {
-  const { role, name, phone, password, confirmPassword, email, classLevel, section, fatherName, motherName, username } = req.body;
-  const pool = req.db;
-
-  try {
-    if (!role || !['student', 'teacher', 'staff'].includes(role)) {
+    const normalizedRole = role || ((req.body.firstName || req.body.lastName || req.body.dateOfBirth) ? 'student' : 'teacher');
+    if (!['student', 'teacher', 'staff'].includes(normalizedRole)) {
       return res.status(400).json({ error: 'Invalid role. Must be student, teacher, or staff.' });
     }
 
+    const username = sanitizeIdentifier(req.body.username, 50);
+    const sanitizedPhone = sanitizeIdentifier(phone, 15);
+    const sanitizedEmail = sanitizeNullableText(req.body.email, 255);
+    const classLevel = sanitizeIdentifier(req.body.classLevel, 20);
+    const section = sanitizeIdentifier(req.body.section, 10);
+    const fatherName = sanitizeNullableText(req.body.fatherName, 100);
+    const motherName = sanitizeNullableText(req.body.motherName, 100);
+
     // Validate username if provided
     if (username) {
       const usernameError = validateUsername(username);
@@ -241,49 +146,52 @@ router.post('/register', async (req, res) => {
       if (taken) return res.status(409).json({ error: 'Username already taken' });
     }
 
-    if (role !== 'student' && (!name || !phone || !password || !confirmPassword)) {
+    if (normalizedRole !== 'student' && (!req.body.name || !sanitizedPhone || !password || !confirmPassword)) {
       return res.status(400).json({ error: 'Name, phone, and password are required' });
     }
-    if (role === 'student' && (!name || !phone || !req.body.dateOfBirth)) {
+    if (normalizedRole === 'student' && (!sanitizedPhone || !req.body.dateOfBirth)) {
       return res.status(400).json({ error: 'Name, phone, and Date of Birth are required' });
     }
 
-    if (role !== 'student' && password !== confirmPassword) {
+    if (normalizedRole !== 'student' && password !== confirmPassword) {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
 
-    if (!/^\d{10}$/.test(phone)) {
+    if (!/^\d{10}$/.test(sanitizedPhone)) {
       return res.status(400).json({ error: 'Phone must be a 10-digit number' });
     }
 
-    const existingUser = await getUserByPhone(pool, phone);
+    const existingUser = await getUserByPhone(pool, sanitizedPhone);
     if (existingUser) {
       return res.status(409).json({ error: 'Phone number already registered' });
     }
 
-    if (role === 'student') {
+    if (normalizedRole === 'student') {
       if (!classLevel || !section || !fatherName || !motherName) {
         return res.status(400).json({ error: 'For student role: classLevel, section, fatherName, motherName are required' });
       }
-    } else if (role === 'teacher' || role === 'staff') {
-      if (!email) {
+    } else if (normalizedRole === 'teacher' || normalizedRole === 'staff') {
+      if (!sanitizedEmail) {
         return res.status(400).json({ error: 'For teacher/staff role: email is required' });
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
         return res.status(400).json({ error: 'Invalid email format' });
       }
     }
 
     // STUDENT REGISTRATION
-    if (role === 'student') {
+    if (normalizedRole === 'student') {
       const { dateOfBirth } = req.body;
-      const fullName = name;
+      const fullName = sanitizeText(
+        req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(),
+        100
+      );
       const dummyPassword = crypto.randomBytes(32).toString('hex');
       
       const user = await createUser(pool, {
         name: fullName,
-        phone,
-        email: email || `${phone}@student.local`,
+        phone: sanitizedPhone,
+        email: sanitizedEmail || `${sanitizedPhone}@student.local`,
         password: dummyPassword,
         role: 'student',
         schoolId: 'school-001',
@@ -309,8 +217,13 @@ router.post('/register', async (req, res) => {
 
       let dobISO = null;
       if (dateOfBirth) {
-        const [dd, mm, yy] = dateOfBirth.split('/');
-        dobISO = `20${yy}-${mm}-${dd}`;
+        const parts = dateOfBirth.split('/');
+        if (parts.length !== 3) {
+          return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
+        }
+        const [dd, mm, yy] = parts;
+        const year = yy.length === 2 ? (parseInt(yy, 10) > 30 ? `19${yy}` : `20${yy}`) : yy;
+        dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
       }
 
       const joiningDate = new Date().toISOString().split('T')[0];
@@ -321,7 +234,7 @@ router.post('/register', async (req, res) => {
         section,
         fatherName,
         motherName,
-        phone,
+        phone: sanitizedPhone,
         email: user.email,
         joiningDate,
         dateOfBirth: dobISO,
@@ -330,7 +243,7 @@ router.post('/register', async (req, res) => {
         schoolId: 'school-001',
       });
 
-      const token = generateToken(user.id, user.role, phone);
+      const token = generateToken(user.id, user.role, sanitizedPhone);
 
       return res.json({
         success: true,
@@ -342,15 +255,16 @@ router.post('/register', async (req, res) => {
     }
 
     // TEACHER/STAFF REGISTRATION
-    if (role === 'teacher' || role === 'staff') {
-      const teacherId = await generateTeacherId(pool, role);
+    if (normalizedRole === 'teacher' || normalizedRole === 'staff') {
+      const teacherId = await generateTeacherId(pool, normalizedRole);
+      const name = sanitizeText(req.body.name, 100);
 
       const user = await createUser(pool, {
         name,
-        phone,
-        email,
+        phone: sanitizedPhone,
+        email: sanitizedEmail,
         password,
-        role,
+        role: normalizedRole,
         schoolId: 'school-001',
         teacherId,
         username: username || null,
@@ -361,11 +275,11 @@ router.post('/register', async (req, res) => {
         await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
       }
 
-      const token = generateToken(user.id, user.role, phone);
+      const token = generateToken(user.id, user.role, sanitizedPhone);
 
       return res.json({
         success: true,
-        message: `${role.charAt(0).toUpperCase() + role.slice(1)} registration successful. Your account is awaiting admin approval.`,
+        message: `${normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1)} registration successful. Your account is awaiting admin approval.`,
         token,
         user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
       });
@@ -382,7 +296,7 @@ router.post('/register', async (req, res) => {
  */
 router.post('/admin-login', async (req, res) => {
   const { phone, identifier, password } = req.body;
-  const loginId = identifier || phone; // support both field names
+  const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
 
   try {
@@ -390,38 +304,6 @@ router.post('/admin-login', async (req, res) => {
       return res.status(400).json({ error: 'Phone/Username and password are required' });
     }
 
-    // 1. MASTER ADMIN CHECK — supports phone or username from .env
-    const masterPhone = process.env.ADMIN_PHONE;
-    const masterPassword = process.env.ADMIN_PASSWORD;
-    const masterUsername = process.env.ADMIN_USERNAME;
-
-    const isMasterByPhone = masterPhone && loginId === masterPhone;
-    const isMasterByUsername = masterUsername && loginId.toLowerCase() === masterUsername.toLowerCase();
-
-    if ((isMasterByPhone || isMasterByUsername) && masterPassword && password === masterPassword) {
-      console.log(`⭐ Master Admin login detected for ${loginId}`);
-      let user = await getUserByPhone(pool, masterPhone);
-      
-      if (!user) {
-        console.log("🛠️ Creating Master Admin in database on-the-fly...");
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await pool.query(
-          `INSERT INTO users (phone, email, password, role, status, username) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [masterPhone, 'admin@a2z.local', hashedPassword, 'admin', 'active', masterUsername || 'admin']
-        );
-        user = await getUserByPhone(pool, masterPhone);
-      }
-
-      const token = generateToken(user.id, 'admin', masterPhone);
-      return res.json({
-        success: true,
-        message: 'Admin login successful (Master Access)',
-        token,
-        user: { id: user.id, phone: user.phone, role: 'admin' }
-      });
-    }
-
-    // 2. STANDARD DATABASE CHECK — by phone or username
     const user = await getUserByPhoneOrUsername(pool, loginId);
 
     if (!user) {
@@ -465,7 +347,7 @@ router.post('/admin-login', async (req, res) => {
  */
 router.post('/teacher-login', async (req, res) => {
   const { phone, identifier, password } = req.body;
-  const loginId = identifier || phone;
+  const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
 
   try {
@@ -519,10 +401,15 @@ router.post('/teacher-login', async (req, res) => {
  * Payload: { name, phone, email, password, confirmPassword }
  */
 router.post('/teacher-register', async (req, res) => {
-  const { name, phone, email, password, confirmPassword, username } = req.body;
+  const { password, confirmPassword } = req.body;
   const pool = req.db;
 
   try {
+    const name = sanitizeText(req.body.name, 100);
+    const phone = sanitizeIdentifier(req.body.phone, 15);
+    const email = sanitizeNullableText(req.body.email, 255);
+    const username = sanitizeIdentifier(req.body.username, 50);
+
     if (!name || !phone || !email || !password || !confirmPassword) {
       return res.status(400).json({ error: 'All fields are required' });
     }
@@ -590,7 +477,7 @@ router.post('/teacher-register', async (req, res) => {
  */
 router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, res) => {
   const pool = req.db;
-  const schoolId = req.query.schoolId || 'school-001';
+  const schoolId = 'school-001';
 
   try {
     const classLevels = await getClassLevels(pool, schoolId);
@@ -611,7 +498,7 @@ router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, 
  */
 router.get('/admin/pending-users', authenticate, authorize('admin'), async (req, res) => {
   const pool = req.db;
-  const schoolId = req.query.schoolId || 'school-001';
+  const schoolId = 'school-001';
 
   try {
     const pendingUsers = await getUsersByStatus(pool, 'pending', schoolId);
@@ -655,13 +542,14 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
 
     // For teacher/staff, validate and assign classes
     if (user.role === 'teacher' || user.role === 'staff') {
-      if (!Array.isArray(classesAssigned) || classesAssigned.length === 0) {
+      const sanitizedClasses = sanitizeStringArray(classesAssigned, 20);
+      if (sanitizedClasses.length === 0) {
         return res.status(400).json({ error: 'classesAssigned must be a non-empty array for teacher/staff approval' });
       }
 
       // Assign classes to teacher/staff
       try {
-        await assignTeacherToClasses(pool, parsedUserId, classesAssigned, user.schoolId);
+        await assignTeacherToClasses(pool, parsedUserId, sanitizedClasses, user.schoolId);
       } catch (classError) {
         console.error('Error assigning classes:', classError);
         return res.status(500).json({ error: 'Failed to assign classes' });
@@ -692,7 +580,7 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
  */
 router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
-  const { reason } = req.body;
+  const reason = sanitizeNullableText(req.body.reason, 500);
   const pool = req.db;
 
   try {

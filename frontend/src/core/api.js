@@ -28,7 +28,7 @@ const base_api_url = getBaseApiUrl();
  */
 export const getAuthToken = () => {
   try {
-    const authStr = localStorage.getItem('auth');
+    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
     if (!authStr) return null;
     const auth = JSON.parse(authStr);
     return auth?.token || null;
@@ -88,6 +88,7 @@ export const apiCall = async (endpoint, options = {}) => {
         setTimeout(() => {
           if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
             localStorage.removeItem('auth');
+            sessionStorage.removeItem('auth');
             window.location.href = '/';
           }
         }, 100);
@@ -192,6 +193,7 @@ const notificationsAPI = {
     method: 'POST',
     body: data // Send data directly (JSON string or FormData)
   }),
+  delete: (id) => apiCall(`/admin/notifications/${id}`, { method: 'DELETE' }),
 };
 
 const resultsAPI = {
@@ -257,29 +259,29 @@ export const adminAPI = {
  */
 export const teacherAPI = {
   // Dashboard
-  getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId}`, { method: 'GET' }),
-  getTimetable: (teacherId) => apiCall(`/teacher/timetable/${teacherId}`, { method: 'GET' }),
+  getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId || 'me'}`, { method: 'GET' }),
+  getTimetable: (teacherId) => apiCall(`/teacher/timetable/${teacherId || 'me'}`, { method: 'GET' }),
 
   // Attendance
-  getAttendanceClasses: (teacherId) => apiCall(`/teacher/attendance/classes?teacherId=${teacherId}`, { method: 'GET' }),
-  getAttendanceSheet: (teacherId, classLevel, date) => apiCall(`/teacher/attendance/sheet?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&date=${date}`, { method: 'GET' }),
-  markBulkAttendance: (teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }) }),
-  getAttendanceSummary: (teacherId, classLevel, month) => apiCall(`/teacher/attendance/summary?teacherId=${teacherId}&classLevel=${encodeURIComponent(classLevel)}&month=${month}`, { method: 'GET' }),
+  getAttendanceClasses: () => apiCall('/teacher/attendance/classes', { method: 'GET' }),
+  getAttendanceSheet: (_teacherId, classLevel, date) => apiCall(`/teacher/attendance/sheet?classLevel=${encodeURIComponent(classLevel)}&date=${date}`, { method: 'GET' }),
+  markBulkAttendance: (_teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ records }) }),
+  getAttendanceSummary: (_teacherId, classLevel, month) => apiCall(`/teacher/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}`, { method: 'GET' }),
 
   // Homework
-  getHomework: (teacherId) => apiCall(`/teacher/homework?teacherId=${teacherId}`, { method: 'GET' }),
+  getHomework: () => apiCall('/teacher/homework', { method: 'GET' }),
   createHomework: (formData) => apiCall('/teacher/homework', { method: 'POST', body: formData }),
   updateHomework: (id, formData) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData }),
   deleteHomework: (id, teacherId) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
 
   // Study Materials
-  getMaterials: (teacherId) => apiCall(`/teacher/materials?teacherId=${teacherId}`, { method: 'GET' }),
+  getMaterials: () => apiCall('/teacher/materials', { method: 'GET' }),
   createMaterial: (formData) => apiCall('/teacher/materials', { method: 'POST', body: formData }),
   updateMaterial: (id, formData) => apiCall(`/teacher/materials/${id}`, { method: 'PUT', body: formData }),
   deleteMaterial: (id, teacherId) => apiCall(`/teacher/materials/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
 
   // Syllabus
-  getSyllabus: (teacherId) => apiCall(`/teacher/syllabus?teacherId=${teacherId}`, { method: 'GET' }),
+  getSyllabus: () => apiCall('/teacher/syllabus', { method: 'GET' }),
   createSyllabus: (data) => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
   updateSyllabus: (id, data) => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSyllabus: (id, teacherId) => apiCall(`/teacher/syllabus/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),

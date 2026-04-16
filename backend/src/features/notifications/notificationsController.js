@@ -1,16 +1,22 @@
+import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
+
 export const getAllNotifications = async (req, res) => {
   try {
     const result = await req.db.query('SELECT * FROM notifications ORDER BY "createdAt" DESC');
     res.json({ data: result.rows });
   } catch (err) {
     console.error('getAllNotifications:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
 export const createNotification = async (req, res) => {
   try {
-    const { title, message, recipientRole, classLevel, createdBy } = req.body;
+    const title = sanitizeText(req.body.title, 200);
+    const message = sanitizeText(req.body.message, 5000);
+    const recipientRole = sanitizeNullableText(req.body.recipientRole, 50);
+    const classLevel = sanitizeNullableText(req.body.classLevel, 20);
+    const createdBy = sanitizeIdentifier(req.user?.userId || req.body.createdBy, 20);
     if (!title || !message)
       return res.status(400).json({ error: 'title and message required' });
 
@@ -30,7 +36,7 @@ export const createNotification = async (req, res) => {
     console.error('createNotification ERROR:', err.message);
     console.error('SQL State:', err.code);
     console.error('Detail:', err.detail);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -41,6 +47,6 @@ export const deleteNotification = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('deleteNotification:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };

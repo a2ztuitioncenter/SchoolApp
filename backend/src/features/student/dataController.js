@@ -1,5 +1,4 @@
 // dataController.js - Logic for fetching student dashboard data
-import { getUserById } from '../auth/User.js';
 import { getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getAttendancePercentage, getAttendanceSummary, getAttendanceByStudentId } from '../attendance/Attendance.js';
 
@@ -9,27 +8,16 @@ async function getStudentByUserId(pool, userId) {
   return result.rows[0] || null;
 }
 
-async function createStudentRecord(pool, userId, user) {
-  const result = await pool.query(
-    `INSERT INTO students ("userId", name, "classLevel", phone, email, "joiningDate", status)
-     VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, 'active') RETURNING *`,
-    [userId, user.phone ? `Student (${user.phone})` : 'New Student', '10', user.phone || '', user.email || `student${userId}@a2z.local`]
-  );
-  return result.rows[0];
-}
-
 export const getStudentDashboard = async (req, res) => {
   const { userId } = req.params;
   if (!userId) return res.status(400).json({ error: 'userId is required' });
 
   try {
     const pool = req.db;
-    let student = await getStudentByUserId(pool, userId);
+    const student = await getStudentByUserId(pool, userId);
 
     if (!student) {
-      const user = await getUserById(pool, userId);
-      if (!user) return res.status(404).json({ error: 'User not found' });
-      student = await createStudentRecord(pool, userId, user);
+      return res.status(404).json({ error: 'Student record not found' });
     }
 
     // Parallel fetch of attendance, fees, homework, timetable, and notifications
@@ -99,7 +87,7 @@ export const getStudentDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error('Dashboard data error:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard data', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch dashboard data' });
   }
 };
 
@@ -118,7 +106,7 @@ export const getStudentAttendance = async (req, res) => {
 
     res.json({ success: true, studentId: student.id, name: student.name, summary: pct, attendanceSummary: summary, records });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch attendance data', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch attendance data' });
   }
 };
 
@@ -136,6 +124,6 @@ export const getStudentFees = async (req, res) => {
 
     res.json({ success: true, studentId: student.id, name: student.name, summary, fees });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch fee data', message: error.message });
+    res.status(500).json({ error: 'Failed to fetch fee data' });
   }
 };

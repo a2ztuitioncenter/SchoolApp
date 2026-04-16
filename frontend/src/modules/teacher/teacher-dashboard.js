@@ -1,4 +1,4 @@
-import { teacherAPI } from '../../core/api.js';
+import { teacherAPI, downloadFile } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 
 // ═══════════════════════════════════════════
@@ -571,7 +571,7 @@ function renderHomeworkTable() {
   tbody.innerHTML = onlyHws.map(hw => {
     const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
     const attAction = hw.attachmentUrl ? `
-        <button class="action-menu-item" onclick="window.open('${hw.attachmentUrl}', '_blank')">
+        <button class="action-menu-item" onclick="downloadFile('${hw.attachmentUrl}', '${(hw.title || 'homework').replace(/'/g, "\\'")}.pdf')">
           <i class="fas fa-paperclip" style="width:16px;"></i> View Attachment
         </button>` : '';
 
@@ -644,7 +644,7 @@ function renderDppTable() {
   tbody.innerHTML = onlyDpps.map(hw => {
     const posted = new Date(hw.createdAt).toLocaleDateString('en-IN');
     const attAction = hw.attachmentUrl ? `
-      <button class="action-menu-item" onclick="window.open('${hw.attachmentUrl}', '_blank')">
+      <button class="action-menu-item" onclick="downloadFile('${hw.attachmentUrl}', '${(hw.title || 'practice').replace(/'/g, "\\'")}.pdf')">
         <i class="fas fa-paperclip" style="width:16px;"></i> View Attachment
       </button>` : '';
 
@@ -833,7 +833,7 @@ function renderMaterialsTable() {
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
           <div class="action-menu-dropdown">
-            <button class="action-menu-item" onclick="window.open('${m.fileUrl}', '_blank')">
+            <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${(m.title || 'material').replace(/'/g, "\\'")}.pdf')">
               <i class="fas fa-download" style="width:16px;"></i> Download
             </button>
             <button class="action-menu-item" onclick="editMaterial(${m.id})">

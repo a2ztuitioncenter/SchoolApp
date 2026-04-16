@@ -1,5 +1,6 @@
 // studentRoutes.js - Student data endpoints
 import express from 'express';
+import { requireSelfOrAdmin } from '../../middleware/auth-middleware.js';
 import {
   getStudentDashboard,
   getStudentAttendance,
@@ -9,6 +10,8 @@ import { getHomeworkByClass } from '../homework/Homework.js';
 import { getResultsByStudent } from '../results/resultsController.js';
 
 const router = express.Router();
+
+router.use('/:userId', requireSelfOrAdmin('userId'));
 
 /**
  * GET /api/student/:userId/dashboard
@@ -56,9 +59,7 @@ router.get('/:userId/results', async (req, res) => {
     } catch (queryErr) {
       console.error(`❌ [STUDENT RESULTS] Database query error:`, queryErr.message);
       return res.status(500).json({ 
-        error: 'Database error',
-        detail: queryErr.message,
-        hint: 'Check if students table exists'
+        error: 'Database error'
       });
     }
 
@@ -85,9 +86,7 @@ router.get('/:userId/results', async (req, res) => {
     } catch (queryErr) {
       console.error(`❌ [STUDENT RESULTS] Results query error:`, queryErr.message);
       return res.status(500).json({ 
-        error: 'Database error',
-        detail: queryErr.message,
-        hint: 'Check if results table exists and columns are correct'
+        error: 'Database error'
       });
     }
 
@@ -97,9 +96,7 @@ router.get('/:userId/results', async (req, res) => {
     console.error(`❌ [STUDENT RESULTS] Unexpected error:`, err.message);
     console.error('Stack trace:', err.stack);
     res.status(500).json({ 
-      error: 'Server error', 
-      detail: err.message,
-      hint: 'Check backend logs for more details'
+      error: 'Server error'
     });
   }
 });

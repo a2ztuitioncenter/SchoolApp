@@ -7,7 +7,7 @@ export const markAttendance = async (req, res) => {
       return res.status(400).json({ error: 'studentId, classLevel, date, status required' });
     const record = await attendanceModel.markBulk(
       [{ studentId, classLevel, date, status }],
-      req.user?.id || null
+      req.user?.userId || null
     );
     res.status(201).json({ message: 'Attendance marked', data: record[0] });
   } catch (err) {
@@ -21,7 +21,7 @@ export const markBulkAttendance = async (req, res) => {
     const { records } = req.body;
     if (!Array.isArray(records) || records.length === 0)
       return res.status(400).json({ error: 'records[] array required' });
-    const results = await attendanceModel.markBulk(records, req.user?.id || null);
+    const results = await attendanceModel.markBulk(records, req.user?.userId || null);
     res.status(201).json({ message: `${results.length} records saved`, data: results });
   } catch (err) {
     console.error('markBulkAttendance:', err);

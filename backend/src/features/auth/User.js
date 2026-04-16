@@ -21,6 +21,8 @@ export const userModel = {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS "rejectionReason" TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS "statusUpdatedAt" TIMESTAMP;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique ON users (LOWER(username));
+    CREATE INDEX IF NOT EXISTS users_school_role_idx ON users ("schoolId", role, status);
 
     CREATE TABLE IF NOT EXISTS teacher_class_assignment (
       id SERIAL PRIMARY KEY,
@@ -74,7 +76,7 @@ export const getUserById = async (pool, id) => {
 
 export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null, username = null }) => {
   // Hash the password before storing
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 12);
   
   const result = await pool.query(
     `INSERT INTO users (name, phone, email, password, role, status, "schoolId", "teacherId", username)

@@ -5,7 +5,10 @@
 
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tuition-app-dev-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is required');
+}
 
 /**
  * Authentication Middleware - Verify JWT token
@@ -129,28 +132,67 @@ export const checkOwnership = (paramName = 'userId', getOwnerId = null) => {
   };
 };
 
+export const requireSelfOrAdmin = (paramName = 'userId') => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        code: 'NOT_AUTHENTICATED'
+      });
+    }
+
+    if (req.user.role === 'admin') {
+      return next();
+    }
+
+    const requestedId = req.params[paramName];
+    if (!requestedId || String(requestedId) !== String(req.user.userId)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        code: 'OWNERSHIP_VIOLATION'
+      });
+    }
+
+    next();
+  };
+};
+
 /**
  * Rate Limiting Middleware - Prevent brute force attacks
  * @param {number} maxRequests - Max requests allowed
  * @param {number} windowMs - Time window in milliseconds
  */
-const requestCounts = {}; // Store request counts per IP/user
+const requestCounts = new Map();
+const cleanupRequestCounts = () => {
+  const now = Date.now();
+  for (const [key, entry] of requestCounts.entries()) {
+    if (!entry.length || now - entry[entry.length - 1] > 15 * 60 * 1000) {
+      requestCounts.delete(key);
+    }
+  }
+};
+
+setInterval(cleanupRequestCounts, 5 * 60 * 1000).unref();
 
 export const rateLimiter = (maxRequests = 100, windowMs = 60000) => {
   return (req, res, next) => {
-    const identifier = req.user?.userId || req.ip; // Use userId if authenticated, else IP
-    const now = Date.now();
-    
-    if (!requestCounts[identifier]) {
-      requestCounts[identifier] = [];
+    const identifierParts = [req.ip];
+    if (req.path.startsWith('/api/auth/')) {
+      const loginId = req.body?.identifier || req.body?.phone || req.body?.username || 'anonymous';
+      identifierParts.push(req.path, String(loginId).toLowerCase());
+    } else if (req.user?.userId) {
+      identifierParts.push(`user:${req.user.userId}`);
     }
 
-    // Remove old requests outside the window
-    requestCounts[identifier] = requestCounts[identifier].filter(
+    const identifier = identifierParts.join('|');
+    const now = Date.now();
+    const timestamps = requestCounts.get(identifier) || [];
+
+    const recent = timestamps.filter(
       timestamp => now - timestamp < windowMs
     );
 
-    if (requestCounts[identifier].length >= maxRequests) {
+    if (recent.length >= maxRequests) {
       console.warn(`Rate limit exceeded for ${identifier}`);
       return res.status(429).json({ 
         error: 'Too many requests. Please try again later.',
@@ -159,10 +201,11 @@ export const rateLimiter = (maxRequests = 100, windowMs = 60000) => {
       });
     }
 
-    requestCounts[identifier].push(now);
+    recent.push(now);
+    requestCounts.set(identifier, recent);
     
     res.set('X-RateLimit-Limit', maxRequests);
-    res.set('X-RateLimit-Remaining', maxRequests - requestCounts[identifier].length);
+    res.set('X-RateLimit-Remaining', Math.max(0, maxRequests - recent.length));
     
     next();
   };
@@ -172,6 +215,10 @@ export const rateLimiter = (maxRequests = 100, windowMs = 60000) => {
  * Input Validation Middleware - Prevent injection attacks
  */
 export const validateInput = (req, res, next) => {
+  if (!req.is('application/json') && !req.is('application/x-www-form-urlencoded')) {
+    return next();
+  }
+
   // Check for suspicious patterns in query strings and body
   const checkForSuspiciousPatterns = (obj, path = '') => {
     if (!obj || typeof obj !== 'object') return;
@@ -184,7 +231,7 @@ export const validateInput = (req, res, next) => {
       
       if (typeof value === 'string') {
         // Check for SQL injection patterns
-        if (/(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|;|\/\*|\*\/|'|")/gi.test(value)) {
+        if (/(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|\/\*|\*\/)/gi.test(value)) {
           console.warn(`Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
           throw new Error(`Suspicious input in field: ${fullPath}`);
         }
@@ -246,6 +293,7 @@ export const corsSecure = () => {
     res.header('X-XSS-Protection', '1; mode=block');
     // Prevent clickjacking
     res.header('X-Frame-Options', 'DENY');
+    res.header('Referrer-Policy', 'no-referrer');
     
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
@@ -271,6 +319,7 @@ export default {
   authenticate,
   authorize,
   checkOwnership,
+  requireSelfOrAdmin,
   rateLimiter,
   validateInput,
   corsSecure,

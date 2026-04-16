@@ -1,3 +1,5 @@
+import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
+
 export const getResultsByStudent = async (req, res) => {
   try {
     const { student } = req.params;
@@ -23,13 +25,19 @@ export const getResultsByStudent = async (req, res) => {
     res.json({ data: result.rows });
   } catch (err) {
     console.error('getResultsByStudent:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
 export const createResult = async (req, res) => {
   try {
-    const { studentId, examTitle, subject, marksObtained, totalMarks, remarks, recordedBy } = req.body;
+    const studentId = sanitizeIdentifier(req.body.studentId, 20);
+    const examTitle = sanitizeText(req.body.examTitle, 200);
+    const subject = sanitizeText(req.body.subject, 100);
+    const marksObtained = req.body.marksObtained;
+    const totalMarks = req.body.totalMarks;
+    const remarks = sanitizeNullableText(req.body.remarks, 5000);
+    const recordedBy = sanitizeIdentifier(req.user?.userId || req.body.recordedBy, 20);
     if (!studentId || !examTitle || !subject || !marksObtained || !totalMarks)
       return res.status(400).json({ error: 'studentId, examTitle, subject, marksObtained, totalMarks required' });
     const result = await req.db.query(
@@ -40,6 +48,6 @@ export const createResult = async (req, res) => {
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
     console.error('createResult:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };

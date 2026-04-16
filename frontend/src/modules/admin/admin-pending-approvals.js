@@ -357,7 +357,7 @@ async function showClassAssignmentModal(userId) {
     // Fetch available class levels if not already loaded
     if (availableClassLevels.length === 0) {
         try {
-            const authStr = localStorage.getItem('auth');
+            const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
             const auth = authStr ? JSON.parse(authStr) : {};
             const token = auth.token;
             
@@ -477,7 +477,7 @@ async function approveUserWithClasses(userId, classesAssigned) {
     try {
         window.closeClassAssignmentModal();
 
-        const authStr = localStorage.getItem('auth');
+        const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
         const auth = authStr ? JSON.parse(authStr) : {};
         const token = auth.token;
 
