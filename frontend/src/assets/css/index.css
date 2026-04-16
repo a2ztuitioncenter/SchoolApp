@@ -9,32 +9,32 @@
    1. MINIMAL COLOR PALETTE & ROOT VARIABLES
    ============================================ */
 :root {
-    /* ERP Modern Color Palette */
-    --primary: #0060b0;
-    --primary-light: #e6f0fa;
-    --primary-dark: #004b8a;
-    --secondary: #475f84;
-    --secondary-light: #f1f5f9;
-    --surface: #f8f9fa;
-    --surface-card: #ffffff;
-    --text-main: #2d3335;
-    --text-muted: #5a6062;
-    --border-soft: #e2e8f0;
-    --shadow-soft: 0 12px 32px rgba(0, 96, 176, 0.08);
-    --shadow-hover: 0 20px 40px rgba(0, 96, 176, 0.12);
+    /* ERP Modern Color Palette (Stitch Generated) */
+    --primary: #0047FF;
+    --primary-hover: #0039CC;
+    --secondary: #0F172A;
+    --text-main: #1E293B;
+    --text-muted: #64748B;
+    --bg-light: #F8FAFC;
+    --white: #FFFFFF;
+    --border: #E2E8F0;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --radius: 12px;
 
     /* Legacy Support (for existing components) */
     --text-primary: var(--text-main);
     --text-secondary: var(--text-muted);
-    --bg-white: var(--surface-card);
-    --bg-light: var(--surface);
-    --border-color: var(--border-soft);
-    --border-subtle: var(--border-soft);
+    --bg-white: var(--white);
+    --bg-light: var(--bg-light);
+    --border-color: var(--border);
+    --border-subtle: var(--border);
     --accent-color: var(--primary);
     --accent-blue: var(--primary);
     --accent-purple: var(--primary);
-    --bg-primary: var(--surface);
-    --bg-secondary: var(--surface-card);
+    --bg-primary: var(--bg-light);
+    --bg-secondary: var(--white);
     
     /* Spacing System */
     --spacing-xs: 8px;
@@ -55,37 +55,45 @@
    ERP MODERN DESIGN SYSTEM (VANILLA HTML/CSS)
    ============================================ */
 .erp-header {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
     position: fixed;
     top: 0;
     width: 100%;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border-soft);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+    height: 80px;
+    display: flex;
+    align-items: center;
 }
 
 .erp-header-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-sm) var(--spacing-md);
+    width: 100%;
 }
 
 .erp-logo {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--primary);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--secondary);
+    text-decoration: none;
     font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.erp-logo i {
+    color: var(--primary);
+    font-size: 24px;
 }
 
 .erp-nav-desktop ul {
     list-style: none;
     display: flex;
-    gap: var(--spacing-lg);
+    gap: 32px;
     margin: 0;
     padding: 0;
 }
@@ -93,8 +101,9 @@
 .erp-nav-desktop a {
     color: var(--text-muted);
     font-weight: 500;
-    font-size: 0.95rem;
-    transition: var(--transition);
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.2s ease;
 }
 
 .erp-nav-desktop a:hover {
@@ -103,61 +112,62 @@
 
 .erp-header-auth {
     display: flex;
-    gap: var(--spacing-sm);
+    gap: 12px;
     align-items: center;
 }
 
+/* Buttons */
 .erp-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
     padding: 10px 20px;
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 14px;
     cursor: pointer;
-    transition: var(--transition);
-    border: none;
+    transition: all 0.2s ease;
     text-decoration: none;
-    font-family: 'Inter', sans-serif;
-}
-
-.erp-btn-ghost {
-    background: transparent;
-    color: var(--primary);
-}
-
-.erp-btn-ghost:hover {
-    background: var(--primary-light);
+    border: 1px solid transparent;
+    gap: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .erp-btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background-color: var(--primary);
     color: white !important;
-    box-shadow: 0 4px 12px rgba(0, 96, 176, 0.2);
 }
 
 .erp-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 96, 176, 0.3);
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.erp-btn-ghost {
+    background-color: transparent;
+    color: var(--text-main);
+}
+
+.erp-btn-ghost:hover {
+    background-color: var(--bg-light);
 }
 
 .erp-btn-outline {
-    background: transparent;
-    color: var(--primary) !important;
-    border: 1px solid var(--border-soft);
+    background-color: transparent;
+    border-color: var(--border);
+    color: var(--text-main) !important;
 }
 
 .erp-btn-outline:hover {
-    background: var(--surface);
     border-color: var(--primary);
+    color: var(--primary) !important;
 }
 
 .erp-btn-large {
-    padding: 16px 32px;
-    font-size: 1.1rem;
-    border-radius: var(--radius-lg);
+    padding: 14px 28px;
+    font-size: 16px;
+    border-radius: var(--radius);
 }
 
 .erp-mobile-menu-btn {
@@ -176,12 +186,13 @@
 /* Hero Section */
 .erp-hero {
     padding: 140px 0 80px 0;
-    background: var(--surface);
+    background: radial-gradient(circle at top right, #f0f4ff 0%, #ffffff 50%);
     min-height: 80vh;
     display: flex;
     align-items: center;
     position: relative;
     overflow: hidden;
+    text-align: center;
 }
 
 .erp-hero-container {
@@ -190,58 +201,57 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
 }
 
 .erp-badge {
-    display: inline-block;
+    display: inline-flex;
     padding: 6px 16px;
-    background: white;
+    background-color: #E0E7FF;
     color: var(--primary);
-    font-size: 0.85rem;
+    border-radius: 100px;
+    font-size: 12px;
     font-weight: 700;
-    border-radius: 30px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    margin-bottom: var(--spacing-lg);
-    border: 1px solid var(--border-soft);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+    border: none;
 }
 
 .erp-title {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-size: clamp(40px, 5vw, 64px);
     font-weight: 800;
-    color: var(--text-main);
+    color: var(--secondary);
     line-height: 1.1;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: 24px;
     letter-spacing: -1px;
     max-width: 900px;
 }
 
 .erp-title span {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--primary);
+    background: none;
+    -webkit-text-fill-color: var(--primary);
 }
 
 .erp-subtitle {
-    font-size: clamp(1rem, 2vw, 1.25rem);
+    font-size: 18px;
     color: var(--text-muted);
     max-width: 700px;
-    margin: 0 auto var(--spacing-xl) auto;
+    margin: 0 auto 40px auto;
     line-height: 1.7;
 }
 
 .erp-hero-cta {
     display: flex;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
+    gap: 16px;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 /* Modules Grid */
 .erp-modules-section {
     padding: 100px 0;
-    background: var(--surface-card);
+    background-color: var(--white);
 }
 
 .erp-section-header {
@@ -250,15 +260,15 @@
 }
 
 .erp-section-header h2 {
+    font-size: 32px;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 2.5rem;
     font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 16px;
+    color: var(--secondary);
+    margin-bottom: 12px;
 }
 
 .erp-section-header p {
-    font-size: 1.1rem;
+    font-size: 16px;
     color: var(--text-muted);
     max-width: 600px;
     margin: 0 auto;
@@ -266,25 +276,24 @@
 
 .erp-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 32px;
 }
 
 .erp-card {
-    background: var(--surface-card);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
-    border: 1px solid var(--border-soft);
-    transition: var(--transition);
-    height: 100%;
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 40px;
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
 }
 
 .erp-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-hover);
-    border-color: rgba(0, 96, 176, 0.2);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
 }
 
 .erp-card-featured {
@@ -315,25 +324,32 @@
 }
 
 .erp-card h3 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.5rem;
+    font-size: 20px;
     font-weight: 700;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    color: var(--secondary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .erp-card p {
     color: var(--text-muted);
     margin-bottom: 24px;
+    font-size: 15px;
     flex-grow: 1;
 }
 
 .erp-card-link {
+    font-weight: 700;
     color: var(--primary);
-    font-weight: 600;
+    text-decoration: none;
+    font-size: 14px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.95rem;
+}
+
+.erp-card-link:hover {
+    color: var(--primary-hover);
 }
 
 .erp-card-link:hover i {
@@ -343,35 +359,38 @@
 /* Stats Section */
 .erp-stats {
     padding: 80px 0;
-    background: var(--primary);
-    color: white;
+    background-color: var(--secondary);
+    color: var(--white);
 }
 
 .erp-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
     gap: 40px;
     text-align: center;
 }
 
 .stat-number {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 3.5rem;
+    font-size: 48px;
     font-weight: 800;
     margin-bottom: 8px;
+    color: var(--primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .stat-label {
-    font-size: 1.1rem;
+    font-size: 16px;
     font-weight: 500;
-    opacity: 0.9;
+    color: #94A3B8;
 }
 
 /* Footer */
 .erp-footer {
-    background: #0f172a;
-    color: #e2e8f0;
-    padding-top: 80px;
+    background-color: var(--bg-light);
+    border-top: 1px solid var(--border);
+    padding: 60px 0 40px;
+    color: var(--text-main);
 }
 
 .erp-footer-container {
@@ -382,9 +401,10 @@
 }
 
 .erp-footer-brand p {
-    color: #94a3b8;
+    color: var(--text-muted);
     margin-top: 16px;
     max-width: 300px;
+    font-size: 14px;
 }
 
 .erp-footer-links {
@@ -394,9 +414,9 @@
 }
 
 .erp-footer-col h4 {
-    color: white;
+    color: var(--secondary);
     font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 1.1rem;
+    font-size: 16px;
     font-weight: 600;
     margin-bottom: 20px;
 }
@@ -411,28 +431,34 @@
 }
 
 .erp-footer-col a {
-    color: #94a3b8;
+    color: var(--text-muted);
     transition: var(--transition);
+    font-size: 14px;
+    text-decoration: none;
 }
 
 .erp-footer-col a:hover {
-    color: white;
+    color: var(--primary);
 }
 
 .erp-footer-bottom {
-    border-top: 1px solid #1e293b;
-    padding: 24px 0;
+    border-top: 1px solid var(--border);
+    padding: 24px 0 0 0;
+    margin-top: 24px;
 }
 
 .erp-footer-bottom .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
 .erp-footer-bottom p {
-    color: #64748b;
+    color: var(--text-muted);
     margin: 0;
+    font-size: 14px;
 }
 
 .erp-social-links {
@@ -441,13 +467,14 @@
 }
 
 .erp-social-links a {
-    color: #94a3b8;
+    color: var(--text-muted);
     font-size: 1.25rem;
     transition: var(--transition);
 }
 
 .erp-social-links a:hover {
-    color: white;
+    color: var(--primary);
+}
 }
 
 @media (max-width: 900px) {
