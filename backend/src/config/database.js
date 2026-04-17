@@ -46,27 +46,22 @@ async function createDefaultAdmin() {
         throw new Error('ADMIN_PHONE, ADMIN_PASSWORD, and ADMIN_USERNAME are required when initializing the database');
     }
 
-    // Mask phone for privacy (e.g. ********77)
     const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);
     console.log(`👤 Configuring Admin Account for phone: ${maskedPhone}...`);
 
     try {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
-
-        // Check if this specific admin exists
         const exists = await pool.query('SELECT id, role FROM users WHERE phone = $1', [adminPhone]);
 
         if (exists.rows.length === 0) {
-            // Create new admin with username
             await pool.query(
-                `INSERT INTO users (phone, email, password, role, "isActive", username) VALUES ($1, $2, $3, $4, $5, $6)`,
+                `INSERT INTO users (phone, email, password, role, is_active, username) VALUES ($1, $2, $3, $4, $5, $6)`,
                 [adminPhone, 'admin@a2z.local', hashedPassword, 'admin', true, adminUsername]
             );
             console.log(`SUCCESS: Admin account created with phone ${maskedPhone}, username: ${adminUsername}`);
         } else {
-            // Update existing user to be admin with correct password and username
             await pool.query(
-                `UPDATE users SET password = $1, role = 'admin', "isActive" = $3, username = COALESCE(NULLIF($4, ''), username, CONCAT('user_', id)) WHERE phone = $2`,
+                `UPDATE users SET password = $1, role = 'admin', is_active = $3, username = COALESCE(NULLIF($4, ''), username, CONCAT('user_', id)) WHERE phone = $2`,
                 [hashedPassword, adminPhone, true, adminUsername]
             );
             console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);

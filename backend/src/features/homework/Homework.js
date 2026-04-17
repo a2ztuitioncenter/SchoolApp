@@ -19,9 +19,8 @@ export const homeworkModel = {
     );
   `,
 
-
   async getAll(classLevel = '', section = '') {
-    let query = `SELECT h.*, u.phone AS "teacherPhone"
+    let query = `SELECT h.*, u.phone AS teacher_phone
                  FROM homework h
                  LEFT JOIN users u ON h.teacher_id = u.id`;
     const params = [];
@@ -29,18 +28,17 @@ export const homeworkModel = {
       query += ` WHERE h.class_level = $1`; 
       params.push(classLevel); 
       if (section) {
-        query += ` AND h.section = $2`;
+        query += ` AND (h.section = $2 OR h.section = 'ALL')`;
         params.push(section);
       }
     } else if (section) {
-      query += ` WHERE h.section = $1`;
+      query += ` WHERE (h.section = $1 OR h.section = 'ALL')`;
       params.push(section);
     }
     query += ` ORDER BY h.created_at DESC`;
     const result = await db.query(query, params);
     return result.rows;
   },
-
 
   async getByClass(classLevel) {
     return this.getAll(classLevel);
@@ -60,10 +58,9 @@ export const homeworkModel = {
     return result.rows[0];
   },
 
-
   async update(id, { title, description, classLevel, subject, dueDate, attachmentUrl }) {
     const result = await db.query(
-      `UPDATE homework SET title=$1, description=$2, "classLevel"=$3, subject=$4, "dueDate"=$5, "attachmentUrl"=$6 WHERE id=$7 RETURNING *`,
+      `UPDATE homework SET title=$1, description=$2, class_level=$3, subject=$4, due_date=$5, attachment_url=$6 WHERE id=$7 RETURNING *`,
       [title, description || null, classLevel, subject || null, dueDate || null, attachmentUrl || null, id]
     );
     return result.rows[0] || null;
@@ -77,20 +74,19 @@ export const homeworkModel = {
 
 // Legacy pool-based named exports used by teacherRoutes.js and studentRoutes.js
 export const getHomeworkByClass = async (pool, classLevel, section = 'A', type = 'homework') => {
-  let query = `SELECT h.*, u.phone AS "teacherPhone"
+  let query = `SELECT h.*, u.phone AS teacher_phone
                FROM homework h
                LEFT JOIN users u ON h.teacher_id = u.id
-               WHERE h.class_level = $1 AND h.type = $2 AND h.section = $3`;
+               WHERE h.class_level = $1 AND h.type = $2 AND (h.section = $3 OR h.section = 'ALL')`;
   const params = [classLevel, type, section];
   query += ` ORDER BY h.created_at DESC`;
   const result = await pool.query(query, params);
   return result.rows;
 };
 
-
 export const getHomeworkByTeacher = async (pool, teacherId) => {
   const result = await pool.query(
-    `SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC`,
+    `SELECT * FROM homework WHERE teacher_id = $1 ORDER BY created_at DESC`,
     [teacherId]
   );
   return result.rows;
@@ -98,7 +94,7 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
 
 export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
   const result = await pool.query(
-    `INSERT INTO homework (title, description, "classLevel", section, subject, "dueDate", "teacherId", "attachmentUrl", type)
+    `INSERT INTO homework (title, description, class_level, section, subject, due_date, teacher_id, attachment_url, type)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
     [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null, attachmentUrl || null, type]
   );
@@ -107,8 +103,8 @@ export const createHomework = async (pool, { teacherId, classLevel, section, tit
 
 export const updateHomework = async (pool, id, { title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
   const result = await pool.query(
-    `UPDATE homework SET title=$1, description=$2, "dueDate"=$3, subject=$4,
-     "attachmentUrl" = COALESCE($5, "attachmentUrl"), type=$6 WHERE id=$7 RETURNING *`,
+    `UPDATE homework SET title=$1, description=$2, due_date=$3, subject=$4,
+     attachment_url = COALESCE($5, attachment_url), type=$6 WHERE id=$7 RETURNING *`,
     [title, description || null, dueDate || null, subject || null, attachmentUrl || null, type, id]
   );
   return result.rows[0] || null;

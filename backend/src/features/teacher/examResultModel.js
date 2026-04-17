@@ -3,18 +3,18 @@ export const examResultModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS exam_results (
       id SERIAL PRIMARY KEY,
-      "classLevel" VARCHAR(20) NOT NULL,
+      class_level VARCHAR(20) NOT NULL,
       section VARCHAR(20),
-      "rollNumber" VARCHAR(50),
-      "studentName" VARCHAR(255) NOT NULL,
-      "examTitle" VARCHAR(255) NOT NULL,
+      roll_number VARCHAR(50),
+      student_name VARCHAR(255) NOT NULL,
+      exam_title VARCHAR(255) NOT NULL,
       subjects JSONB NOT NULL,
-      "totalMarks" NUMERIC(10, 2) NOT NULL,
-      "obtainedMarks" NUMERIC(10, 2) NOT NULL,
+      total_marks NUMERIC(10, 2) NOT NULL,
+      obtained_marks NUMERIC(10, 2) NOT NULL,
       percentage NUMERIC(5, 2) NOT NULL,
       remarks VARCHAR(20),
-      "teacherId" INTEGER REFERENCES users(id),
-      "createdAt" TIMESTAMP DEFAULT NOW()
+      teacher_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW()
     );
   `
 };

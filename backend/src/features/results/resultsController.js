@@ -39,10 +39,12 @@ export const createResult = async (req, res) => {
     if (!classLevel || !studentName || !examTitle)
       return res.status(400).json({ error: 'classLevel, studentName, and examTitle are required' });
 
+    const subjects = req.body.subjects || {};
+
     const result = await req.db.query(
-      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, total_marks, obtained_marks, remarks, teacher_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [classLevel, section, rollNumber, studentName, examTitle, totalMarks, obtainedMarks, remarks, teacherId]
+      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId]
     );
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
