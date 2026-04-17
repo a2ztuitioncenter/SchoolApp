@@ -81,9 +81,13 @@ function setupTabs() {
     link.addEventListener('click', e => {
       e.preventDefault();
       const tab = link.getAttribute('data-tab');
+      // Remove active class from all nav links
       document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      // Hide all tab content
       document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-      link.classList.add('active');
+      // Add active class to all matching nav links (both regular and bottom nav)
+      document.querySelectorAll(`[data-tab="${tab}"]`).forEach(l => l.classList.add('active'));
+      // Show the corresponding tab content
       const el = document.getElementById(`tab-${tab}`);
       if (el) el.style.display = 'block';
 

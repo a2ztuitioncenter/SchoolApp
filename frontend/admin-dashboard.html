@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,13 +8,13 @@
     <!-- 🔒 AUTH CHECK MUST RUN IMMEDIATELY -->
     <script>
         // CRITICAL: Run auth check BEFORE any other resources load
-        (function() {
-            const performAuthCheck = function() {
+        (function () {
+            const performAuthCheck = function () {
                 try {
                     const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isAdmin = auth && auth.isLoggedIn === true && auth.role === 'admin';
-                    
+
                     if (!isAdmin) {
                         // BLOCK EVERYTHING
                         console.warn('🔒 ADMIN DASHBOARD: Unauthorized - blocking access');
@@ -43,7 +44,7 @@
                     throw new Error('AUTH_ERROR');
                 }
             };
-            
+
             // Execute IMMEDIATELY
             if (!performAuthCheck()) {
                 throw new Error('Auth failed');
@@ -55,7 +56,8 @@
     <!-- Chart.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <!-- ChartJS Plugin: Data Labels -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <!-- Styles -->
     <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
     <style>
@@ -71,6 +73,7 @@
     </style>
 
 </head>
+
 <body>
     <!-- Protection screen shows while auth is being verified -->
     <div id="auth-protection-screen">
@@ -122,39 +125,50 @@
                     <i class="fas fa-chart-bar"></i> Exam Results
                 </a>
             </nav>
-                        </aside>
-                    
-                        <!-- Main Content -->
-                        <div class="main-content">
-                            <div class="header">
-                                <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
-                                <h1>Admin Dashboard</h1>
-                                <div class="admin-profile-menu" id="admin-profile-menu">
-                                    <button id="admin-profile-btn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
-                                        <div class="avatar-circle">
-                                            <span id="admin-avatar-initial">A</span>
-                                            <span class="online-indicator"></span>
-                                        </div>
-                                        <i class="fas fa-caret-down"></i>
-                                    </button>
-                                    
-                                    <div id="admin-profile-dropdown" class="profile-dropdown">
-                                        <div class="dropdown-header">
-                                            <div class="user-name" id="dropdown-admin-name">Administrator</div>
-                                            <div class="user-email" id="dropdown-admin-email">admin@a2z.local</div>
-                                        </div>
-                                        <div class="dropdown-divider"></div>
-                                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> View Profile</a>
-                                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
-                                        <div class="dropdown-divider"></div>
-                                        <button id="dropdown-logout-btn" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                            <!-- Alerts -->
-                            <div id="success-alert" class="alert alert-success">
-                                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
+            <!-- Mobile-only Bottom Navigation Bar -->
+            <nav class="bottom-nav">
+                <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-chart-line"></i> <span>Dashboard</span></a>
+                <a href="#" class="nav-link" data-tab="users"><i class="fas fa-users"></i> <span>Users</span></a>
+                <a href="#" class="nav-link" data-tab="students"><i class="fas fa-graduation-cap"></i> <span>Students</span></a>
+                <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-clipboard-check"></i> <span>Attendance</span></a>
+                <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book"></i> <span>Homework</span></a>
+                <a href="#" class="nav-link" data-tab="fees"><i class="fas fa-wallet"></i> <span>Fees</span></a>
+                <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> <span>Alerts</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
+                <h1>Admin Dashboard</h1>
+                <div class="admin-profile-menu" id="admin-profile-menu">
+                    <button id="admin-profile-btn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
+                        <div class="avatar-circle">
+                            <span id="admin-avatar-initial">A</span>
+                            <span class="online-indicator"></span>
+                        </div>
+                        <i class="fas fa-caret-down"></i>
+                    </button>
+
+                    <div id="admin-profile-dropdown" class="profile-dropdown">
+                        <div class="dropdown-header">
+                            <div class="user-name" id="dropdown-admin-name">Administrator</div>
+                            <div class="user-email" id="dropdown-admin-email">admin@a2z.local</div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> View Profile</a>
+                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <button id="dropdown-logout-btn" class="dropdown-item text-danger"><i
+                                class="fas fa-sign-out-alt"></i> Logout</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div id="success-alert" class="alert alert-success">
+                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
             </div>
             <div id="error-alert" class="alert alert-error">
                 <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
@@ -165,7 +179,7 @@
 
             <!-- Dashboard Tab -->
             <div id="dashboard" class="tab-content active">
-                
+
                 <!-- ===== ROW 0: QUICK STATS KPI CARDS ===== -->
                 <div class="dashboard-section-title">
                     <h2><i class="fas fa-tachometer-alt"></i> Quick Stats</h2>
@@ -320,7 +334,8 @@
                         </div>
                         <div class="card-body no-chart-height">
                             <div id="recent-activity-list" class="activity-list">
-                                <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading activity...</div>
+                                <div style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading
+                                    activity...</div>
                             </div>
                         </div>
                     </div>
@@ -346,6 +361,7 @@
                                         <tr>
                                             <th>Student Name</th>
                                             <th>Class</th>
+                                            <th>Section</th>
                                             <th>Amount</th>
                                             <th>Due Date</th>
                                             <th>Days Overdue</th>
@@ -353,7 +369,11 @@
                                         </tr>
                                     </thead>
                                     <tbody id="unpaid-fees-tbody">
-                                        <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading fees data...</td></tr>
+                                        <tr>
+                                            <td colspan="7"
+                                                style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                                Loading fees data...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -380,7 +400,8 @@
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="user-search" placeholder="Search by name, phone or email..." onkeyup="filterUsersTable()">
+                        <input type="text" id="user-search" placeholder="Search by name, phone or email..."
+                            onkeyup="filterUsersTable()">
                     </div>
                     <div class="filter-group">
                         <select id="user-role-filter" onchange="filterUsersTable()">
@@ -431,8 +452,10 @@
 
                 <!-- Pagination / Show More for Users -->
                 <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()" style="display: none;">Show All Users</button>
-                    <div id="users-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                    <button class="btn btn-secondary" id="btn-toggle-users" onclick="toggleShowAllUsers()"
+                        style="display: none;">Show All Users</button>
+                    <div id="users-count-text"
+                        style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
 
                 <!-- Add User Modal -->
@@ -454,7 +477,8 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number *</label>
-                                    <input type="tel" id="user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                    <input type="tel" id="user-phone" placeholder="10-digit number" pattern="[0-9]{10}"
+                                        required>
                                 </div>
                                 <div class="form-group">
                                     <label>Email</label>
@@ -472,7 +496,8 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Login Password *</label>
-                                    <input type="password" id="user-password" placeholder="Enter login password" required>
+                                    <input type="password" id="user-password" placeholder="Enter login password"
+                                        required>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
@@ -494,7 +519,8 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number</label>
-                                    <input type="tel" id="edit-user-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                    <input type="tel" id="edit-user-phone" placeholder="10-digit number"
+                                        pattern="[0-9]{10}" required>
                                 </div>
                                 <div class="form-group">
                                     <label>Email</label>
@@ -509,13 +535,16 @@
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
-                            
+
                             <!-- New: Class Assignment Section for Teachers/Staff -->
-                            <div id="edit-user-assignment-section" style="display: none; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-main);">
+                            <div id="edit-user-assignment-section"
+                                style="display: none; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <label
+                                    style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-main);">
                                     <i class="fas fa-chalkboard-teacher" style="margin-right: 8px;"></i> Class Access
                                 </label>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Select classes this user should manage:</p>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Select
+                                    classes this user should manage:</p>
                                 <div id="edit-user-class-checkboxes" style="
                                     display: grid;
                                     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -564,7 +593,8 @@
                     </div>
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="student-search" placeholder="Search by name, phone or ID..." onkeyup="filterStudentsTable()">
+                        <input type="text" id="student-search" placeholder="Search by name, phone or ID..."
+                            onkeyup="filterStudentsTable()">
                     </div>
                 </div>
 
@@ -578,13 +608,14 @@
                                 <th>Parents</th>
                                 <th>Phone</th>
                                 <th>Class</th>
+                                <th>Section</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody id="students-list">
                             <tr>
-                                <td colspan="7" class="empty-state">
+                                <td colspan="8" class="empty-state">
                                     <i class="fas fa-inbox"></i>
                                     <p>No students found. Click "Add Student" to get started.</p>
                                 </td>
@@ -595,7 +626,8 @@
 
                 <!-- Pagination -->
                 <div class="pagination-footer">
-                    <button class="btn btn-secondary" id="btn-toggle-students" onclick="toggleShowAllStudents()" style="display: none;">Show All Students</button>
+                    <button class="btn btn-secondary" id="btn-toggle-students" onclick="toggleShowAllStudents()"
+                        style="display: none;">Show All Students</button>
                     <div id="students-count-text" style="font-size: 0.85rem; color: var(--text-muted);"></div>
                 </div>
             </div>
@@ -650,7 +682,8 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Phone Number *</label>
-                                    <input type="tel" id="student-phone" placeholder="10-digit number" pattern="[0-9]{10}" required>
+                                    <input type="tel" id="student-phone" placeholder="10-digit number"
+                                        pattern="[0-9]{10}" required>
                                 </div>
                                 <div class="form-group">
                                     <label>Email</label>
@@ -662,7 +695,8 @@
                             <div class="form-section-title">Date of Birth</div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Date of Birth * <small style="font-weight:400;color:#888">(used for login)</small></label>
+                                    <label>Date of Birth * <small style="font-weight:400;color:#888">(used for
+                                            login)</small></label>
                                     <input type="date" id="student-dob" required max="2020-01-01">
                                 </div>
                             </div>
@@ -672,16 +706,19 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Father's Name *</label>
-                                    <input type="text" id="student-fatherName" placeholder="Father's full name" required>
+                                    <input type="text" id="student-fatherName" placeholder="Father's full name"
+                                        required>
                                 </div>
                                 <div class="form-group">
                                     <label>Mother's Name *</label>
-                                    <input type="text" id="student-motherName" placeholder="Mother's full name" required>
+                                    <input type="text" id="student-motherName" placeholder="Mother's full name"
+                                        required>
                                 </div>
                             </div>
 
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="closeAddStudentModal()">Cancel</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="closeAddStudentModal()">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Add Student</button>
                             </div>
                         </form>
@@ -749,16 +786,19 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Father's Name *</label>
-                                    <input type="text" id="edit-student-fatherName" placeholder="Father's full name" required>
+                                    <input type="text" id="edit-student-fatherName" placeholder="Father's full name"
+                                        required>
                                 </div>
                                 <div class="form-group">
                                     <label>Mother's Name *</label>
-                                    <input type="text" id="edit-student-motherName" placeholder="Mother's full name" required>
+                                    <input type="text" id="edit-student-motherName" placeholder="Mother's full name"
+                                        required>
                                 </div>
                             </div>
 
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="closeEditStudentModal()">Cancel</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="closeEditStudentModal()">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
                         </form>
@@ -792,7 +832,8 @@
                             <input type="date" id="att-date" value="" class="form-control">
                         </div>
                         <div class="form-group" style="align-self: flex-end;">
-                            <button class="btn btn-primary" onclick="loadAttendanceSheet()"><i class="fas fa-download"></i> Load Students</button>
+                            <button class="btn btn-primary" onclick="loadAttendanceSheet()"><i
+                                    class="fas fa-download"></i> Load Students</button>
                         </div>
                     </div>
                 </div>
@@ -844,7 +885,8 @@
                             <input type="month" id="summary-month" class="form-control">
                         </div>
                         <div class="form-group" style="align-self: flex-end;">
-                            <button class="btn btn-primary" onclick="loadAttendanceSummary()"><i class="fas fa-chart-bar"></i> View Summary</button>
+                            <button class="btn btn-primary" onclick="loadAttendanceSummary()"><i
+                                    class="fas fa-chart-bar"></i> View Summary</button>
                         </div>
                     </div>
                     <div id="summary-table-container" style="margin-top:1.5rem; overflow-x:auto;"></div>
@@ -868,7 +910,8 @@
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="hw-filter-class" placeholder="Search by title, class or subject..." onkeyup="filterHomework()">
+                        <input type="text" id="hw-filter-class" placeholder="Search by title, class or subject..."
+                            onkeyup="filterHomework()">
                     </div>
                 </div>
 
@@ -879,6 +922,7 @@
                             <tr>
                                 <th>Title</th>
                                 <th>Class</th>
+                                <th>Section</th>
                                 <th>Subject</th>
                                 <th>Due Date</th>
                                 <th>Assigned By</th>
@@ -887,7 +931,7 @@
                         </thead>
                         <tbody id="homework-table-body">
                             <tr>
-                                <td colspan="6" class="empty-state">
+                                <td colspan="7" class="empty-state">
                                     <i class="fas fa-inbox"></i>
                                     <p>No homework found. Click "Add Homework" to get started.</p>
                                 </td>
@@ -898,7 +942,8 @@
 
                 <!-- Pagination -->
                 <div class="pagination-footer">
-                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()" style="display: none;">Show All Homework</button>
+                    <button class="btn btn-secondary" id="btn-toggle-homework" onclick="toggleShowAllHomework()"
+                        style="display: none;">Show All Homework</button>
                     <div id="homework-count-text" style="font-size: 0.85rem; color: var(--text-muted);"></div>
                 </div>
             </div>
@@ -923,7 +968,17 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Class *</label>
-                                    <input type="text" id="hw-class" placeholder="e.g. 10A" required>
+                                    <input type="text" id="hw-class" placeholder="e.g. 10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Section *</label>
+                                    <select id="hw-section" required style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.95rem;">
+                                        <option value="">Select Section</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="ALL">ALL (All Sections)</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -944,17 +999,21 @@
                             <div class="form-section-title">Additional Information</div>
                             <div class="form-group">
                                 <label>Description</label>
-                                <textarea id="hw-description" rows="3" placeholder="Describe the homework..."></textarea>
+                                <textarea id="hw-description" rows="3"
+                                    placeholder="Describe the homework..."></textarea>
                             </div>
 
                             <div class="form-group">
                                 <label>Attachment (PDF/JPG/PNG)</label>
                                 <input type="file" id="hw-attachment" accept=".pdf,.jpg,.jpeg,.png">
-                                <div id="hw-current-attachment" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;"></div>
+                                <div id="hw-current-attachment"
+                                    style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;">
+                                </div>
                             </div>
 
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="closeAddHomeworkModal()">Cancel</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="closeAddHomeworkModal()">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Save Homework</button>
                             </div>
                         </form>
@@ -978,11 +1037,22 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Title *</label>
-                                    <input type="text" id="hw-edit-title" placeholder="e.g. Chapter 5 Exercise" required>
+                                    <input type="text" id="hw-edit-title" placeholder="e.g. Chapter 5 Exercise"
+                                        required>
                                 </div>
                                 <div class="form-group">
                                     <label>Class *</label>
-                                    <input type="text" id="hw-edit-class" placeholder="e.g. 10A" required>
+                                    <input type="text" id="hw-edit-class" placeholder="e.g. 10" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Section *</label>
+                                    <select id="hw-edit-section" required style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.95rem;">
+                                        <option value="">Select Section</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="ALL">ALL (All Sections)</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -1003,17 +1073,21 @@
                             <div class="form-section-title">Additional Information</div>
                             <div class="form-group">
                                 <label>Description</label>
-                                <textarea id="hw-edit-description" rows="3" placeholder="Describe the homework..."></textarea>
+                                <textarea id="hw-edit-description" rows="3"
+                                    placeholder="Describe the homework..."></textarea>
                             </div>
 
                             <div class="form-group">
                                 <label>Attachment (PDF/JPG/PNG)</label>
                                 <input type="file" id="hw-edit-attachment" accept=".pdf,.jpg,.jpeg,.png">
-                                <div id="hw-edit-current-attachment" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;"></div>
+                                <div id="hw-edit-current-attachment"
+                                    style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;">
+                                </div>
                             </div>
 
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="closeEditHomeworkModal()">Cancel</button>
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="closeEditHomeworkModal()">Cancel</button>
                                 <button type="submit" class="btn btn-primary">Save Changes</button>
                             </div>
                         </form>
@@ -1060,7 +1134,8 @@
                         </div>
                         <div class="stat-content">
                             <div class="stat-label">Paid / Unpaid</div>
-                            <div class="stat-number"><span id="fee-stat-paid-count">0</span> / <span id="fee-stat-unpaid-count">0</span></div>
+                            <div class="stat-number"><span id="fee-stat-paid-count">0</span> / <span
+                                    id="fee-stat-unpaid-count">0</span></div>
                         </div>
                     </div>
                 </div>
@@ -1069,11 +1144,13 @@
                 <div class="filter-bar">
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn btn-primary" id="fee-tab-all" onclick="loadFees('all')">All Records</button>
-                        <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid Only</button>
+                        <button class="btn btn-secondary" id="fee-tab-unpaid" onclick="loadFees('unpaid')">Unpaid
+                            Only</button>
                     </div>
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="fee-search" placeholder="Search by student name or ID..." oninput="debouncedFilterFees()">
+                        <input type="text" id="fee-search" placeholder="Search by student name or ID..."
+                            oninput="debouncedFilterFees()">
                     </div>
                 </div>
 
@@ -1085,6 +1162,7 @@
                                 <th>#</th>
                                 <th>Student</th>
                                 <th>Class</th>
+                                <th>Section</th>
                                 <th>Amount</th>
                                 <th>Due Date</th>
                                 <th>Status</th>
@@ -1096,8 +1174,10 @@
                 </div>
                 <!-- Pagination -->
                 <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()" style="display: none;">Show All Fees</button>
-                    <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                    <button class="btn btn-secondary" id="btn-toggle-fees" onclick="toggleShowAllFees()"
+                        style="display: none;">Show All Fees</button>
+                    <div id="fees-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    </div>
                 </div>
 
                 <!-- Add Fee Modal -->
@@ -1195,7 +1275,8 @@
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="material-search" placeholder="Search by title or subject..." onkeyup="filterMaterials()">
+                        <input type="text" id="material-search" placeholder="Search by title or subject..."
+                            onkeyup="filterMaterials()">
                     </div>
                     <div class="filter-group">
                         <select id="material-class-filter" onchange="filterMaterials()">
@@ -1226,13 +1307,17 @@
                                     <th>Title</th>
                                     <th>Subject</th>
                                     <th>Class</th>
+                                    <th>Section</th>
                                     <th>Uploaded By</th>
                                     <th>Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="materials-tbody">
-                                <tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i> No materials found</td></tr>
+                                <tr>
+                                    <td colspan="7" class="empty-state"><i class="fas fa-inbox"></i> No materials found
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -1240,8 +1325,10 @@
 
                 <!-- Pagination / Show More for Materials -->
                 <div style="text-align: center; margin-top: 1rem;">
-                    <button class="btn btn-secondary" id="btn-toggle-materials" onclick="toggleShowAllMaterials()" style="display: none;">Show More Materials</button>
-                    <div id="materials-count-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
+                    <button class="btn btn-secondary" id="btn-toggle-materials" onclick="toggleShowAllMaterials()"
+                        style="display: none;">Show More Materials</button>
+                    <div id="materials-count-text"
+                        style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
                 </div>
 
                 <!-- Mobile Card View (Hidden on Desktop) -->
@@ -1266,12 +1353,16 @@
                 <!-- Day Selector Tabs -->
                 <div class="timetable-day-selector">
                     <div class="day-tabs">
-                        <button class="day-tab active" data-day="Monday" onclick="selectTimetableDay('Monday')">Mon</button>
+                        <button class="day-tab active" data-day="Monday"
+                            onclick="selectTimetableDay('Monday')">Mon</button>
                         <button class="day-tab" data-day="Tuesday" onclick="selectTimetableDay('Tuesday')">Tue</button>
-                        <button class="day-tab" data-day="Wednesday" onclick="selectTimetableDay('Wednesday')">Wed</button>
-                        <button class="day-tab" data-day="Thursday" onclick="selectTimetableDay('Thursday')">Thu</button>
+                        <button class="day-tab" data-day="Wednesday"
+                            onclick="selectTimetableDay('Wednesday')">Wed</button>
+                        <button class="day-tab" data-day="Thursday"
+                            onclick="selectTimetableDay('Thursday')">Thu</button>
                         <button class="day-tab" data-day="Friday" onclick="selectTimetableDay('Friday')">Fri</button>
-                        <button class="day-tab" data-day="Saturday" onclick="selectTimetableDay('Saturday')">Sat</button>
+                        <button class="day-tab" data-day="Saturday"
+                            onclick="selectTimetableDay('Saturday')">Sat</button>
                         <button class="day-tab" data-day="Sunday" onclick="selectTimetableDay('Sunday')">Sun</button>
                     </div>
                 </div>
@@ -1349,8 +1440,10 @@
                             </div>
                         </form>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="closeTimetableModal()">Cancel</button>
-                            <button type="submit" class="btn btn-primary" onclick="saveTimetableEntry()">Save Entry</button>
+                            <button type="button" class="btn btn-secondary"
+                                onclick="closeTimetableModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary" onclick="saveTimetableEntry()">Save
+                                Entry</button>
                         </div>
                     </div>
                 </div>
@@ -1367,10 +1460,19 @@
                         <div class="table-container" style="margin-top:20px;">
                             <table class="data-table">
                                 <thead>
-                                    <tr><th>Date</th><th>Title</th><th>Message</th><th>Target</th><th>File</th><th>Actions</th></tr>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Title</th>
+                                        <th>Message</th>
+                                        <th>Target</th>
+                                        <th>File</th>
+                                        <th>Actions</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="notifications-list">
-                                    <tr><td colspan="5" class="empty-state">No notifications sent.</td></tr>
+                                    <tr>
+                                        <td colspan="5" class="empty-state">No notifications sent.</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1449,7 +1551,8 @@
                                 align-items: center;
                                 justify-content: center;
                                 border-radius: 50%;
-                            " onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.opacity='0.8'; this.style.background='transparent'">&times;</span>
+                            " onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.2)'"
+                                onmouseout="this.style.opacity='0.8'; this.style.background='transparent'">&times;</span>
                         </div>
                         <div class="modal-body" style="padding: 28px;">
                             <p style="
@@ -1457,7 +1560,8 @@
                                 font-size: 14px;
                                 color: var(--text-muted);
                                 line-height: 1.5;
-                            ">Please provide a clear reason for rejecting this registration. This will help the applicant understand the decision.</p>
+                            ">Please provide a clear reason for rejecting this registration. This will help the
+                                applicant understand the decision.</p>
                             <div class="form-group" style="margin: 0;">
                                 <label style="
                                     display: block;
@@ -1466,7 +1570,8 @@
                                     font-size: 14px;
                                     color: var(--text-main);
                                 ">Reason for Rejection *</label>
-                                <textarea id="rejection-reason" placeholder="Explain why you're rejecting this registration..." rows="4" style="
+                                <textarea id="rejection-reason"
+                                    placeholder="Explain why you're rejecting this registration..." rows="4" style="
                                     width: 100%;
                                     padding: 12px 14px;
                                     border: 1px solid var(--border-color);
@@ -1477,7 +1582,8 @@
                                     background: var(--bg-secondary);
                                     resize: vertical;
                                     transition: all 0.2s ease;
-                                " onfocus="this.style.borderColor='#667eea'; this.style.background='var(--bg-primary)'" onblur="this.style.borderColor='var(--border-color)'; this.style.background='var(--bg-secondary)'"></textarea>
+                                " onfocus="this.style.borderColor='#667eea'; this.style.background='var(--bg-primary)'"
+                                    onblur="this.style.borderColor='var(--border-color)'; this.style.background='var(--bg-secondary)'"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer" style="
@@ -1498,7 +1604,8 @@
                                 font-size: 14px;
                                 cursor: pointer;
                                 transition: all 0.2s ease;
-                            " onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='var(--bg-primary)'">
+                            " onmouseover="this.style.background='var(--bg-secondary)'"
+                                onmouseout="this.style.background='var(--bg-primary)'">
                                 Cancel
                             </button>
                             <button class="btn btn-danger" id="confirm-reject-btn" style="
@@ -1514,7 +1621,8 @@
                                 display: flex;
                                 align-items: center;
                                 gap: 8px;
-                            " onmouseover="this.style.boxShadow='0 8px 16px rgba(239,68,68,0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
+                            " onmouseover="this.style.boxShadow='0 8px 16px rgba(239,68,68,0.3)'; this.style.transform='translateY(-2px)'"
+                                onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
                                 <i class="fas fa-trash"></i>
                                 Reject
                             </button>
@@ -1582,7 +1690,8 @@
                                 align-items: center;
                                 justify-content: center;
                                 border-radius: 50%;
-                            " onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.opacity='0.8'; this.style.background='transparent'">&times;</span>
+                            " onmouseover="this.style.opacity='1'; this.style.background='rgba(255,255,255,0.2)'"
+                                onmouseout="this.style.opacity='0.8'; this.style.background='transparent'">&times;</span>
                         </div>
                         <div class="modal-body" style="padding: 28px;">
                             <p style="
@@ -1617,7 +1726,8 @@
                                 font-size: 14px;
                                 cursor: pointer;
                                 transition: all 0.2s ease;
-                            " onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='var(--bg-primary)'">
+                            " onmouseover="this.style.background='var(--bg-secondary)'"
+                                onmouseout="this.style.background='var(--bg-primary)'">
                                 Cancel
                             </button>
                             <button class="btn btn-primary" id="confirm-class-assignment-btn" style="
@@ -1633,7 +1743,8 @@
                                 display: flex;
                                 align-items: center;
                                 gap: 8px;
-                            " onmouseover="this.style.boxShadow='0 8px 16px rgba(102,126,234,0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
+                            " onmouseover="this.style.boxShadow='0 8px 16px rgba(102,126,234,0.3)'; this.style.transform='translateY(-2px)'"
+                                onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
                                 <i class="fas fa-check"></i>
                                 Approve & Assign
                             </button>
@@ -1676,7 +1787,8 @@
                         <!-- Exam Results Module Section -->
                         <div class="exam-results-section">
                             <!-- Header -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                                 <h2 style="margin: 0;"><i class="fas fa-chart-bar"></i> Exam Results</h2>
                             </div>
 
@@ -1717,6 +1829,7 @@
                                         <tr>
                                             <th>Roll</th>
                                             <th>Name</th>
+                                            <th>Section</th>
                                             <th>Marks</th>
                                             <th>%</th>
                                             <th>Result</th>
@@ -1752,7 +1865,8 @@
                 </div>
                 <div class="form-group">
                     <label>Message <span style="color:var(--danger)">*</span></label>
-                    <textarea id="notice-message" rows="4" placeholder="Write your announcement here..." required></textarea>
+                    <textarea id="notice-message" rows="4" placeholder="Write your announcement here..."
+                        required></textarea>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                     <div class="form-group">
@@ -1781,7 +1895,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeNoticeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Notice</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send
+                        Notice</button>
                 </div>
             </form>
         </div>
@@ -1828,7 +1943,9 @@
                     <div class="form-group">
                         <label>File (PDF, JPG, PNG) *</label>
                         <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
-                        <small id="material-file-hint" style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current file</small>
+                        <small id="material-file-hint"
+                            style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current
+                            file</small>
                     </div>
                 </div>
                 <div class="form-row">
@@ -1851,4 +1968,5 @@
     </script>
     <script type="module" src="./src/modules/admin/admin-dashboard.js"></script>
 </body>
+
 </html>

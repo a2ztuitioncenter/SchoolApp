@@ -13,13 +13,13 @@ import './exam-results.js';
 // ROUTE PROTECTION - Must be first
 // ═══════════════════════════════════════════
 if (!requireRole('admin')) {
-  throw new Error('Unauthorized: Admin role required');
+    throw new Error('Unauthorized: Admin role required');
 }
 
 // Global logout handler
-window.handleLogout = function() {
-  // Admin logging out
-  authLogout();
+window.handleLogout = function () {
+    // Admin logging out
+    authLogout();
 };
 
 syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
@@ -31,7 +31,7 @@ window.resultsAPI = resultsAPI;
 // DOMContentLoaded misses bfcache restores and edge cases where the event already fired.
 hideProtectionScreen();
 window.addEventListener('pageshow', (e) => {
-  if (e.persisted) hideProtectionScreen();
+    if (e.persisted) hideProtectionScreen();
 });
 
 
@@ -46,7 +46,7 @@ console.log('🚀 admin-dashboard.js loaded. Global state exposed.');
 // =============================================
 async function initDashboard() {
     hideProtectionScreen();
-    
+
     const adminId = getUserId();
     const adminRole = 'admin';
     const adminPhone = sessionStorage.getItem('adminPhone');
@@ -60,16 +60,16 @@ async function initDashboard() {
     const nameStr = `Admin`;
     const nameEls = document.querySelectorAll('#admin-name, #dropdown-admin-name');
     nameEls.forEach(el => el.textContent = nameStr);
-    
+
     const initialEl = document.getElementById('admin-avatar-initial');
     if (initialEl) initialEl.textContent = nameStr.charAt(0).toUpperCase();
-    
+
     const ddEmail = document.getElementById('dropdown-admin-email');
     if (ddEmail) ddEmail.textContent = sessionStorage.getItem('adminEmail') || `${adminPhone}@admin.local`;
 
     const profileBtn = document.getElementById('admin-profile-btn');
     const profileMenu = document.getElementById('admin-profile-dropdown');
-    
+
     if (profileBtn && profileMenu) {
         profileBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -87,14 +87,14 @@ async function initDashboard() {
     // Check backend health before loading dashboard
     showInfoAlert('Checking backend connection...');
     const isBackendReady = await waitForBackend(3, 1000);
-    
+
     if (!isBackendReady) {
         hideInfoAlert();
         showErrorAlert('❌ Backend server is not responding. Please ensure the backend server is running on port 3000.');
         console.error('Backend not available on localhost:3000');
         return;
     }
-    
+
     hideInfoAlert();
 
     setupTabNavigation();
@@ -112,12 +112,12 @@ async function initDashboard() {
                 profileMenu.classList.remove('open');
             }
         }
-        
+
         // Close any open action menu dropdowns if clicking outside
         if (!e.target.closest('.action-menu') && !e.target.closest('.action-menu-dropdown')) {
-            document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+            document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
         }
-        
+
         // Close any open action dropdowns if clicking outside
         if (!e.target.closest('.action-menu') && !e.target.closest('.action-dropdown')) {
             document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
@@ -140,7 +140,7 @@ async function initDashboard() {
         const addHomeworkModal = document.getElementById('add-homework-modal');
         const addFeeModal = document.getElementById('add-fee-modal');
         const timetableModal = document.getElementById('timetable-modal');
-        
+
         if (addStudentModal === e.target) closeAddStudentModal();
         if (addHomeworkModal === e.target) closeAddHomeworkModal();
         if (addFeeModal === e.target) closeAddFeeModal();
@@ -151,9 +151,9 @@ async function initDashboard() {
     const mobileToggle = document.getElementById('mobile-menu-toggle');
     const sidebar = document.querySelector('.sidebar');
     if (mobileToggle && sidebar) {
-      mobileToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('active');
-      });
+        mobileToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
     }
 
     // Header Logout
@@ -200,7 +200,7 @@ async function initDashboard() {
         formData.append('classLevel', classLevel);
         formData.append('recipientRole', recipientRole);
         if (attachment) formData.append('attachment', attachment);
-        
+
         const adminId = sessionStorage.getItem('adminUserId');
         if (adminId) formData.append('createdBy', adminId);
 
@@ -229,12 +229,13 @@ if (document.readyState === 'loading') {
 // TAB NAVIGATION
 // =============================================
 function setupTabNavigation() {
-    document.querySelectorAll('.sidebar nav a.nav-link').forEach(tab => {
+    // Select both regular nav and bottom nav links
+    document.querySelectorAll('.sidebar a.nav-link').forEach(tab => {
         tab.addEventListener('click', (e) => {
             e.preventDefault();
             const tabName = tab.getAttribute('data-tab');
             if (tabName) showTab(tabName);
-            
+
             // Close sidebar on mobile
             if (window.innerWidth <= 768) {
                 const sidebar = document.querySelector('.sidebar');
@@ -249,13 +250,16 @@ function showTab(tabName) {
         t.style.display = 'none';
         t.classList.remove('active');
     });
-    document.querySelectorAll('.sidebar nav a.nav-link').forEach(b => b.classList.remove('active'));
+    // Update all nav links (regular and bottom nav)
+    document.querySelectorAll('.sidebar a.nav-link').forEach(b => b.classList.remove('active'));
 
     const tab = document.getElementById(tabName) || document.getElementById('tab-' + tabName);
     if (tab) { tab.style.display = 'block'; tab.classList.add('active'); }
 
-    const btn = document.querySelector(`[data-tab="${tabName}"]`);
-    if (btn) btn.classList.add('active');
+    // Add active class to all matching nav links (both regular and bottom nav)
+    document.querySelectorAll(`[data-tab="${tabName}"]`).forEach(btn => {
+        btn.classList.add('active');
+    });
 
     currentTab = tabName;
     loadTabContent(tabName);
@@ -263,17 +267,17 @@ function showTab(tabName) {
 
 async function loadTabContent(tabName) {
     switch (tabName) {
-        case 'dashboard':          await loadDashboardData(); break;
-        case 'pending-approvals':  await initPendingApprovalsTab(); break;
-        case 'users':              await loadUsers(); break;
-        case 'students':           await loadStudents(); break;
-        case 'attendance':         await initAttendanceTab(); break;
-        case 'homework':           await loadAllHomework(); break;
-        case 'fees':               await initFeesTab(); break;
-        case 'materials':          await loadMaterials(); break;
-        case 'timetable':          await loadTimetable(); break;
-        case 'notifications':      await loadNotifications(); break;
-        case 'results':            await loadResults(); break;
+        case 'dashboard': await loadDashboardData(); break;
+        case 'pending-approvals': await initPendingApprovalsTab(); break;
+        case 'users': await loadUsers(); break;
+        case 'students': await loadStudents(); break;
+        case 'attendance': await initAttendanceTab(); break;
+        case 'homework': await loadAllHomework(); break;
+        case 'fees': await initFeesTab(); break;
+        case 'materials': await loadMaterials(); break;
+        case 'timetable': await loadTimetable(); break;
+        case 'notifications': await loadNotifications(); break;
+        case 'results': await loadResults(); break;
     }
 }
 
@@ -302,12 +306,12 @@ let dashboardRefreshInterval = null;
 async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
-        
+
         // ✅ Add timeout wrapper to prevent hanging
-        const dashboardTimeout = new Promise((_, reject) => 
+        const dashboardTimeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Dashboard load timeout')), 15000)
         );
-        
+
         const loadDataPromise = (async () => {
             // ✅ Load all data in parallel with proper timeout and error handling
             const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
@@ -353,10 +357,10 @@ async function loadDashboardData() {
             try { renderRecentStudents(); } catch (e) { console.warn('❌ Recent students error:', e); }
             try { renderTodayTimetable(); } catch (e) { console.warn('❌ Today timetable error:', e); }
         })();
-        
+
         // Wait for dashboard load with timeout protection
         await Promise.race([loadDataPromise, dashboardTimeout]);
-        
+
         hideInfoAlert();
         console.log('✅ Dashboard loaded successfully');
 
@@ -373,7 +377,7 @@ async function loadDashboardData() {
         console.error('❌ Failed to load dashboard data:', err);
         // Show dashboard anyway with empty data
         showErrorAlert(`⚠️ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
-        
+
         // Attempt to render empty dashboard so user isn't stuck
         try {
             renderQuickStatsKPI();
@@ -392,12 +396,12 @@ async function loadDashboardData() {
 async function fetchTrendDataSafe() {
     try {
         // Use Promise.race to add timeout protection
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Trend data fetch timeout')), 5000)
         );
-        
+
         const trendPromise = adminAPI.getTrendData?.() ?? Promise.resolve({ trends: [], summary: {} });
-        
+
         return await Promise.race([trendPromise, timeoutPromise]);
     } catch (error) {
         console.warn('⚠️ Failed to fetch trend data:', error.message);
@@ -411,10 +415,10 @@ async function fetchTrendDataSafe() {
  */
 async function fetchLatestStudents() {
     try {
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Fetch timeout')), 3000)
         );
-        
+
         const res = await Promise.race([adminAPI.getStudents(), timeoutPromise]);
         if (res?.students && res.students.length > 0) {
             return res.students
@@ -433,14 +437,14 @@ async function fetchLatestStudents() {
  */
 async function fetchLatestPayments() {
     try {
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Fetch timeout')), 3000)
         );
-        
+
         // Fetch all fees and filter for paid ones
         const feesRes = await Promise.race([feesAPI.getAll(), timeoutPromise]);
         const fees = feesRes?.fees || [];
-        
+
         // Filter paid fees and get latest 3
         return fees
             .filter(f => f?.isPaid === true)
@@ -457,13 +461,13 @@ async function fetchLatestPayments() {
  */
 async function fetchLatestHomework() {
     try {
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Fetch timeout')), 3000)
         );
-        
+
         const res = await Promise.race([homeworkAPI.getAll(), timeoutPromise]);
         const homework = res?.homework || [];
-        
+
         // Get latest 3
         return homework
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
@@ -483,13 +487,13 @@ async function fetchLatestHomework() {
 function renderQuickStatsKPI() {
     try {
         const el = id => document.getElementById(id);
-        
+
         // ✅ Null-safe data access
         const students = dashboardData?.students || [];
         const unpaidFees = dashboardData?.unpaidFees || [];
         const financials = dashboardData?.financialSummary || {};
         const attendanceStats = dashboardData?.attendanceStats || {};
-        
+
         // Calculate metrics with null checks
         const totalStudents = students.length || 0;
         const activeStudents = students.filter(s => s?.status === 'active').length || 0;
@@ -588,7 +592,7 @@ function renderQuickStatsKPI() {
 function renderFeesChart() {
     const canvas = document.getElementById('fees-chart');
     const container = document.getElementById('fees-chart-loading');
-    
+
     if (!canvas) return;
 
     const financials = dashboardData.financialSummary;
@@ -652,7 +656,7 @@ function renderFeesChart() {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 return `₹${context.parsed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
                             }
                         }
@@ -673,7 +677,7 @@ function renderFeesChart() {
 function renderClassDistributionLineChart() {
     const canvas = document.getElementById('class-distribution-line-chart');
     const container = document.getElementById('class-distribution-line-loading');
-    
+
     if (!canvas) return;
 
     // Group students by class
@@ -702,7 +706,7 @@ function renderClassDistributionLineChart() {
         }
 
         const ctx = canvas.getContext('2d');
-        
+
         window.classDistributionLineChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -729,10 +733,10 @@ function renderClassDistributionLineChart() {
                     legend: { position: 'top', labels: { font: { size: 12, weight: '600' } } },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 return `Students: ${context.parsed.y}`;
                             },
-                            afterLabel: function(context) {
+                            afterLabel: function (context) {
                                 const total = dashboardData.students.length || 1;
                                 const percentage = ((context.parsed.y / total) * 100).toFixed(1);
                                 return `Percentage: ${percentage}%`;
@@ -775,16 +779,16 @@ function renderFeesOverviewChart() {
     try {
         const canvas = document.getElementById('fees-overview-chart');
         const container = document.getElementById('fees-overview-loading');
-        
+
         if (!canvas) return;
 
         // ✅ Null-safe data access
         const financials = dashboardData?.financialSummary || {};
         const unpaidFees = dashboardData?.unpaidFees || [];
-        
+
         const collected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
         const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
-        
+
         // Calculate overdue
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -809,7 +813,7 @@ function renderFeesOverviewChart() {
 
             const ctx = canvas.getContext('2d');
             if (!ctx) throw new Error('Failed to get canvas context');
-            
+
             window.feesOverviewChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -856,12 +860,12 @@ function renderGrowthTrendChart() {
     try {
         const canvas = document.getElementById('growth-trend-chart');
         const container = document.getElementById('growth-trend-loading');
-        
+
         if (!canvas) return;
 
         // ✅ Null-safe data access
         const students = dashboardData?.students || [];
-        
+
         // Group students by enrollment month
         const enrollmentByMonth = {};
         students.forEach(student => {
@@ -890,7 +894,7 @@ function renderGrowthTrendChart() {
 
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('Failed to get canvas context');
-        
+
         window.growthTrendChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -1019,7 +1023,7 @@ function renderRecentStudents() {
 function renderTodayTimetable() {
     const container = document.getElementById('today-timetable-list');
     const dateEl = document.getElementById('today-date');
-    
+
     if (!container) return;
 
     // Get current day name
@@ -1028,10 +1032,10 @@ function renderTodayTimetable() {
     if (dateEl) dateEl.textContent = today.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
 
     const timetable = dashboardData.timetable || [];
-    
+
     // Filter by today's day
     const todayClasses = timetable.filter(t => {
-        const normalizedDay = t.dayOfWeek 
+        const normalizedDay = t.dayOfWeek
             ? t.dayOfWeek.charAt(0).toUpperCase() + t.dayOfWeek.slice(1).toLowerCase()
             : '';
         return normalizedDay === dayName;
@@ -1081,7 +1085,7 @@ function renderTodayTimetable() {
 function renderTrendChart() {
     const canvas = document.getElementById('trend-chart');
     const container = document.getElementById('trend-chart-loading');
-    
+
     if (!canvas) return;
 
     const trendData = dashboardData.trends || [];
@@ -1146,7 +1150,7 @@ function renderTrendChart() {
                         titleFont: { size: 12, weight: '600' },
                         bodyFont: { size: 12 },
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 return `₹${context.parsed.y.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
                             }
                         }
@@ -1156,7 +1160,7 @@ function renderTrendChart() {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) {
+                            callback: function (value) {
                                 return '₹' + (value / 1000).toFixed(0) + 'K';
                             }
                         }
@@ -1287,36 +1291,36 @@ async function loadUsers() {
     }
 }
 
-window.filterUsersTable = function() {
+window.filterUsersTable = function () {
     const roleQ = document.getElementById('user-role-filter')?.value || '';
     const statQ = document.getElementById('user-status-filter')?.value || '';
     const textQ = (document.getElementById('user-search')?.value || '').toLowerCase();
-    
+
     const filtered = allUsersData.filter(u => {
         const matchRole = roleQ ? u.role === roleQ : true;
         const matchStat = statQ ? (statQ === 'active' ? u.isActive : !u.isActive) : true;
-        const matchText = textQ ? 
-            (u.phone?.includes(textQ) || u.email?.toLowerCase().includes(textQ) || (u.name||'').toLowerCase().includes(textQ)) : true;
+        const matchText = textQ ?
+            (u.phone?.includes(textQ) || u.email?.toLowerCase().includes(textQ) || (u.name || '').toLowerCase().includes(textQ)) : true;
         return matchRole && matchStat && matchText;
     });
 
     renderUsersTable(filtered);
 };
 
-window.toggleShowAllUsers = function() {
+window.toggleShowAllUsers = function () {
     showAllUsers = !showAllUsers;
     filterUsersTable();
 };
 
-window.toggleAddUserForm = function() {
+window.toggleAddUserForm = function () {
     const container = document.getElementById('add-user-container');
     const btn = document.getElementById('btn-toggle-add-user');
-    
+
     if (!container || !btn) return;
-    
+
     if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
         // Open
-        container.style.maxHeight = '800px'; 
+        container.style.maxHeight = '800px';
         container.style.opacity = '1';
         container.style.marginBottom = '2rem';
         btn.innerHTML = '<i class="fas fa-times"></i> Close Form';
@@ -1333,7 +1337,7 @@ window.toggleAddUserForm = function() {
     }
 };
 
-window.toggleUserActionsMenu = function(id, event) {
+window.toggleUserActionsMenu = function (id, event) {
     if (event) {
         event.stopPropagation();
     }
@@ -1366,14 +1370,14 @@ function renderUsersTable(users) {
 
     if (!users.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-inbox"></i><p>No users found. Click "Add User" to get started.</p></td></tr>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (countText) countText.textContent = '';
         return;
     }
 
     const displayLimit = 10;
     const toShow = showAllUsers ? users : users.slice(0, displayLimit);
-    
+
     if (toggleBtn) {
         if (users.length > displayLimit) {
             toggleBtn.style.display = 'inline-block';
@@ -1382,7 +1386,7 @@ function renderUsersTable(users) {
             toggleBtn.style.display = 'none';
         }
     }
-    
+
     if (countText) {
         countText.textContent = `Showing ${toShow.length} of ${users.length} user(s)`;
     }
@@ -1420,24 +1424,24 @@ function renderUsersTable(users) {
     renderUsersCards(toShow);
 }
 
-window.toggleUserMenu = function(event) {
+window.toggleUserMenu = function (event) {
     event.stopPropagation();
     const btn = event.currentTarget;
     const dropdown = btn.nextElementSibling;
-    
+
     // Close all other dropdowns
     document.querySelectorAll('.action-menu-dropdown').forEach(d => {
         if (d !== dropdown) d.classList.remove('active');
     });
-    
+
     if (!dropdown.classList.contains('active')) {
         positionDropdown(btn, dropdown);
     }
-    
+
     dropdown.classList.toggle('active');
 };
 
-window.closeAllUserMenus = function() {
+window.closeAllUserMenus = function () {
     document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('active'));
 };
 
@@ -1496,16 +1500,16 @@ window.editUser = async function (id) {
     const user = allUsersData.find(u => u.id === id);
     if (!user) return;
     closeAllUserMenus();
-    
+
     // Fill basic info
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-phone').value = user.phone || '';
     document.getElementById('edit-user-email').value = user.email || '';
-    
+
     const roleSelect = document.getElementById('edit-user-role');
     const assignmentSection = document.getElementById('edit-user-assignment-section');
     roleSelect.value = user.role || 'teacher';
-    
+
     // Show/Hide assignment section based on role
     if (user.role === 'teacher' || user.role === 'staff') {
         assignmentSection.style.display = 'block';
@@ -1543,7 +1547,7 @@ async function populateEditUserAssignments(userId) {
         const auth = authStr ? JSON.parse(authStr) : {};
         const token = auth.token;
         const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
-        
+
         const [classesRes, currentRes] = await Promise.all([
             fetch(`${baseUrl}/api/auth/admin/class-levels`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${baseUrl}/api/admin/users/${userId}/assignments`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -1583,7 +1587,7 @@ window.cancelEditUser = function () {
 window.deleteUserById = async function (id, name = 'this user') {
     closeAllUserMenus();
     if (!confirm(`Are you sure you want to PERMANENTLY DELETE "${name}"?\n\nThis action cannot be undone and will remove all associated records.`)) return;
-    
+
     showInfoAlert(`Deleting user ${name}...`);
     try {
         const res = await adminAPI.deleteUser(id);
@@ -1639,41 +1643,41 @@ function populateStudentClassDropdowns() {
         if (s.classLevel) classSet.add(s.classLevel);
         if (s.section) secSet.add(s.section);
     });
-    
+
     const classFilter = document.getElementById('student-class-filter');
     const secFilter = document.getElementById('student-section-filter');
-    
+
     if (classFilter) {
         const currentVal = classFilter.value;
-        classFilter.innerHTML = '<option value="">All Classes</option>' + 
+        classFilter.innerHTML = '<option value="">All Classes</option>' +
             Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
         classFilter.value = currentVal || '';
     }
     if (secFilter) {
         const currentVal = secFilter.value;
-        secFilter.innerHTML = '<option value="">All Sections</option>' + 
+        secFilter.innerHTML = '<option value="">All Sections</option>' +
             Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
         secFilter.value = currentVal || '';
     }
 }
 
-window.filterStudentsTable = function() {
+window.filterStudentsTable = function () {
     const classQ = document.getElementById('student-class-filter')?.value || '';
     const secQ = document.getElementById('student-section-filter')?.value || '';
     const textQ = (document.getElementById('student-search')?.value || '').toLowerCase();
-    
+
     const filtered = allStudentsData.filter(s => {
         const matchClass = classQ ? s.classLevel === classQ : true;
         const matchSec = secQ ? s.section === secQ : true;
-        const matchText = textQ ? 
-            ((s.name||'').toLowerCase().includes(textQ) || (s.phone||'').includes(textQ) || (s.id?.toString()||'').includes(textQ)) : true;
+        const matchText = textQ ?
+            ((s.name || '').toLowerCase().includes(textQ) || (s.phone || '').includes(textQ) || (s.id?.toString() || '').includes(textQ)) : true;
         return matchClass && matchSec && matchText;
     });
 
     renderStudentsTable(filtered);
 };
 
-window.toggleShowAllStudents = function() {
+window.toggleShowAllStudents = function () {
     showAllStudents = !showAllStudents;
     filterStudentsTable();
 };
@@ -1686,14 +1690,14 @@ function renderStudentsTable(students) {
 
     if (!students.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>No students found. Click "Add Student" to get started.</p></td></tr>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (countText) countText.textContent = '';
         return;
     }
 
     const displayLimit = 10;
     const toShow = showAllStudents ? students : students.slice(0, displayLimit);
-    
+
     if (toggleBtn) {
         if (students.length > displayLimit) {
             toggleBtn.style.display = 'inline-block';
@@ -1702,7 +1706,7 @@ function renderStudentsTable(students) {
             toggleBtn.style.display = 'none';
         }
     }
-    
+
     if (countText) {
         countText.textContent = `Showing ${toShow.length} of ${students.length} student(s)`;
     }
@@ -1741,22 +1745,22 @@ function renderStudentsTable(students) {
     `).join('');
 }
 
-window.openAddStudentModal = function() {
+window.openAddStudentModal = function () {
     document.getElementById('add-student-modal').style.display = 'block';
     document.getElementById('add-student-form').reset();
     document.body.style.overflow = 'hidden';
 };
 
-window.closeAddStudentModal = function() {
+window.closeAddStudentModal = function () {
     document.getElementById('add-student-modal').style.display = 'none';
     document.getElementById('add-student-form').reset();
     document.body.style.overflow = '';
 };
 
-window.openEditStudentModal = function(id) {
+window.openEditStudentModal = function (id) {
     const s = allStudentsData.find(st => st.id === id);
     if (!s) return;
-    
+
     document.getElementById('edit-student-id').value = s.id;
     document.getElementById('edit-student-name').value = s.name || '';
     document.getElementById('edit-student-classLevel').value = s.classLevel || '';
@@ -1765,27 +1769,27 @@ window.openEditStudentModal = function(id) {
     document.getElementById('edit-student-email').value = s.email || '';
     document.getElementById('edit-student-fatherName').value = s.fatherName || '';
     document.getElementById('edit-student-motherName').value = s.motherName || '';
-    
+
     document.getElementById('edit-student-modal').style.display = 'block';
     document.body.style.overflow = 'hidden';
     closeAllStudentMenus();
 };
 
-window.closeEditStudentModal = function() {
+window.closeEditStudentModal = function () {
     document.getElementById('edit-student-modal').style.display = 'none';
     document.getElementById('edit-student-form').reset();
     document.body.style.overflow = '';
 };
 
-window.toggleStudentMenu = function(event) {
+window.toggleStudentMenu = function (event) {
     event.stopPropagation();
     const btn = event.currentTarget;
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
-    
+
     // Close other menus
     const wasActive = dropdown.classList.contains('active');
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
-    
+
     if (!wasActive) {
         // Position and show
         positionDropdown(btn, dropdown);
@@ -1793,7 +1797,7 @@ window.toggleStudentMenu = function(event) {
     }
 };
 
-window.closeAllStudentMenus = function() {
+window.closeAllStudentMenus = function () {
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
@@ -1808,7 +1812,7 @@ window.cancelEditStudent = function () {
 window.deleteStudentById = async function (id, name = 'this student') {
     closeAllStudentMenus();
     if (!confirm(`Are you sure you want to PERMANENTLY DELETE student "${name}"?\n\nThis will remove all their enrollment, attendance, and fee records forever.`)) return;
-    
+
     showInfoAlert(`Deleting student ${name}...`);
     try {
         const res = await adminAPI.deleteStudent(id);
@@ -1897,7 +1901,7 @@ window.loadAttendanceSheet = async function () {
             attendanceAPI.getStudentsByClass(classLevel),
             attendanceAPI.getByClassAndDate(classLevel, date)
         ]);
-        
+
         const container = document.getElementById('attendance-sheet');
         const list = document.getElementById('att-list-container');
         if (!container || !list) return;
@@ -1958,9 +1962,9 @@ window.loadAttendanceSheet = async function () {
         const markAllBtn = document.getElementById('btn-mark-all-present');
         if (markAllBtn) {
             markAllBtn.onclick = () => {
-                 document.querySelectorAll('#att-list-container .att-toggle-btn[data-status="present"]').forEach(btn => {
-                     if (!btn.classList.contains('active')) btn.click();
-                 });
+                document.querySelectorAll('#att-list-container .att-toggle-btn[data-status="present"]').forEach(btn => {
+                    if (!btn.classList.contains('active')) btn.click();
+                });
             };
         }
 
@@ -1984,7 +1988,7 @@ function updateAttStats() {
 window.submitAttendance = async function () {
     const classLevel = document.getElementById('att-class-select').value;
     const date = document.getElementById('att-date').value;
-    
+
     // Check if any nulls
     const pendingCount = Object.values(attendanceData).filter(v => v === null).length;
     if (pendingCount > 0) {
@@ -2023,14 +2027,14 @@ window.loadAttendanceSummary = async function () {
             <table class="data-table">
                 <thead><tr><th>Name</th><th>Total</th><th>Present</th><th>Absent</th><th>Late</th><th>%</th></tr></thead>
                 <tbody>${data.map(r => {
-                    const pct = r.attendancePercent || 0;
-                    const color = pct >= 75 ? '#27ae60' : pct >= 50 ? '#f39c12' : '#e74c3c';
-                    return `<tr>
+            const pct = r.attendancePercent || 0;
+            const color = pct >= 75 ? '#27ae60' : pct >= 50 ? '#f39c12' : '#e74c3c';
+            return `<tr>
                         <td>${r.name}</td><td>${r.totalDays}</td>
                         <td>${r.presentCount}</td><td>${r.absentCount}</td><td>${r.lateCount}</td>
                         <td><strong style="color:${color}">${pct}%</strong></td>
                     </tr>`;
-                }).join('')}</tbody>
+        }).join('')}</tbody>
             </table>`;
     } catch (err) {
         showErrorAlert('Failed to load summary');
@@ -2060,32 +2064,36 @@ function renderHomeworkTable(list) {
     if (!tbody) return;
 
     if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>No homework found. Click "Add Homework" to get started.</p></td></tr>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>No homework found. Click "Add Homework" to get started.</p></td></tr>';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (countText) countText.textContent = '';
         return;
     }
 
     const displayLimit = 10;
     const toShow = showAllHomework ? list : list.slice(0, displayLimit);
-    
+
     tbody.innerHTML = toShow.map((hw, i) => {
         const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
+        const classLevel = hw.classLevel || '-';
+        const section = hw.section || '-';
+        const assignedByName = hw.assignedByName || 'Admin';
         return `<tr>
             <td><strong>${hw.title}</strong></td>
-            <td><span class="status-badge status-active">${hw.classLevel || hw.class_name}</span></td>
+            <td><span class="status-badge status-active">${classLevel}</span></td>
+            <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${section}</span></td>
             <td>${hw.subject}</td>
             <td>${due}</td>
-            <td>${hw.teacherPhone || '-'}</td>
+            <td><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${assignedByName}</span></td>
             <td>
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-hw-id="${hw.id}">
-                        <button class="action-menu-item" onclick="openEditHomeworkModal(${hw.id})">
+                        <button class="action-menu-item" type="button" data-action="edit" data-hw-id="${hw.id}">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
                         </button>
                         <div class="action-menu-divider"></div>
-                        <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
+                        <button class="action-menu-item danger" type="button" data-action="delete" data-hw-id="${hw.id}">
                             <i class="fas fa-trash" style="width: 16px;"></i> Delete
                         </button>
                     </div>
@@ -2094,17 +2102,46 @@ function renderHomeworkTable(list) {
         </tr>`;
     }).join('');
 
+    // Attach event listeners to action menu items
+    setTimeout(() => {
+        document.querySelectorAll('#homework-table-body [data-action="edit"]').forEach(btn => {
+            btn.removeEventListener('click', handleHomeworkEdit);
+            btn.addEventListener('click', handleHomeworkEdit);
+        });
+        document.querySelectorAll('#homework-table-body [data-action="delete"]').forEach(btn => {
+            btn.removeEventListener('click', handleHomeworkDelete);
+            btn.addEventListener('click', handleHomeworkDelete);
+        });
+    }, 0);
+
     // Show toggle button if more items exist
-    if(toggleBtn) {
+    if (toggleBtn) {
         toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
         toggleBtn.textContent = showAllHomework ? 'Show Less' : `Show All Homework (${list.length})`;
     }
-    if(countText) {
+    if (countText) {
         countText.textContent = `Showing ${toShow.length} of ${list.length} homework items`;
     }
 }
 
-window.toggleShowAllHomework = function() {
+// Event handlers for homework edit and delete
+function handleHomeworkEdit(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const hwId = parseInt(e.currentTarget.getAttribute('data-hw-id'));
+    closeAllHomeworkMenus();
+    openEditHomeworkModal(hwId);
+}
+
+function handleHomeworkDelete(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const hwId = parseInt(e.currentTarget.getAttribute('data-hw-id'));
+    closeAllHomeworkMenus();
+    deleteHomework(hwId);
+}
+
+window.toggleShowAllHomework = function () {
     showAllHomework = !showAllHomework;
     filterHomework();
 };
@@ -2120,21 +2157,23 @@ window.filterHomework = function () {
 
 window.saveHomework = async function (e) {
     if (e && e.preventDefault) e.preventDefault();
-    const id          = document.getElementById('hw-edit-id')?.value;
-    const title       = document.getElementById('hw-title')?.value.trim();
-    const classLevel  = document.getElementById('hw-class')?.value.trim();
-    const subject     = document.getElementById('hw-subject')?.value.trim();
-    const dueDate     = document.getElementById('hw-due-date')?.value;
+    const id = document.getElementById('hw-edit-id')?.value;
+    const title = document.getElementById('hw-title')?.value.trim();
+    const classLevel = document.getElementById('hw-class')?.value.trim();
+    const section = document.getElementById('hw-section')?.value.trim();
+    const subject = document.getElementById('hw-subject')?.value.trim();
+    const dueDate = document.getElementById('hw-due-date')?.value;
     const description = document.getElementById('hw-description')?.value.trim();
 
-    if (!title || !classLevel || !subject) {
-        showErrorAlert('Title, Class and Subject are required');
+    if (!title || !classLevel || !section || !subject) {
+        showErrorAlert('Title, Class, Section and Subject are required');
         return;
     }
 
     const formData = new FormData();
     formData.append('title', title);
     formData.append('classLevel', classLevel);
+    formData.append('section', section);
     formData.append('subject', subject);
     formData.append('dueDate', dueDate);
     formData.append('description', description);
@@ -2195,7 +2234,7 @@ window.deleteHomework = async function (id) {
 let showAllFees = false;
 let feesFilterTimeout;
 
-window.openAddFeeModal = function() {
+window.openAddFeeModal = function () {
     const modal = document.getElementById('add-fee-modal');
     if (modal) {
         modal.style.display = 'flex';
@@ -2203,22 +2242,22 @@ window.openAddFeeModal = function() {
     }
 };
 
-window.closeAddFeeModal = function() {
+window.closeAddFeeModal = function () {
     const modal = document.getElementById('add-fee-modal');
     if (modal) modal.style.display = 'none';
 };
 
-window.toggleShowAllFees = function() {
+window.toggleShowAllFees = function () {
     showAllFees = !showAllFees;
     debouncedFilterFees();
 };
 
-window.debouncedFilterFees = function() {
+window.debouncedFilterFees = function () {
     clearTimeout(feesFilterTimeout);
     feesFilterTimeout = setTimeout(() => {
         const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
-        const filtered = allFeesData.filter(f => 
-            (f.studentName || '').toLowerCase().includes(query) || 
+        const filtered = allFeesData.filter(f =>
+            (f.studentName || '').toLowerCase().includes(query) ||
             (f.student_id?.toString() || '').includes(query) ||
             (f.description || '').toLowerCase().includes(query)
         );
@@ -2239,18 +2278,18 @@ async function loadFeeStats() {
     const res = await feesAPI.getStats();
     const s = res.data || {};
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('fee-stat-collected',   `₹${(parseFloat(s.totalCollected) || 0).toFixed(2)}`);
-    set('fee-stat-pending',     `₹${(parseFloat(s.totalPending)   || 0).toFixed(2)}`);
-    set('fee-stat-paid-count',  s.paidCount   || 0);
+    set('fee-stat-collected', `₹${(parseFloat(s.totalCollected) || 0).toFixed(2)}`);
+    set('fee-stat-pending', `₹${(parseFloat(s.totalPending) || 0).toFixed(2)}`);
+    set('fee-stat-paid-count', s.paidCount || 0);
     set('fee-stat-unpaid-count', s.unpaidCount || 0);
 }
 
-window.loadFees = async function(mode = 'all') {
-    document.getElementById('fee-tab-all')?.classList.toggle('active',   mode === 'all');
+window.loadFees = async function (mode = 'all') {
+    document.getElementById('fee-tab-all')?.classList.toggle('active', mode === 'all');
     document.getElementById('fee-tab-unpaid')?.classList.toggle('active', mode === 'unpaid');
 
     try {
-        const res  = mode === 'unpaid' ? await feesAPI.getUnpaid() : await feesAPI.getAll();
+        const res = mode === 'unpaid' ? await feesAPI.getUnpaid() : await feesAPI.getAll();
         allFeesData = res.data || [];
         renderFeesTable(allFeesData);
     } catch (err) {
@@ -2266,14 +2305,14 @@ function renderFeesTable(fees) {
 
     if (!fees.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No fee records found</td></tr>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (countText) countText.textContent = '';
         return;
     }
 
     const displayLimit = 15;
     const toShow = showAllFees ? fees : fees.slice(0, displayLimit);
-    
+
     if (toggleBtn) {
         if (fees.length > displayLimit) {
             toggleBtn.style.display = 'inline-block';
@@ -2282,7 +2321,7 @@ function renderFeesTable(fees) {
             toggleBtn.style.display = 'none';
         }
     }
-    
+
     if (countText) {
         countText.textContent = `Showing ${toShow.length} of ${fees.length} record(s)`;
     }
@@ -2315,15 +2354,15 @@ function renderFeesTable(fees) {
     }).join('');
 }
 
-window.toggleFeeMenu = function(event) {
+window.toggleFeeMenu = function (event) {
     event.stopPropagation();
     const btn = event.currentTarget;
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
-    
+
     // Close other menus
     const wasActive = dropdown.classList.contains('active');
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
-    
+
     if (!wasActive) {
         positionDropdown(btn, dropdown);
         dropdown.classList.add('active');
@@ -2334,32 +2373,32 @@ window.toggleFeeMenu = function(event) {
  * Helper function to position dropdown menu using fixed positioning
  * Handles overflow detection to flip menu direction if needed
  */
-window.positionDropdown = function(btn, dropdown) {
+window.positionDropdown = function (btn, dropdown) {
     // Temporarily show to get height
     const originalDisplay = dropdown.style.display;
     dropdown.style.display = 'block';
     dropdown.style.visibility = 'hidden';
-    
+
     const btnRect = btn.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const dropdownHeight = dropdown.offsetHeight || 160;
-    
+
     // Restore display
     dropdown.style.display = originalDisplay;
     dropdown.style.visibility = '';
-    
+
     const spaceBelow = viewportHeight - btnRect.bottom;
     const spaceAbove = btnRect.top;
-    
+
     // Position below by default
     let top = btnRect.bottom + 5;
     let left = btnRect.right - 160; // Align to right
-    
+
     // If not enough space below, flip to above
     if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight) {
         top = btnRect.top - dropdownHeight - 5;
     }
-    
+
     // Prevent going off-screen horizontally
     if (left < 10) {
         left = 10;
@@ -2367,25 +2406,25 @@ window.positionDropdown = function(btn, dropdown) {
     if (left + 160 > window.innerWidth) {
         left = window.innerWidth - 170;
     }
-    
+
     dropdown.style.position = 'fixed';
     dropdown.style.top = top + 'px';
     dropdown.style.left = left + 'px';
     dropdown.style.right = 'auto'; // Reset right if any
 };
 
-window.closeAllFeeMenus = function() {
+window.closeAllFeeMenus = function () {
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
 window.saveFee = async function () {
-    const studentId  = document.getElementById('fee-student-id')?.value;
-    const amount     = document.getElementById('fee-amount')?.value;
-    const dueDate    = document.getElementById('fee-due-date')?.value;
+    const studentId = document.getElementById('fee-student-id')?.value;
+    const amount = document.getElementById('fee-amount')?.value;
+    const dueDate = document.getElementById('fee-due-date')?.value;
     const description = document.getElementById('fee-description')?.value.trim();
 
     if (!studentId || !amount || !dueDate) { showErrorAlert('Student ID, Amount and Due Date are required'); return; }
-    
+
     showInfoAlert('Adding fee...');
     try {
         const res = await feesAPI.add({ studentId, amount, dueDate, description });
@@ -2430,14 +2469,14 @@ window.deleteFeeRecord = async function (id) {
     showInfoAlert('Deleting fee...');
     try {
         const res = await feesAPI.delete(id);
-        if (res.message || res.data) { 
+        if (res.message || res.data) {
             hideInfoAlert();
-            showSuccessAlert('Fee deleted'); 
-            await initFeesTab(); 
+            showSuccessAlert('Fee deleted');
+            await initFeesTab();
         }
-        else { 
+        else {
             hideInfoAlert();
-            showErrorAlert('Failed to delete'); 
+            showErrorAlert('Failed to delete');
         }
     } catch (err) {
         hideInfoAlert();
@@ -2458,10 +2497,10 @@ async function loadMaterials() {
         showAllMaterials = false; // Reset pagination when loading fresh data
         const res = await materialsAPI.getAll();
         allMaterialsData = res.data || [];
-        
+
         // Update stats
         updateMaterialsStats();
-        
+
         // Render table
         renderMaterialsTable();
     } catch (err) {
@@ -2474,7 +2513,7 @@ function updateMaterialsStats() {
     const totalCount = allMaterialsData.length;
     const uniqueClasses = new Set(allMaterialsData.map(m => m.classLevel)).size;
     const uniqueSubjects = new Set(allMaterialsData.map(m => m.subject)).size;
-    
+
     // Count materials uploaded this week
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -2494,19 +2533,19 @@ function renderMaterialsTable() {
     const toggleBtn = document.getElementById('btn-toggle-materials');
     const countText = document.getElementById('materials-count-text');
     const list = getFilteredMaterials();
-    
+
     if (!tbody) return;
 
     if (!list.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i> No materials found</td></tr>';
-        if(toggleBtn) toggleBtn.style.display = 'none';
-        if(countText) countText.textContent = '';
+        if (toggleBtn) toggleBtn.style.display = 'none';
+        if (countText) countText.textContent = '';
         return;
     }
 
     const displayLimit = 15;
     const toShow = showAllMaterials ? list : list.slice(0, displayLimit);
-    
+
     tbody.innerHTML = toShow.map(m => `
         <tr>
             <td>
@@ -2538,36 +2577,36 @@ function renderMaterialsTable() {
     `).join('');
 
     // Show toggle button if more items exist
-    if(toggleBtn) {
+    if (toggleBtn) {
         toggleBtn.style.display = list.length > displayLimit ? 'block' : 'none';
         toggleBtn.textContent = showAllMaterials ? 'Show Less' : `Show More Materials (${list.length})`;
     }
-    if(countText) {
+    if (countText) {
         countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
     }
 }
 
-window.toggleShowAllMaterials = function() {
+window.toggleShowAllMaterials = function () {
     showAllMaterials = !showAllMaterials;
     renderMaterialsTable();
 };
 
-window.toggleMaterialMenu = function(event) {
+window.toggleMaterialMenu = function (event) {
     event.stopPropagation();
     const btn = event.currentTarget;
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
-    
+
     // Close other menus
     const wasActive = dropdown.classList.contains('active');
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
-    
+
     if (!wasActive) {
         positionDropdown(btn, dropdown);
         dropdown.classList.add('active');
     }
 };
 
-window.closeAllMaterialMenus = function() {
+window.closeAllMaterialMenus = function () {
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
@@ -2577,11 +2616,11 @@ function getFilteredMaterials() {
     const subjectFilter = document.getElementById('material-subject-filter')?.value || '';
 
     return allMaterialsData.filter(m => {
-        const matchesSearch = !searchTerm || 
-            m.title.toLowerCase().includes(searchTerm) || 
+        const matchesSearch = !searchTerm ||
+            m.title.toLowerCase().includes(searchTerm) ||
             m.subject.toLowerCase().includes(searchTerm) ||
             (m.description && m.description.toLowerCase().includes(searchTerm));
-        
+
         const matchesClass = !classFilter || m.classLevel === classFilter;
         const matchesSubject = !subjectFilter || m.subject === subjectFilter;
 
@@ -2589,7 +2628,7 @@ function getFilteredMaterials() {
     });
 }
 
-window.filterMaterials = function() {
+window.filterMaterials = function () {
     renderMaterialsTable();
 };
 
@@ -2605,9 +2644,9 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-window.saveMaterial = async function(e) {
+window.saveMaterial = async function (e) {
     if (e && e.preventDefault) e.preventDefault();
-    
+
     const id = document.getElementById('material-id')?.value;
     const title = document.getElementById('material-title')?.value;
     const description = document.getElementById('material-description')?.value;
@@ -2655,7 +2694,7 @@ window.saveMaterial = async function(e) {
     }
 };
 
-window.deleteMaterial = async function(id) {
+window.deleteMaterial = async function (id) {
     if (!confirm('Are you sure you want to delete this material?')) return;
     showInfoAlert('Deleting material...');
     try {
@@ -2671,7 +2710,7 @@ window.deleteMaterial = async function(id) {
     }
 };
 
-window.openMaterialModal = function(material = null) {
+window.openMaterialModal = function (material = null) {
     const modal = document.getElementById('material-modal');
     const titleObj = document.getElementById('material-modal-title');
     const form = document.getElementById('material-form');
@@ -2699,7 +2738,7 @@ window.openMaterialModal = function(material = null) {
     closeAllMaterialMenus();
 };
 
-window.closeMaterialModal = function() {
+window.closeMaterialModal = function () {
     document.getElementById('material-modal').style.display = 'none';
     document.getElementById('material-form').reset();
 };
@@ -2715,7 +2754,7 @@ async function initMaterialsTab() {
 // =============================================
 // HOMEWORK - MODAL FUNCTIONS
 // =============================================
-window.openAddHomeworkModal = function() {
+window.openAddHomeworkModal = function () {
     document.getElementById('add-homework-modal').style.display = 'block';
     document.getElementById('homework-form').reset();
     document.getElementById('hw-edit-id').value = '';
@@ -2723,24 +2762,25 @@ window.openAddHomeworkModal = function() {
     document.body.style.overflow = 'hidden';
 };
 
-window.closeAddHomeworkModal = function() {
+window.closeAddHomeworkModal = function () {
     document.getElementById('add-homework-modal').style.display = 'none';
     document.getElementById('homework-form').reset();
     document.body.style.overflow = '';
 };
 
-window.openEditHomeworkModal = function(id) {
+window.openEditHomeworkModal = function (id) {
     const hw = allHomeworkData.find(h => h.id === id);
     if (!hw) return;
-    
+
     // Populate form with homework data
     document.getElementById('hw-edit-id').value = hw.id;
     document.getElementById('hw-title').value = hw.title || '';
     document.getElementById('hw-class').value = hw.classLevel || '';
+    document.getElementById('hw-section').value = hw.section || 'A';
     document.getElementById('hw-subject').value = hw.subject || '';
     document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
     document.getElementById('hw-description').value = hw.description || '';
-    
+
     const attachInfo = document.getElementById('hw-current-attachment');
     if (attachInfo) {
         if (hw.attachmentUrl) {
@@ -2751,50 +2791,53 @@ window.openEditHomeworkModal = function(id) {
             attachInfo.style.display = 'none';
         }
     }
-    
+
     document.getElementById('add-homework-modal').style.display = 'block';
     document.body.style.overflow = 'hidden';
     closeAllHomeworkMenus();
 };
 
-window.closeEditHomeworkModal = function() {
+window.closeEditHomeworkModal = function () {
     document.getElementById('add-homework-modal').style.display = 'none';
     document.getElementById('homework-form').reset();
     document.getElementById('hw-edit-id').value = '';
     document.body.style.overflow = '';
 };
 
-window.toggleHomeworkMenu = function(event) {
+window.toggleHomeworkMenu = function (event) {
     event.stopPropagation();
     const btn = event.currentTarget;
     const dropdown = btn.closest('.action-menu').querySelector('.action-menu-dropdown');
-    
+
     // Close other menus
-    closeAllHomeworkMenus();
-    
-    // Position and toggle current menu
-    positionDropdown(btn, dropdown);
-    dropdown.classList.add('open');
+    const wasActive = dropdown.classList.contains('active');
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
+
+    if (!wasActive) {
+        // Position and show
+        positionDropdown(btn, dropdown);
+        dropdown.classList.add('active');
+    }
 };
 
-window.closeAllHomeworkMenus = function() {
-    document.querySelectorAll('.action-menu-dropdown').forEach(d => d.classList.remove('open'));
+window.closeAllHomeworkMenus = function () {
+    document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
 
 function setupForms() {
     const hwForm = document.getElementById('homework-form');
     if (hwForm) hwForm.addEventListener('submit', saveHomework);
-    
+
     const matForm = document.getElementById('material-form');
     if (matForm) matForm.addEventListener('submit', saveMaterial);
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
-            name:  document.getElementById('user-name')?.value.trim(),
+            name: document.getElementById('user-name')?.value.trim(),
             username: document.getElementById('user-username')?.value.trim() || undefined,
             phone: document.getElementById('user-phone')?.value.trim(),
             email: document.getElementById('user-email')?.value.trim(),
-            role:  document.getElementById('user-role')?.value,
+            role: document.getElementById('user-role')?.value,
             password: document.getElementById('user-password')?.value
         };
         if (!payload.name || !payload.phone || !payload.role || !payload.password) {
@@ -2805,16 +2848,16 @@ function setupForms() {
             showInfoAlert('Adding user...');
             const res = await adminAPI.addUser(payload);
             hideInfoAlert();
-            if (res.success) { 
-                showSuccessAlert('User added successfully!'); 
+            if (res.success) {
+                showSuccessAlert('User added successfully!');
                 document.getElementById('add-user-form').reset();
                 closeAddUserModal();
-                await loadUsers(); 
+                await loadUsers();
             }
             else showErrorAlert(res.error || 'Failed to add user');
-        } catch (err) { 
+        } catch (err) {
             hideInfoAlert();
-            showErrorAlert(err.message || 'Failed to add user'); 
+            showErrorAlert(err.message || 'Failed to add user');
         }
     });
 
@@ -2822,7 +2865,7 @@ function setupForms() {
         e.preventDefault();
         const id = document.getElementById('edit-user-id')?.value;
         const role = document.getElementById('edit-user-role')?.value;
-        
+
         // Collect checked classes if it's a teacher/staff
         let classesAssigned = null;
         if (role === 'teacher' || role === 'staff') {
@@ -2834,7 +2877,7 @@ function setupForms() {
         const payload = {
             phone: document.getElementById('edit-user-phone')?.value,
             email: document.getElementById('edit-user-email')?.value,
-            role:  role,
+            role: role,
             classesAssigned: classesAssigned
         };
         try {
@@ -2853,7 +2896,7 @@ function setupForms() {
 
     document.getElementById('add-student-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const firstName = document.getElementById('student-firstName')?.value.trim();
         const lastName = document.getElementById('student-lastName')?.value.trim();
         const email = document.getElementById('student-email')?.value.trim();
@@ -2872,34 +2915,34 @@ function setupForms() {
         const payload = {
             firstName,
             lastName,
-            phone:       document.getElementById('student-phone')?.value,
-            email:       email || null,
-            classLevel:  document.getElementById('student-classLevel')?.value,
-            section:     document.getElementById('student-section')?.value,
-            fatherName:  document.getElementById('student-fatherName')?.value,
-            motherName:  document.getElementById('student-motherName')?.value,
+            phone: document.getElementById('student-phone')?.value,
+            email: email || null,
+            classLevel: document.getElementById('student-classLevel')?.value,
+            section: document.getElementById('student-section')?.value,
+            fatherName: document.getElementById('student-fatherName')?.value,
+            motherName: document.getElementById('student-motherName')?.value,
             dateOfBirth,
             joiningDate: new Date().toISOString().split('T')[0],
-            status:      'active'
+            status: 'active'
         };
 
         try {
             showInfoAlert('Adding student...');
             const res = await adminAPI.addStudent(payload);
-            if (res.success) { 
+            if (res.success) {
                 hideInfoAlert();
-                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`); 
+                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`);
                 closeAddStudentModal();
-                e.target.reset(); 
-                await loadStudents(); 
+                e.target.reset();
+                await loadStudents();
             }
             else {
                 hideInfoAlert();
                 showErrorAlert(res.error || 'Failed to add student');
             }
-        } catch (err) { 
+        } catch (err) {
             hideInfoAlert();
-            showErrorAlert(err.message); 
+            showErrorAlert(err.message);
         }
     });
 
@@ -2907,13 +2950,13 @@ function setupForms() {
         e.preventDefault();
         const id = document.getElementById('edit-student-id')?.value;
         const payload = {
-            name:        document.getElementById('edit-student-name')?.value,
-            classLevel:  document.getElementById('edit-student-classLevel')?.value,
-            section:     document.getElementById('edit-student-section')?.value,
-            phone:       document.getElementById('edit-student-phone')?.value,
-            email:       document.getElementById('edit-student-email')?.value,
-            fatherName:  document.getElementById('edit-student-fatherName')?.value,
-            motherName:  document.getElementById('edit-student-motherName')?.value,
+            name: document.getElementById('edit-student-name')?.value,
+            classLevel: document.getElementById('edit-student-classLevel')?.value,
+            section: document.getElementById('edit-student-section')?.value,
+            phone: document.getElementById('edit-student-phone')?.value,
+            email: document.getElementById('edit-student-email')?.value,
+            fatherName: document.getElementById('edit-student-fatherName')?.value,
+            motherName: document.getElementById('edit-student-motherName')?.value,
         };
         try {
             showInfoAlert('Updating student...');
@@ -2928,9 +2971,9 @@ function setupForms() {
                 hideInfoAlert();
                 showErrorAlert(res.error || 'Failed to update student');
             }
-        } catch (err) { 
+        } catch (err) {
             hideInfoAlert();
-            showErrorAlert(err.message); 
+            showErrorAlert(err.message);
         }
     });
 
@@ -2948,8 +2991,8 @@ function showAlert(id, textId, msg) {
     setTimeout(() => el.style.display = 'none', 3500);
 }
 function showSuccessAlert(m) { showAlert('success-alert', 'success-text', m); }
-function showErrorAlert(m)   { showAlert('error-alert', 'error-text', m); }
-function showInfoAlert(m)    {
+function showErrorAlert(m) { showAlert('error-alert', 'error-text', m); }
+function showInfoAlert(m) {
     const el = document.getElementById('info-alert');
     if (el) { document.getElementById('info-text').textContent = m || ''; el.style.display = 'flex'; }
 }
@@ -2983,8 +3026,8 @@ async function loadNotifications() {
             const recipient = n.classLevel
                 ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
                 : (n.recipientRole || 'All Users');
-            const fileHtml = n.attachmentUrl 
-                ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>` 
+            const fileHtml = n.attachmentUrl
+                ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>`
                 : '<span style="color:var(--text-muted)">-</span>';
             return `
                 <tr>
@@ -3007,20 +3050,22 @@ async function loadNotifications() {
     }
 }
 
-window.showSendNoticeModal = function() {
+window.showSendNoticeModal = function () {
     const modal = document.getElementById('notice-modal');
     if (modal) {
         modal.style.display = 'flex';
         document.getElementById('notice-form')?.reset();
+        document.body.style.overflow = 'hidden';
     }
 };
 
-window.closeNoticeModal = function() {
+window.closeNoticeModal = function () {
     const modal = document.getElementById('notice-modal');
     if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
 };
 
-window.deleteNotification = async function(id) {
+window.deleteNotification = async function (id) {
     if (!confirm('Delete this notification?')) return;
     try {
         // The notifications controller doesn't have a DELETE — call the API directly
@@ -3071,7 +3116,7 @@ async function loadResults() {
 // =============================================
 
 // Modal functions
-window.openAddTimetableModal = function() {
+window.openAddTimetableModal = function () {
     const modal = document.getElementById('timetable-modal');
     if (modal) {
         document.getElementById('tt-id').value = '';
@@ -3081,16 +3126,16 @@ window.openAddTimetableModal = function() {
     }
 };
 
-window.closeTimetableModal = function() {
+window.closeTimetableModal = function () {
     const modal = document.getElementById('timetable-modal');
     if (modal) modal.style.display = 'none';
     document.getElementById('timetable-form').reset();
 };
 
-window.toggleTimetableMenu = function(event, id) {
+window.toggleTimetableMenu = function (event, id) {
     event.stopPropagation();
     const menu = document.getElementById(`tt-menu-${id}`);
-    
+
     // Close other open menus
     document.querySelectorAll('[id^="tt-menu-"]').forEach(m => {
         if (m !== menu) m.classList.remove('open');
@@ -3104,7 +3149,7 @@ window.toggleTimetableMenu = function(event, id) {
     menu?.classList.add('open');
 };
 
-window.closeAllTimetableMenus = function() {
+window.closeAllTimetableMenus = function () {
     document.querySelectorAll('[id^="tt-menu-"]').forEach(m => m.classList.remove('open'));
 };
 
@@ -3126,9 +3171,9 @@ async function loadTimetableDropdowns() {
 
         // Store teachers globally for filtering
         allTeachersForTimetable = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
-        
+
         const teacherSel = document.getElementById('tt-teacher');
-        
+
         // Initial populate: all teachers or disabled until class is selected
         if (teacherSel) {
             teacherSel.innerHTML = '<option value="">Select Class First</option>';
@@ -3137,7 +3182,7 @@ async function loadTimetableDropdowns() {
 
         // Add event listener to filter teachers when class is selected
         if (classSel) {
-            classSel.addEventListener('change', function() {
+            classSel.addEventListener('change', function () {
                 const selectedClass = this.value;
                 if (!selectedClass) {
                     teacherSel.innerHTML = '<option value="">Select Class First</option>';
@@ -3153,7 +3198,7 @@ async function loadTimetableDropdowns() {
 
                 if (availableTeachers.length > 0) {
                     teacherSel.disabled = false;
-                    teacherSel.innerHTML = '<option value="">Select Teacher</option>' + 
+                    teacherSel.innerHTML = '<option value="">Select Teacher</option>' +
                         availableTeachers.map(t => `<option value="${t.id}">${t.name || t.phone}</option>`).join('');
                 } else {
                     teacherSel.disabled = true;
@@ -3166,7 +3211,7 @@ async function loadTimetableDropdowns() {
     }
 }
 
-window.saveTimetableEntry = async function() {
+window.saveTimetableEntry = async function () {
     const ttId = document.getElementById('tt-id')?.value;
     const payload = {
         dayOfWeek: document.getElementById('tt-day')?.value,
@@ -3222,18 +3267,18 @@ let selectedTimetableDay = 'Monday'; // Default to Monday
 let showAllTimetable = false;
 
 function formatTime(t) {
-    try { 
-        return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); 
-    } catch(e) { 
-        return t; 
+    try {
+        return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    } catch (e) {
+        return t;
     }
 }
 
 // Select a day and render its timetable
-window.selectTimetableDay = function(day) {
+window.selectTimetableDay = function (day) {
     selectedTimetableDay = day;
     // Day selected
-    
+
     // Update active tab
     document.querySelectorAll('.day-tab').forEach(tab => {
         if (tab.getAttribute('data-day') === day) {
@@ -3242,7 +3287,7 @@ window.selectTimetableDay = function(day) {
             tab.classList.remove('active');
         }
     });
-    
+
     // Render the selected day
     renderTimetableByClass(allTimetableData);
 };
@@ -3259,7 +3304,7 @@ function generateTimeSlots() {
 
 function renderTimetableByClass(items) {
     const container = document.getElementById('timetable-by-class');
-    
+
     if (!container) return;
 
     if (items.length === 0) {
@@ -3272,7 +3317,7 @@ function renderTimetableByClass(items) {
 
     // Filter entries by selected day
     const filteredEntries = items.filter(entry => {
-        const normalizedDay = entry.dayOfWeek 
+        const normalizedDay = entry.dayOfWeek
             ? entry.dayOfWeek.charAt(0).toUpperCase() + entry.dayOfWeek.slice(1).toLowerCase()
             : '';
         return normalizedDay === selectedTimetableDay;
@@ -3310,7 +3355,7 @@ function renderTimetableByClass(items) {
     // Create cards for each class
     Object.keys(classByLevel).sort().forEach(groupKey => {
         const classEntries = classByLevel[groupKey];
-        
+
         html += `
             <div class="class-timetable-card">
                 <div class="class-timetable-header">
@@ -3372,7 +3417,7 @@ function renderTimetableByClass(items) {
     container.innerHTML = html;
 }
 
-window.deleteTimetableRecord = async function(id) {
+window.deleteTimetableRecord = async function (id) {
     if (!confirm('Delete this timetable entry?')) return;
     try {
         await adminAPI.deleteTimetable(id);
@@ -3384,31 +3429,31 @@ window.deleteTimetableRecord = async function(id) {
     }
 };
 
-window.openAddUserModal = function() {
+window.openAddUserModal = function () {
     const modal = document.getElementById('addUserModal');
     if (modal) modal.style.display = 'flex';
 };
 
-window.closeAddUserModal = function() {
+window.closeAddUserModal = function () {
     const modal = document.getElementById('addUserModal');
     if (modal) modal.style.display = 'none';
 };
 
-window.openEditUserModal = function() {
+window.openEditUserModal = function () {
     const modal = document.getElementById('editUserModal');
     if (modal) modal.style.display = 'flex';
 };
 
-window.closeEditUserModal = function() {
+window.closeEditUserModal = function () {
     const modal = document.getElementById('editUserModal');
     if (modal) modal.style.display = 'none';
 };
 
-window.toggleUserActionMenu = function(event, id) {
+window.toggleUserActionMenu = function (event, id) {
     event.stopPropagation();
     const btn = event.currentTarget;
     const dropdown = document.getElementById(`user-actions-${id}`);
-    
+
     // Close other open dropdowns
     document.querySelectorAll('.action-dropdown.open').forEach(d => {
         if (d !== dropdown) d.classList.remove('open');

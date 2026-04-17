@@ -195,7 +195,7 @@ document.head.appendChild(examResultsStyles);
 async function fetchExamResultsFromAPI() {
   try {
     console.log('📡 Fetching exam results from backend...');
-    
+
     // Call backend API to fetch all exam results
     // resultsAPI automatically includes JWT token in Authorization header
     const data = await resultsAPI.getAll();
@@ -205,16 +205,16 @@ async function fetchExamResultsFromAPI() {
     }
 
     console.log('✅ Exam results fetched successfully:', data);
-    
+
     // Transform API data to match our expected format
     examResultsData = transformAPIData(data);
-    
+
     // Render the table
     renderExamResultsTable();
-    
+
   } catch (error) {
     console.error('❌ Failed to fetch exam results:', error);
-    
+
     // Show error message in table
     const tbody = document.getElementById('exam-results-tbody');
     if (tbody) {
@@ -238,7 +238,7 @@ async function fetchExamResultsFromAPI() {
 function transformAPIData(apiData) {
   // Handle both array and object with data property
   const dataArray = Array.isArray(apiData) ? apiData : (apiData.data || []);
-  
+
   return dataArray.map((item, index) => ({
     id: item.id || index + 1,
     roll: item.roll || item.rollNumber || index + 1,
@@ -272,7 +272,7 @@ let examResultsExpandedRows = new Set();
 function renderExamResultsTable(filteredData = null) {
   const data = filteredData || examResultsData;
   const tbody = document.getElementById('exam-results-tbody');
-  
+
   if (!tbody) {
     console.warn('⚠️ Exam results table body not found');
     return;
@@ -304,7 +304,7 @@ function renderExamResultsTable(filteredData = null) {
       <td>${student.percentage.toFixed(1)}%</td>
       <td><span class="result-${student.result.toLowerCase()}">${student.result}</span></td>
     `;
-    
+
     mainRow.addEventListener('click', () => toggleExamResultsExpand(student.id));
     tbody.appendChild(mainRow);
 
@@ -393,7 +393,7 @@ export function initExamResults() {
     classFilter.removeEventListener('change', applyExamFilters);
     classFilter.addEventListener('change', applyExamFilters);
   }
-  
+
   if (resultFilter) {
     resultFilter.removeEventListener('change', applyExamFilters);
     resultFilter.addEventListener('change', applyExamFilters);

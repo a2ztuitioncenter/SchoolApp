@@ -19,8 +19,30 @@ export const homeworkModel = {
     );
   `,
 
+  // Helper function to format database rows to camelCase for API response
+  formatRow(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      teacherId: row.teacher_id,
+      classLevel: row.class_level,
+      section: row.section,
+      title: row.title,
+      description: row.description,
+      dueDate: row.due_date,
+      subject: row.subject,
+      attachmentUrl: row.attachment_url,
+      schoolId: row.school_id,
+      type: row.type,
+      createdAt: row.created_at,
+      teacherPhone: row.teacher_phone,
+      assignedBy: row.teacher_id,
+      assignedByName: row.assigned_by_name || 'Admin'
+    };
+  },
+
   async getAll(classLevel = '', section = '') {
-    let query = `SELECT h.*, u.phone AS teacher_phone
+    let query = `SELECT h.*, u.phone AS teacher_phone, u.name AS assigned_by_name
                  FROM homework h
                  LEFT JOIN users u ON h.teacher_id = u.id`;
     const params = [];
@@ -37,7 +59,7 @@ export const homeworkModel = {
     }
     query += ` ORDER BY h.created_at DESC`;
     const result = await db.query(query, params);
-    return result.rows;
+    return result.rows.map(row => this.formatRow(row));
   },
 
   async getByClass(classLevel) {
@@ -46,7 +68,7 @@ export const homeworkModel = {
 
   async getById(id) {
     const result = await db.query('SELECT * FROM homework WHERE id = $1', [id]);
-    return result.rows[0] || null;
+    return this.formatRow(result.rows[0]);
   },
 
   async create({ title, description, classLevel, section, subject, dueDate, assignedBy, attachmentUrl }) {
@@ -55,15 +77,15 @@ export const homeworkModel = {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [title, description || null, classLevel, section || 'A', subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
     );
-    return result.rows[0];
+    return this.formatRow(result.rows[0]);
   },
 
-  async update(id, { title, description, classLevel, subject, dueDate, attachmentUrl }) {
+  async update(id, { title, description, classLevel, section, subject, dueDate, attachmentUrl }) {
     const result = await db.query(
-      `UPDATE homework SET title=$1, description=$2, class_level=$3, subject=$4, due_date=$5, attachment_url=$6 WHERE id=$7 RETURNING *`,
-      [title, description || null, classLevel, subject || null, dueDate || null, attachmentUrl || null, id]
+      `UPDATE homework SET title=$1, description=$2, class_level=$3, section=$4, subject=$5, due_date=$6, attachment_url=$7 WHERE id=$8 RETURNING *`,
+      [title, description || null, classLevel, section || 'A', subject || null, dueDate || null, attachmentUrl || null, id]
     );
-    return result.rows[0] || null;
+    return this.formatRow(result.rows[0]);
   },
 
   async delete(id) {

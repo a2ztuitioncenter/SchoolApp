@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,9 +19,11 @@
             margin-bottom: 1rem;
             transition: var(--transition);
         }
+
         .syllabus-subject-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
+
         .subject-header-row {
             display: flex;
             justify-content: space-between;
@@ -29,6 +32,7 @@
             border-bottom: 1px solid var(--border-subtle);
             padding-bottom: 0.75rem;
         }
+
         .subject-title {
             font-weight: 600;
             color: var(--accent-blue);
@@ -37,36 +41,43 @@
             align-items: center;
             gap: 0.5rem;
         }
+
         .chapter-list {
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
         }
+
         .chapter-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0.5rem 0;
         }
+
         .chapter-info {
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
+
         .chapter-text {
             font-size: 0.9rem;
             color: var(--text-main);
         }
+
         .chapter-item.done .chapter-text {
             text-decoration: line-through;
             color: var(--text-muted);
             opacity: 0.7;
         }
+
         .att-radio-group {
             display: flex;
             gap: 0.75rem;
             align-items: center;
         }
+
         .att-label {
             display: flex;
             align-items: center;
@@ -78,34 +89,59 @@
             transition: var(--transition);
             border: 1px solid transparent;
         }
-        .att-label:hover { background: var(--bg-hover); }
-        .att-label input { width: auto; margin: 0; cursor: pointer; }
-        
-        .present-label { color: var(--success); }
-        .absent-label { color: var(--danger); }
-        .late-label { color: var(--warning); }
+
+        .att-label:hover {
+            background: var(--bg-hover);
+        }
+
+        .att-label input {
+            width: auto;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .present-label {
+            color: var(--success);
+        }
+
+        .absent-label {
+            color: var(--danger);
+        }
+
+        .late-label {
+            color: var(--warning);
+        }
 
         /* Timetable specific */
         .timetable-card {
             border-left: 4px solid var(--border-subtle);
         }
+
         .timetable-now {
             border-left-color: var(--success);
             background: rgba(26, 127, 55, 0.03);
         }
-        
+
         /* Mobile Specific Overrides */
         @media (max-width: 768px) {
-            .section-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-            .section-header .btn { width: 100%; }
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .section-header .btn {
+                width: 100%;
+            }
         }
 
         /* Optimized Action Menu for Mobile/Small Screens */
         .action-menu {
             position: relative;
         }
+
         .action-menu-dropdown {
-            position: fixed !important; 
+            position: fixed !important;
             background-color: var(--bg-secondary);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
@@ -119,6 +155,7 @@
             transition: opacity 0.15s ease, transform 0.15s ease;
             pointer-events: none;
         }
+
         .action-menu-dropdown.active {
             display: block;
             opacity: 1;
@@ -128,13 +165,13 @@
     </style>
     <script>
         // ⚠️ IMMEDIATE AUTH CHECK - MUST RUN FIRST
-        (function() {
-            const performAuthCheck = function() {
+        (function () {
+            const performAuthCheck = function () {
                 try {
                     const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isTeacher = auth && auth.isLoggedIn === true && auth.role === 'teacher';
-                    
+
                     if (!isTeacher) {
                         // BLOCK EVERYTHING
                         console.warn('🔒 TEACHER DASHBOARD: Unauthorized - blocking access');
@@ -164,7 +201,7 @@
                     throw new Error('AUTH_ERROR');
                 }
             };
-            
+
             // Execute IMMEDIATELY
             if (!performAuthCheck()) {
                 throw new Error('Auth failed');
@@ -183,6 +220,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Protection screen shows while auth is being verified -->
     <div id="auth-protection-screen">
@@ -190,441 +228,469 @@
             <p style="font-size: 1.2rem; color: #666;">Loading...</p>
         </div>
     </div>
-<div class="admin-container">
+    <div class="admin-container">
 
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="logo">
-            <i class="fas fa-chalkboard-teacher"></i>
-            <span>TEACHER</span>
-        </div>
-        <nav>
-            <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
-            <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-user-check"></i> Attendance</a>
-            <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book-open"></i> Homework</a>
-            <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-tasks"></i> Daily Practice</a>
-            <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
-            <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
-            <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> Syllabus</a>
-            <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> Exam Result</a>
-            <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-clipboard-list"></i> Att. Summary</a>
-        </nav>
-    </aside>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <header class="header">
-            <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
-            <h1>Teacher Portal</h1>
-            
-            <div class="admin-profile-menu" id="teacher-profile-menu">
-                <button id="teacher-profile-btn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
-                    <div class="avatar-circle">
-                        <span id="teacher-avatar-initial">T</span>
-                        <span class="online-indicator"></span>
-                    </div>
-                    <i class="fas fa-caret-down"></i>
-                </button>
-                
-                <div id="teacher-profile-dropdown" class="profile-dropdown">
-                    <div class="dropdown-header">
-                        <div class="user-name" id="dropdown-teacher-name">Teacher</div>
-                        <div class="user-email" id="dropdown-teacher-email">teacher@a2z.local</div>
-                    </div>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item"><i class="fas fa-user"></i> My Profile</a>
-                    <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Account Settings</a>
-                    <div class="dropdown-divider"></div>
-                    <button id="dropdown-logout-btn-teacher" class="dropdown-item text-danger">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span>TEACHER</span>
             </div>
-        </header>
+            <nav>
+                <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
+                <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-user-check"></i> Attendance</a>
+                <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book-open"></i> Homework</a>
+                <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-tasks"></i> Daily Practice</a>
+                <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> Study Materials</a>
+                <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
+                <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> Syllabus</a>
+                <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> Exam Result</a>
+                <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-clipboard-list"></i> Att. Summary</a>
+            </nav>
+            <!-- Mobile-only Bottom Navigation Bar -->
+            <nav class="bottom-nav">
+                <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
+                <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-user-check"></i> <span>Attendance</span></a>
+                <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book-open"></i> <span>Homework</span></a>
+                <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
+                <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> <span>Syllabus</span></a>
+                <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> <span>Exam</span></a>
+                <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-clipboard-list"></i> <span>Summary</span></a>
+            </nav>
+        </aside>
 
-        <!-- Global Alerts -->
-        <div id="success-alert" class="alert alert-success">
-            <i class="fas fa-check-circle"></i> <span id="success-text"></span>
-        </div>
-        <div id="error-alert" class="alert alert-error">
-            <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
-        </div>
-        <div id="info-alert" class="alert alert-info">
-            <i class="fas fa-info-circle"></i> <span id="info-text"></span>
-        </div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <header class="header">
+                <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
+                <h1>Teacher Portal</h1>
 
-        <!-- =================== DASHBOARD TAB =================== -->
-        <div id="tab-dashboard" class="tab-content active">
-            <div class="dashboard-section-title">
-                <h2><i class="fas fa-tachometer-alt"></i> Overview</h2>
-                <p class="section-subtitle">A quick snapshot of your teaching activity</p>
-            </div>
-
-            <div class="card-grid">
-                <!-- My Students KPI -->
-                <div class="kpi-card kpi-info">
-                    <div class="kpi-header info">
-                        <i class="fas fa-user-graduate"></i>
-                        <span class="kpi-label">MY STUDENTS</span>
-                    </div>
-                    <div class="kpi-value" id="stat-students">0</div>
-                    <div class="kpi-footer">Total enrolled in your classes</div>
-                </div>
-
-                <!-- Active Homework KPI -->
-                <div class="kpi-card kpi-success">
-                    <div class="kpi-header success">
-                        <i class="fas fa-book-reader"></i>
-                        <span class="kpi-label">ACTIVE HOMEWORK</span>
-                    </div>
-                    <div class="kpi-value" id="stat-homework">0</div>
-                    <div class="kpi-footer">Pending submission items</div>
-                </div>
-
-                <!-- Materials KPI -->
-                <div class="kpi-card kpi-warning">
-                    <div class="kpi-header warning">
-                        <i class="fas fa-archive"></i>
-                        <span class="kpi-label">STUDY MATERIALS</span>
-                    </div>
-                    <div class="kpi-value" id="stat-materials">0</div>
-                    <div class="kpi-footer">Shared resources available</div>
-                </div>
-            </div>
-
-            <div class="dashboard-section-title" style="margin-top: 2rem;">
-                <h2><i class="fas fa-calendar-alt"></i> Today's Schedule</h2>
-                <span id="today-label" class="section-subtitle"></span>
-            </div>
-            
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Class</th>
-                            <th>Subject</th>
-                            <th>Time</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="today-timetable-body">
-                        <tr><td colspan="4" class="empty-state">No upcoming classes today</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- =================== TIMETABLE TAB =================== -->
-        <div id="tab-timetable" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-calendar-week"></i> Weekly Schedule</h2>
-                    <p class="section-subtitle">Your complete teaching timetable for the week</p>
-                </div>
-            </div>
-            <div class="card">
-                <div id="weekly-timetable" class="timetable-grid"></div>
-            </div>
-        </div>
-
-        <!-- =================== ATTENDANCE TAB =================== -->
-        <div id="tab-attendance" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-user-check"></i> Mark Attendance</h2>
-                    <p class="section-subtitle">Record daily attendance for your classes</p>
-                </div>
-            </div>
-
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="filter-bar">
-                    <div class="filter-group" style="flex: 1;">
-                        <label>Select Class</label>
-                        <select id="att-class-select" onchange="onAttClassChange()">
-                            <option value="">-- Choose Class --</option>
-                        </select>
-                    </div>
-                    <div class="filter-group" style="flex: 1;">
-                        <label>Attendance Date</label>
-                        <input type="date" id="att-date">
-                    </div>
-                    <button class="btn btn-primary btn-lg" onclick="loadAttendanceSheet()" style="align-self: flex-end;">
-                        <i class="fas fa-search"></i> Load Sheet
-                    </button>
-                </div>
-            </div>
-
-            <div id="att-sheet-container" style="display:none;">
-                <div class="att-summary-bar">
-                    <div class="att-stats">
-                        <div class="att-stat-item">
-                            <span class="text-muted">Total:</span>
-                            <span id="att-total-count">0</span>
+                <div class="admin-profile-menu" id="teacher-profile-menu">
+                    <button id="teacher-profile-btn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
+                        <div class="avatar-circle">
+                            <span id="teacher-avatar-initial">T</span>
+                            <span class="online-indicator"></span>
                         </div>
-                        <div class="att-stat-item">
-                            <span style="color: var(--success)">P:</span>
-                            <b id="att-present-count">0</b>
-                        </div>
-                        <div class="att-stat-item">
-                            <span style="color: var(--danger)">A:</span>
-                            <b id="att-absent-count">0</b>
-                        </div>
-                    </div>
-                    <button class="att-btn-mark-all" id="btn-mark-all-present">
-                        <i class="fas fa-check-double"></i> Mark All Present
+                        <i class="fas fa-caret-down"></i>
                     </button>
-                </div>
 
-                <div id="att-list-container" class="att-list-container">
-                    <!-- Cards will be rendered here -->
-                </div>
-
-                <div class="att-submit-container">
-                    <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="saveAttendance()">
-                        <i class="fas fa-cloud-upload-alt"></i> Submit Attendance Sheet
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- =================== HOMEWORK TAB =================== -->
-        <div id="tab-homework" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-book-open"></i> Homework Manager</h2>
-                    <p class="section-subtitle">Track and assign homework to your students</p>
-                </div>
-                <button class="btn btn-primary btn-lg" onclick="openHwModal('homework')">
-                    <i class="fas fa-plus"></i> New Homework
-                </button>
-            </div>
-
-            <div class="card">
-                <div class="filter-bar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Search homework..." id="hw-search">
+                    <div id="teacher-profile-dropdown" class="profile-dropdown">
+                        <div class="dropdown-header">
+                            <div class="user-name" id="dropdown-teacher-name">Teacher</div>
+                            <div class="user-email" id="dropdown-teacher-email">teacher@a2z.local</div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> My Profile</a>
+                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Account Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <button id="dropdown-logout-btn-teacher" class="dropdown-item text-danger">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
                     </div>
                 </div>
+            </header>
+
+            <!-- Global Alerts -->
+            <div id="success-alert" class="alert alert-success">
+                <i class="fas fa-check-circle"></i> <span id="success-text"></span>
+            </div>
+            <div id="error-alert" class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i> <span id="error-text"></span>
+            </div>
+            <div id="info-alert" class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <span id="info-text"></span>
+            </div>
+
+            <!-- =================== DASHBOARD TAB =================== -->
+            <div id="tab-dashboard" class="tab-content active">
+                <div class="dashboard-section-title">
+                    <h2><i class="fas fa-tachometer-alt"></i> Overview</h2>
+                    <p class="section-subtitle">A quick snapshot of your teaching activity</p>
+                </div>
+
+                <div class="card-grid">
+                    <!-- My Students KPI -->
+                    <div class="kpi-card kpi-info">
+                        <div class="kpi-header info">
+                            <i class="fas fa-user-graduate"></i>
+                            <span class="kpi-label">MY STUDENTS</span>
+                        </div>
+                        <div class="kpi-value" id="stat-students">0</div>
+                        <div class="kpi-footer">Total enrolled in your classes</div>
+                    </div>
+
+                    <!-- Active Homework KPI -->
+                    <div class="kpi-card kpi-success">
+                        <div class="kpi-header success">
+                            <i class="fas fa-book-reader"></i>
+                            <span class="kpi-label">ACTIVE HOMEWORK</span>
+                        </div>
+                        <div class="kpi-value" id="stat-homework">0</div>
+                        <div class="kpi-footer">Pending submission items</div>
+                    </div>
+
+                    <!-- Materials KPI -->
+                    <div class="kpi-card kpi-warning">
+                        <div class="kpi-header warning">
+                            <i class="fas fa-archive"></i>
+                            <span class="kpi-label">STUDY MATERIALS</span>
+                        </div>
+                        <div class="kpi-value" id="stat-materials">0</div>
+                        <div class="kpi-footer">Shared resources available</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-section-title" style="margin-top: 2rem;">
+                    <h2><i class="fas fa-calendar-alt"></i> Today's Schedule</h2>
+                    <span id="today-label" class="section-subtitle"></span>
+                </div>
+
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>Class</th>
                                 <th>Subject</th>
-                                <th>Title</th>
-                                <th>Due Date</th>
-                                <th style="text-align: right;">Actions</th>
+                                <th>Time</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="hw-table-body">
-                            <tr><td colspan="5" class="empty-state">No homework assigned yet.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- =================== DAILY PRACTICE TAB =================== -->
-        <div id="tab-dpp" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-tasks"></i> Daily Practice Problems</h2>
-                    <p class="section-subtitle">Manage daily exercises and practice sets</p>
-                </div>
-                <button class="btn btn-primary btn-lg" onclick="openHwModal('daily_practice')">
-                    <i class="fas fa-plus"></i> New Practice Set
-                </button>
-            </div>
-
-            <div class="card">
-                <div class="filter-bar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Search practice problems..." id="dpp-search">
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
+                        <tbody id="today-timetable-body">
                             <tr>
-                                <th>Class</th>
-                                <th>Subject</th>
-                                <th>Title</th>
-                                <th>Posted Date</th>
-                                <th style="text-align: right;">Actions</th>
+                                <td colspan="4" class="empty-state">No upcoming classes today</td>
                             </tr>
-                        </thead>
-                        <tbody id="dpp-table-body">
-                            <tr><td colspan="5" class="empty-state">No practice problems yet.</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
 
-        <!-- =================== MATERIALS TAB =================== -->
-        <div id="tab-materials" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-copy"></i> Study Materials</h2>
-                    <p class="section-subtitle">Upload and manage shared learning resources</p>
-                </div>
-                <button class="btn btn-primary btn-lg" onclick="openMatModal()">
-                    <i class="fas fa-upload"></i> Upload Material
-                </button>
-            </div>
-
-            <div class="card">
-                <div class="filter-bar">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Search materials..." id="mat-search">
+            <!-- =================== TIMETABLE TAB =================== -->
+            <div id="tab-timetable" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-calendar-week"></i> Weekly Schedule</h2>
+                        <p class="section-subtitle">Your complete teaching timetable for the week</p>
                     </div>
                 </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Title</th>
-                                <th>Subject</th>
-                                <th>Class</th>
-                                <th>File Type</th>
-                                <th style="text-align: right;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="mat-table-body">
-                            <tr><td colspan="5" class="empty-state">No materials uploaded yet.</td></tr>
-                        </tbody>
-                    </table>
+                <div class="card">
+                    <div id="weekly-timetable" class="timetable-grid"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- =================== SYLLABUS TAB =================== -->
-        <div id="tab-syllabus" class="tab-content" style="display:none;">
-            <div class="section-header">
-                <div>
-                    <h2><i class="fas fa-graduation-cap"></i> Syllabus Tracker</h2>
-                    <p class="section-subtitle">Monitor curriculum progress across subjects</p>
+            <!-- =================== ATTENDANCE TAB =================== -->
+            <div id="tab-attendance" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-user-check"></i> Mark Attendance</h2>
+                        <p class="section-subtitle">Record daily attendance for your classes</p>
+                    </div>
                 </div>
-                <button class="btn btn-primary btn-lg" onclick="openSyllabusModal()">
-                    <i class="fas fa-plus"></i> Add Chapter
-                </button>
-            </div>
-            <div id="syllabus-container"></div>
-        </div>
 
-        <!-- =================== SUMMARY TAB =================== -->
-        <div id="tab-summary" class="tab-content" style="display:none;">
-            <div class="dashboard-section-title">
-                <h2><i class="fas fa-clipboard-list"></i> Attendance Summary</h2>
-                <p class="section-subtitle">View monthly performance reports</p>
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="filter-bar">
+                        <div class="filter-group" style="flex: 1;">
+                            <label>Select Class</label>
+                            <select id="att-class-select" onchange="onAttClassChange()">
+                                <option value="">-- Choose Class --</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="flex: 1;">
+                            <label>Attendance Date</label>
+                            <input type="date" id="att-date">
+                        </div>
+                        <button class="btn btn-primary btn-lg" onclick="loadAttendanceSheet()"
+                            style="align-self: flex-end;">
+                            <i class="fas fa-search"></i> Load Sheet
+                        </button>
+                    </div>
+                </div>
+
+                <div id="att-sheet-container" style="display:none;">
+                    <div class="att-summary-bar">
+                        <div class="att-stats">
+                            <div class="att-stat-item">
+                                <span class="text-muted">Total:</span>
+                                <span id="att-total-count">0</span>
+                            </div>
+                            <div class="att-stat-item">
+                                <span style="color: var(--success)">P:</span>
+                                <b id="att-present-count">0</b>
+                            </div>
+                            <div class="att-stat-item">
+                                <span style="color: var(--danger)">A:</span>
+                                <b id="att-absent-count">0</b>
+                            </div>
+                        </div>
+                        <button class="att-btn-mark-all" id="btn-mark-all-present">
+                            <i class="fas fa-check-double"></i> Mark All Present
+                        </button>
+                    </div>
+
+                    <div id="att-list-container" class="att-list-container">
+                        <!-- Cards will be rendered here -->
+                    </div>
+
+                    <div class="att-submit-container">
+                        <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="saveAttendance()">
+                            <i class="fas fa-cloud-upload-alt"></i> Submit Attendance Sheet
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="card">
-                <div class="filter-bar">
-                    <div class="filter-group" style="flex: 1;">
-                        <label>Select Class</label>
-                        <select id="sum-class-select" class="form-control">
-                            <option value="">-- Choose Class --</option>
-                        </select>
+            <!-- =================== HOMEWORK TAB =================== -->
+            <div id="tab-homework" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-book-open"></i> Homework Manager</h2>
+                        <p class="section-subtitle">Track and assign homework to your students</p>
                     </div>
-                    <div class="filter-group" style="flex: 1;">
-                        <label>Select Month</label>
-                        <input type="month" id="sum-month" class="form-control">
-                    </div>
-                    <button class="btn btn-primary btn-lg" onclick="loadAttendanceSummary()" style="align-self: flex-end;">
-                        <i class="fas fa-search"></i> View Report
+                    <button class="btn btn-primary btn-lg" onclick="openHwModal('homework')">
+                        <i class="fas fa-plus"></i> New Homework
                     </button>
                 </div>
-                
-                <div id="summary-container" style="margin-top: 1.5rem;"></div>
-            </div>
-        </div>
 
-        <!-- =================== EXAM RESULT TAB =================== -->
-        <div id="tab-exam" class="tab-content" style="display:none;">
-            <div class="dashboard-section-title">
-                <h2><i class="fas fa-file-signature"></i> Exam Result Entry</h2>
-                <p class="section-subtitle">Record and manage student examination results</p>
-            </div>
-
-            <div class="card" style="margin-bottom: 2rem;">
-                <h3 style="margin-bottom: 1.5rem; color: var(--accent-blue);"><i class="fas fa-user-edit"></i> Student Details</h3>
-                <div class="filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
-                    <div class="filter-group">
-                        <label>Class Level *</label>
-                        <select id="exam-class-select" class="form-control" required onchange="onExamClassChange()">
-                             <option value="">Select Class</option>
-                        </select>
+                <div class="card">
+                    <div class="filter-bar">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Search homework..." id="hw-search">
+                        </div>
                     </div>
-                    <div class="filter-group">
-                        <label>Section</label>
-                        <select id="exam-section-select" class="form-control" onchange="onExamSectionChange()">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Roll Number</label>
-                        <select id="exam-roll-select" class="form-control" onchange="onExamRollChange()">
-                            <option value="">Select Roll No.</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Student Name</label>
-                        <input type="text" id="exam-name-input" class="form-control" placeholder="Student Name" readonly>
-                    </div>
-                    <div class="filter-group" style="grid-column: 1 / -1;">
-                        <label>Exam Title *</label>
-                        <input type="text" id="exam-title-input" class="form-control" placeholder="e.g., Midterm 2026" required>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Subject</th>
+                                    <th>Title</th>
+                                    <th>Due Date</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hw-table-body">
+                                <tr>
+                                    <td colspan="5" class="empty-state">No homework assigned yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="margin-bottom: 2rem;">
-                <h3 style="margin-bottom: 1.5rem; color: var(--accent-blue);"><i class="fas fa-list-ol"></i> Subjects & Marks</h3>
-                <div id="exam-subjects-container">
-                    <!-- Dynamic subject rows will be added here -->
+            <!-- =================== DAILY PRACTICE TAB =================== -->
+            <div id="tab-dpp" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-tasks"></i> Daily Practice Problems</h2>
+                        <p class="section-subtitle">Manage daily exercises and practice sets</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openHwModal('daily_practice')">
+                        <i class="fas fa-plus"></i> New Practice Set
+                    </button>
                 </div>
-                <button id="exam-add-subject-btn" class="btn btn-secondary" style="margin-top: 1rem;">
-                    <i class="fas fa-plus"></i> Add Another Subject
+
+                <div class="card">
+                    <div class="filter-bar">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Search practice problems..." id="dpp-search">
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Subject</th>
+                                    <th>Title</th>
+                                    <th>Posted Date</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dpp-table-body">
+                                <tr>
+                                    <td colspan="5" class="empty-state">No practice problems yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =================== MATERIALS TAB =================== -->
+            <div id="tab-materials" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-copy"></i> Study Materials</h2>
+                        <p class="section-subtitle">Upload and manage shared learning resources</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openMatModal()">
+                        <i class="fas fa-upload"></i> Upload Material
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="filter-bar">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Search materials..." id="mat-search">
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Subject</th>
+                                    <th>Class</th>
+                                    <th>File Type</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mat-table-body">
+                                <tr>
+                                    <td colspan="5" class="empty-state">No materials uploaded yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =================== SYLLABUS TAB =================== -->
+            <div id="tab-syllabus" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-graduation-cap"></i> Syllabus Tracker</h2>
+                        <p class="section-subtitle">Monitor curriculum progress across subjects</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openSyllabusModal()">
+                        <i class="fas fa-plus"></i> Add Chapter
+                    </button>
+                </div>
+                <div id="syllabus-container"></div>
+            </div>
+
+            <!-- =================== SUMMARY TAB =================== -->
+            <div id="tab-summary" class="tab-content" style="display:none;">
+                <div class="dashboard-section-title">
+                    <h2><i class="fas fa-clipboard-list"></i> Attendance Summary</h2>
+                    <p class="section-subtitle">View monthly performance reports</p>
+                </div>
+
+                <div class="card">
+                    <div class="filter-bar">
+                        <div class="filter-group" style="flex: 1;">
+                            <label>Select Class</label>
+                            <select id="sum-class-select" class="form-control">
+                                <option value="">-- Choose Class --</option>
+                            </select>
+                        </div>
+                        <div class="filter-group" style="flex: 1;">
+                            <label>Select Month</label>
+                            <input type="month" id="sum-month" class="form-control">
+                        </div>
+                        <button class="btn btn-primary btn-lg" onclick="loadAttendanceSummary()"
+                            style="align-self: flex-end;">
+                            <i class="fas fa-search"></i> View Report
+                        </button>
+                    </div>
+
+                    <div id="summary-container" style="margin-top: 1.5rem;"></div>
+                </div>
+            </div>
+
+            <!-- =================== EXAM RESULT TAB =================== -->
+            <div id="tab-exam" class="tab-content" style="display:none;">
+                <div class="dashboard-section-title">
+                    <h2><i class="fas fa-file-signature"></i> Exam Result Entry</h2>
+                    <p class="section-subtitle">Record and manage student examination results</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem; color: var(--accent-blue);"><i class="fas fa-user-edit"></i>
+                        Student Details</h3>
+                    <div class="filter-bar"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <div class="filter-group">
+                            <label>Class Level *</label>
+                            <select id="exam-class-select" class="form-control" required onchange="onExamClassChange()">
+                                <option value="">Select Class</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Section</label>
+                            <select id="exam-section-select" class="form-control" onchange="onExamSectionChange()">
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Roll Number</label>
+                            <select id="exam-roll-select" class="form-control" onchange="onExamRollChange()">
+                                <option value="">Select Roll No.</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Student Name</label>
+                            <input type="text" id="exam-name-input" class="form-control" placeholder="Student Name"
+                                readonly>
+                        </div>
+                        <div class="filter-group" style="grid-column: 1 / -1;">
+                            <label>Exam Title *</label>
+                            <input type="text" id="exam-title-input" class="form-control"
+                                placeholder="e.g., Midterm 2026" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem; color: var(--accent-blue);"><i class="fas fa-list-ol"></i>
+                        Subjects & Marks</h3>
+                    <div id="exam-subjects-container">
+                        <!-- Dynamic subject rows will be added here -->
+                    </div>
+                    <button id="exam-add-subject-btn" class="btn btn-secondary" style="margin-top: 1rem;">
+                        <i class="fas fa-plus"></i> Add Another Subject
+                    </button>
+                </div>
+
+                <button id="exam-submit-btn" class="btn btn-primary btn-lg"
+                    style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-bottom: 3rem;">
+                    <i class="fas fa-check-circle"></i> Submit Exam Result
                 </button>
-            </div>
 
-            <button id="exam-submit-btn" class="btn btn-primary btn-lg" style="width: 100%; padding: 1rem; font-size: 1.1rem; margin-bottom: 3rem;">
-                <i class="fas fa-check-circle"></i> Submit Exam Result
-            </button>
-
-            <div class="section-header">
-                <h3><i class="fas fa-database"></i> Submitted Results Database</h3>
-            </div>
-            <div class="card">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Sl No.</th>
-                                <th>Class/Sec</th>
-                                <th>Roll</th>
-                                <th>Name</th>
-                                <th>Exam</th>
-                                <th>Subjects Detail</th>
-                                <th>Total Mark</th>
-                                <th>Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="exam-table-body">
-                            <tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>
-                        </tbody>
-                    </table>
+                <div class="section-header">
+                    <h3><i class="fas fa-database"></i> Submitted Results Database</h3>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Sl No.</th>
+                                    <th>Class/Sec</th>
+                                    <th>Roll</th>
+                                    <th>Name</th>
+                                    <th>Exam</th>
+                                    <th>Subjects Detail</th>
+                                    <th>Total Mark</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exam-table-body">
+                                <tr>
+                                    <td colspan="8" class="empty-state">No exam results recorded yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
     <!-- =================== HOMEWORK MODAL =================== -->
     <div id="hw-modal" class="modal">
@@ -664,7 +730,8 @@
                 </div>
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea id="hw-description" class="form-control" rows="3" placeholder="Provide details..."></textarea>
+                    <textarea id="hw-description" class="form-control" rows="3"
+                        placeholder="Provide details..."></textarea>
                 </div>
                 <div class="form-group">
                     <label>Attachment (PDF/Image)</label>
@@ -712,10 +779,13 @@
                 </div>
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea id="mat-description" class="form-control" rows="3" placeholder="Resource summary..."></textarea>
+                    <textarea id="mat-description" class="form-control" rows="3"
+                        placeholder="Resource summary..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label>File (PDF/Image) <span id="mat-file-hint" style="display:none; color:var(--text-muted); font-size:0.75rem;">— optional if keeping current</span></label>
+                    <label>File (PDF/Image) <span id="mat-file-hint"
+                            style="display:none; color:var(--text-muted); font-size:0.75rem;">— optional if keeping
+                            current</span></label>
                     <input type="file" id="mat-file" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
                 </div>
                 <div class="modal-footer" style="padding:0; background:none; border:none; margin-top:2rem;">
@@ -766,4 +836,5 @@
 
     <script type="module" src="./src/modules/teacher/teacher-dashboard.js"></script>
 </body>
+
 </html>
