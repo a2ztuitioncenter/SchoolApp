@@ -5,20 +5,15 @@ export const getResultsByStudent = async (req, res) => {
     const { student } = req.params;
     let result;
     if (student === 'all') {
-      // Join to get student name
       result = await req.db.query(
-        `SELECT r.*, s.name AS "studentName"
-         FROM results r
-         LEFT JOIN students s ON r."studentId" = s.id
-         ORDER BY r."createdAt" DESC`
+        `SELECT * FROM exam_results ORDER BY created_at DESC`
       );
     } else {
+      // Filter by roll number or student name since those are the primary identifiers in exam_results
       result = await req.db.query(
-        `SELECT r.*, s.name AS "studentName"
-         FROM results r
-         LEFT JOIN students s ON r."studentId" = s.id
-         WHERE r."studentId" = $1
-         ORDER BY r."createdAt" DESC`,
+        `SELECT * FROM exam_results 
+         WHERE roll_number = $1 OR student_name = $1 
+         ORDER BY created_at DESC`,
         [student]
       );
     }
@@ -31,19 +26,23 @@ export const getResultsByStudent = async (req, res) => {
 
 export const createResult = async (req, res) => {
   try {
-    const studentId = sanitizeIdentifier(req.body.studentId, 20);
-    const examTitle = sanitizeText(req.body.examTitle, 200);
-    const subject = sanitizeText(req.body.subject, 100);
-    const marksObtained = req.body.marksObtained;
-    const totalMarks = req.body.totalMarks;
-    const remarks = sanitizeNullableText(req.body.remarks, 5000);
-    const recordedBy = sanitizeIdentifier(req.user?.userId || req.body.recordedBy, 20);
-    if (!studentId || !examTitle || !subject || !marksObtained || !totalMarks)
-      return res.status(400).json({ error: 'studentId, examTitle, subject, marksObtained, totalMarks required' });
+    const classLevel = sanitizeText(req.body.classLevel || req.body.class_level, 20);
+    const section = sanitizeNullableText(req.body.section, 10) || 'A';
+    const rollNumber = sanitizeText(req.body.rollNumber || req.body.roll_number, 20);
+    const studentName = sanitizeText(req.body.studentName || req.body.student_name, 100);
+    const examTitle = sanitizeText(req.body.examTitle || req.body.exam_title, 200);
+    const totalMarks = Number(req.body.totalMarks || req.body.total_marks) || 0;
+    const obtainedMarks = Number(req.body.obtainedMarks || req.body.obtained_marks) || 0;
+    const remarks = sanitizeNullableText(req.body.remarks, 500);
+    const teacherId = sanitizeIdentifier(req.user?.userId || req.body.teacherId || req.body.teacher_id, 20);
+
+    if (!classLevel || !studentName || !examTitle)
+      return res.status(400).json({ error: 'classLevel, studentName, and examTitle are required' });
+
     const result = await req.db.query(
-      `INSERT INTO results ("studentId", exam_title, subject, marks_obtained, total_marks, remarks, "recordedBy")
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [studentId, examTitle, subject, marksObtained, totalMarks, remarks || null, recordedBy || null]
+      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, total_marks, obtained_marks, remarks, teacher_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [classLevel, section, rollNumber, studentName, examTitle, totalMarks, obtainedMarks, remarks, teacherId]
     );
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {

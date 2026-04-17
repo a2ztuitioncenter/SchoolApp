@@ -2,10 +2,10 @@ import { homeworkModel } from './Homework.js';
 
 export const createHomework = async (req, res) => {
   try {
-    // Accept both camelCase and snake_case for compatibility
     const title = req.body.title;
     const description = req.body.description;
-    const classLevel = req.body.classLevel || req.body.class_name;
+    const classLevel = req.body.classLevel || req.body.class_level || req.body.class_name;
+    const section = req.body.section || 'A';
     const subject = req.body.subject;
     const dueDate = req.body.dueDate || req.body.due_date;
     const assignedBy = req.user?.userId || req.body.assignedBy || req.body.assigned_by || null;
@@ -18,7 +18,7 @@ export const createHomework = async (req, res) => {
     if (!title || !classLevel || !subject)
       return res.status(400).json({ error: 'title, classLevel, subject required' });
 
-    const hw = await homeworkModel.create({ title, description, classLevel, subject, dueDate, assignedBy, attachmentUrl });
+    const hw = await homeworkModel.create({ title, description, classLevel, section, subject, dueDate, assignedBy, attachmentUrl });
     res.status(201).json({ message: 'Homework created', data: hw });
   } catch (err) {
     console.error('createHomework:', err);
@@ -28,8 +28,9 @@ export const createHomework = async (req, res) => {
 
 export const getAllHomework = async (req, res) => {
   try {
-    const classLevel = req.query.classLevel || req.query.class_name || '';
-    const list = await homeworkModel.getAll(classLevel);
+    const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level || '';
+    const section = req.query.section || '';
+    const list = await homeworkModel.getAll(classLevel, section);
     res.json({ data: list });
   } catch (err) {
     console.error('getAllHomework:', err);
@@ -52,7 +53,8 @@ export const updateHomework = async (req, res) => {
   try {
     const title = req.body.title;
     const description = req.body.description;
-    const classLevel = req.body.classLevel || req.body.class_name;
+    const classLevel = req.body.classLevel || req.body.class_level || req.body.class_name;
+    const section = req.body.section || 'A';
     const subject = req.body.subject;
     const dueDate = req.body.dueDate || req.body.due_date;
     let attachmentUrl = req.body.attachmentUrl || null;
@@ -64,7 +66,7 @@ export const updateHomework = async (req, res) => {
     if (!title || !classLevel || !subject)
       return res.status(400).json({ error: 'title, classLevel, subject required' });
 
-    const hw = await homeworkModel.update(req.params.id, { title, description, classLevel, subject, dueDate, attachmentUrl });
+    const hw = await homeworkModel.update(req.params.id, { title, description, classLevel, section, subject, dueDate, attachmentUrl });
     if (!hw) return res.status(404).json({ error: 'Not found' });
     res.json({ message: 'Updated', data: hw });
   } catch (err) {

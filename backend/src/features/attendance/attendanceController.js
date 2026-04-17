@@ -2,11 +2,14 @@ import { attendanceModel } from './Attendance.js';
 
 export const markAttendance = async (req, res) => {
   try {
-    const { studentId, classLevel, date, status } = req.body;
-    if (!studentId || !classLevel || !date || !status)
-      return res.status(400).json({ error: 'studentId, classLevel, date, status required' });
+    const { studentId, classLevel, date, status, is_present } = req.body;
+    const final_present = is_present !== undefined ? is_present : (status === 'present' || status === 'true' || status === true);
+    
+    if (!studentId || !classLevel || !date)
+      return res.status(400).json({ error: 'studentId, classLevel, date required' });
+      
     const record = await attendanceModel.markBulk(
-      [{ studentId, classLevel, date, status }],
+      [{ studentId, classLevel, date, is_present: final_present }],
       req.user?.userId || null
     );
     res.status(201).json({ message: 'Attendance marked', data: record[0] });
@@ -31,8 +34,7 @@ export const markBulkAttendance = async (req, res) => {
 
 export const getByClassAndDate = async (req, res) => {
   try {
-    // Accept both classLevel and class_name for compatibility
-    const classLevel = req.query.classLevel || req.query.class_name;
+    const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
     const { date } = req.query;
     if (!classLevel || !date)
       return res.status(400).json({ error: 'classLevel and date required' });
@@ -46,7 +48,7 @@ export const getByClassAndDate = async (req, res) => {
 
 export const getStudentsByClass = async (req, res) => {
   try {
-    const classLevel = req.query.classLevel || req.query.class_name;
+    const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
     if (!classLevel)
       return res.status(400).json({ error: 'classLevel required' });
     const students = await attendanceModel.getStudentsByClass(classLevel);
@@ -69,7 +71,7 @@ export const getByStudent = async (req, res) => {
 
 export const getMonthlySummary = async (req, res) => {
   try {
-    const classLevel = req.query.classLevel || req.query.class_name;
+    const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
     const { month } = req.query;
     if (!classLevel || !month)
       return res.status(400).json({ error: 'classLevel and month required' });
@@ -91,7 +93,6 @@ export const getClasses = async (req, res) => {
   }
 };
 
-// Get overall monthly attendance summary for dashboard (all students, all classes)
 export const getMonthlyOverallAttendance = async (req, res) => {
   try {
     const { month } = req.query;

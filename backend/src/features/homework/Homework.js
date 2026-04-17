@@ -5,31 +5,42 @@ export const homeworkModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS homework (
       id SERIAL PRIMARY KEY,
-      "teacherId" INTEGER REFERENCES users(id),
-      "classLevel" VARCHAR(50) NOT NULL,
+      teacher_id INTEGER REFERENCES users(id),
+      class_level VARCHAR(50) NOT NULL,
       section VARCHAR(10),
       title VARCHAR(200) NOT NULL,
       description TEXT,
-      "dueDate" DATE,
+      due_date DATE,
       subject VARCHAR(100),
-      "attachmentUrl" VARCHAR(500),
-      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      attachment_url VARCHAR(500),
+      school_id VARCHAR(50) DEFAULT 'school-001',
       type VARCHAR(50) DEFAULT 'homework',
-      "createdAt" TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMP DEFAULT NOW()
     );
-    ALTER TABLE homework ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'homework';
   `,
 
-  async getAll(classLevel = '') {
+
+  async getAll(classLevel = '', section = '') {
     let query = `SELECT h.*, u.phone AS "teacherPhone"
                  FROM homework h
-                 LEFT JOIN users u ON h."teacherId" = u.id`;
+                 LEFT JOIN users u ON h.teacher_id = u.id`;
     const params = [];
-    if (classLevel) { query += ` WHERE h."classLevel" = $1`; params.push(classLevel); }
-    query += ` ORDER BY h."createdAt" DESC`;
+    if (classLevel) { 
+      query += ` WHERE h.class_level = $1`; 
+      params.push(classLevel); 
+      if (section) {
+        query += ` AND h.section = $2`;
+        params.push(section);
+      }
+    } else if (section) {
+      query += ` WHERE h.section = $1`;
+      params.push(section);
+    }
+    query += ` ORDER BY h.created_at DESC`;
     const result = await db.query(query, params);
     return result.rows;
   },
+
 
   async getByClass(classLevel) {
     return this.getAll(classLevel);
@@ -40,14 +51,15 @@ export const homeworkModel = {
     return result.rows[0] || null;
   },
 
-  async create({ title, description, classLevel, subject, dueDate, assignedBy, attachmentUrl }) {
+  async create({ title, description, classLevel, section, subject, dueDate, assignedBy, attachmentUrl }) {
     const result = await db.query(
-      `INSERT INTO homework (title, description, "classLevel", subject, "dueDate", "teacherId", "attachmentUrl")
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, description || null, classLevel, subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
+      `INSERT INTO homework (title, description, class_level, section, subject, due_date, teacher_id, attachment_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [title, description || null, classLevel, section || 'A', subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
     );
     return result.rows[0];
   },
+
 
   async update(id, { title, description, classLevel, subject, dueDate, attachmentUrl }) {
     const result = await db.query(
@@ -64,17 +76,17 @@ export const homeworkModel = {
 };
 
 // Legacy pool-based named exports used by teacherRoutes.js and studentRoutes.js
-export const getHomeworkByClass = async (pool, classLevel, section = null, type = 'homework') => {
+export const getHomeworkByClass = async (pool, classLevel, section = 'A', type = 'homework') => {
   let query = `SELECT h.*, u.phone AS "teacherPhone"
                FROM homework h
-               LEFT JOIN users u ON h."teacherId" = u.id
-               WHERE h."classLevel" = $1 AND h.type = $2`;
-  const params = [classLevel, type];
-  if (section) { params.push(section); query += ` AND h.section = $${params.length}`; }
-  query += ` ORDER BY h."createdAt" DESC`;
+               LEFT JOIN users u ON h.teacher_id = u.id
+               WHERE h.class_level = $1 AND h.type = $2 AND h.section = $3`;
+  const params = [classLevel, type, section];
+  query += ` ORDER BY h.created_at DESC`;
   const result = await pool.query(query, params);
   return result.rows;
 };
+
 
 export const getHomeworkByTeacher = async (pool, teacherId) => {
   const result = await pool.query(

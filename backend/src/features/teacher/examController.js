@@ -1,11 +1,11 @@
 import { sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
 
 export const createExamResult = async (req, res) => {
-  const classLevel = sanitizeText(req.body.classLevel, 20);
+  const classLevel = sanitizeText(req.body.classLevel || req.body.class_level, 20);
   const section = sanitizeNullableText(req.body.section, 10);
-  const rollNumber = sanitizeNullableText(req.body.rollNumber, 20);
-  const studentName = sanitizeText(req.body.studentName, 100);
-  const examTitle = sanitizeText(req.body.examTitle, 200);
+  const rollNumber = sanitizeNullableText(req.body.rollNumber || req.body.roll_number, 20);
+  const studentName = sanitizeText(req.body.studentName || req.body.student_name, 100);
+  const examTitle = sanitizeText(req.body.examTitle || req.body.exam_title, 200);
   const subjects = Array.isArray(req.body.subjects)
     ? req.body.subjects.map((subject) => ({
         name: sanitizeText(subject.name, 100),
@@ -14,8 +14,8 @@ export const createExamResult = async (req, res) => {
         grade: sanitizeNullableText(subject.grade, 10)
       }))
     : null;
-  const totalMarks = Number(req.body.totalMarks) || 0;
-  const obtainedMarks = Number(req.body.obtainedMarks) || 0;
+  const totalMarks = Number(req.body.totalMarks || req.body.total_marks) || 0;
+  const obtainedMarks = Number(req.body.obtainedMarks || req.body.obtained_marks) || 0;
   const percentage = Number(req.body.percentage) || 0;
   const remarks = sanitizeNullableText(req.body.remarks, 500);
   const teacherId = req.user.userId;
@@ -28,7 +28,7 @@ export const createExamResult = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO exam_results 
-       ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId")
+       (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId]
     );
@@ -46,7 +46,7 @@ export const getExamResults = async (req, res) => {
 
   try {
     const results = await pool.query(
-      'SELECT * FROM exam_results WHERE "teacherId" = $1 ORDER BY "createdAt" DESC',
+      'SELECT * FROM exam_results WHERE teacher_id = $1 ORDER BY created_at DESC',
       [teacherId]
     );
     res.json({ success: true, data: results.rows });

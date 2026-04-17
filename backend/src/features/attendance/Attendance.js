@@ -5,142 +5,120 @@ export const attendanceModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS attendance (
       id SERIAL PRIMARY KEY,
-      "studentId" INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-      "userId" INTEGER REFERENCES users(id),
-      "classLevel" VARCHAR(50) NOT NULL,
+      student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      class_level VARCHAR(50) NOT NULL,
+      section VARCHAR(10) DEFAULT 'A',
       date DATE NOT NULL,
-      status VARCHAR(10) NOT NULL CHECK (status IN ('present', 'absent', 'late')),
-      remarks TEXT,
-      "schoolId" VARCHAR(50) DEFAULT 'school-001',
-      "createdAt" TIMESTAMP DEFAULT NOW(),
-      UNIQUE("studentId", date)
+      is_present BOOLEAN NOT NULL DEFAULT TRUE,
+      school_id VARCHAR(50) DEFAULT 'school-001',
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(student_id, date)
     );
   `,
 
   async markBulk(records, userId) {
     const results = [];
-    console.log(`markBulk: Processing ${records.length} records`);
     for (const rec of records) {
-      console.log(`Processing studentId: ${rec.studentId}, class: ${rec.classLevel}, date: ${rec.date}, status: ${rec.status}`);
       const studentId = rec.studentId || rec.student_id;
       const date = rec.date || rec.attendanceDate;
+      const classLevel = rec.classLevel || rec.class_level;
+      const section = rec.section || 'A';
+      const isPresent = (rec.is_present === true || rec.is_present === 'true' || rec.status === 'present' || rec.status === 'true' || rec.status === true);
+
       const r = await db.query(
-        `INSERT INTO attendance ("studentId", "classLevel", date, status, "userId")
-         VALUES ($1, $2, $3, $4, (SELECT "userId" FROM students WHERE id = $1))
-         ON CONFLICT ("studentId", date)
-         DO UPDATE SET status = EXCLUDED.status, "classLevel" = EXCLUDED."classLevel"
+        `INSERT INTO attendance (student_id, class_level, section, date, is_present, user_id)
+         VALUES ($1, $2, $3, $4, $5, (SELECT user_id FROM students WHERE id = $1))
+         ON CONFLICT (student_id, date)
+         DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level, section = EXCLUDED.section
          RETURNING *`,
-        [studentId, rec.classLevel, date, rec.status]
+        [studentId, classLevel, section, date, isPresent]
       );
       results.push(r.rows[0]);
     }
-    console.log(`markBulk: Successfully processed ${results.length} records`);
     return results;
   },
 
-  async getByClassAndDate(classLevel, date) {
-    // attendance has no classLevel column — join via students
+  async getByClassAndDate(classLevel, date, section = 'A') {
     const result = await db.query(
-      `SELECT a.*, s.name AS "studentName", s."rollNumber"
+      `SELECT a.*, s.name AS student_name, s.roll_number
        FROM attendance a
-       JOIN students s ON a."studentId" = s.id
-       WHERE s."classLevel" = $1 AND a.date = $2
+       JOIN students s ON a.student_id = s.id
+       WHERE s.class_level = $1 AND s.section = $2 AND a.date = $3
        ORDER BY s.name`,
-      [classLevel, date]
+      [classLevel, section, date]
     );
     return result.rows;
   },
 
-  async getStudentsByClass(classLevel) {
+  async getStudentsByClass(classLevel, section = 'A') {
     const result = await db.query(
-      `SELECT id, name, "rollNumber" FROM students WHERE "classLevel" = $1 ORDER BY name`,
-      [classLevel]
+      `SELECT id, name, roll_number FROM students WHERE class_level = $1 AND section = $2 ORDER BY name`,
+      [classLevel, section]
     );
     return result.rows;
   },
 
   async getByStudent(studentId) {
-    const result = await db.query(
-      `SELECT * FROM attendance WHERE "studentId" = $1 ORDER BY date DESC`,
-      [studentId]
-    );
-    return result.rows;
+    return (await db.query(`SELECT * FROM attendance WHERE student_id = $1 ORDER BY date DESC`, [studentId])).rows;
   },
 
-  async getMonthlySummary(classLevel, month) {
+  async getMonthlySummary(classLevel, month, section = 'A') {
     const result = await db.query(
       `SELECT
-         s.id, s.name, s."rollNumber",
-         COUNT(a.id)                                         AS "totalDays",
-         COUNT(CASE WHEN a.status='present' THEN 1 END)     AS "presentCount",
-         COUNT(CASE WHEN a.status='absent'  THEN 1 END)     AS "absentCount",
-         COUNT(CASE WHEN a.status='late'    THEN 1 END)     AS "lateCount",
-         ROUND(COUNT(CASE WHEN a.status='present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS "attendancePercent"
+         s.id, s.name, s.roll_number,
+         COUNT(a.id)                                         AS total_days,
+         COUNT(CASE WHEN a.is_present=true  THEN 1 END)     AS present_count,
+         COUNT(CASE WHEN a.is_present=false THEN 1 END)     AS absent_count,
+         ROUND(COUNT(CASE WHEN a.is_present=true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS attendance_percent
        FROM students s
        LEFT JOIN attendance a
-         ON s.id = a."studentId"
+         ON s.id = a.student_id
          AND TO_CHAR(a.date, 'YYYY-MM') = $2
-       WHERE s."classLevel" = $1
-       GROUP BY s.id, s.name, s."rollNumber"
+       WHERE s.class_level = $1 AND s.section = $3
+       GROUP BY s.id, s.name, s.roll_number
        ORDER BY s.name`,
-      [classLevel, month]
+      [classLevel, month, section]
     );
     return result.rows;
   },
 
-  // Get overall attendance rate for the current month across all students
   async getMonthlyOverallAttendance(month = null) {
-    const targetMonth = month || new Date().toISOString().slice(0, 7); // YYYY-MM format
-    
+    const targetMonth = month || new Date().toISOString().slice(0, 7);
     const result = await db.query(
       `SELECT
-         COUNT(DISTINCT a."studentId") AS "totalStudents",
-         COUNT(a.id) AS "totalRecords",
-         COUNT(CASE WHEN a.status='present' THEN 1 END) AS "presentCount",
-         COUNT(CASE WHEN a.status='absent' THEN 1 END) AS "absentCount",
-         COUNT(CASE WHEN a.status='late' THEN 1 END) AS "lateCount",
-         ROUND(COUNT(CASE WHEN a.status='present' THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS "attendancePercent"
-       FROM attendance a
-       WHERE TO_CHAR(a.date, 'YYYY-MM') = $1`,
+         COUNT(DISTINCT student_id) AS total_students,
+         COUNT(id) AS total_records,
+         COUNT(CASE WHEN is_present=true THEN 1 END) AS present_count,
+         COUNT(CASE WHEN is_present=false THEN 1 END) AS absent_count,
+         ROUND(COUNT(CASE WHEN is_present=true THEN 1 END) * 100.0 / NULLIF(COUNT(id), 0), 1) AS attendance_percent
+       FROM attendance
+       WHERE TO_CHAR(date, 'YYYY-MM') = $1`,
       [targetMonth]
     );
-    
-    const stats = result.rows[0] || { 
-      totalStudents: 0, 
-      totalRecords: 0, 
-      presentCount: 0, 
-      absentCount: 0, 
-      lateCount: 0, 
-      attendancePercent: 0 
-    };
-    
-    return stats;
+    return result.rows[0] || { total_students: 0, total_records: 0, present_count: 0, absent_count: 0, attendance_percent: 0 };
   },
 
   async getAllClasses() {
-    const result = await db.query(
-      `SELECT DISTINCT "classLevel" FROM students ORDER BY "classLevel"`
-    );
-    return result.rows.map(r => r.classLevel);
+    return (await db.query(`SELECT DISTINCT class_level FROM students ORDER BY class_level`)).rows.map(r => r.class_level);
   }
 };
 
-// Legacy helper exports for dataController.js
+// Simplified Helpers
 export const getAttendancePercentage = async (pool, studentId, days = 30) => {
   try {
     const result = await pool.query(
       `SELECT 
-         COUNT(CASE WHEN status = 'present' THEN 1 END) AS "presentDays",
-         COUNT(CASE WHEN status = 'absent' THEN 1 END) AS "absentDays",
-         COUNT(*) AS "totalWorkingDays",
-         ROUND(COUNT(CASE WHEN status = 'present' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS percentage
+         COUNT(CASE WHEN is_present = true THEN 1 END) AS present_days,
+         COUNT(*) AS total_days,
+         ROUND(COUNT(CASE WHEN is_present = true THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS percentage
         FROM attendance
-        WHERE "studentId" = $1 AND date >= NOW() - INTERVAL '${days} days'`,
+        WHERE student_id = $1 AND date >= NOW() - INTERVAL '${days} days'`,
       [studentId]
     );
-    return result.rows[0] || { presentDays: 0, absentDays: 0, totalWorkingDays: 0, percentage: 0 };
+    return result.rows[0] || { present_days: 0, total_days: 0, percentage: 0 };
   } catch (err) {
-    return { presentDays: 0, absentDays: 0, totalWorkingDays: 0, percentage: 0 };
+    return { present_days: 0, total_days: 0, percentage: 0 };
   }
 };
 
@@ -148,28 +126,26 @@ export const getAttendanceSummary = async (pool, studentId) => {
   try {
     const result = await pool.query(
       `SELECT 
-         COUNT(CASE WHEN status = 'present' THEN 1 END) AS present,
-         COUNT(CASE WHEN status = 'absent' THEN 1 END) AS absent,
-         COUNT(CASE WHEN status = 'late' THEN 1 END) AS late,
+         COUNT(CASE WHEN is_present = true THEN 1 END) AS present,
+         COUNT(CASE WHEN is_present = false THEN 1 END) AS absent,
          COUNT(*) AS total
-       FROM attendance WHERE "studentId" = $1`,
+       FROM attendance WHERE student_id = $1`,
       [studentId]
     );
-    return result.rows[0] || { present: 0, absent: 0, late: 0, total: 0 };
+    return result.rows[0] || { present: 0, absent: 0, total: 0 };
   } catch (err) {
-    return { present: 0, absent: 0, late: 0, total: 0 };
+    return { present: 0, absent: 0, total: 0 };
   }
 };
 
 export const getAttendanceByStudentId = async (pool, studentId, startDate = null, endDate = null) => {
   try {
-    let query = `SELECT * FROM attendance WHERE "studentId" = $1`;
     const params = [studentId];
+    let query = `SELECT * FROM attendance WHERE student_id = $1`;
     if (startDate) { query += ` AND date >= $${params.length + 1}`; params.push(startDate); }
     if (endDate) { query += ` AND date <= $${params.length + 1}`; params.push(endDate); }
     query += ` ORDER BY date DESC`;
-    const result = await pool.query(query, params);
-    return result.rows;
+    return (await pool.query(query, params)).rows;
   } catch (err) {
     return [];
   }

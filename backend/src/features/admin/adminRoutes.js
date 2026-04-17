@@ -3,6 +3,7 @@ import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, g
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -14,21 +15,21 @@ router.get('/users', async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT 
-                u.id, u.name, u.phone, u.email, u.role, u.status, u."teacherId", u."isActive", u."createdAt",
+                u.id, u.name, u.phone, u.email, u.role, u.status, u.teacher_id, u.is_active, u.created_at,
                 COALESCE(
-                    ARRAY_REMOVE(ARRAY_AGG(tca."classLevel" ORDER BY tca."classLevel"), NULL),
+                    ARRAY_REMOVE(ARRAY_AGG(tca.class_level ORDER BY tca.class_level), NULL),
                     ARRAY[]::varchar[]
-                ) AS "classesAssigned"
+                ) AS classes_assigned
              FROM users u
-             LEFT JOIN teacher_class_assignment tca ON tca."teacherId" = u.id
+             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
              WHERE u.role IN ($1, $2)
              GROUP BY u.id
-             ORDER BY u."createdAt" DESC`,
+             ORDER BY u.created_at DESC`,
             ['teacher', 'staff']
         );
-
         res.json({ success: true, users: result.rows });
     } catch (err) {
+        console.error('Fetch users error:', err);
         res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
@@ -36,45 +37,35 @@ router.get('/users', async (req, res) => {
 router.post('/users/create', async (req, res) => {
     const { name, phone, email, role, password } = req.body;
     try {
-        console.log('[USER CREATE] Processing:', { name, phone, role });
         if (!name || !phone || !role || !password) {
-            return res.status(400).json({ error: 'Missing required fields: name, phone, role, password' });
+            return res.status(400).json({ error: 'Missing required fields' });
         }
-        const exists = await getUserByPhone(req.db, phone);
-        if (exists) return res.status(409).json({ error: 'Phone already registered' });
-        console.log('[USER CREATE] Calling createUser...');
+        if (await getUserByPhone(req.db, phone)) return res.status(409).json({ error: 'Phone already registered' });
         const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001' });
-        console.log('[USER CREATE] User created:', { id: user.id, name: user.name, phone: user.phone });
         res.status(201).json({ success: true, user });
     } catch (err) {
-        console.error('[USER CREATE] Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
 router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { phone, email, role, classesAssigned } = req.body;
+    const { name, phone, email, role, classesAssigned } = req.body;
     try {
-        const user = await updateUser(req.db, id, { phone, email, role });
+        const user = await updateUser(req.db, id, { name, phone, email, role });
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
-        // Handle teacher/staff class assignments if role is teacher/staff
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
-            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId);
+            await assignTeacherToClasses(req.db, id, classesAssigned, user.school_id);
         }
-        
         res.json({ success: true, user });
     } catch (err) {
-        console.error('[USER UPDATE] Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
 router.get('/users/:id/assignments', async (req, res) => {
-    const { id } = req.params;
     try {
-        const assignments = await getTeacherAssignments(req.db, id);
+        const assignments = await getTeacherAssignments(req.db, req.params.id);
         res.json({ success: true, assignments });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -82,9 +73,8 @@ router.get('/users/:id/assignments', async (req, res) => {
 });
 
 router.delete('/users/:id', async (req, res) => {
-    const { id } = req.params;
     try {
-        const deleted = await deleteUser(req.db, id);
+        const deleted = await deleteUser(req.db, req.params.id);
         if (!deleted) return res.status(404).json({ error: 'User not found' });
         res.json({ success: true, message: 'User deleted' });
     } catch (err) {
@@ -93,10 +83,8 @@ router.delete('/users/:id', async (req, res) => {
 });
 
 router.patch('/users/:id/status', async (req, res) => {
-    const { id } = req.params;
-    const { isActive } = req.body;
     try {
-        const user = await toggleUserStatus(req.db, id, isActive);
+        const user = await toggleUserStatus(req.db, req.params.id, req.body.isActive);
         if (!user) return res.status(404).json({ error: 'User not found' });
         res.json({ success: true, user });
     } catch (err) {
@@ -105,7 +93,7 @@ router.patch('/users/:id/status', async (req, res) => {
 });
 
 // ============================================================
-// STUDENTS MODULE
+// STUDENTS MODULE - Standardized & Atomic
 // ============================================================
 
 router.get('/students', async (req, res) => {
@@ -113,7 +101,7 @@ router.get('/students', async (req, res) => {
         const result = await req.db.query(
             `SELECT s.*, u.phone 
              FROM students s 
-             LEFT JOIN users u ON s."userId" = u.id 
+             LEFT JOIN users u ON s.user_id = u.id 
              ORDER BY s.name ASC`
         );
         res.json({ success: true, students: result.rows });
@@ -124,9 +112,10 @@ router.get('/students', async (req, res) => {
 
 router.post('/students/create', async (req, res) => {
     const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, dateOfBirth } = req.body;
+    const pool = req.db;
     try {
         if (!firstName || !phone || !classLevel || !section || !dateOfBirth || !fatherName || !motherName) {
-            return res.status(400).json({ error: 'Missing required fields (Name, Phone, Class, Section, Date of Birth, and Parent Names are mandatory)' });
+            return res.status(400).json({ error: 'Missing required fields' });
         }
 
         // Parse DD/MM/YY -> ISO YYYY-MM-DD
@@ -141,52 +130,59 @@ router.post('/students/create', async (req, res) => {
         }
 
         const fullName = `${firstName} ${lastName || ''}`.trim();
+        const client = await pool.connect();
 
-        // 1. Handle User Creation — store a random dummy password (DOB is the real auth factor)
-        let user = await getUserByPhone(req.db, phone);
-        if (!user) {
-            const crypto = await import('crypto');
-            const dummyPassword = crypto.randomBytes(32).toString('hex');
-            user = await createUser(req.db, {
+        try {
+            await client.query('BEGIN');
+            
+            // LOCK TABLE for atomic roll number generation
+            await client.query('LOCK TABLE students IN ACCESS EXCLUSIVE MODE');
+
+            let user = await getUserByPhone(client, phone);
+            if (!user) {
+                user = await createUser(client, {
+                    name: fullName,
+                    phone,
+                    email: email || null,
+                    password: crypto.randomBytes(32).toString('hex'),
+                    role: 'student'
+                });
+            }
+
+            await client.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
+
+            const classPart = classLevel.toString().padStart(2, '0');
+            const sectionPart = section.toUpperCase();
+            const prefix = `${classPart}${sectionPart}`;
+            const countResult = await client.query(
+                `SELECT COUNT(*) FROM students WHERE roll_number LIKE $1`,
+                [`${prefix}%`]
+            );
+            const rollNumber = `${prefix}${(parseInt(countResult.rows[0].count) + 1).toString().padStart(3, '0')}`;
+
+            const student = await createStudent(client, {
+                userId: user.id,
                 name: fullName,
+                classLevel: classLevel.toString(),
+                section,
+                fatherName,
+                motherName,
                 phone,
                 email: email || null,
-                password: dummyPassword,
-                role: 'student'
+                joiningDate: joiningDate || new Date().toISOString().split('T')[0],
+                dateOfBirth: dobISO,
+                status: status || 'active',
+                rollNumber
             });
+
+            await client.query('COMMIT');
+            res.status(201).json({ success: true, student });
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
         }
-
-        // Auto-approve student added by admin
-        await req.db.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
-
-        // 2. Generate Unique Roll Number: format 09A001
-        const classPart = classLevel.toString().padStart(2, '0');
-        const sectionPart = section.toUpperCase();
-        const prefix = `${classPart}${sectionPart}`;
-        const countResult = await req.db.query(
-            `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
-            [`${prefix}%`]
-        );
-        const nextSerial = parseInt(countResult.rows[0].count) + 1;
-        const rollNumber = `${prefix}${nextSerial.toString().padStart(3, '0')}`;
-
-        // 3. Create Student record with DOB
-        const student = await createStudent(req.db, {
-            userId: user.id,
-            name: fullName,
-            classLevel: classLevel.toString(),
-            section,
-            fatherName,
-            motherName,
-            phone,
-            email: email || null,
-            joiningDate: joiningDate || new Date().toISOString().split('T')[0],
-            dateOfBirth: dobISO,
-            status: status || 'active',
-            rollNumber
-        });
-
-        res.status(201).json({ success: true, student });
     } catch (err) {
         console.error('[STUDENT CREATE] Error:', err.message);
         res.status(500).json({ error: err.message });
@@ -200,10 +196,10 @@ router.put('/students/:id', async (req, res) => {
         const result = await req.db.query(
             `UPDATE students 
              SET name = COALESCE($1, name),
-                 "classLevel" = COALESCE($2, "classLevel"),
+                 class_level = COALESCE($2, class_level),
                  section = COALESCE($3, section),
-                 "fatherName" = COALESCE($4, "fatherName"),
-                 "motherName" = COALESCE($5, "motherName"),
+                 father_name = COALESCE($4, father_name),
+                 mother_name = COALESCE($5, mother_name),
                  phone = COALESCE($6, phone),
                  email = COALESCE($7, email)
              WHERE id = $8 RETURNING *`,
@@ -217,12 +213,10 @@ router.put('/students/:id', async (req, res) => {
 });
 
 router.patch('/students/:id/status', async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body; // 'active' | 'inactive'
     try {
         const result = await req.db.query(
             `UPDATE students SET status = $1 WHERE id = $2 RETURNING *`,
-            [status, id]
+            [req.body.status, req.params.id]
         );
         if (!result.rows[0]) return res.status(404).json({ error: 'Student not found' });
         res.json({ success: true, student: result.rows[0] });
@@ -232,23 +226,13 @@ router.patch('/students/:id/status', async (req, res) => {
 });
 
 router.delete('/students/:id', async (req, res) => {
-    const { id } = req.params;
     try {
-        // First get the userId for this student
-        const studentResult = await req.db.query('SELECT "userId" FROM students WHERE id = $1', [id]);
-        if (studentResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Student not found' });
-        }
-        
-        const userId = studentResult.rows[0].userId;
-        
-        // Delete the user record using the model helper (handles manual cleanup)
-        const deleted = await deleteUser(req.db, userId);
-        
+        const studentResult = await req.db.query('SELECT user_id FROM students WHERE id = $1', [req.params.id]);
+        if (studentResult.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
+        const deleted = await deleteUser(req.db, studentResult.rows[0].user_id);
         if (!deleted) return res.status(404).json({ error: 'Associated user not found' });
-        res.json({ success: true, message: 'Student and associated user account deleted' });
+        res.json({ success: true, message: 'Student deleted' });
     } catch (err) {
-        console.error('[STUDENT DELETE] Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -261,77 +245,55 @@ router.get('/financials/unpaid-fees', async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT 
-                f.id, f.amount, f."dueDate", f."isPaid" AS paid,
-                s.name as "studentName",
-                s."classLevel",
+                f.id, f.amount, f.due_date, f.is_paid AS paid,
+                s.name as student_name,
+                s.class_level,
                 u.phone
              FROM fees f
-             JOIN students s ON f."studentId" = s.id
-             JOIN users u ON s."userId" = u.id
-             WHERE f."isPaid" = FALSE
-             ORDER BY f."dueDate" ASC`
+             JOIN students s ON f.student_id = s.id
+             JOIN users u ON s.user_id = u.id
+             WHERE f.is_paid = FALSE
+             ORDER BY f.due_date ASC`
         );
         res.json({ success: true, fees: result.rows });
     } catch (err) {
-        console.error('unpaid-fees error:', err.message);
-        res.status(500).json({ error: 'Failed to fetch unpaid fees', detail: err.message });
+        res.status(500).json({ error: 'Failed to fetch unpaid fees' });
     }
 });
 
 router.get('/financials/report', async (req, res) => {
     try {
-        const feesResult = await req.db.query(
+        const result = await req.db.query(
             `SELECT 
-                COUNT(*) as "totalRecords",
-                COALESCE(SUM(amount), 0) as "totalAmount",
-                COALESCE(SUM(CASE WHEN "isPaid" = TRUE THEN amount ELSE 0 END), 0) as "totalPaid",
-                COALESCE(SUM(CASE WHEN "isPaid" = FALSE THEN amount ELSE 0 END), 0) as "totalPending",
-                SUM(CASE WHEN "isPaid" = TRUE THEN 1 ELSE 0 END) as "paidCount",
-                SUM(CASE WHEN "isPaid" = FALSE THEN 1 ELSE 0 END) as "pendingCount"
+                COUNT(*) as total_records,
+                COALESCE(SUM(amount), 0) as total_amount,
+                COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as total_paid,
+                COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as total_pending
              FROM fees`
         );
-        res.json({ success: true, report: feesResult.rows[0] });
+        res.json({ success: true, report: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: 'Failed to generate report' });
     }
 });
 
-// Get fees trend data for last 30 days (aggregated by date)
 router.get('/financials/trends', async (req, res) => {
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
         const result = await req.db.query(
             `SELECT 
-                DATE("createdAt") as date,
-                COALESCE(SUM(amount), 0) as amount,
-                COUNT(*) as "transactionCount"
+                DATE(created_at) as date,
+                COALESCE(SUM(amount), 0) as amount
              FROM fees
-             WHERE "isPaid" = TRUE AND "createdAt" >= $1
-             GROUP BY DATE("createdAt")
+             WHERE is_paid = TRUE AND created_at >= $1
+             GROUP BY DATE(created_at)
              ORDER BY date ASC`,
             [thirtyDaysAgo]
         );
-
-        // Calculate summary stats
-        const totalCollected = result.rows.reduce((sum, row) => sum + parseFloat(row.amount), 0);
-        const average = result.rows.length > 0 ? totalCollected / result.rows.length : 0;
-        const peak = result.rows.length > 0 ? Math.max(...result.rows.map(r => parseFloat(r.amount))) : 0;
-
-        res.json({
-            success: true,
-            trends: result.rows,
-            summary: {
-                totalCollected,
-                average,
-                peak,
-                daysWithData: result.rows.length
-            }
-        });
+        res.json({ success: true, trends: result.rows });
     } catch (err) {
-        console.error('trends error:', err.message);
-        res.status(500).json({ error: 'Failed to fetch trends', detail: err.message });
+        res.status(500).json({ error: 'Failed to fetch trends' });
     }
 });
 
@@ -342,14 +304,13 @@ router.get('/financials/trends', async (req, res) => {
 router.get('/timetable', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT t.*, u.name as "teacherName", u.phone as "teacherPhone" 
+            `SELECT t.*, u.name as teacher_name 
              FROM timetable t
-             LEFT JOIN users u ON t."teacherId" = u.id
-             ORDER BY t."dayOfWeek", t."startTime" ASC`
+             LEFT JOIN users u ON t.teacher_id = u.id
+             ORDER BY t.day_of_week, t.start_time ASC`
         );
         res.json({ success: true, timetable: result.rows });
     } catch (err) {
-        console.error('timetable fetch error:', err.message);
         res.status(500).json({ error: 'Failed to fetch timetable' });
     }
 });
@@ -357,50 +318,25 @@ router.get('/timetable', async (req, res) => {
 router.post('/timetable', async (req, res) => {
     const { dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId } = req.body;
     try {
-        if (!dayOfWeek || !startTime || !endTime || !subject || !classLevel || !section || !teacherId) {
-            return res.status(400).json({ error: 'Missing required fields, including section.' });
-        }
-
-        // Collision Check: Find any class for the SAME teacher on the SAME day that conflicts in time.
-        // A conflict occurs if (newStart < oldEnd AND newEnd > oldStart)
-        const conflictCheck = await req.db.query(
-            `SELECT * FROM timetable 
-             WHERE "teacherId" = $1 
-             AND "dayOfWeek" = $2 
-             AND ($3 < "endTime" AND $4 > "startTime")`,
-            [teacherId, dayOfWeek, startTime, endTime]
-        );
-
-        if (conflictCheck.rows.length > 0) {
-            return res.status(409).json({ error: 'Timetable overlap: The teacher is already scheduled for another class during this time.' });
-        }
-
         const result = await req.db.query(
-            `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", section, "teacherId", "schoolId")
+            `INSERT INTO timetable (day_of_week, start_time, end_time, subject, class_level, section, teacher_id, school_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId, 'school-001']
         );
         res.status(201).json({ success: true, timetable: result.rows[0] });
     } catch (err) {
-        console.error('timetable create error:', err.message);
         res.status(500).json({ error: 'Failed to create timetable entry' });
     }
 });
 
 router.delete('/timetable/:id', async (req, res) => {
-    const { id } = req.params;
     try {
-        const result = await req.db.query('DELETE FROM timetable WHERE id = $1 RETURNING id', [id]);
-        if (!result.rows[0]) return res.status(404).json({ error: 'Timetable entry not found' });
-        res.json({ success: true, message: 'Timetable entry deleted' });
+        await req.db.query('DELETE FROM timetable WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to delete timetable entry' });
+        res.status(500).json({ error: 'Failed to delete timetable' });
     }
 });
-
-// ============================================================
-// ATTENDANCE - Overall Statistics
-// ============================================================
 
 router.get('/attendance/overall-monthly', getMonthlyOverallAttendance);
 
