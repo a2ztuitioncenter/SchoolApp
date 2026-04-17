@@ -370,9 +370,22 @@ textarea:focus {
 .btn-edit { background-color: var(--bg-hover); border-color: var(--border-subtle); color: var(--text-main); }
 .btn-delete { background-color: var(--bg-hover); border-color: var(--border-subtle); color: var(--danger); }
 .btn-warning { background-color: var(--bg-hover); border-color: var(--border-subtle); color: var(--warning); }
-.btn-success { background-color: var(--bg-hover); border-color: var(--border-subtle); color: var(--success); }
 
-.btn-edit:hover, .btn-delete:hover, .btn-warning:hover, .btn-success:hover {
+/* Positive action button (Mark as Paid, etc.) */
+.btn-success {
+  background-color: var(--success);
+  color: #ffffff;
+  border-color: var(--success);
+  box-shadow: 0 1px 3px rgba(36, 134, 54, 0.12);
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #218838;
+  box-shadow: 0 4px 8px rgba(36, 134, 54, 0.18);
+}
+
+.btn-edit:hover, .btn-delete:hover, .btn-warning:hover {
   background-color: var(--bg-secondary);
   border-color: var(--text-muted);
 }
@@ -1047,6 +1060,11 @@ textarea:focus {
 
 @media (max-width: 768px) {
   .mobile-toggle { display: flex; }
+  
+  /* Prevent zoom/viewport shift when modal opens */
+  body {
+    scrollbar-gutter: stable;
+  }
   
   /* Mobile Bottom Navigation Bar */
   .sidebar nav:not(.bottom-nav) {
@@ -3721,6 +3739,108 @@ textarea:focus {
     background: var(--accent-blue);
     color: #fff;
     border-style: solid;
+}
+
+/* ============================================
+   AUTOCOMPLETE DROPDOWN (STUDENT SEARCH)
+   ============================================ */
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 0.25rem;
+}
+
+.autocomplete-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.highlighted {
+  background-color: var(--bg-hover);
+  color: var(--accent-blue);
+}
+
+.autocomplete-item-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.autocomplete-item-name {
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.autocomplete-item-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
+/* ============================================
+   ENHANCED FEE FORM (RESPONSIVE)
+   ============================================ */
+
+#fee-description-custom {
+  margin-top: 0.5rem !important;
+}
+
+/* Mobile responsive for fee form */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95% !important;
+    max-width: 100% !important;
+  }
+
+  #add-fee-form > div {
+    width: 100%;
+  }
+
+  .modal-footer {
+    flex-direction: column !important;
+    gap: 0.75rem;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+}
+
+/* ============================================
+   FEE SUB-TABS STYLING
+   ============================================ */
+
+.fee-subtab {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.fee-subtab:hover {
+  color: var(--accent-blue);
+}
+
+.fee-subtab.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue) !important;
+  font-weight: 600;
 }
 
 .sub-grade {

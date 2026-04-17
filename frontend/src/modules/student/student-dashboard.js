@@ -369,9 +369,58 @@ function populateAttendance(attendance) {
 
 function populateFees(fees) {
   const feesDisplay = document.getElementById('fees-display');
-  if (feesDisplay && fees.totalPending !== undefined) {
-    feesDisplay.textContent = `Pending: ₹${(fees.totalPending || 0).toLocaleString()}`;
+  const feesSummary = document.getElementById('fees-summary');
+  const feesCard = document.getElementById('student-fees-card');
+
+  if (fees.totalPending !== undefined) {
+    // Update summary if present
+    if (feesSummary) {
+      document.getElementById('fees-total-paid').textContent = (fees.totalPaid || 0).toFixed(2);
+      document.getElementById('fees-total-pending').textContent = (fees.totalPending || 0).toFixed(2);
+      feesSummary.style.display = 'block';
+    }
+
+    // Update display text
+    if (feesDisplay) {
+      feesDisplay.textContent = `Pending: ₹${(fees.totalPending || 0).toLocaleString()}`;
+    }
   }
+
+  // Show fee history if available
+  if (fees.fees && Array.isArray(fees.fees)) {
+    displayStudentFeeHistory(fees.fees);
+    if (feesCard) feesCard.style.display = 'block';
+  }
+}
+
+/**
+ * Display student fee history with badges
+ */
+function displayStudentFeeHistory(fees) {
+  const tbody = document.getElementById('student-fee-history-table');
+  if (!tbody) return;
+
+  if (!fees.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1rem; color:var(--text-muted);">No fees found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = fees.map(f => {
+    const statusBadge = f.paid 
+      ? `<span style="color:var(--success); font-weight:600;">✓ Paid</span>` 
+      : `<span style="color:var(--danger); font-weight:600;">⏳ Pending</span>`;
+
+    return `
+      <tr style="border-bottom:1px solid var(--border-subtle);">
+        <td style="padding:0.5rem; text-align:left;">
+          <div style="font-weight:500;">${f.description || 'Fee'}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted);">Due: ${new Date(f.dueDate).toLocaleDateString('en-IN')}</div>
+        </td>
+        <td style="padding:0.5rem; text-align:right; font-weight:600;">₹${parseFloat(f.amount).toFixed(2)}</td>
+        <td style="padding:0.5rem; text-align:left;">${statusBadge}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function populateHomework(homework) {

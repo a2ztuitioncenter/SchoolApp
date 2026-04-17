@@ -251,8 +251,37 @@
                         </div>
 
                         <div class="stats-card">
-                            <h4>Fees Status</h4>
+                            <h4><i class="fas fa-receipt"></i> Fee Status</h4>
+                            <div id="fees-summary" style="display:none;">
+                                <div style="margin-bottom:0.75rem;">
+                                    <span style="color:var(--success); font-weight:600;">Total Paid:</span>
+                                    <span style="float:right;">₹<span id="fees-total-paid">0</span></span>
+                                </div>
+                                <div>
+                                    <span style="color:var(--danger); font-weight:600;">Total Pending:</span>
+                                    <span style="float:right;">₹<span id="fees-total-pending">0</span></span>
+                                </div>
+                            </div>
                             <p class="attendance-count" id="fees-display">Loading...</p>
+                        </div>
+
+                        <!-- Student Fee History -->
+                        <div class="stats-card" id="student-fees-card" style="display:none; padding:1.5rem;">
+                            <h4 style="margin-bottom:1rem;"><i class="fas fa-history"></i> Fee History</h4>
+                            <div class="table-container" style="margin-top:0.75rem; max-height:400px; overflow-y:auto;">
+                                <table style="width:100%; font-size:0.85rem;">
+                                    <thead style="position:sticky; top:0; background:var(--bg-hover);">
+                                        <tr>
+                                            <th style="padding:0.5rem; text-align:left; border-bottom:1px solid var(--border-subtle);">Description</th>
+                                            <th style="padding:0.5rem; text-align:right; border-bottom:1px solid var(--border-subtle);">Amount</th>
+                                            <th style="padding:0.5rem; text-align:left; border-bottom:1px solid var(--border-subtle);">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="student-fee-history-table">
+                                        <tr><td colspan="3" style="text-align:center; padding:1rem; color:var(--text-muted);">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Notifications preview on home -->
