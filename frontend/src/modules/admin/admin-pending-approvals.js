@@ -354,33 +354,9 @@ window.approveUserHandler = async function(userId) {
 async function showClassAssignmentModal(userId) {
     currentClassAssignmentUserId = userId;
 
-    // Fetch available class levels if not already loaded
-    if (availableClassLevels.length === 0) {
-        try {
-            const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
-            const auth = authStr ? JSON.parse(authStr) : {};
-            const token = auth.token;
-            
-            const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
-            const response = await fetch(`${baseUrl}/api/auth/admin/class-levels`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                availableClassLevels = data.classLevels || [];
-            } else {
-                showMessage('Failed to fetch class levels', 'error');
-                return;
-            }
-        } catch (error) {
-            console.error('Error fetching class levels:', error);
-            showMessage('Error fetching class levels', 'error');
-            return;
-        }
+    // Use static class levels (consistent with the rest of the app)
+    if (availableClassLevels.length === 0) {
+        availableClassLevels = ['9', '10', '11', '12'];
     }
 
     // Populate checkboxes

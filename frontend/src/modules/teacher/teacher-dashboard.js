@@ -18,11 +18,10 @@ function hideProtectionScreen() {
 
 // Global logout handler
 window.handleLogout = function () {
-  // Teacher logging out
   authLogout();
 };
 
-// ─── Auth State (Managed in init) ───────────────────────────────────────────
+// ─── Auth State ───────────────────────────────────────────────────────────────
 let teacherId = null;
 let teacherPhone = null;
 
@@ -38,17 +37,14 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function todayName() { return DAY_NAMES[new Date().getDay()]; }
 
-// Normalize day name to handle different formats
 function normalizeDayName(day) {
   if (!day) return null;
   const normalized = day.trim().toLowerCase();
   const found = DAY_NAMES.find(d => d.toLowerCase() === normalized);
   if (found) return found;
-  // Try to match by day number if it's numeric
   const dayNum = parseInt(day);
   if (!isNaN(dayNum) && dayNum >= 0 && dayNum < 7) return DAY_NAMES[dayNum];
-  console.warn(`⚠️ Could not normalize day name: "${day}"`);
-  return day; // Return original if no match
+  return day;
 }
 
 function formatTime(t) {
@@ -79,7 +75,6 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
-
 // ─── Tab Switching ────────────────────────────────────────────────────────────
 function setupTabs() {
   document.querySelectorAll('.nav-link[data-tab]').forEach(link => {
@@ -93,7 +88,7 @@ function setupTabs() {
       if (el) el.style.display = 'block';
 
       if (tab === 'homework') { loadHomework(); populateSharedDropdowns('hw'); }
-      if (tab === 'materials') loadMaterials();
+      if (tab === 'materials') { loadMaterials(); populateSharedDropdowns('mat'); }
       if (tab === 'timetable') renderWeeklyTimetable();
       if (tab === 'syllabus') loadSyllabus();
       if (tab === 'attendance') initAttendanceTab();
@@ -103,21 +98,50 @@ function setupTabs() {
   });
 }
 
+async function populateSharedDropdowns(prefix) {
+  const classSel = document.getElementById(`${prefix}-classLevel`);
+  const secSel = document.getElementById(`${prefix}-section`);
+  if (!classSel || !secSel) return;
+
+  try {
+    // If we already have options (other than default), don't reload
+    if (classSel.options.length > 2) return; 
+
+    const res = await teacherAPI.getAttendanceClasses(teacherId);
+    if (res.success && res.data && res.data.length > 0) {
+      // Sort classes numerically
+      const classes = [...new Set(res.data.map(c => parseInt(c)))].sort((a,b) => a-b);
+      
+      classSel.innerHTML = '<option value="">-- Select Class --</option>' +
+          classes.map(c => `<option value="${c}">${c}</option>`).join('');
+      
+      // For sections, if data is just class numbers, provide defaults
+      secSel.innerHTML = '<option value="">-- Select Section --</option>' +
+          ['A', 'B', 'C'].map(s => `<option value="${s}">${s}</option>`).join('');
+    } else {
+        // Fallback for demo/test
+        classSel.innerHTML = '<option value="">-- Select Class --</option>' +
+            [9, 10, 11, 12].map(c => `<option value="${c}">${c}</option>`).join('');
+        secSel.innerHTML = '<option value="">-- Select Section --</option>' +
+            ['A', 'B', 'C'].map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+  } catch (err) {
+    console.error('Error populating dropdowns:', err);
+  }
+}
+
 function init() {
-  // Teacher Dashboard initializing
   hideProtectionScreen();
   syncToSessionStorage('teacher');
   teacherId = getUserId();
 
   if (!teacherId || teacherId === 'null') {
-    console.warn('⚠️ No valid teacher session found, redirecting to login...');
     window.location.href = './index.html';
     return;
   }
 
   teacherPhone = sessionStorage.getItem('teacherPhone');
 
-  // Setup profile menu
   const profileBtn = document.getElementById('teacher-profile-btn');
   const profileMenu = document.getElementById('teacher-profile-dropdown');
 
@@ -128,25 +152,15 @@ function init() {
       profileBtn.setAttribute('aria-expanded', !isExpanded);
       profileMenu.classList.toggle('open');
     });
-  } else {
-    console.warn('⚠️ Profile button or menu not found');
   }
 
-  // Setup dropdown logout button
   const dropLogoutBtn = document.getElementById('dropdown-logout-btn-teacher');
   if (dropLogoutBtn) {
-    // Logout button found
     dropLogoutBtn.addEventListener('click', window.handleLogout);
-  } else {
-    console.warn('⚠️ Logout button not found');
   }
 
-  // Set profile information
   const initialEl = document.getElementById('teacher-avatar-initial');
-  if (initialEl) {
-    initialEl.textContent = 'T';
-    // Teacher avatar initial updated
-  }
+  if (initialEl) initialEl.textContent = 'T';
 
   const ddName = document.getElementById('dropdown-teacher-name');
   if (ddName) ddName.textContent = `Teacher`;
@@ -154,14 +168,12 @@ function init() {
   const ddEmail = document.getElementById('dropdown-teacher-email');
   if (ddEmail) ddEmail.textContent = teacherPhone || `teacher@a2z.local`;
 
-  // Mobile Sidebar Toggle
   const mobileToggle = document.getElementById('mobile-menu-toggle');
   const sidebar = document.querySelector('.sidebar');
   if (mobileToggle && sidebar) {
     mobileToggle.addEventListener('click', () => {
       sidebar.classList.toggle('active');
     });
-    // Close sidebar when clicking a link on mobile
     document.querySelectorAll('.sidebar nav a').forEach(link => {
       link.addEventListener('click', () => {
         if (window.innerWidth <= 768) {
@@ -175,11 +187,7 @@ function init() {
   setupFormListeners();
   loadDashboard();
 
-  // Unified global click handler for closing dropdowns
   document.addEventListener('click', (e) => {
-    // Close profile menu if clicking outside
-    const profileBtn = document.getElementById('teacher-profile-btn');
-    const profileMenu = document.getElementById('teacher-profile-dropdown');
     if (profileBtn && profileMenu) {
       if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
         profileBtn.setAttribute('aria-expanded', 'false');
@@ -187,12 +195,10 @@ function init() {
       }
     }
 
-    // Close any open action menu dropdowns if clicking outside
     if (!e.target.closest('.action-menu')) {
       document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
     }
 
-    // Close sidebar on mobile if clicking outside
     if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('active')) {
       if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
         sidebar.classList.remove('active');
@@ -207,25 +213,17 @@ document.addEventListener('DOMContentLoaded', init);
 async function loadDashboard() {
   try {
     showInfo('Loading dashboard...');
-    // Loading dashboard for teacher
-
     const [dashRes, matRes] = await Promise.all([
       teacherAPI.getDashboard(teacherId),
       teacherAPI.getMaterials(teacherId),
     ]);
     hideInfo();
 
-    // Dashboard and materials data loaded
-
     if (dashRes.success) {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
       setText('stat-homework', dashRes.homework?.length ?? 0);
       allTimetable = dashRes.timetable || [];
       allHomework = dashRes.homework || [];
-
-      // Timetable and homework loaded
-    } else {
-      console.warn('⚠️ Dashboard response not successful:', dashRes.error);
     }
 
     if (matRes.success) {
@@ -241,26 +239,22 @@ async function loadDashboard() {
   }
 }
 
-// Timetable — today (only ongoing and upcoming)
 function renderTodayTimetable() {
   const today = todayName();
-  document.getElementById('today-label').textContent = `— ${today}`;
+  const label = document.getElementById('today-label');
+  if (label) label.textContent = `— ${today}`;
   const tbody = document.getElementById('today-timetable-body');
+  if (!tbody) return;
 
-  // Normalize dayOfWeek values in timetable and match with today
   const todayEntries = allTimetable.filter(e => {
     const normalized = normalizeDayName(e.dayOfWeek);
     return normalized === today;
   });
 
-  // Rendering Today's Timetable
-
   const now = nowMinutes();
-
-  // Filter only ongoing and upcoming classes (exclude done classes)
   const upcomingEntries = todayEntries.filter(e => {
     const end = timeToMinutes(e.endTime);
-    return now < end; // Only show if end time is in the future
+    return now < end;
   });
 
   if (!upcomingEntries.length) {
@@ -290,131 +284,101 @@ function renderTodayTimetable() {
     }).join('');
 }
 
-// Re-render today highlight every minute
 setInterval(() => {
   if (allTimetable.length) renderTodayTimetable();
 }, 60000);
 
-// Full weekly timetable - Admin style design
 function renderWeeklyTimetable() {
   const container = document.getElementById('weekly-timetable');
+  if (!container) return;
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const today = todayName();
   let selectedDay = today;
 
-  // Group timetable by day
-  const grouped = {};
-  days.forEach(d => { grouped[d] = []; });
-  allTimetable.forEach(e => {
-    const normalized = normalizeDayName(e.dayOfWeek);
-    if (grouped[normalized]) grouped[normalized].push(e);
-  });
+  const renderContent = () => {
+    const grouped = {};
+    days.forEach(d => { grouped[d] = []; });
+    allTimetable.forEach(e => {
+      const normalized = normalizeDayName(e.dayOfWeek);
+      if (grouped[normalized]) grouped[normalized].push(e);
+    });
 
-  // Day selector buttons
-  const dayButtonsHtml = days.map(day => `
-    <button class="day-btn ${day === selectedDay ? 'active' : ''}" data-day="${day}" style="
-      padding: 8px 16px;
-      border: none;
-      background: ${day === selectedDay ? '#0052cc' : '#ffffff'};
-      color: ${day === selectedDay ? '#ffffff' : '#666'};
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
-      margin-right: 8px;
-      transition: all 0.2s ease;
-    ">${day.substring(0, 3)}</button>
-  `).join('');
+    const dayButtonsHtml = days.map(day => `
+      <button class="day-btn ${day === selectedDay ? 'active' : ''}" data-day="${day}" style="
+        padding: 8px 16px;
+        border: none;
+        background: ${day === selectedDay ? '#0052cc' : '#ffffff'};
+        color: ${day === selectedDay ? '#ffffff' : '#666'};
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-right: 8px;
+        transition: all 0.2s ease;
+      ">${day.substring(0, 3)}</button>
+    `).join('');
 
-  // Group classes for selected day
-  const dayEntries = grouped[selectedDay] || [];
-  const classesByLevel = {};
-  dayEntries.forEach(e => {
-    if (!classesByLevel[e.classLevel]) classesByLevel[e.classLevel] = [];
-    classesByLevel[e.classLevel].push(e);
-  });
+    const dayEntries = grouped[selectedDay] || [];
+    const classesByLevel = {};
+    dayEntries.forEach(e => {
+      if (!classesByLevel[e.classLevel]) classesByLevel[e.classLevel] = [];
+      classesByLevel[e.classLevel].push(e);
+    });
 
-  // Sort classes numerically
-  const sortedClasses = Object.keys(classesByLevel).sort((a, b) => {
-    const aNum = parseInt(a);
-    const bNum = parseInt(b);
-    return aNum - bNum;
-  });
+    const sortedClasses = Object.keys(classesByLevel).sort((a, b) => parseInt(a) - parseInt(b));
 
-  // Render classes in 2-column grid
-  const classesHtml = sortedClasses.map(classLevel => {
-    const entries = classesByLevel[classLevel].sort((a, b) =>
-      timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
-    );
+    const classesHtml = sortedClasses.map(classLevel => {
+      const entries = classesByLevel[classLevel].sort((a, b) =>
+        timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
+      );
 
-    return `
-      <div style="flex: 1; min-width: 350px; margin-bottom: 2rem;">
-        <div style="
-          background: #0052cc;
-          color: white;
-          padding: 12px 16px;
-          border-radius: 6px;
-          font-weight: 500;
-          margin-bottom: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        ">
-          <i class="fas fa-book"></i> Class ${classLevel}
-        </div>
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TIME</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">SUBJECT</th>
-              <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TEACHER</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${entries.map(e => `
-              <tr style="border-bottom: 1px solid #f0f0f0;">
-                <td style="padding: 12px; color: #0052cc; font-weight: 500; font-size: 0.9rem;">${formatTime(e.startTime)}</td>
-                <td style="padding: 12px; color: #1a1a1a; font-size: 0.9rem;">${e.subject || '–'}</td>
-                <td style="padding: 12px; color: #666; font-size: 0.9rem;">${e.teacherPhone ? e.teacherPhone.substring(0, 8) : 'Bhaba'}</td>
+      return `
+        <div style="flex: 1; min-width: 350px; margin-bottom: 2rem;">
+          <div style="background: #0052cc; color: white; padding: 12px 16px; border-radius: 6px; font-weight: 500; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-book"></i> Class ${classLevel}
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TIME</th>
+                <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">SUBJECT</th>
+                <th style="padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #666; font-weight: 500;">TEACHER</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }).join('');
+            </thead>
+            <tbody>
+              ${entries.map(e => `
+                <tr style="border-bottom: 1px solid #f0f0f0;">
+                  <td style="padding: 12px; color: #0052cc; font-weight: 500; font-size: 0.9rem;">${formatTime(e.startTime)}</td>
+                  <td style="padding: 12px; color: #1a1a1a; font-size: 0.9rem;">${e.subject || '–'}</td>
+                  <td style="padding: 12px; color: #666; font-size: 0.9rem;">${e.teacherPhone ? 'Primary' : 'Secondary'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }).join('');
 
-  const noDataHtml = sortedClasses.length === 0 ?
-    '<p style="color:var(--text-muted); padding: 2rem; text-align: center;">No classes scheduled for ' + selectedDay + '</p>' : '';
+    const noDataHtml = sortedClasses.length === 0 ? `<p style="color:var(--text-muted); padding: 2rem; text-align: center;">No classes scheduled for ${selectedDay}</p>` : '';
 
-  const html = `
-    <div style="margin-bottom: 2rem;">
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        ${dayButtonsHtml}
-      </div>
-    </div>
-    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
-      ${classesHtml || noDataHtml}
-    </div>
-  `;
+    container.innerHTML = `
+      <div style="margin-bottom: 2rem;"><div style="display: flex; gap: 8px; flex-wrap: wrap;">${dayButtonsHtml}</div></div>
+      <div style="display: flex; gap: 2rem; flex-wrap: wrap;">${classesHtml || noDataHtml}</div>`;
 
-  container.innerHTML = html;
-
-  // Add event listeners to day buttons
-  setTimeout(() => {
-    document.querySelectorAll('.day-btn').forEach(btn => {
+    container.querySelectorAll('.day-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         selectedDay = btn.getAttribute('data-day');
-        renderWeeklyTimetable(); // Re-render with selected day
+        renderContent();
       });
     });
-  }, 0);
+  };
+
+  renderContent();
 }
 
 // ─── ATTENDANCE ───────────────────────────────────────────────────────────────
 async function initAttendanceTab() {
   const sel = document.getElementById('att-class-select');
-  if (sel.options.length > 1) return; // already loaded
+  if (!sel || sel.options.length > 1) return;
   try {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     availableClasses = res.data || [];
@@ -422,15 +386,13 @@ async function initAttendanceTab() {
       availableClasses.map(c => `<option value="${c}">${c}</option>`).join('');
 
     const attDate = document.getElementById('att-date');
-    if (!attDate.value) attDate.value = new Date().toISOString().split('T')[0];
+    if (attDate && !attDate.value) attDate.value = new Date().toISOString().split('T')[0];
   } catch (err) {
     showError('Failed to load classes: ' + err.message);
   }
 }
 
-window.onAttClassChange = function () { };
-
-let attendanceData = {}; // studentId -> status
+let attendanceData = {}; 
 
 window.loadAttendanceSheet = async function () {
     const classLevel = document.getElementById('att-class-select').value;
@@ -444,6 +406,7 @@ window.loadAttendanceSheet = async function () {
 
         const container = document.getElementById('att-sheet-container');
         const list = document.getElementById('att-list-container');
+        if (!container || !list) return;
         
         const students = res.students || [];
         const existingMap = res.existing || {};
@@ -454,10 +417,10 @@ window.loadAttendanceSheet = async function () {
             return;
         }
 
-        // Reset data
         attendanceData = {};
         list.innerHTML = "";
-        document.getElementById('att-total-count').textContent = students.length;
+        const totalCountEl = document.getElementById('att-total-count');
+        if (totalCountEl) totalCountEl.textContent = students.length;
 
         students.forEach(s => {
             const currentStatus = existingMap[s.id] || null;
@@ -476,8 +439,7 @@ window.loadAttendanceSheet = async function () {
                     <button class="att-toggle-btn ${currentStatus === 'present' ? 'active' : ''}" data-id="${s.id}" data-status="present">P</button>
                     <button class="att-toggle-btn ${currentStatus === 'absent' ? 'active' : ''}" data-id="${s.id}" data-status="absent">A</button>
                     <button class="att-toggle-btn ${currentStatus === 'late' ? 'active' : ''}" data-id="${s.id}" data-status="late">L</button>
-                </div>
-            `;
+                </div>`;
 
             const buttons = card.querySelectorAll('.att-toggle-btn');
             buttons.forEach(btn => {
@@ -488,20 +450,20 @@ window.loadAttendanceSheet = async function () {
                     updateAttStats();
                 });
             });
-
             list.appendChild(card);
         });
 
         container.style.display = 'block';
         updateAttStats();
 
-        // Setup "Mark All"
-        document.getElementById('btn-mark-all-present').onclick = () => {
-             document.querySelectorAll('.att-toggle-btn[data-status="present"]').forEach(btn => {
-                 if (!btn.classList.contains('active')) btn.click();
-             });
-        };
-
+        const markAllBtn = document.getElementById('btn-mark-all-present');
+        if (markAllBtn) {
+            markAllBtn.onclick = () => {
+                document.querySelectorAll('.att-toggle-btn[data-status="present"]').forEach(btn => {
+                    if (!btn.classList.contains('active')) btn.click();
+                });
+            };
+        }
     } catch (err) {
         hideInfo();
         showError('Failed to load attendance: ' + err.message);
@@ -514,15 +476,16 @@ function updateAttStats() {
         if (status === 'present' || status === 'late') p++;
         if (status === 'absent') a++;
     });
-    document.getElementById('att-present-count').textContent = p;
-    document.getElementById('att-absent-count').textContent = a;
+    const pEl = document.getElementById('att-present-count');
+    const aEl = document.getElementById('att-absent-count');
+    if (pEl) pEl.textContent = p;
+    if (aEl) aEl.textContent = a;
 }
 
 window.saveAttendance = async function () {
     const classLevel = document.getElementById('att-class-select').value;
     const date = document.getElementById('att-date').value;
     
-    // Check if any nulls
     const pendingCount = Object.values(attendanceData).filter(v => v === null).length;
     if (pendingCount > 0) {
         showError(`Please mark attendance for all students (${pendingCount} remaining).`);
@@ -563,6 +526,7 @@ async function loadHomework() {
 
 function renderHomeworkTable() {
   const tbody = document.getElementById('hw-table-body');
+  if (!tbody) return;
   const onlyHws = allHomework.filter(h => h.type === 'homework');
   if (!onlyHws.length) {
     tbody.innerHTML = renderEmptyState(5, 'No homework yet. Add one!');
@@ -576,61 +540,23 @@ function renderHomeworkTable() {
         </button>` : '';
 
     return `<tr>
-        <td><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">${hw.classLevel || '–'}</span></td>
-        <td><strong>${hw.subject || '–'}</strong></td>
-        <td>${hw.title}</td>
-        <td>${due}</td>
-        <td style="text-align: right;">
-          <div class="action-menu">
-            <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
-            <div class="action-menu-dropdown">
-              <button class="action-menu-item" onclick="editHomework(${hw.id})">
-                <i class="fas fa-pen" style="width:16px;"></i> Edit
-              </button>
-              ${attAction}
-              <div class="action-menu-divider"></div>
-              <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
-                <i class="fas fa-trash" style="width:16px;"></i> Delete
-              </button>
-            </div>
+      <td><span class="status-badge" style="background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border-subtle);">Class ${hw.classLevel || '–'}</span></td>
+      <td><strong>${hw.subject || '–'}</strong></td>
+      <td>${hw.title}</td>
+      <td><i class="far fa-calendar-alt"></i> Due: ${due}</td>
+      <td style="text-align: right;">
+        <div class="action-menu">
+          <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
+          <div class="action-menu-dropdown">
+            <button class="action-menu-item" onclick="editHomework(${hw.id})"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
+            ${attAction}
+            <div class="action-menu-divider"></div>
+            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
-        </td>
-      </tr>`;
+        </div>
+      </td>
+    </tr>`;
   }).join('');
-}
-
-async function populateSharedDropdowns(prefix = 'hw') {
-  const classSel = document.getElementById(`${prefix}-classLevel`);
-  const secSel = document.getElementById(`${prefix}-section`);
-  if (!classSel || !secSel) return;
-
-  if (classSel.options.length > 1 && secSel.options.length > 1) return;
-
-  try {
-    const res = await teacherAPI.getAttendanceClasses(teacherId);
-    const classes = res.data || [];
-
-    const classSet = new Set();
-    const secSet = new Set();
-
-    classes.forEach(c => {
-      const match = c.match(/^(\d+)([A-Z])$/i);
-      if (match) {
-        classSet.add(match[1]);
-        secSet.add(match[2]);
-      } else {
-        classSet.add(c);
-      }
-    });
-
-    const classOptions = '<option value="">Select Class</option>' +
-      Array.from(classSet).sort().map(c => `<option value="${c}">${c}</option>`).join('');
-    const secOptions = '<option value="">Select Section</option>' +
-      Array.from(secSet).sort().map(s => `<option value="${s}">${s}</option>`).join('');
-
-    classSel.innerHTML = classOptions;
-    secSel.innerHTML = secOptions;
-  } catch (err) { console.error('Populate dropdowns failed', err); }
 }
 
 function renderDppTable() {
@@ -638,7 +564,7 @@ function renderDppTable() {
   if (!tbody) return;
   const onlyDpps = allHomework.filter(h => h.type === 'daily_practice');
   if (!onlyDpps.length) {
-    tbody.innerHTML = renderEmptyState(5, 'No practice problems yet.');
+    tbody.innerHTML = renderEmptyState(5, 'No practice sheets yet.');
     return;
   }
   tbody.innerHTML = onlyDpps.map(hw => {
@@ -657,14 +583,10 @@ function renderDppTable() {
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
           <div class="action-menu-dropdown">
-            <button class="action-menu-item" onclick="editHomework(${hw.id})">
-              <i class="fas fa-pen" style="width:16px;"></i> Edit
-            </button>
+            <button class="action-menu-item" onclick="editHomework(${hw.id})"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
             ${attAction}
             <div class="action-menu-divider"></div>
-            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})">
-              <i class="fas fa-trash" style="width:16px;"></i> Delete
-            </button>
+            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
         </div>
       </td>
@@ -674,14 +596,21 @@ function renderDppTable() {
 
 window.openHwModal = async function (typeOrHw = 'homework') {
   await populateSharedDropdowns('hw');
-  document.getElementById('hw-form').reset();
+  const form = document.getElementById('hw-form');
+  if (form) form.reset();
   const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
   const type = typeof typeOrHw === 'string' ? typeOrHw : (hw ? hw.type : 'homework');
   const isDpp = type === 'daily_practice';
 
-  document.getElementById('hw-edit-id').value = hw?.id || '';
-  document.getElementById('hw-modal-title').textContent = hw ? `Edit ${isDpp ? 'Practice' : 'Homework'}` : `Add ${isDpp ? 'Practice' : 'Homework'}`;
-  document.getElementById('hw-type').value = type;
+  const editId = document.getElementById('hw-edit-id');
+  if (editId) editId.value = hw?.id || '';
+  
+  const titleEl = document.getElementById('hw-modal-title');
+  if (titleEl) titleEl.textContent = hw ? `Edit ${isDpp ? 'Practice' : 'Homework'}` : `Add ${isDpp ? 'Practice' : 'Homework'}`;
+  
+  const typeEl = document.getElementById('hw-type');
+  if (typeEl) typeEl.value = type;
+
   const dueDateInput = document.getElementById('hw-dueDate');
 
   if (hw) {
@@ -820,6 +749,7 @@ async function loadMaterials() {
 
 function renderMaterialsTable() {
   const tbody = document.getElementById('mat-table-body');
+  if (!tbody) return;
   if (!allMaterials.length) {
     tbody.innerHTML = renderEmptyState(5, 'No materials yet.');
     return;
@@ -833,16 +763,10 @@ function renderMaterialsTable() {
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
           <div class="action-menu-dropdown">
-            <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${(m.title || 'material').replace(/'/g, "\\'")}.pdf')">
-              <i class="fas fa-download" style="width:16px;"></i> Download
-            </button>
-            <button class="action-menu-item" onclick="editMaterial(${m.id})">
-              <i class="fas fa-pen" style="width:16px;"></i> Edit
-            </button>
+            <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${(m.title || 'material').replace(/'/g, "\\'")}.pdf')"><i class="fas fa-download" style="width:16px;"></i> Download</button>
+            <button class="action-menu-item" onclick="editMaterial(${m.id})"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
             <div class="action-menu-divider"></div>
-            <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})">
-              <i class="fas fa-trash" style="width:16px;"></i> Delete
-            </button>
+            <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
         </div>
       </td>
@@ -851,11 +775,16 @@ function renderMaterialsTable() {
 
 window.openMatModal = async function (m = null) {
   await populateSharedDropdowns('mat');
-  document.getElementById('mat-form').reset();
-  document.getElementById('mat-edit-id').value = m?.id || '';
-  document.getElementById('mat-current-file').value = m?.fileUrl || '';
-  document.getElementById('mat-modal-title').textContent = m ? 'Edit Material' : 'Upload Study Material';
-  document.getElementById('mat-file-hint').style.display = m ? 'inline' : 'none';
+  const form = document.getElementById('mat-form');
+  if (form) form.reset();
+  const editId = document.getElementById('mat-edit-id');
+  if (editId) editId.value = m?.id || '';
+  const currFile = document.getElementById('mat-current-file');
+  if (currFile) currFile.value = m?.fileUrl || '';
+  const titleEl = document.getElementById('mat-modal-title');
+  if (titleEl) titleEl.textContent = m ? 'Edit Material' : 'Upload Study Material';
+  const hintEl = document.getElementById('mat-file-hint');
+  if (hintEl) hintEl.style.display = m ? 'inline' : 'none';
   if (m) {
     document.getElementById('mat-classLevel').value = m.classLevel || '';
     document.getElementById('mat-section').value = m.section || '';
@@ -863,9 +792,10 @@ window.openMatModal = async function (m = null) {
     document.getElementById('mat-title').value = m.title || '';
     document.getElementById('mat-description').value = m.description || '';
   }
-  document.getElementById('mat-modal').classList.add('open');
+  const modal = document.getElementById('mat-modal');
+  if (modal) modal.classList.add('open');
 };
-window.closeMatModal = () => document.getElementById('mat-modal').classList.remove('open');
+window.closeMatModal = () => { const m = document.getElementById('mat-modal'); if (m) m.classList.remove('open'); };
 window.editMaterial = id => { const m = allMaterials.find(x => x.id === id); if (m) openMatModal(m); };
 window.deleteMaterial = async id => {
   if (!confirm('Delete this material?')) return;
@@ -887,12 +817,12 @@ async function loadSyllabus() {
 
 function renderSyllabus() {
   const container = document.getElementById('syllabus-container');
+  if (!container) return;
   if (!allSyllabus.length) {
     container.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No chapters added yet. Click "Add Chapter" to begin.</p>';
     return;
   }
 
-  // Group by subject
   const bySubject = {};
   allSyllabus.forEach(s => {
     const key = `${s.subject} — Class ${s.classLevel}`;
@@ -944,15 +874,20 @@ function renderSyllabus() {
 }
 
 window.openSyllabusModal = () => {
-  document.getElementById('syl-form').reset();
+  const form = document.getElementById('syl-form');
+  if (form) form.reset();
   const modal = document.getElementById('syl-modal');
-  modal.style.display = 'flex';
-  modal.classList.add('open');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+  }
 };
 window.closeSyllabusModal = () => {
   const modal = document.getElementById('syl-modal');
-  modal.classList.remove('open');
-  setTimeout(() => { modal.style.display = 'none'; }, 300);
+  if (modal) {
+    modal.classList.remove('open');
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
+  }
 };
 
 window.toggleChapter = async function (id, completed) {
@@ -974,14 +909,14 @@ window.deleteChapter = async function (id) {
 // ─── ATTENDANCE SUMMARY ───────────────────────────────────────────────────────
 async function initSummaryTab() {
   const sel = document.getElementById('sum-class-select');
-  if (sel.options.length > 1) return;
+  if (!sel || sel.options.length > 1) return;
   try {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     const classes = res.data || [];
     sel.innerHTML = '<option value="">-- Select Class --</option>' +
       classes.map(c => `<option value="${c}">${c}</option>`).join('');
     const monthEl = document.getElementById('sum-month');
-    if (!monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
+    if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
   } catch { /* silent */ }
 }
 
@@ -996,6 +931,7 @@ window.loadAttendanceSummary = async function () {
     hideInfo();
     const data = res.data || [];
     const container = document.getElementById('summary-container');
+    if (!container) return;
 
     if (!data.length) { container.innerHTML = '<p style="color:var(--text-muted);">No attendance data for this period.</p>'; return; }
 
@@ -1025,12 +961,13 @@ window.loadAttendanceSummary = async function () {
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 function showSuccess(msg) { showAlert('success-alert', 'success-text', msg); }
 function showError(msg) { showAlert('error-alert', 'error-text', msg); }
-function showInfo(msg) { const el = document.getElementById('info-alert'); if (el) { document.getElementById('info-text').textContent = msg; el.style.display = 'flex'; } }
+function showInfo(msg) { const el = document.getElementById('info-alert'); if (el) { const txt = document.getElementById('info-text'); if (txt) txt.textContent = msg; el.style.display = 'flex'; } }
 function hideInfo() { const el = document.getElementById('info-alert'); if (el) el.style.display = 'none'; }
 function showAlert(id, tid, msg) {
   const el = document.getElementById(id);
   if (!el) return;
-  document.getElementById(tid).textContent = msg;
+  const txt = document.getElementById(tid);
+  if (txt) txt.textContent = msg;
   el.style.display = 'flex';
   setTimeout(() => el.style.display = 'none', 4000);
 }
@@ -1047,18 +984,13 @@ window.toggleActionMenu = function (event) {
   if (!dropdown) return;
 
   const isActive = dropdown.classList.contains('active');
-
-  // Close all other open menus first
-  document.querySelectorAll('.action-menu-dropdown.active').forEach(d => {
-    if (d !== dropdown) d.classList.remove('active');
-  });
+  document.querySelectorAll('.action-menu-dropdown.active').forEach(d => { if (d !== dropdown) d.classList.remove('active'); });
 
   if (!isActive) {
     const rect = btn.getBoundingClientRect();
     const winH = window.innerHeight;
     const winW = window.innerWidth;
     const margin = 8;
-
     const menuW = 168;
     const menuH = 130;
 
@@ -1078,7 +1010,6 @@ window.toggleActionMenu = function (event) {
     if (left + menuW > winW - margin) left = winW - menuW - margin;
     if (left < margin) left = margin;
     dropdown.style.left = `${left}px`;
-
     dropdown.classList.add('active');
   } else {
     dropdown.classList.remove('active');
@@ -1090,10 +1021,8 @@ let examStudents = [];
 
 async function initExamTab() {
   const sel = document.getElementById('exam-class-select');
-  if (sel.options.length > 1) {
-      loadExamResults();
-      return; 
-  }
+  if (!sel) return;
+  if (sel.options.length > 1) { loadExamResults(); return; }
   
   try {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
@@ -1101,13 +1030,11 @@ async function initExamTab() {
     sel.innerHTML = '<option value="">Select Class</option>' +
       availableClasses.map(c => `<option value="${c}">${c}</option>`).join('');
     
-    // Add event listeners for dynamic subjects
-    document.getElementById('exam-add-subject-btn').addEventListener('click', createExamSubjectRow);
-    document.getElementById('exam-submit-btn').addEventListener('click', submitExamResult);
+    document.getElementById('exam-add-subject-btn')?.addEventListener('click', createExamSubjectRow);
+    document.getElementById('exam-submit-btn')?.addEventListener('click', submitExamResult);
     
-    // Initial row
     const container = document.getElementById('exam-subjects-container');
-    if (container.children.length === 0) createExamSubjectRow();
+    if (container && container.children.length === 0) createExamSubjectRow();
     
     loadExamResults();
   } catch (err) {
@@ -1120,15 +1047,14 @@ window.onExamClassChange = async function() {
     const rollSelect = document.getElementById('exam-roll-select');
     const nameInput = document.getElementById('exam-name-input');
     
-    rollSelect.innerHTML = '<option value="">Select Roll No.</option>';
-    nameInput.value = '';
+    if (rollSelect) rollSelect.innerHTML = '<option value="">Select Roll No.</option>';
+    if (nameInput) nameInput.value = '';
     examStudents = [];
 
     if (!classLevel) return;
 
     try {
         showInfo('Loading students...');
-        // Reuse attendance sheet API to get students of the class
         const date = new Date().toISOString().split('T')[0];
         const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
         hideInfo();
@@ -1139,33 +1065,27 @@ window.onExamClassChange = async function() {
             return;
         }
 
-        rollSelect.innerHTML = '<option value="">Select Roll No.</option>' +
-            examStudents.map(s => `<option value="${s.rollNumber || s.id}">${s.rollNumber || 'ID:'+s.id}</option>`).join('');
+        if (rollSelect) {
+            rollSelect.innerHTML = '<option value="">Select Roll No.</option>' +
+                examStudents.map(s => `<option value="${s.rollNumber || s.id}">${s.rollNumber || 'ID:'+s.id}</option>`).join('');
+        }
     } catch (err) {
         hideInfo();
         showError('Failed to fetch students: ' + err.message);
     }
 };
 
-window.onExamSectionChange = function() {
-    // Optionally filter students by section if needed
-    // For now we keep it simple as requested
-};
-
 window.onExamRollChange = function() {
     const roll = document.getElementById('exam-roll-select').value;
     const nameInput = document.getElementById('exam-name-input');
-    
+    if (!nameInput) return;
     const student = examStudents.find(s => (s.rollNumber || String(s.id)) === roll);
-    if (student) {
-        nameInput.value = student.name;
-    } else {
-        nameInput.value = '';
-    }
+    nameInput.value = student ? student.name : '';
 };
 
 function createExamSubjectRow() {
     const container = document.getElementById('exam-subjects-container');
+    if (!container) return;
     const row = document.createElement('div');
     row.className = 'subject-row-entry card';
     row.style.cssText = 'padding: 1.5rem; margin-bottom: 1rem; border: 1px dashed var(--border-subtle); background: var(--bg-primary);';
@@ -1204,38 +1124,23 @@ function createExamSubjectRow() {
             <button type="button" class="btn btn-danger remove-sub-btn" style="padding: 0.6rem; border-radius: 4px;">
                 <i class="fas fa-trash"></i>
             </button>
-        </div>
-    `;
+        </div>`;
 
     row.querySelector('.remove-sub-btn').addEventListener('click', () => {
-        if (container.children.length > 1) {
-            row.remove();
-            calculateExamTotals();
-        } else {
-            showError("At least one subject is required.");
-        }
+        if (container.children.length > 1) { row.remove(); calculateExamTotals(); }
+        else { showError("At least one subject is required."); }
     });
-
     container.appendChild(row);
 }
 
 window.calculateExamTotals = function() {
     const rows = document.querySelectorAll('.subject-row-entry');
-    let tSum = 0;
-    let oSum = 0;
-    
+    let tSum = 0, oSum = 0;
     rows.forEach(row => {
-        const totalInput = row.querySelector('.sub-total');
-        const obtainedInput = row.querySelector('.sub-obtained');
+        const t = parseFloat(row.querySelector('.sub-total').value || 0);
+        const o = parseFloat(row.querySelector('.sub-obtained').value || 0);
+        tSum += t; oSum += o;
         const gradeInput = row.querySelector('.sub-grade');
-        
-        const t = parseFloat(totalInput.value || 0);
-        const o = parseFloat(obtainedInput.value || 0);
-        
-        tSum += t;
-        oSum += o;
-        
-        // Auto Grade Calculation
         if (t > 0) {
             const perc = (o / t) * 100;
             let grade = 'F';
@@ -1246,22 +1151,12 @@ window.calculateExamTotals = function() {
             else if (perc >= 50) grade = 'C+';
             else if (perc >= 40) grade = 'C';
             else if (perc >= 33) grade = 'D';
-            
             gradeInput.value = grade;
-            
-            // color code the grade input
-            if (grade === 'F') gradeInput.style.color = 'var(--danger)';
-            else if (grade.startsWith('A')) gradeInput.style.color = 'var(--success)';
-            else gradeInput.style.color = 'var(--accent-blue)';
-        } else {
-            gradeInput.value = '-';
-        }
+            gradeInput.style.color = (grade === 'F') ? 'var(--danger)' : (grade.startsWith('A') ? 'var(--success)' : 'var(--accent-blue)');
+        } else { gradeInput.value = '-'; }
     });
-    
     const submitBtn = document.getElementById('exam-submit-btn');
-    if (submitBtn) {
-        submitBtn.innerHTML = `<i class="fas fa-check-circle"></i> Submit Marks (${oSum} / ${tSum})`;
-    }
+    if (submitBtn) submitBtn.innerHTML = `<i class="fas fa-check-circle"></i> Submit Marks (${oSum} / ${tSum})`;
 }
 
 async function submitExamResult() {
@@ -1271,30 +1166,20 @@ async function submitExamResult() {
     const studentName = document.getElementById('exam-name-input').value;
     const examTitle = document.getElementById('exam-title-input').value;
 
-    if (!classLevel || !rollNumber || !studentName || !examTitle) {
-        showError("Please fill all student details and exam title.");
-        return;
-    }
+    if (!classLevel || !rollNumber || !studentName || !examTitle) { showError("Please fill all student details and exam title."); return; }
 
     const rows = document.querySelectorAll('.subject-row-entry');
     const subjects = [];
-    let totalMarks = 0;
-    let obtainedMarks = 0;
+    let totalMarks = 0, obtainedMarks = 0;
 
     for (const row of rows) {
         const name = row.querySelector('.sub-name').value.trim();
         const total = parseFloat(row.querySelector('.sub-total').value);
         const obtained = parseFloat(row.querySelector('.sub-obtained').value);
         const grade = row.querySelector('.sub-grade').value.trim();
-
-        if (!name) {
-            showError("Subject name is required for all rows.");
-            return;
-        }
-
+        if (!name) { showError("Subject name is required for all rows."); return; }
         subjects.push({ name, total, obtained, grade });
-        totalMarks += total;
-        obtainedMarks += obtained;
+        totalMarks += total; obtainedMarks += obtained;
     }
 
     const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
@@ -1302,59 +1187,32 @@ async function submitExamResult() {
 
     try {
         showInfo('Submitting results...');
-        const payload = {
-            classLevel,
-            section,
-            rollNumber,
-            studentName,
-            examTitle,
-            subjects,
-            totalMarks,
-            obtainedMarks,
-            percentage: parseFloat(percentage.toFixed(2)),
-            remarks
-        };
-
-        await teacherAPI.createExamResult(payload);
+        await teacherAPI.createExamResult({ classLevel, section, rollNumber, studentName, examTitle, subjects, totalMarks, obtainedMarks, percentage: parseFloat(percentage.toFixed(2)), remarks });
         hideInfo();
         showSuccess("Exam result submitted successfully!");
-        
-        // Reset form
         document.getElementById('exam-roll-select').value = '';
         document.getElementById('exam-name-input').value = '';
-        document.getElementById('exam-subjects-container').innerHTML = '';
+        const container = document.getElementById('exam-subjects-container');
+        if (container) container.innerHTML = '';
         createExamSubjectRow();
-        
         loadExamResults();
-    } catch (err) {
-        hideInfo();
-        showError("Failed to submit results: " + err.message);
-    }
+    } catch (err) { hideInfo(); showError("Failed to submit results: " + err.message); }
 }
 
 async function loadExamResults() {
     try {
         const res = await teacherAPI.getExamResults();
         renderExamResults(res.data || []);
-    } catch (err) {
-        console.error("Failed to load exam results", err);
-    }
+    } catch (err) { console.error("Failed to load exam results", err); }
 }
 
 function renderExamResults(results) {
     const tbody = document.getElementById('exam-table-body');
-    if (!results.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>`;
-        return;
-    }
+    if (!tbody) return;
+    if (!results.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>`; return; }
 
     tbody.innerHTML = results.map((r, index) => {
-        const subjectsHtml = Array.isArray(r.subjects) 
-            ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">
-                ${r.subjects.map(s => `<li>${s.name}: ${s.obtained}/${s.total} (${s.grade || '-'})</li>`).join('')}
-               </ul>`
-            : '-';
-        
+        const subs = Array.isArray(r.subjects) ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${r.subjects.map(s => `<li>${s.name}: ${s.obtained}/${s.total} (${s.grade || '-'})</li>`).join('')}</ul>` : '-';
         return `
             <tr>
                 <td>${index + 1}</td>
@@ -1362,17 +1220,10 @@ function renderExamResults(results) {
                 <td>${r.rollNumber || '-'}</td>
                 <td><div style="font-weight:600;">${r.studentName}</div></td>
                 <td>${r.examTitle}</td>
-                <td>${subjectsHtml}</td>
+                <td>${subs}</td>
                 <td><div style="font-weight:700; color:var(--accent-blue);">${r.obtainedMarks} / ${r.totalMarks}</div></td>
-                <td>
-                    <span class="badge ${r.remarks === 'Pass' ? 'badge-success' : 'badge-danger'}" 
-                          style="background: ${r.remarks === 'Pass' ? 'rgba(36,134,54,0.1)' : 'rgba(215,58,73,0.1)'}; 
-                                 color: ${r.remarks === 'Pass' ? 'var(--success)' : 'var(--danger)'};">
-                        ${r.remarks}
-                    </span>
-                </td>
-            </tr>
-        `;
+                <td><span class="badge ${r.remarks === 'Pass' ? 'badge-success' : 'badge-danger'}" style="background: ${r.remarks === 'Pass' ? 'rgba(36,134,54,0.1)' : 'rgba(215,58,73,0.1)'}; color: ${r.remarks === 'Pass' ? 'var(--success)' : 'var(--danger)'};">${r.remarks}</span></td>
+            </tr>`;
     }).join('');
 }
 

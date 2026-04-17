@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getUserByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels } from './User.js';
+import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels, countStudentsByPhone, isDuplicateStudent, getNonStudentByPhone } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
@@ -32,6 +32,24 @@ const validateUsername = (username) => {
   return null;
 };
 
+router.get('/check-username', async (req, res) => {
+  const { username } = req.query;
+  const pool = req.db;
+
+  try {
+    const validationError = validateUsername(username);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const taken = await isUsernameTaken(pool, username);
+    res.json({ available: !taken });
+  } catch (error) {
+    console.error('Check username error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.post('/login', async (req, res) => {
   const { phone, identifier, dateOfBirth } = req.body;
   const loginId = sanitizeIdentifier(identifier || phone, 50);
@@ -52,23 +70,56 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
     }
 
-    const user = await getUserByPhoneOrUsername(pool, loginId);
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    // Support multiple students sharing the same phone number
+    const isPhone = /^\d{10}$/.test(loginId);
+    let user, studentData;
 
-    const userRole = user.role ? user.role.toLowerCase() : '';
-    if (userRole !== 'student') return res.status(403).json({ error: 'Unauthorized role' });
+    if (isPhone) {
+      // Find all student users with this phone and match by DOB
+      const allUsers = await getUsersByPhone(pool, loginId);
+      const studentUsers = allUsers.filter(u => u.role?.toLowerCase() === 'student');
+      if (studentUsers.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
 
-    if (user.status === 'pending') return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
-    if (user.status === 'rejected') return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
-    if (user.is_active === false) return res.status(403).json({ error: 'Your account has been deactivated. Please contact admin.' });
+      // Try each student user to find one whose DOB matches
+      for (const candidate of studentUsers) {
+        if (candidate.status === 'pending') continue;
+        if (candidate.status === 'rejected') continue;
+        if (candidate.is_active === false) continue;
+        const dobCheck = await pool.query(
+          `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
+          [candidate.id, dobISO]
+        );
+        if (dobCheck.rows.length > 0) {
+          user = candidate;
+          break;
+        }
+      }
+      if (!user) {
+        // Check if all candidates are pending/rejected/inactive for a better error message
+        const pending = studentUsers.find(u => u.status === 'pending');
+        if (pending) return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
+        const rejected = studentUsers.find(u => u.status === 'rejected');
+        if (rejected) return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+    } else {
+      // Username login - single user lookup
+      user = await getUserByPhoneOrUsername(pool, loginId);
+      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+      const userRole = user.role ? user.role.toLowerCase() : '';
+      if (userRole !== 'student') return res.status(403).json({ error: 'Unauthorized role' });
+      if (user.status === 'pending') return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
+      if (user.status === 'rejected') return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
+      if (user.is_active === false) return res.status(403).json({ error: 'Your account has been deactivated. Please contact admin.' });
 
-    const dobResult = await pool.query(
-      `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
-      [user.id, dobISO]
-    );
-    if (dobResult.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+      const dobResult = await pool.query(
+        `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
+        [user.id, dobISO]
+      );
+      if (dobResult.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    const studentData = await getStudentByUserId(pool, user.id);
+    studentData = await getStudentByUserId(pool, user.id);
     const token = generateToken(user.id, user.role, user.phone);
 
     res.json({
@@ -117,14 +168,40 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
 
-    if (await getUserByPhone(pool, sanitizedPhone)) {
-      return res.status(409).json({ error: 'Phone number already registered' });
+    // Phone uniqueness: strict for non-students, allow up to 4 for students
+    if (normalizedRole !== 'student') {
+      if (await getUserByPhone(pool, sanitizedPhone)) {
+        return res.status(409).json({ error: 'Phone number already registered' });
+      }
+    } else {
+      const studentCount = await countStudentsByPhone(pool, sanitizedPhone);
+      if (studentCount >= 4) {
+        return res.status(409).json({ error: 'Maximum 4 students can register with the same phone number' });
+      }
+      // Also block if a non-student (admin/teacher/staff) already has this phone
+      if (await getNonStudentByPhone(pool, sanitizedPhone)) {
+        return res.status(409).json({ error: 'Phone number already registered to a non-student account' });
+      }
     }
 
     // STUDENT REGISTRATION - WITH ATOMIC ROLL NUMBER LOCK
     if (normalizedRole === 'student') {
       const { dateOfBirth } = req.body;
       const fullName = sanitizeText(req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(), 100);
+
+      // Reject exact duplicate: same phone + name + class + DOB
+      if (dateOfBirth && classLevel) {
+        let dobISO_check = null;
+        const dparts = dateOfBirth.split('/');
+        if (dparts.length === 3) {
+          const [dd, mm, yy] = dparts;
+          const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+          dobISO_check = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+        }
+        if (dobISO_check && await isDuplicateStudent(pool, sanitizedPhone, fullName, classLevel.toString(), dobISO_check, fatherName, motherName)) {
+          return res.status(409).json({ error: 'A student with the same details is already registered' });
+        }
+      }
       
       const client = await pool.connect();
       try {

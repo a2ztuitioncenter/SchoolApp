@@ -46,7 +46,13 @@ export const getExamResults = async (req, res) => {
 
   try {
     const results = await pool.query(
-      'SELECT * FROM exam_results WHERE teacher_id = $1 ORDER BY created_at DESC',
+      `SELECT id, class_level as "classLevel", section, roll_number as "rollNumber", 
+              student_name as "studentName", exam_title as "examTitle", subjects, 
+              total_marks as "totalMarks", obtained_marks as "obtainedMarks", 
+              percentage, remarks, teacher_id as "teacherId", created_at as "createdAt"
+       FROM exam_results 
+       WHERE teacher_id = $1 
+       ORDER BY created_at DESC`,
       [teacherId]
     );
     res.json({ success: true, data: results.rows });

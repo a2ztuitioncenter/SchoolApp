@@ -35,10 +35,18 @@ export const createStudent = async (pool, data) => {
   return result.rows[0];
 };
 
+// Helper to get all student fields aliased to camelCase
+const STUDENT_FIELDS = `
+  id, user_id as "userId", name, class_level as "classLevel", section, 
+  father_name as "fatherName", mother_name as "motherName", phone, email, 
+  roll_number as "rollNumber", joining_date as "joiningDate", date_of_birth as "dateOfBirth", 
+  status, school_id as "schoolId", created_at as "createdAt"
+`;
+
 // Legacy export used by getStudentsBySchool call in adminRoutes
 export const getStudentsBySchool = async (pool, schoolId) => {
   const result = await pool.query(
-    'SELECT * FROM students WHERE school_id = $1 ORDER BY name ASC',
+    `SELECT ${STUDENT_FIELDS} FROM students WHERE school_id = $1 ORDER BY name ASC`,
     [schoolId]
   );
   return result.rows;
@@ -46,14 +54,14 @@ export const getStudentsBySchool = async (pool, schoolId) => {
 
 export const getStudentByUserId = async (pool, userId) => {
   const result = await pool.query(
-    'SELECT * FROM students WHERE user_id = $1 LIMIT 1',
+    `SELECT ${STUDENT_FIELDS} FROM students WHERE user_id = $1 LIMIT 1`,
     [userId]
   );
   return result.rows[0] || null;
 };
 
 export const getStudentById = async (pool, id) => {
-  const result = await pool.query('SELECT * FROM students WHERE id = $1', [id]);
+  const result = await pool.query(`SELECT ${STUDENT_FIELDS} FROM students WHERE id = $1`, [id]);
   return result.rows[0] || null;
 };
 

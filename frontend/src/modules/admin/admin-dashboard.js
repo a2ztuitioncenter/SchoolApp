@@ -2791,6 +2791,7 @@ function setupForms() {
         e.preventDefault();
         const payload = {
             name:  document.getElementById('user-name')?.value.trim(),
+            username: document.getElementById('user-username')?.value.trim() || undefined,
             phone: document.getElementById('user-phone')?.value.trim(),
             email: document.getElementById('user-email')?.value.trim(),
             role:  document.getElementById('user-role')?.value,

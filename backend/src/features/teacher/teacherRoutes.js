@@ -236,7 +236,7 @@ router.get('/attendance/sheet', async (req, res) => {
       }
     }
 
-    let studentsQuery = `SELECT id, name, roll_number FROM students WHERE class_level = $1`;
+    let studentsQuery = `SELECT id, name, roll_number as "rollNumber" FROM students WHERE class_level = $1`;
     let studentsParams = [classLevel];
     if (section) {
         studentsQuery += ` AND section = $2`;

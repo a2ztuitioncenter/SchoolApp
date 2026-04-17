@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100),
-    phone VARCHAR(15) UNIQUE NOT NULL,
+    phone VARCHAR(15) NOT NULL,
     email VARCHAR(255),
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) CHECK (role IN ('student', 'parent', 'teacher', 'staff', 'admin')) NOT NULL,

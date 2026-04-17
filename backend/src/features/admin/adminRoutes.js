@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses } from '../auth/User.js';
+import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone } from '../auth/User.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
@@ -35,13 +35,20 @@ router.get('/users', async (req, res) => {
 });
 
 router.post('/users/create', async (req, res) => {
-    const { name, phone, email, role, password } = req.body;
+    const { name, phone, email, role, password, username } = req.body;
     try {
         if (!name || !phone || !role || !password) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        if (await getUserByPhone(req.db, phone)) return res.status(409).json({ error: 'Phone already registered' });
-        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001' });
+        // Phone uniqueness: strict for non-students, allow up to 4 for students
+        if (role !== 'student') {
+            if (await getUserByPhone(req.db, phone)) return res.status(409).json({ error: 'Phone already registered' });
+        } else {
+            const studentCount = await countStudentsByPhone(req.db, phone);
+            if (studentCount >= 4) return res.status(409).json({ error: 'Maximum 4 students can register with the same phone number' });
+            if (await getNonStudentByPhone(req.db, phone)) return res.status(409).json({ error: 'Phone already registered to a non-student account' });
+        }
+        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001', username, status: 'active' });
         res.status(201).json({ success: true, user });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -99,7 +106,10 @@ router.patch('/users/:id/status', async (req, res) => {
 router.get('/students', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT s.*, u.phone 
+            `SELECT s.id, s.user_id as "userId", s.name, s.class_level as "classLevel", s.section, 
+                    s.father_name as "fatherName", s.mother_name as "motherName", s.phone, s.email, 
+                    s.roll_number as "rollNumber", s.joining_date as "joiningDate", s.date_of_birth as "dateOfBirth", 
+                    s.status, s.school_id as "schoolId", s.created_at as "createdAt", u.phone as "userPhone"
              FROM students s 
              LEFT JOIN users u ON s.user_id = u.id 
              ORDER BY s.name ASC`

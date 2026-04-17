@@ -266,25 +266,17 @@ export const validateInput = (req, res, next) => {
 export const corsSecure = () => {
   return (req, res, next) => {
     const origin = req.headers.origin;
-    
-    // Define allowed origins dynamically
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      process.env.FRONTEND_URL
-    ];
 
-    // Add development-specific ports if in dev mode
-    if (process.env.NODE_ENV === 'development') {
-      allowedOrigins.push('http://localhost:8000', 'http://127.0.0.1:8000');
-      allowedOrigins.push('http://localhost:5173', 'http://127.0.0.1:5173');
-    }
-
-    if (allowedOrigins.includes(origin)) {
+    // DEVELOPMENT MODE: Always allow the requesting origin (Cloudflare tunnels, localhost, etc.)
+    if (origin) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id');
       res.header('Access-Control-Allow-Credentials', 'true');
+      
+      // Specifically allow access to the local loopback (localhost) from a public origin
+      // This fixes: "Permission was denied for this request to access the loopback address space"
+      res.header('Access-Control-Allow-Private-Network', 'true');
     }
 
     // Prevent MIME type sniffing

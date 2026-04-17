@@ -5,9 +5,15 @@
 
 // Backend Connection Configuration
 const getBaseApiUrl = () => {
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  const isLocal = typeof window !== 'undefined' && 
+                 (window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1' || 
+                  window.location.hostname.endsWith('.trycloudflare.com'));
+                  
+  if (isLocal) {
     return 'http://localhost:3000';
   }
+  
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
     return 'https://schoolapp-d9y5.onrender.com';
   }
@@ -166,7 +172,7 @@ const resultsAPI = {
  */
 export const authAPI = {
   register: (userData) => apiCall('/auth/register', { method: 'POST', body: JSON.stringify(userData) }),
-  teacherRegister: (userData) => apiCall('/auth/teacher-register', { method: 'POST', body: JSON.stringify(userData) }),
+  teacherRegister: (userData) => apiCall('/auth/register', { method: 'POST', body: JSON.stringify(userData) }),
   login: (identifier, dateOfBirth) => apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ identifier, dateOfBirth }) }),
   adminLogin: (identifier, password) => apiCall('/auth/admin-login', { method: 'POST', body: JSON.stringify({ identifier, password }) }),
   teacherLogin: (identifier, password) => apiCall('/auth/teacher-login', { method: 'POST', body: JSON.stringify({ identifier, password }) }),

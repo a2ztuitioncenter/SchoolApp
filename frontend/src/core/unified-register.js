@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const role = document.getElementById('role-select').value;
         const name = document.getElementById('name-input').value.trim();
+        const username = document.getElementById('username-input')?.value.trim();
         const phone = document.getElementById('phone-input').value.trim();
         const password = document.getElementById('password-input').value;
         const confirmPassword = document.getElementById('confirm-password-input').value;
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = {
             role,
             name,
+            username: username || undefined,
             phone,
             password,
             confirmPassword,
@@ -77,19 +79,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const section = document.getElementById('section-input')?.value.trim();
             const fatherName = document.getElementById('father-name-input')?.value.trim();
             const motherName = document.getElementById('mother-name-input')?.value.trim();
+            const dateOfBirth = document.getElementById('dob-input')?.value;
 
-            if (!classLevel || !section || !fatherName || !motherName) {
-                errorMessage.textContent = 'All student fields are required.';
+            if (!classLevel || !section || !fatherName || !motherName || !dateOfBirth) {
+                errorMessage.textContent = 'All student fields (including Date of Birth) are required.';
                 errorMessage.style.display = 'block';
                 registerBtn.disabled = false;
                 registerBtn.textContent = 'Sign Up';
                 return;
             }
 
+            let formattedDob = dateOfBirth;
+            if (dateOfBirth.includes('-')) {
+                const [yyyy, mm, dd] = dateOfBirth.split('-');
+                formattedDob = `${dd}/${mm}/${yyyy.slice(2)}`;
+            }
+
             formData.classLevel = classLevel;
             formData.section = section;
             formData.fatherName = fatherName;
             formData.motherName = motherName;
+            formData.dateOfBirth = formattedDob;
         } else if (role === 'teacher' || role === 'staff') {
             const email = document.getElementById('email-input')?.value.trim();
 
