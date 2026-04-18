@@ -201,7 +201,7 @@ function init() {
     }
 
     // Close action menus only if clicking outside
-    if (!e.target.closest('.action-menu')) {
+    if (!e.target.closest('.action-menu') && !e.target.closest('.action-menu-dropdown')) {
       document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
     }
 
@@ -1012,19 +1012,66 @@ function renderEmptyState(colspan, message, icon = 'fa-inbox') {
 }
 
 // ─── Dropdown Positioning & Logic ──────────────────────────────────────────
-window.toggleActionMenu = function (btn) {
-  if (!btn || !btn.nextElementSibling) return;
+window.toggleActionMenu = function (e) {
+  const btn = e.currentTarget || (e.target && e.target.closest('.action-menu-btn')) || (e instanceof HTMLElement ? e : null);
+  if (!btn) return;
   
-  const dropdown = btn.nextElementSibling;
-  const isActive = dropdown.classList.contains('active');
+  // Find or create dropdown reference
+  let dropdown = btn._dropdown;
+  if (!dropdown) {
+    dropdown = btn.nextElementSibling;
+    if (dropdown && dropdown.classList.contains('action-menu-dropdown')) {
+      btn._dropdown = dropdown;
+    }
+  }
+  
+  if (!dropdown) return;
+
   
   // Close all other menus
   document.querySelectorAll('.action-menu-dropdown.active').forEach(d => {
     if (d !== dropdown) d.classList.remove('active');
   });
 
+  const isActive = dropdown.classList.contains('active');
+
   if (!isActive) {
+    // Teleport to body to escape transform/overflow constraints
+    if (dropdown.parentElement !== document.body) {
+        document.body.appendChild(dropdown);
+    }
+    
     dropdown.classList.add('active');
+    
+    // Position logically
+    const rect = btn.getBoundingClientRect();
+    const dropdownHeight = dropdown.offsetHeight || 120;
+    const dropdownWidth = dropdown.offsetWidth || 160;
+    const viewportHeight = window.innerHeight;
+    
+    dropdown.style.position = 'fixed';
+    dropdown.style.zIndex = '9999999';
+    
+    // Vertical position (auto-flip)
+    if (rect.bottom + dropdownHeight > viewportHeight - 10 && rect.top > dropdownHeight) {
+      dropdown.style.top = (rect.top - dropdownHeight) + 'px';
+      dropdown.classList.add('drop-up');
+    } else {
+      dropdown.style.top = rect.bottom + 'px';
+      dropdown.classList.remove('drop-up');
+    }
+    
+    // Horizontal position (align right to button)
+    dropdown.style.left = (rect.right - dropdownWidth) + 'px';
+    
+    // Handle click outside to close
+    const closeMenu = (event) => {
+        if (!dropdown.contains(event.target) && event.target !== btn) {
+            dropdown.classList.remove('active');
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   } else {
     dropdown.classList.remove('active');
   }

@@ -2915,17 +2915,18 @@ window.closeMarkPaidModal = function() {
 window.confirmMarkPaid = async function() {
     if (!pendingMarkPaidFeeId) return;
     
+    const feeId = pendingMarkPaidFeeId;
     closeMarkPaidModal();
     showInfoAlert('Marking fee as paid...');
     
     try {
-        const res = await feesAPI.markPaid(pendingMarkPaidFeeId);
+        const res = await feesAPI.markPaid(feeId);
         if (res.data) {
             hideInfoAlert();
             showSuccessAlert('✓ Fee marked as paid');
             
             // Optimistically remove from active list
-            allFeesData = allFeesData.filter(f => f.id !== pendingMarkPaidFeeId);
+            allFeesData = allFeesData.filter(f => f.id !== feeId);
             
             // Refresh table and stats
             await loadFeeStats();
