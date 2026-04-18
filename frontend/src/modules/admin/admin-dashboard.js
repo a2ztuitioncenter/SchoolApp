@@ -2499,9 +2499,10 @@ window.debouncedFilterFees = function () {
     feesFilterTimeout = setTimeout(() => {
         const query = document.getElementById('fee-search')?.value.toLowerCase() || '';
         const filtered = allFeesData.filter(f =>
-            (f.studentName || '').toLowerCase().includes(query) ||
+            !f.paid &&
+            ((f.studentName || '').toLowerCase().includes(query) ||
             (f.student_id?.toString() || '').includes(query) ||
-            (f.description || '').toLowerCase().includes(query)
+            (f.description || '').toLowerCase().includes(query))
         );
         renderFeesTable(filtered);
     }, 300);
@@ -2658,7 +2659,9 @@ window.loadFees = async function (mode = 'all') {
     try {
         const res = mode === 'unpaid' ? await feesAPI.getUnpaid() : await feesAPI.getAll();
         allFeesData = res.data || [];
-        renderFeesTable(allFeesData);
+        // Active Fees tab only shows unpaid records
+        const unpaidOnly = allFeesData.filter(f => !f.paid);
+        renderFeesTable(unpaidOnly);
     } catch (err) {
         showErrorAlert('Failed to load fees');
     }
