@@ -500,16 +500,19 @@ function renderQuickStatsKPI() {
         const inactiveStudents = totalStudents - activeStudents;
 
         // Financial data processed
-        const totalCollected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
-        const totalPending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+        const rawPaid = financials.totalPaid || financials.total_paid || 0;
+        const rawPending = financials.totalPending || financials.total_pending || 0;
+        const totalCollected = parseFloat(rawPaid);
+        const totalPending = parseFloat(rawPending);
         const totalFees = totalCollected + totalPending;
 
         // Calculate overdue fees
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const overdueData = unpaidFees.reduce((acc, f) => {
-            if (!f?.dueDate || !f?.amount) return acc;
-            const dueDate = new Date(f.dueDate);
+            const dateStr = f?.dueDate || f?.due_date;
+            if (!dateStr || !f?.amount) return acc;
+            const dueDate = new Date(dateStr);
             dueDate.setHours(0, 0, 0, 0);
             if (dueDate < today) {
                 acc.count += 1;
@@ -596,8 +599,10 @@ function renderFeesChart() {
     if (!canvas) return;
 
     const financials = dashboardData.financialSummary;
-    const paid = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
-    const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+    const paidVal = financials.totalPaid || financials.total_paid || 0;
+    const pendingVal = financials.totalPending || financials.total_pending || 0;
+    const paid = parseFloat(paidVal);
+    const pending = parseFloat(pendingVal);
     const total = paid + pending;
 
     // Don't render if no data
@@ -786,16 +791,18 @@ function renderFeesOverviewChart() {
         const financials = dashboardData?.financialSummary || {};
         const unpaidFees = dashboardData?.unpaidFees || [];
 
-        const collected = financials.totalPaid ? parseFloat(financials.totalPaid) : 0;
-        const pending = financials.totalPending ? parseFloat(financials.totalPending) : 0;
+        const collectedVal = financials.totalPaid || financials.total_paid || 0;
+        const pendingVal = financials.totalPending || financials.total_pending || 0;
+        const collected = parseFloat(collectedVal);
+        const pending = parseFloat(pendingVal);
 
         // Calculate overdue
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const overdue = unpaidFees
-            .filter(f => f?.dueDate)
+            .filter(f => f?.dueDate || f?.due_date)
             .reduce((sum, f) => {
-                const dueDate = new Date(f.dueDate);
+                const dueDate = new Date(f.dueDate || f.due_date);
                 dueDate.setHours(0, 0, 0, 0);
                 return dueDate < today ? sum + (parseFloat(f.amount) || 0) : sum;
             }, 0);
@@ -948,7 +955,7 @@ function renderUnpaidFeesTable() {
     }
 
     // Sort by due date (ascending - soonest first)
-    const sorted = [...fees].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const sorted = [...fees].sort((a, b) => new Date(a.dueDate || a.due_date) - new Date(b.dueDate || b.due_date));
     const topFees = sorted.slice(0, 10);
 
     const today = new Date();
@@ -956,7 +963,7 @@ function renderUnpaidFeesTable() {
 
     let html = '';
     topFees.forEach(fee => {
-        const dueDate = new Date(fee.dueDate);
+        const dueDate = new Date(fee.dueDate || fee.due_date);
         dueDate.setHours(0, 0, 0, 0);
         const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
         const overdueText = daysOverdue > 0 ? `${daysOverdue} days` : 'Due soon';
@@ -967,7 +974,7 @@ function renderUnpaidFeesTable() {
                 <td data-label="Name">${fee.studentName || '-'}</td>
                 <td data-label="Class">${fee.classLevel || '-'}</td>
                 <td data-label="Amount">₹${parseFloat(fee.amount || 0).toLocaleString('en-IN')}</td>
-                <td data-label="Due Date">${new Date(fee.dueDate).toLocaleDateString('en-IN')}</td>
+                <td data-label="Due Date">${new Date(fee.dueDate || fee.due_date).toLocaleDateString('en-IN')}</td>
                 <td data-label="Days Overdue" class="status-${daysOverdue > 0 ? 'danger' : 'warning'}">${overdueText}</td>
                 <td data-label="Contact">${fee.phone || '-'}</td>
             </tr>
@@ -1103,13 +1110,37 @@ function renderTrendChart() {
             window.trendChartInstance.destroy();
         }
 
-        // Format dates (group by week if too many data points)
-        const labels = trendData.map(d => {
-            const date = new Date(d.date);
+        // Create a continuous 30-day timeline to ensure a line graph can be fully drawn
+        const today = new Date();
+        const dateMap = {};
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toLocaleDateString('en-CA'); // 'YYYY-MM-DD' local time
+            dateMap[dateStr] = 0;
+        }
+
+        // Fill with actual collected data
+        trendData.forEach(d => {
+            const rawDate = new Date(d.date);
+            const dateStr = rawDate.toLocaleDateString('en-CA');
+            if (dateMap[dateStr] !== undefined) {
+                dateMap[dateStr] = parseFloat(d.amount) || 0;
+            } else {
+                // If the date somehow falls outside the 30-day window (e.g. timezone edge cases)
+                // We add it just to be safe
+                dateMap[dateStr] = parseFloat(d.amount) || 0;
+            }
+        });
+
+        // Format labels and amounts for continuous chart plotting
+        const sortedDateKeys = Object.keys(dateMap).sort();
+        const labels = sortedDateKeys.map(dStr => {
+            const date = new Date(dStr);
             return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
         });
 
-        const amounts = trendData.map(d => parseFloat(d.amount) || 0);
+        const amounts = sortedDateKeys.map(dStr => dateMap[dStr]);
 
         const ctx = canvas.getContext('2d');
         window.trendChartInstance = new Chart(ctx, {
@@ -2934,6 +2965,9 @@ window.confirmMarkPaid = async function() {
             // Refresh table and stats
             await loadFeeStats();
             await loadFees('all');
+            
+            // Also update the payment history tab so it shows up immediately
+            await loadPaymentHistory(paymentHistoryFilter);
         } else {
             hideInfoAlert();
             showErrorAlert('Failed to mark fee as paid');
