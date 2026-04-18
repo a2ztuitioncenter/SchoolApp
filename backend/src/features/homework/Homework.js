@@ -106,12 +106,77 @@ export const getHomeworkByClass = async (pool, classLevel, section = 'A', type =
   return result.rows;
 };
 
+// Helper function to format database rows to camelCase
+const formatHomeworkRow = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    teacherId: row.teacher_id,
+    classLevel: row.class_level,
+    section: row.section,
+    title: row.title,
+    description: row.description,
+    dueDate: row.due_date,
+    subject: row.subject,
+    attachmentUrl: row.attachment_url,
+    schoolId: row.school_id,
+    type: row.type,
+    createdAt: row.created_at,
+    teacherPhone: row.teacher_phone,
+    assignedBy: row.teacher_id,
+    assignedByName: row.assigned_by_name || 'Teacher'
+  };
+};
+
 export const getHomeworkByTeacher = async (pool, teacherId) => {
-  const result = await pool.query(
-    `SELECT * FROM homework WHERE teacher_id = $1 ORDER BY created_at DESC`,
+  // Get classes assigned to the teacher
+  const classRes = await pool.query(
+    `SELECT DISTINCT class_level, section 
+     FROM teacher_class_assignment 
+     WHERE teacher_id = $1`,
     [teacherId]
   );
-  return result.rows;
+  
+  // If teacher has no classes assigned, return only homework they created
+  if (classRes.rows.length === 0) {
+    const result = await pool.query(
+      `SELECT h.*, u.name AS assigned_by_name FROM homework h
+       LEFT JOIN users u ON h.teacher_id = u.id
+       WHERE h.teacher_id = $1 ORDER BY h.created_at DESC`,
+      [teacherId]
+    );
+    return result.rows.map(row => formatHomeworkRow(row));
+  }
+  
+  // Build WHERE clause for homework assigned to any of the teacher's classes
+  const classFilters = [];
+  const params = [teacherId];
+  let paramIdx = 2;
+  
+  classRes.rows.forEach(row => {
+    const section = row.section && row.section !== 'ALL' ? row.section : null;
+    if (section) {
+      classFilters.push(`(h.class_level = $${paramIdx} AND (h.section = $${paramIdx + 1} OR h.section IS NULL OR h.section = 'ALL'))`);
+      params.push(row.class_level);
+      params.push(section);
+      paramIdx += 2;
+    } else {
+      classFilters.push(`(h.class_level = $${paramIdx})`);
+      params.push(row.class_level);
+      paramIdx += 1;
+    }
+  });
+  
+  const whereClause = classFilters.length > 0 ? ` OR (${classFilters.join(' OR ')})` : '';
+  const query = `
+    SELECT h.*, u.name AS assigned_by_name FROM homework h
+    LEFT JOIN users u ON h.teacher_id = u.id
+    WHERE h.teacher_id = $1${whereClause}
+    ORDER BY h.created_at DESC
+  `;
+  
+  const result = await pool.query(query, params);
+  return result.rows.map(row => formatHomeworkRow(row));
 };
 
 export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {

@@ -136,32 +136,7 @@
         }
 
         /* Optimized Action Menu for Mobile/Small Screens */
-        .action-menu {
-            position: relative;
-        }
-
-        .action-menu-dropdown {
-            position: fixed !important;
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            min-width: 160px;
-            max-width: 85vw;
-            z-index: 10000;
-            display: none;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.15s ease, transform 0.15s ease;
-            pointer-events: none;
-        }
-
-        .action-menu-dropdown.active {
-            display: block;
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-        }
+        /* Action menu styles are now in admin-dashboard.css for consistency */
     </style>
     <script>
         // ⚠️ IMMEDIATE AUTH CHECK - MUST RUN FIRST
@@ -394,6 +369,12 @@
                                 <option value="">-- Choose Class --</option>
                             </select>
                         </div>
+                        <div class="filter-group" style="flex: 1; display: none;" id="att-section-group">
+                            <label>Section</label>
+                            <select id="att-section-select">
+                                <option value="">-- Choose Section --</option>
+                            </select>
+                        </div>
                         <div class="filter-group" style="flex: 1;">
                             <label>Attendance Date</label>
                             <input type="date" id="att-date">
@@ -461,16 +442,17 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Class</th>
-                                    <th>Subject</th>
                                     <th>Title</th>
+                                    <th>Class</th>
+                                    <th>Section</th>
+                                    <th>Subject</th>
                                     <th>Due Date</th>
                                     <th style="text-align: right;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="hw-table-body">
                                 <tr>
-                                    <td colspan="5" class="empty-state">No homework assigned yet.</td>
+                                    <td colspan="6" class="empty-state">No homework assigned yet.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -501,16 +483,17 @@
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Class</th>
-                                    <th>Subject</th>
                                     <th>Title</th>
+                                    <th>Class</th>
+                                    <th>Section</th>
+                                    <th>Subject</th>
                                     <th>Posted Date</th>
                                     <th style="text-align: right;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="dpp-table-body">
                                 <tr>
-                                    <td colspan="5" class="empty-state">No practice problems yet.</td>
+                                    <td colspan="6" class="empty-state">No practice problems yet.</td>
                                 </tr>
                             </tbody>
                         </table>

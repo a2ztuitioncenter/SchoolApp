@@ -55,6 +55,21 @@ async function requireTeacher(req, suppliedTeacherId = null) {
   return (teacher && teacher.role === 'teacher') ? teacher : null;
 }
 
+// Check if teacher is assigned to teach a class
+async function checkTeacherClassPermission(pool, teacherId, classLevel, section) {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`,
+      [teacherId, classLevel, section || 'A']
+    );
+    return result.rows[0].count > 0;
+  } catch (err) {
+    console.error('Error checking class permission:', err);
+    return false;
+  }
+}
+
 // ============================================
 // HELPER — Parse Class & Section
 // ============================================
@@ -195,6 +210,29 @@ router.get('/attendance/classes', async (req, res) => {
     res.json({ success: true, data: classes });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch classes' });
+  }
+});
+
+// GET /api/teacher/attendance/sections
+router.get('/attendance/sections', async (req, res) => {
+  try {
+    const { teacherId, classLevel } = req.query;
+    const pool = req.db;
+    const teacher = await requireTeacher(req, teacherId);
+    if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    if (!classLevel) return res.status(400).json({ error: 'classLevel required' });
+
+    const result = await pool.query(
+      `SELECT DISTINCT section FROM students 
+       WHERE class_level = $1 AND section IS NOT NULL 
+       ORDER BY section`,
+      [sanitizeIdentifier(classLevel)]
+    );
+
+    const sections = result.rows.map(r => r.section);
+    res.json({ success: true, data: sections });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch sections' });
   }
 });
 
@@ -406,9 +444,15 @@ router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res
     const description = sanitizeNullableText(req.body.description, 5000);
     const subject = sanitizeNullableText(req.body.subject, 100);
 
-    const own = await pool.query('SELECT teacher_id FROM homework WHERE id = $1', [id]);
+    const own = await pool.query('SELECT teacher_id, class_level, section FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
-    if (own.rows[0].teacher_id !== teacher.id) return res.status(403).json({ error: 'Not your homework' });
+    
+    // Check if teacher can edit: either they created it OR it's assigned to their class
+    const homework = own.rows[0];
+    const canEdit = homework.teacher_id === teacher.id || 
+      await checkTeacherClassPermission(pool, teacher.id, homework.class_level, homework.section);
+    
+    if (!canEdit) return res.status(403).json({ error: 'Not authorized to edit this homework' });
 
     const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : undefined;
     const finalDueDate = type === 'daily_practice' ? null : dueDate;
@@ -427,9 +471,15 @@ router.delete('/homework/:id', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const own = await pool.query('SELECT teacher_id FROM homework WHERE id = $1', [id]);
+    const own = await pool.query('SELECT teacher_id, class_level, section FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
-    if (own.rows[0].teacher_id !== teacher.id) return res.status(403).json({ error: 'Not your homework' });
+    
+    // Check if teacher can delete: either they created it OR it's assigned to their class
+    const homework = own.rows[0];
+    const canDelete = homework.teacher_id === teacher.id || 
+      await checkTeacherClassPermission(pool, teacher.id, homework.class_level, homework.section);
+    
+    if (!canDelete) return res.status(403).json({ error: 'Not authorized to delete this homework' });
 
     await deleteHomework(pool, id);
     res.json({ success: true, message: 'Homework deleted' });

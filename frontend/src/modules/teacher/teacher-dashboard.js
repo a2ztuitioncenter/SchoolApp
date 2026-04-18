@@ -192,6 +192,7 @@ function init() {
   loadDashboard();
 
   document.addEventListener('click', (e) => {
+    // Close profile menu
     if (profileBtn && profileMenu) {
       if (!profileBtn.contains(e.target) && !profileMenu.contains(e.target)) {
         profileBtn.setAttribute('aria-expanded', 'false');
@@ -199,10 +200,12 @@ function init() {
       }
     }
 
+    // Close action menus only if clicking outside
     if (!e.target.closest('.action-menu')) {
       document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
     }
 
+    // Close mobile sidebar
     if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('active')) {
       if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
         sidebar.classList.remove('active');
@@ -398,6 +401,35 @@ async function initAttendanceTab() {
 
 let attendanceData = {}; 
 
+window.onAttClassChange = async function () {
+  const classLevel = document.getElementById('att-class-select').value;
+  const sectionGroup = document.getElementById('att-section-group');
+  const sectionSel = document.getElementById('att-section-select');
+  if (!sectionGroup || !sectionSel) return;
+
+  if (!classLevel) {
+    sectionGroup.style.display = 'none';
+    sectionSel.innerHTML = '<option value="">-- Choose Section --</option>';
+    return;
+  }
+
+  try {
+    const res = await teacherAPI.getSectionsByClass(classLevel);
+    const sections = res.data || [];
+    
+    if (sections.length === 0) {
+      sectionGroup.style.display = 'none';
+      sectionSel.innerHTML = '<option value="">-- Choose Section --</option>';
+    } else {
+      sectionGroup.style.display = 'block';
+      sectionSel.innerHTML = '<option value="">-- All Sections --</option>';
+      sections.forEach(s => sectionSel.innerHTML += `<option value="${s}">${s}</option>`);
+    }
+  } catch (err) {
+    console.error('Error fetching sections:', err);
+  }
+};
+
 window.loadAttendanceSheet = async function () {
     const classLevel = document.getElementById('att-class-select').value;
     const date = document.getElementById('att-date').value;
@@ -536,26 +568,26 @@ function renderHomeworkTable() {
     tbody.innerHTML = renderEmptyState(5, 'No homework yet. Add one!');
     return;
   }
+  
   tbody.innerHTML = onlyHws.map(hw => {
-    const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '–';
-    const attAction = hw.attachmentUrl ? `
-        <button class="action-menu-item" onclick="downloadFile('${hw.attachmentUrl}', '${(hw.title || 'homework').replace(/'/g, "\\'")}.pdf')">
-          <i class="fas fa-paperclip" style="width:16px;"></i> View Attachment
-        </button>` : '';
-
+    const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
+    const classLevel = hw.classLevel || '-';
+    const section = hw.section || '-';
+    const assignedByName = hw.assignedByName || 'Teacher';
+    
     return `<tr>
-      <td><span class="status-badge" style="background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border-subtle);">Class ${hw.classLevel || '–'}</span></td>
-      <td><strong>${hw.subject || '–'}</strong></td>
-      <td>${hw.title}</td>
-      <td><i class="far fa-calendar-alt"></i> Due: ${due}</td>
+      <td><strong>${hw.title}</strong></td>
+      <td><span class="status-badge status-active">${classLevel}</span></td>
+      <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${section}</span></td>
+      <td>${hw.subject}</td>
+      <td>${due}</td>
       <td style="text-align: right;">
         <div class="action-menu">
-          <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
-          <div class="action-menu-dropdown">
-            <button class="action-menu-item" onclick="editHomework(${hw.id})"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
-            ${attAction}
+          <button class="action-menu-btn" onclick="toggleActionMenu(this)">⋮</button>
+          <div class="action-menu-dropdown" onclick="event.stopPropagation()">
+            <button class="action-menu-item" onclick="editHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
             <div class="action-menu-divider"></div>
-            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
+            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
         </div>
       </td>
@@ -571,26 +603,25 @@ function renderDppTable() {
     tbody.innerHTML = renderEmptyState(5, 'No practice sheets yet.');
     return;
   }
+  
   tbody.innerHTML = onlyDpps.map(hw => {
-    const posted = new Date(hw.createdAt).toLocaleDateString('en-IN');
-    const attAction = hw.attachmentUrl ? `
-      <button class="action-menu-item" onclick="downloadFile('${hw.attachmentUrl}', '${(hw.title || 'practice').replace(/'/g, "\\'")}.pdf')">
-        <i class="fas fa-paperclip" style="width:16px;"></i> View Attachment
-      </button>` : '';
-
+    const posted = hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('en-IN') : '-';
+    const classLevel = hw.classLevel || '-';
+    const section = hw.section || '-';
+    
     return `<tr>
-      <td><span class="status-badge" style="background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border-subtle);">${hw.classLevel || '–'}</span></td>
-      <td><strong>${hw.subject || '–'}</strong></td>
-      <td>${hw.title}</td>
-      <td><i class="far fa-calendar-alt"></i> ${posted}</td>
+      <td><strong>${hw.title}</strong></td>
+      <td><span class="status-badge status-active">${classLevel}</span></td>
+      <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${section}</span></td>
+      <td>${hw.subject}</td>
+      <td>${posted}</td>
       <td style="text-align: right;">
         <div class="action-menu">
-          <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
-          <div class="action-menu-dropdown">
-            <button class="action-menu-item" onclick="editHomework(${hw.id})"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
-            ${attAction}
+          <button class="action-menu-btn" onclick="toggleActionMenu(this)">⋮</button>
+          <div class="action-menu-dropdown" onclick="event.stopPropagation()">
+            <button class="action-menu-item" onclick="editHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
             <div class="action-menu-divider"></div>
-            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id})"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
+            <button class="action-menu-item danger" onclick="deleteHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
         </div>
       </td>
@@ -981,39 +1012,18 @@ function renderEmptyState(colspan, message, icon = 'fa-inbox') {
 }
 
 // ─── Dropdown Positioning & Logic ──────────────────────────────────────────
-window.toggleActionMenu = function (event) {
-  event.stopPropagation();
-  const btn = event.currentTarget;
+window.toggleActionMenu = function (btn) {
+  if (!btn || !btn.nextElementSibling) return;
+  
   const dropdown = btn.nextElementSibling;
-  if (!dropdown) return;
-
   const isActive = dropdown.classList.contains('active');
-  document.querySelectorAll('.action-menu-dropdown.active').forEach(d => { if (d !== dropdown) d.classList.remove('active'); });
+  
+  // Close all other menus
+  document.querySelectorAll('.action-menu-dropdown.active').forEach(d => {
+    if (d !== dropdown) d.classList.remove('active');
+  });
 
   if (!isActive) {
-    const rect = btn.getBoundingClientRect();
-    const winH = window.innerHeight;
-    const winW = window.innerWidth;
-    const margin = 8;
-    const menuW = 168;
-    const menuH = 130;
-
-    dropdown.style.cssText = 'position:fixed; z-index:9999;';
-
-    if (winH - rect.bottom < menuH + margin && rect.top > menuH + margin) {
-      dropdown.style.top = 'auto';
-      dropdown.style.bottom = `${winH - rect.top + 4}px`;
-      dropdown.style.transformOrigin = 'bottom right';
-    } else {
-      dropdown.style.top = `${rect.bottom + 4}px`;
-      dropdown.style.bottom = 'auto';
-      dropdown.style.transformOrigin = 'top right';
-    }
-
-    let left = rect.right - menuW;
-    if (left + menuW > winW - margin) left = winW - menuW - margin;
-    if (left < margin) left = margin;
-    dropdown.style.left = `${left}px`;
     dropdown.classList.add('active');
   } else {
     dropdown.classList.remove('active');

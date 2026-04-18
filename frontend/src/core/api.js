@@ -114,6 +114,7 @@ export const apiCall = async (endpoint, options = {}) => {
  */
 const attendanceAPI = {
   getClasses: () => apiCall('/admin/attendance/classes', { method: 'GET' }),
+  getSectionsByClass: (classLevel) => apiCall(`/admin/attendance/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
   getStudentsByClass: (classLevel, section = 'A') => apiCall(`/admin/attendance/students?classLevel=${encodeURIComponent(classLevel)}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
   getByClassAndDate: (classLevel, date, section = 'A') => apiCall(`/admin/attendance/class?classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
   getMonthlySummary: (classLevel, month, section = 'A') => apiCall(`/admin/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
@@ -224,6 +225,7 @@ export const teacherAPI = {
   getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId || 'me'}`, { method: 'GET' }),
   getTimetable: (teacherId) => apiCall(`/teacher/timetable/${teacherId || 'me'}`, { method: 'GET' }),
   getAttendanceClasses: () => apiCall('/teacher/attendance/classes', { method: 'GET' }),
+  getSectionsByClass: (classLevel) => apiCall(`/teacher/attendance/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
   getAttendanceSheet: (_teacherId, classLevel, date, section = 'A') => apiCall(`/teacher/attendance/sheet?classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
   markBulkAttendance: (_teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ records }) }),
   getAttendanceSummary: (_teacherId, classLevel, month, section = 'A') => apiCall(`/teacher/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET' }),

@@ -93,6 +93,19 @@ export const getClasses = async (req, res) => {
   }
 };
 
+export const getSectionsByClass = async (req, res) => {
+  try {
+    const { classLevel } = req.query;
+    if (!classLevel)
+      return res.status(400).json({ error: 'classLevel required' });
+    const sections = await attendanceModel.getSectionsByClass(classLevel);
+    res.json({ data: sections });
+  } catch (err) {
+    console.error('getSectionsByClass:', err);
+    res.status(500).json({ error: 'Server error', detail: err.message });
+  }
+};
+
 export const getMonthlyOverallAttendance = async (req, res) => {
   try {
     const { month } = req.query;

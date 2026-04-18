@@ -392,4 +392,14 @@ router.get('/check-username', async (req, res) => {
   }
 });
 
+router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const classLevels = await getClassLevels(req.db, 'school-001');
+    res.json({ success: true, classLevels });
+  } catch (error) {
+    console.error('Error fetching class levels:', error);
+    res.status(500).json({ error: 'Server error fetching class levels' });
+  }
+});
+
 export default router;

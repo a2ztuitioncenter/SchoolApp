@@ -1844,6 +1844,21 @@ window.toggleStudentStatusById = async function (id, newStatus) {
 // =============================================
 // ATTENDANCE
 // =============================================
+
+// Populate class dropdown for homework modal
+async function populateHomeworkClassDropdown(selectId) {
+    try {
+        const res = await attendanceAPI.getClasses();
+        const classes = res.data || [];
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Select Class</option>';
+        classes.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+    } catch (err) {
+        console.error('Failed to load classes for homework:', err);
+    }
+}
+
 async function initAttendanceTab() {
     try {
         const res = await attendanceAPI.getClasses();
@@ -1863,6 +1878,62 @@ async function initAttendanceTab() {
         showErrorAlert('Failed to load attendance data');
     }
 }
+
+window.onAttClassChange = async function () {
+    const classLevel = document.getElementById('att-class-select').value;
+    const sectionSel = document.getElementById('att-section-select');
+    if (!sectionSel) return;
+
+    if (!classLevel) {
+        sectionSel.style.display = 'none';
+        sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
+        return;
+    }
+
+    try {
+        const res = await attendanceAPI.getSectionsByClass(classLevel);
+        const sections = res.data || [];
+        
+        if (sections.length === 0) {
+            sectionSel.style.display = 'none';
+            sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
+        } else {
+            sectionSel.style.display = 'block';
+            sectionSel.innerHTML = '<option value="">-- All Sections --</option>';
+            sections.forEach(s => sectionSel.innerHTML += `<option value="${s}">${s}</option>`);
+        }
+    } catch (err) {
+        console.error('Error fetching sections:', err);
+    }
+};
+
+window.onSummaryClassChange = async function () {
+    const classLevel = document.getElementById('summary-class-select').value;
+    const sectionSel = document.getElementById('summary-section-select');
+    if (!sectionSel) return;
+
+    if (!classLevel) {
+        sectionSel.style.display = 'none';
+        sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
+        return;
+    }
+
+    try {
+        const res = await attendanceAPI.getSectionsByClass(classLevel);
+        const sections = res.data || [];
+        
+        if (sections.length === 0) {
+            sectionSel.style.display = 'none';
+            sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
+        } else {
+            sectionSel.style.display = 'block';
+            sectionSel.innerHTML = '<option value="">-- All Sections --</option>';
+            sections.forEach(s => sectionSel.innerHTML += `<option value="${s}">${s}</option>`);
+        }
+    } catch (err) {
+        console.error('Error fetching sections:', err);
+    }
+};
 
 /**
  * Initialize Pending Approvals tab by fetching pending users
@@ -3197,6 +3268,8 @@ window.openAddHomeworkModal = function () {
     document.getElementById('hw-edit-id').value = '';
     document.getElementById('hw-current-attachment').style.display = 'none';
     document.body.style.overflow = 'hidden';
+    // Populate class dropdown
+    populateHomeworkClassDropdown('hw-class');
 };
 
 window.closeAddHomeworkModal = function () {
@@ -3209,25 +3282,28 @@ window.openEditHomeworkModal = function (id) {
     const hw = allHomeworkData.find(h => h.id === id);
     if (!hw) return;
 
-    // Populate form with homework data
-    document.getElementById('hw-edit-id').value = hw.id;
-    document.getElementById('hw-title').value = hw.title || '';
-    document.getElementById('hw-class').value = hw.classLevel || '';
-    document.getElementById('hw-section').value = hw.section || 'A';
-    document.getElementById('hw-subject').value = hw.subject || '';
-    document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
-    document.getElementById('hw-description').value = hw.description || '';
+    // Populate class dropdown first
+    populateHomeworkClassDropdown('hw-class').then(() => {
+        // Populate form with homework data
+        document.getElementById('hw-edit-id').value = hw.id;
+        document.getElementById('hw-title').value = hw.title || '';
+        document.getElementById('hw-class').value = hw.classLevel || '';
+        document.getElementById('hw-section').value = hw.section || 'A';
+        document.getElementById('hw-subject').value = hw.subject || '';
+        document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+        document.getElementById('hw-description').value = hw.description || '';
 
-    const attachInfo = document.getElementById('hw-current-attachment');
-    if (attachInfo) {
-        if (hw.attachmentUrl) {
-            const fileName = hw.attachmentUrl.split('/').pop();
-            attachInfo.textContent = `Current: ${fileName}`;
-            attachInfo.style.display = 'block';
-        } else {
-            attachInfo.style.display = 'none';
+        const attachInfo = document.getElementById('hw-current-attachment');
+        if (attachInfo) {
+            if (hw.attachmentUrl) {
+                const fileName = hw.attachmentUrl.split('/').pop();
+                attachInfo.textContent = `Current: ${fileName}`;
+                attachInfo.style.display = 'block';
+            } else {
+                attachInfo.style.display = 'none';
+            }
         }
-    }
+    });
 
     document.getElementById('add-homework-modal').style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -3455,7 +3531,7 @@ async function loadNotifications() {
         hideInfoAlert();
 
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No notifications sent yet. Click "Send Notice" to create one.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No notifications sent yet. Click "Send Notice" to create one.</td></tr>';
             return;
         }
         tbody.innerHTML = items.map(n => {
@@ -3468,12 +3544,12 @@ async function loadNotifications() {
                 : '<span style="color:var(--text-muted)">-</span>';
             return `
                 <tr>
-                    <td>${date}</td>
-                    <td><strong>${escapeMarkup(n.title)}</strong></td>
-                    <td style="max-width:250px; word-break:break-word;">${escapeMarkup(n.message)}</td>
-                    <td><span class="badge">${recipient}</span></td>
-                    <td>${fileHtml}</td>
-                    <td>
+                    <td data-label="Date">${date}</td>
+                    <td data-label="Title"><strong>${escapeMarkup(n.title)}</strong></td>
+                    <td data-label="Message" style="max-width:250px; word-break:break-word;">${escapeMarkup(n.message)}</td>
+                    <td data-label="Target"><span class="badge">${recipient}</span></td>
+                    <td data-label="File">${fileHtml}</td>
+                    <td data-label="Actions">
                         <button class="btn btn-danger btn-xs" onclick="deleteNotification(${n.id})">
                             <i class="fas fa-trash"></i>
                         </button>
