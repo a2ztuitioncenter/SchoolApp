@@ -34,14 +34,18 @@ const upload = multer({
 });
 
 const router = express.Router();
+const adminRouter = express.Router();
+const publicRouter = express.Router();
 
-// Student Routes (more specific - should come first)
-router.get('/class/:classLevel', getClassMaterials);
+// Public Student Routes (section-filtered access only)
+publicRouter.get('/class/:classLevel', getClassMaterials);
 
-// Admin Routes
-router.get('/', getAllMaterials);
-router.post('/', upload.single('materialFile'), createMaterial);
-router.put('/:id', upload.single('materialFile'), updateMaterial);
-router.delete('/:id', deleteMaterial);
+// Admin Routes (full access)
+adminRouter.get('/', getAllMaterials);
+adminRouter.get('/class/:classLevel', getClassMaterials);
+adminRouter.post('/', upload.single('materialFile'), createMaterial);
+adminRouter.put('/:id', upload.single('materialFile'), updateMaterial);
+adminRouter.delete('/:id', deleteMaterial);
 
-export default router;
+export { publicRouter, adminRouter };
+export default adminRouter;

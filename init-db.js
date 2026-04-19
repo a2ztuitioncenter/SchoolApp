@@ -104,9 +104,13 @@ CREATE TABLE IF NOT EXISTS materials (
     subject VARCHAR(100),
     file_url VARCHAR(500) NOT NULL,
     uploaded_by VARCHAR(15),
+    uploaded_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     school_id VARCHAR(50) DEFAULT 'school-001',
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_materials_uploaded_by_id ON materials(uploaded_by_id);
+CREATE INDEX IF NOT EXISTS idx_materials_class_section ON materials(class_level, section);
 
 -- 6. Notifications Table
 CREATE TABLE IF NOT EXISTS notifications (

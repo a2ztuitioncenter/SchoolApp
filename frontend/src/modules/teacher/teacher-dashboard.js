@@ -119,15 +119,15 @@ async function populateSharedDropdowns(prefix) {
       classSel.innerHTML = '<option value="">-- Select Class --</option>' +
           classes.map(c => `<option value="${c}">${c}</option>`).join('');
       
-      // For sections, if data is just class numbers, provide defaults
+      // For sections, provide defaults (A and B only)
       secSel.innerHTML = '<option value="">-- Select Section --</option>' +
-          ['A', 'B', 'C'].map(s => `<option value="${s}">${s}</option>`).join('');
+          ['A', 'B'].map(s => `<option value="${s}">${s}</option>`).join('');
     } else {
         // Fallback for demo/test
         classSel.innerHTML = '<option value="">-- Select Class --</option>' +
             [9, 10, 11, 12].map(c => `<option value="${c}">${c}</option>`).join('');
         secSel.innerHTML = '<option value="">-- Select Section --</option>' +
-            ['A', 'B', 'C'].map(s => `<option value="${s}">${s}</option>`).join('');
+            ['A', 'B'].map(s => `<option value="${s}">${s}</option>`).join('');
     }
   } catch (err) {
     console.error('Error populating dropdowns:', err);
@@ -728,16 +728,33 @@ function setupFormListeners() {
 
   document.getElementById('mat-form')?.addEventListener('submit', async e => {
     e.preventDefault();
-    const id = document.getElementById('mat-edit-id').value;
+    
+    const classLevel = document.getElementById('mat-classLevel')?.value;
+    const section = document.getElementById('mat-section')?.value;
+    const subject = document.getElementById('mat-subject')?.value;
+    const title = document.getElementById('mat-title')?.value;
+    const file = document.getElementById('mat-file')?.files[0];
+    const id = document.getElementById('mat-edit-id')?.value;
+
+    // Validate required fields
+    if (!classLevel || !section || !subject || !title) {
+      showError('Please fill in all required fields: Class, Section, Subject, and Title');
+      return;
+    }
+
+    if (!id && !file) {
+      showError('Please select a file to upload');
+      return;
+    }
+
     const fd = new FormData();
     fd.append('teacherId', teacherId);
-    fd.append('classLevel', document.getElementById('mat-classLevel').value);
-    fd.append('section', document.getElementById('mat-section').value);
-    fd.append('subject', document.getElementById('mat-subject').value);
-    fd.append('title', document.getElementById('mat-title').value);
-    fd.append('description', document.getElementById('mat-description').value);
+    fd.append('classLevel', classLevel);
+    fd.append('section', section);
+    fd.append('subject', subject);
+    fd.append('title', title);
+    fd.append('description', document.getElementById('mat-description')?.value || '');
     if (id) fd.append('currentFileUrl', document.getElementById('mat-current-file').value);
-    const file = document.getElementById('mat-file').files[0];
     if (file) fd.append('materialFile', file);
 
     try {

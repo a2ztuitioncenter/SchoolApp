@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
         }
         
-        await loadMaterials(profile.classLevel);
+        await loadMaterials(profile.classLevel, profile.section || 'A');
     }
 
     // Tab Switching Logic
@@ -193,11 +193,13 @@ function setupTabSwitching() {
 
       if (tabId === 'materials') {
         const classText = document.getElementById('student-class')?.innerText || '';
-        // Class text for materials processed
-        const match = classText.match(/Class: (\d+)/i);
-        const studentClass = match ? match[1] : '10';
-        // Fetching materials
-        loadMaterials(studentClass);
+        const classMatch = classText.match(/Class: (\d+)/i);
+        const sectionMatch = classText.match(/Section: ([A-B])/i);
+        
+        const studentClass = classMatch ? classMatch[1] : '10';
+        const studentSection = sectionMatch ? sectionMatch[1] : 'A';
+        
+        loadMaterials(studentClass, studentSection);
       }
 
       if (tabId === 'syllabus') {
@@ -254,18 +256,17 @@ async function loadDashboardData(userId) {
   }
 }
 
-async function loadMaterials(classLevel) {
+async function loadMaterials(classLevel, section = 'A') {
     const container = document.getElementById('materials-container');
     if (!container) return;
     
     try {
         container.innerHTML = '<div class="loading">Loading materials...</div>';
         
-        // Normalize classLevel - handle various formats
         const normalizedClassLevel = String(classLevel).trim();
-        // Loading materials
+        const normalizedSection = String(section).trim();
         
-        const res = await materialsAPI.getByClass(normalizedClassLevel);
+        const res = await materialsAPI.getByClass(normalizedClassLevel, normalizedSection);
         
         // Check for API errors
         if (res.error) {
@@ -289,7 +290,7 @@ async function loadMaterials(classLevel) {
                         <h4 style="margin:0; color:#2d3748; font-size: 1.1rem;">${escapeHtml(m.title)}</h4>
                         <p style="margin:8px 0 0 0; color:#718096; font-size:0.9rem;">
                             <span style="font-weight: 500;">${escapeHtml(m.subject)}</span>
-                            ${m.section ? ` • Section ${m.section}` : ''}
+                            ${m.section ? ` • ${m.section}` : ''}
                         </p>
                         ${m.description ? `<p style="margin:5px 0 0 0; color:#718096; font-size:0.85rem;">${escapeHtml(m.description)}</p>` : ''}
                     </div>
@@ -355,7 +356,7 @@ function populateProfile(profile) {
   const classElement = document.getElementById('student-class');
   if (nameElement && profile.name) nameElement.textContent = profile.name;
   if (classElement && profile.classLevel) {
-    classElement.textContent = `Class: ${profile.classLevel} | Section: ${profile.section || 'N/A'}`;
+    classElement.textContent = `Class: ${profile.classLevel} | ${profile.section || 'N/A'}`;
   }
 }
 

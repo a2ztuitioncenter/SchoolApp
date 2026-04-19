@@ -3055,14 +3055,14 @@ async function loadMaterials() {
 
 function updateMaterialsStats() {
     const totalCount = allMaterialsData.length;
-    const uniqueClasses = new Set(allMaterialsData.map(m => m.classLevel)).size;
+    const uniqueClasses = new Set(allMaterialsData.map(m => m.class_level || m.classLevel)).size;
     const uniqueSubjects = new Set(allMaterialsData.map(m => m.subject)).size;
 
     // Count materials uploaded this week
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const thisWeekCount = allMaterialsData.filter(m => {
-        const uploadDate = new Date(m.createdAt);
+        const uploadDate = new Date(m.created_at || m.createdAt);
         return uploadDate >= oneWeekAgo;
     }).length;
 
@@ -3097,9 +3097,10 @@ function renderMaterialsTable() {
                 ${m.description ? `<br><small style="color: var(--text-muted);">${escapeHtml(m.description.substring(0, 50))}</small>` : ''}
             </td>
             <td>${escapeHtml(m.subject)}</td>
-            <td><span class="badge">Class ${escapeHtml(m.classLevel)}</span></td>
-            <td>${escapeHtml(m.uploadedBy || '-')}</td>
-            <td><small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small></td>
+            <td><span class="badge">Class ${escapeHtml(m.class_level || m.classLevel)}</span></td>
+            <td><span class="badge secondary">${escapeHtml(m.section || 'A')}</span></td>
+            <td>${escapeHtml(m.uploaded_by || m.uploadedBy || '-')}</td>
+            <td><small style="color: var(--text-muted);">${formatDate(m.created_at || m.createdAt)}</small></td>
             <td>
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
@@ -3107,7 +3108,7 @@ function renderMaterialsTable() {
                         <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
                             <i class="fas fa-download" style="width: 16px;"></i> Download
                         </button>
-                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}",description:'${(m.description || '').replace(/'/g, "\\'")}",subject:'${m.subject}',classLevel:'${m.classLevel}',fileUrl:'${m.fileUrl}'})">
+                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}',description:'${(m.description || '').replace(/'/g, "\\'")}',subject:'${m.subject}',classLevel:'${m.class_level || m.classLevel}',section:'${m.section || 'A'}',fileUrl:'${m.file_url || m.fileUrl}'})">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
                         </button>
                         <div class="action-menu-divider"></div>
@@ -3157,6 +3158,7 @@ window.closeAllMaterialMenus = function () {
 function getFilteredMaterials() {
     const searchTerm = document.getElementById('material-search')?.value.toLowerCase() || '';
     const classFilter = document.getElementById('material-class-filter')?.value || '';
+    const sectionFilter = document.getElementById('material-section-filter')?.value || '';
     const subjectFilter = document.getElementById('material-subject-filter')?.value || '';
 
     return allMaterialsData.filter(m => {
@@ -3165,10 +3167,11 @@ function getFilteredMaterials() {
             m.subject.toLowerCase().includes(searchTerm) ||
             (m.description && m.description.toLowerCase().includes(searchTerm));
 
-        const matchesClass = !classFilter || m.classLevel === classFilter;
+        const matchesClass = !classFilter || (m.class_level || m.classLevel) === classFilter;
+        const matchesSection = !sectionFilter || (m.section || 'A') === sectionFilter;
         const matchesSubject = !subjectFilter || m.subject === subjectFilter;
 
-        return matchesSearch && matchesClass && matchesSubject;
+        return matchesSearch && matchesClass && matchesSection && matchesSubject;
     });
 }
 
@@ -3196,10 +3199,11 @@ window.saveMaterial = async function (e) {
     const description = document.getElementById('material-description')?.value;
     const subject = document.getElementById('material-subject')?.value;
     const classLevel = document.getElementById('material-class')?.value;
+    const section = document.getElementById('material-section')?.value;
     const fileInput = document.getElementById('material-file');
 
-    if (!title || !subject || !classLevel) {
-        showErrorAlert('Please fill in all required fields (Title, Subject, Class)');
+    if (!title || !subject || !classLevel || !section) {
+        showErrorAlert('Please fill in all required fields: Title, Subject, Class, and Section');
         return;
     }
 
@@ -3208,6 +3212,7 @@ window.saveMaterial = async function (e) {
     formData.append('description', description);
     formData.append('subject', subject);
     formData.append('classLevel', classLevel);
+    formData.append('section', section);
     formData.append('uploadedBy', sessionStorage.getItem('adminName') || 'Admin');
 
     if (fileInput.files[0]) {
@@ -3265,19 +3270,24 @@ window.openMaterialModal = function (material = null) {
     fileHint.style.display = 'none';
     fileInput.required = true;
 
-    if (material) {
-        titleObj.innerText = 'Edit Study Material';
-        document.getElementById('material-id').value = material.id;
-        document.getElementById('material-title').value = material.title;
-        document.getElementById('material-description').value = material.description || '';
-        document.getElementById('material-subject').value = material.subject;
-        document.getElementById('material-class').value = material.classLevel;
-        fileHint.style.display = 'block';
-        fileInput.required = false;
-    } else {
-        titleObj.innerText = 'Add Study Material';
-        document.getElementById('material-id').value = '';
-    }
+    // Load available classes dynamically
+    populateHomeworkClassDropdown('material-class').then(() => {
+        if (material) {
+            titleObj.innerText = 'Edit Study Material';
+            document.getElementById('material-id').value = material.id;
+            document.getElementById('material-title').value = material.title;
+            document.getElementById('material-description').value = material.description || '';
+            document.getElementById('material-subject').value = material.subject;
+            document.getElementById('material-class').value = material.classLevel;
+            document.getElementById('material-section').value = material.section || 'A';
+            fileHint.style.display = 'block';
+            fileInput.required = false;
+        } else {
+            titleObj.innerText = 'Add Study Material';
+            document.getElementById('material-id').value = '';
+        }
+    });
+
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     closeAllMaterialMenus();
@@ -3292,6 +3302,8 @@ window.closeMaterialModal = function () {
 async function initMaterialsTab() {
     try {
         await loadMaterials();
+        // Dynamically populate class filter
+        populateHomeworkClassDropdown('material-class-filter');
     } catch (err) {
         showErrorAlert('Failed to load materials');
     }

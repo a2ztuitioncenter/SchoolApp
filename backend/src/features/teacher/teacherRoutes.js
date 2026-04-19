@@ -489,7 +489,7 @@ router.delete('/homework/:id', async (req, res) => {
 });
 
 // ============================================
-// STUDY MATERIALS — teacher-scoped CRUD
+// STUDY MATERIALS — teacher-scoped CRUD with authorization
 // ============================================
 
 router.get('/materials', async (req, res) => {
@@ -499,12 +499,17 @@ router.get('/materials', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
+    // Get materials uploaded by this teacher
     const result = await pool.query(
-      `SELECT * FROM materials WHERE uploaded_by = $1 ORDER BY created_at DESC`,
-      [teacher.phone]
+      `SELECT * FROM materials 
+       WHERE uploaded_by_id = $1 
+       ORDER BY created_at DESC`,
+      [teacher.id]
     );
+    
     res.json({ success: true, data: result.rows });
   } catch (err) {
+    console.error('Error fetching materials:', err);
     res.status(500).json({ error: 'Failed to fetch materials' });
   }
 });
@@ -515,22 +520,44 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
     const section = sanitizeNullableText(req.body.section, 10);
     const subject = sanitizeText(req.body.subject, 100);
-    if (!title || !classLevel || !subject) return res.status(400).json({ error: 'title, class_level, subject required' });
-    if (!req.file) return res.status(400).json({ error: 'File is required' });
+
+    // Enforce all required fields including section
+    if (!title || !classLevel || !section || !subject) {
+      return res.status(400).json({ error: 'All fields required: title, classLevel, section, subject. Section cannot be empty.' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
+    // Validate teacher has permission for this class and section
+    const permissionCheck = await pool.query(
+      `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section IS NULL)`,
+      [teacher.id, classLevel, section || null]
+    );
+
+    if (permissionCheck.rows[0].count === 0) {
+      return res.status(403).json({ 
+        error: 'You do not have permission to upload materials for this class/section. Please ensure it is assigned to you.' 
+      });
+    }
 
     const fileUrl = `/uploads/materials/${req.file.filename}`;
     const result = await pool.query(
-      `INSERT INTO materials (title, description, class_level, section, subject, file_url, uploaded_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.phone]
+      `INSERT INTO materials (title, description, class_level, section, subject, file_url, uploaded_by_id, uploaded_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.id, teacher.phone]
     );
+
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error uploading material:', err);
     res.status(500).json({ error: 'Failed to upload material' });
   }
 });
@@ -542,25 +569,56 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
     const section = sanitizeNullableText(req.body.section, 10);
     const subject = sanitizeText(req.body.subject, 100);
 
-    const own = await pool.query('SELECT uploaded_by FROM materials WHERE id = $1', [id]);
-    if (!own.rows.length) return res.status(404).json({ error: 'Material not found' });
-    if (own.rows[0].uploaded_by !== teacher.phone) return res.status(403).json({ error: 'Not your material' });
+    // Enforce section cannot be empty
+    if (!section) {
+      return res.status(400).json({ error: 'Section is required and cannot be empty' });
+    }
+
+    // Check if material exists and belongs to this teacher
+    const own = await pool.query(
+      'SELECT uploaded_by_id FROM materials WHERE id = $1', 
+      [id]
+    );
+    if (!own.rows.length) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    if (own.rows[0].uploaded_by_id !== teacher.id) {
+      return res.status(403).json({ error: 'You can only modify materials you uploaded' });
+    }
+
+    // Validate teacher has permission for this class and section
+    const permissionCheck = await pool.query(
+      `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section IS NULL)`,
+      [teacher.id, classLevel, section || null]
+    );
+
+    if (permissionCheck.rows[0].count === 0) {
+      return res.status(403).json({ 
+        error: 'You do not have permission to update materials for this class/section' 
+      });
+    }
 
     let fileUrl = req.body.currentFileUrl;
     if (req.file) fileUrl = `/uploads/materials/${req.file.filename}`;
 
     const result = await pool.query(
-      `UPDATE materials SET title=$1, description=$2, class_level=$3, section=$4, subject=$5, file_url=$6 WHERE id=$7 RETURNING *`,
-      [title, description || null, classLevel, section || null, subject, fileUrl, id]
+      `UPDATE materials 
+       SET title=$1, description=$2, class_level=$3, section=$4, subject=$5, file_url=$6, uploaded_by=$7 
+       WHERE id=$8 RETURNING *`,
+      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.phone, id]
     );
+
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('Error updating material:', err);
     res.status(500).json({ error: 'Failed to update material' });
   }
 });
@@ -573,13 +631,22 @@ router.delete('/materials/:id', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const own = await pool.query('SELECT uploaded_by FROM materials WHERE id = $1', [id]);
-    if (!own.rows.length) return res.status(404).json({ error: 'Material not found' });
-    if (own.rows[0].uploaded_by !== teacher.phone) return res.status(403).json({ error: 'Not your material' });
+    // Check if material exists and belongs to this teacher
+    const own = await pool.query(
+      'SELECT uploaded_by_id FROM materials WHERE id = $1', 
+      [id]
+    );
+    if (!own.rows.length) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    if (own.rows[0].uploaded_by_id !== teacher.id) {
+      return res.status(403).json({ error: 'You can only delete materials you uploaded' });
+    }
 
     await pool.query('DELETE FROM materials WHERE id = $1', [id]);
     res.json({ success: true, message: 'Material deleted' });
   } catch (err) {
+    console.error('Error deleting material:', err);
     res.status(500).json({ error: 'Failed to delete material' });
   }
 });

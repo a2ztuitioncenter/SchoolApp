@@ -1439,11 +1439,11 @@
                     <div class="filter-group">
                         <select id="material-class-filter" onchange="filterMaterials()">
                             <option value="">All Classes</option>
-                            <option value="8">Class 8</option>
-                            <option value="9">Class 9</option>
-                            <option value="10">Class 10</option>
-                            <option value="11">Class 11</option>
-                            <option value="12">Class 12</option>
+                        </select>
+                        <select id="material-section-filter" onchange="filterMaterials()">
+                            <option value="">All Sections</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
                         </select>
                         <select id="material-subject-filter" onchange="filterMaterials()">
                             <option value="">All Subjects</option>
@@ -2076,28 +2076,26 @@
                     </div>
                     <div class="form-group">
                         <label>Subject *</label>
-                        <select id="material-subject" required>
-                            <option value="">Select Subject</option>
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Science">Science</option>
-                            <option value="English">English</option>
-                            <option value="History">History</option>
-                            <option value="Geography">Geography</option>
-                        </select>
+                        <input type="text" id="material-subject" required placeholder="e.g. Mathematics">
                     </div>
                 </div>
-                <div class="form-row">
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="form-group">
                         <label>Class Level *</label>
                         <select id="material-class" required>
                             <option value="">Select Class</option>
-                            <option value="8">Class 8</option>
-                            <option value="9">Class 9</option>
-                            <option value="10">Class 10</option>
-                            <option value="11">Class 11</option>
-                            <option value="12">Class 12</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Section *</label>
+                        <select id="material-section" required>
+                            <option value="">Select Section</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>File (PDF, JPG, PNG) *</label>
                         <input type="file" id="material-file" accept=".pdf,.jpg,.jpeg,.png">
