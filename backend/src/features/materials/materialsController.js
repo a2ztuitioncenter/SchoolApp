@@ -1,134 +1,148 @@
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
+import { removeStoredFile } from './materialsStorage.js';
+import {
+  canManageMaterial,
+  createMaterial,
+  deleteMaterial,
+  getMaterialById,
+  getVisibleMaterials,
+  updateMaterial,
+} from './materialsService.js';
+import { getTeacherAssignments, isTeacherAssignedTo } from './materialsPolicy.js';
 
-export const getAllMaterials = async (req, res) => {
+function toApiMaterial(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    fileUrl: row.file_url,
+    file_url: row.file_url,
+    classId: row.class_id,
+    class_id: row.class_id,
+    classLevel: row.class_level,
+    class_level: row.class_level,
+    sectionId: row.section_id,
+    section_id: row.section_id,
+    section: row.section,
+    uploadedBy: row.uploaded_by,
+    uploaded_by: row.uploaded_by,
+    uploaderRole: row.uploader_role,
+    uploader_role: row.uploader_role,
+    createdAt: row.created_at,
+    created_at: row.created_at,
+    updatedAt: row.updated_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function assertTeacherScope(req, classLevel, section) {
+  if (req.user.role !== 'teacher') return true;
+  const assignments = await getTeacherAssignments(req.db, req.user.userId);
+  return isTeacherAssignedTo(assignments, classLevel, section);
+}
+
+export const listMaterials = async (req, res) => {
   try {
-    const result = await req.db.query('SELECT * FROM materials ORDER BY created_at DESC');
-    console.log(`📖 getAllMaterials returned ${result.rows.length} total materials`);
-    result.rows.forEach((m, i) => {
-      console.log(`  [${i}] id=${m.id}, title="${m.title}", class_level=${m.class_level}, section="${m.section}"`);
-    });
-    res.json({ data: result.rows });
-  } catch (err) {
-    console.error('getAllMaterials:', err);
-    res.status(500).json({ error: 'Server error' });
+    const classLevel = sanitizeIdentifier(req.query.classLevel || req.query.class_level || '', 20);
+    const section = sanitizeNullableText(req.query.section, 10);
+    const rows = await getVisibleMaterials(req.db, req.user, { classLevel, section });
+    res.json({ success: true, data: rows.map(toApiMaterial) });
+  } catch (error) {
+    console.error('listMaterials error:', error);
+    res.status(500).json({ error: 'Failed to fetch materials' });
   }
 };
 
-/**
- * Get materials for a specific class and section (Student access)
- * Returns ONLY materials that match student's class AND section.
- * Access control:
- * - Returns materials targeted to student's section
- * - Returns materials shared across all sections (section IS NULL)
- * - NEVER returns materials targeted to different sections
- */
-export const getClassMaterials = async (req, res) => {
-    try {
-        const { classLevel } = req.params;
-        const section = req.query.section || null; // Allow null/empty
-
-        console.log('🔍 getClassMaterials called:', { classLevel, section });
-
-        if (!classLevel) {
-            return res.status(400).json({ error: 'classLevel is required' });
-        }
-
-        // 1. If section is provided, return materials for that section OR materials for ALL sections (NULL)
-        // 2. If section is NOT provided, return ONLY materials for ALL sections (NULL)
-        let query = `SELECT * FROM materials WHERE class_level = $1`;
-        let params = [classLevel];
-
-        if (section) {
-            query += ` AND (section = $2 OR section IS NULL)`;
-            params.push(section);
-        } else {
-            query += ` AND section IS NULL`;
-        }
-
-        query += ` ORDER BY created_at DESC`;
-
-        const result = await req.db.query(query, params);
-
-        console.log(`📚 getClassMaterials returned ${result.rows.length} materials for class=${classLevel}, section=${section || 'ALL'}`);
-        res.json({ data: result.rows });
-    } catch (err) {
-        console.error('getClassMaterials:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-};
-
-export const createMaterial = async (req, res) => {
+export const uploadMaterial = async (req, res) => {
   try {
+    if (req.user.role === 'student') {
+      return res.status(403).json({ error: 'Students are not allowed to upload study materials' });
+    }
+
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10) || null; // Allow section to be NULL for shared materials
-    const subject = sanitizeText(req.body.subject, 100);
-    const uploadedBy = sanitizeNullableText(req.user?.phone || req.body.uploadedBy || req.body.uploaded_by, 100);
-    const uploadedById = req.user?.userId || null;
-    const fileUrl = req.file ? `/uploads/materials/${req.file.filename}` : null;
-
-    console.log('📝 createMaterial received:', { title, classLevel, section, subject, fileUrl, uploadedBy });
-
-    // Enforce required fields (section is optional - NULL allows sharing across all sections)
-    if (!title || !classLevel || !subject || !fileUrl) {
-      return res.status(400).json({ 
-        error: 'All fields required: title, classLevel, subject, and file. Section is optional.' 
-      });
+    const section = sanitizeNullableText(req.body.section, 10);
+    if (!title || !classLevel || !req.file) {
+      return res.status(422).json({ error: 'title, classLevel, and material file are required' });
     }
 
-    const result = await req.db.query(
-      `INSERT INTO materials (title, description, class_level, section, subject, file_url, uploaded_by, uploaded_by_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [title, description, classLevel, section || null, subject, fileUrl, uploadedBy || null, uploadedById]
-    );
-    res.status(201).json({ data: result.rows[0] });
-  } catch (err) {
-    console.error('createMaterial:', err);
-    res.status(500).json({ error: 'Server error' });
+    const inScope = await assertTeacherScope(req, classLevel, section);
+    if (!inScope) {
+      return res.status(403).json({ error: 'Permission denied for this class/section assignment' });
+    }
+
+    const material = await createMaterial(req.db, req.user, {
+      title,
+      description,
+      classLevel,
+      section,
+      fileUrl: `/uploads/materials/${req.file.filename}`,
+    });
+    res.status(201).json({ success: true, data: toApiMaterial(material) });
+  } catch (error) {
+    console.error('uploadMaterial error:', error);
+    res.status(500).json({ error: 'Failed to upload material' });
   }
 };
 
-export const updateMaterial = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const title = sanitizeText(req.body.title, 200);
-        const description = sanitizeNullableText(req.body.description, 5000);
-        const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-        const section = sanitizeNullableText(req.body.section, 10) || null; // Allow section to be NULL
-        const subject = sanitizeText(req.body.subject, 100);
-        let fileUrl = req.body.fileUrl || req.body.file_url; // Keep existing if no new file
+export const editMaterial = async (req, res) => {
+  try {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(422).json({ error: 'Invalid material id' });
+    if (req.user.role === 'student') return res.status(403).json({ error: 'Students are read-only users' });
 
-        // Note: section is now optional and can be NULL for shared materials
+    const material = await getMaterialById(req.db, id);
+    if (!material) return res.status(404).json({ error: 'Material not found' });
 
-        if (req.file) {
-            fileUrl = `/uploads/materials/${req.file.filename}`;
-        }
-
-        const result = await req.db.query(
-            `UPDATE materials 
-             SET title = $1, description = $2, class_level = $3, section = $4, subject = $5, file_url = $6, updated_at = CURRENT_TIMESTAMP
-             WHERE id = $7 RETURNING *`,
-            [title, description, classLevel, section, subject, fileUrl, id]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Material not found' });
-        }
-
-        res.json({ data: result.rows[0] });
-    } catch (err) {
-        console.error('updateMaterial:', err);
-        res.status(500).json({ error: 'Server error' });
+    const assignments = req.user.role === 'teacher' ? await getTeacherAssignments(req.db, req.user.userId) : [];
+    if (!canManageMaterial(req.user, material, assignments)) {
+      return res.status(403).json({ error: 'Permission denied to edit this material' });
     }
+
+    const nextClass = sanitizeIdentifier(req.body.classLevel || req.body.class_level || material.class_level, 20);
+    const nextSection = req.body.section === undefined ? material.section : sanitizeNullableText(req.body.section, 10);
+    if (!(await assertTeacherScope(req, nextClass, nextSection))) {
+      return res.status(403).json({ error: 'Permission denied for target class/section' });
+    }
+
+    const updated = await updateMaterial(req.db, id, {
+      title: sanitizeText(req.body.title, 200) || undefined,
+      description: sanitizeNullableText(req.body.description, 5000),
+      classLevel: nextClass,
+      section: nextSection,
+      fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : req.body.fileUrl || req.body.file_url,
+    });
+
+    if (req.file && material.file_url && material.file_url !== updated.file_url) {
+      removeStoredFile(material.file_url);
+    }
+    res.json({ success: true, data: toApiMaterial(updated) });
+  } catch (error) {
+    console.error('editMaterial error:', error);
+    res.status(500).json({ error: 'Failed to update material' });
+  }
 };
 
-export const deleteMaterial = async (req, res) => {
+export const removeMaterial = async (req, res) => {
   try {
-    await req.db.query('DELETE FROM materials WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Material deleted' });
-  } catch (err) {
-    console.error('deleteMaterial:', err);
-    res.status(500).json({ error: 'Server error' });
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(422).json({ error: 'Invalid material id' });
+    if (req.user.role === 'student') return res.status(403).json({ error: 'Students are read-only users' });
+
+    const material = await getMaterialById(req.db, id);
+    if (!material) return res.status(404).json({ error: 'Material not found' });
+
+    const assignments = req.user.role === 'teacher' ? await getTeacherAssignments(req.db, req.user.userId) : [];
+    if (!canManageMaterial(req.user, material, assignments)) {
+      return res.status(403).json({ error: 'Permission denied to delete this material' });
+    }
+
+    const deleted = await deleteMaterial(req.db, id);
+    removeStoredFile(deleted.file_url);
+    res.json({ success: true, message: 'Material deleted successfully' });
+  } catch (error) {
+    console.error('removeMaterial error:', error);
+    res.status(500).json({ error: 'Failed to delete material' });
   }
 };

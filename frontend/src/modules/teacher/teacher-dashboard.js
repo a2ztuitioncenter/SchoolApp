@@ -739,9 +739,9 @@ function setupFormListeners() {
     console.log('📝 [Material Form] Submitted:', { title, subject, classLevel, section: section || 'SHARED', hasFile: !!file });
 
     // Section is optional - leave empty to create shared materials for all sections
-    if (!classLevel || !subject || !title) {
+    if (!classLevel || !title) {
       console.log('❌ [Material Form] Missing required fields');
-      showError('Please fill in all required fields: Class, Subject, and Title. Section is optional (leave empty to share across all sections).');
+      showError('Please fill in required fields: Class and Title. Section is optional (leave empty to share across all sections).');
       return;
     }
 
@@ -775,7 +775,7 @@ function setupFormListeners() {
     fd.append('teacherId', teacherId);
     fd.append('classLevel', classLevel);
     fd.append('section', section);
-    fd.append('subject', subject);
+    if (subject) fd.append('subject', subject);
     fd.append('title', title);
     fd.append('description', document.getElementById('mat-description')?.value || '');
     if (id) fd.append('currentFileUrl', document.getElementById('mat-current-file').value);

@@ -20,7 +20,7 @@ import teacherRoutes from './features/teacher/teacherRoutes.js';
 import attendanceRoutes from './features/attendance/attendanceRoutes.js';
 import homeworkRoutes   from './features/homework/homeworkRoutes.js';
 import feeRoutes        from './features/fees/feeRoutes.js';
-import materialsRoutes, { adminRouter as adminMaterialsRouter, publicRouter as publicMaterialsRouter } from './features/materials/materialsRoutes.js';
+import materialsRoutes from './features/materials/materialsRoutes.js';
 import notificationsRoutes from './features/notifications/notificationsRoutes.js';
 import resultsRoutes    from './features/results/resultsRoutes.js';
 import downloadRoutes   from './features/download/downloadRoutes.js';
@@ -98,8 +98,7 @@ app.use('/api/teacher', authenticate, authorize('teacher'), teacherRoutes);
 app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);
 app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
 app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
-app.use('/api/admin/materials', authenticate, authorize('admin'), adminMaterialsRouter);
-app.use('/api/materials', authenticate, publicMaterialsRouter); // Public materials access for students (section-filtered only)
+app.use('/api/materials', authenticate, materialsRoutes);
 app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
 app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
 app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users

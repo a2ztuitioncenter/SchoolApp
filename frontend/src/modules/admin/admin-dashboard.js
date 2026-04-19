@@ -3203,15 +3203,15 @@ window.saveMaterial = async function (e) {
     const fileInput = document.getElementById('material-file');
 
     // Section is optional - leave empty to create shared materials for all sections
-    if (!title || !subject || !classLevel) {
-        showErrorAlert('Please fill in all required fields: Title, Subject, and Class. Section is optional (leave empty to share across all sections).');
+    if (!title || !classLevel) {
+        showErrorAlert('Please fill in required fields: Title and Class. Section is optional (leave empty to share across all sections).');
         return;
     }
 
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
-    formData.append('subject', subject);
+    if (subject) formData.append('subject', subject);
     formData.append('classLevel', classLevel);
     formData.append('section', section);
     formData.append('uploadedBy', sessionStorage.getItem('adminName') || 'Admin');

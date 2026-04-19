@@ -149,11 +149,17 @@ const feesAPI = {
  * Materials, Notifications, Results APIs
  */
 const materialsAPI = {
-  getAll: () => apiCall('/admin/materials', { method: 'GET' }),
-  getByClass: (classLevel, section = 'A') => apiCall(`/materials/class/${classLevel}?section=${encodeURIComponent(section)}`, { method: 'GET' }),
-  create: (formData) => apiCall('/admin/materials', { method: 'POST', body: formData }),
-  update: (id, formData) => apiCall(`/admin/materials/${id}`, { method: 'PUT', body: formData }),
-  delete: (id) => apiCall(`/admin/materials/${id}`, { method: 'DELETE' }),
+  getAll: (classLevel = '', section = '') => {
+    const params = new URLSearchParams();
+    if (classLevel) params.set('classLevel', classLevel);
+    if (section) params.set('section', section);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return apiCall(`/materials${suffix}`, { method: 'GET' });
+  },
+  getByClass: (classLevel = '', section = '') => materialsAPI.getAll(classLevel, section),
+  create: (formData) => apiCall('/materials/upload', { method: 'POST', body: formData }),
+  update: (id, formData) => apiCall(`/materials/${id}`, { method: 'PUT', body: formData }),
+  delete: (id) => apiCall(`/materials/${id}`, { method: 'DELETE' }),
 };
 
 const notificationsAPI = {
@@ -236,10 +242,10 @@ export const teacherAPI = {
   createHomework: (formData) => apiCall('/teacher/homework', { method: 'POST', body: formData }),
   updateHomework: (id, formData) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData }),
   deleteHomework: (id, teacherId) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
-  getMaterials: (teacherId) => apiCall(`/teacher/materials${teacherId ? '?teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET' }),
-  createMaterial: (formData) => apiCall('/teacher/materials', { method: 'POST', body: formData }),
-  updateMaterial: (id, formData) => apiCall(`/teacher/materials/${id}`, { method: 'PUT', body: formData }),
-  deleteMaterial: (id, teacherId) => apiCall(`/teacher/materials/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
+  getMaterials: (_teacherId) => apiCall('/materials', { method: 'GET' }),
+  createMaterial: (formData) => apiCall('/materials/upload', { method: 'POST', body: formData }),
+  updateMaterial: (id, formData) => apiCall(`/materials/${id}`, { method: 'PUT', body: formData }),
+  deleteMaterial: (id, _teacherId) => apiCall(`/materials/${id}`, { method: 'DELETE' }),
   getSyllabus: () => apiCall('/teacher/syllabus', { method: 'GET' }),
   createSyllabus: (data) => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
   updateSyllabus: (id, data) => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

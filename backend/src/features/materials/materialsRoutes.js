@@ -1,13 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { 
-    getAllMaterials, 
-    createMaterial, 
-    updateMaterial, 
-    deleteMaterial, 
-    getClassMaterials 
-} from './materialsController.js';
+import { editMaterial, listMaterials, removeMaterial, uploadMaterial } from './materialsController.js';
 
 // Multer Config for Materials
 const storage = multer.diskStorage({
@@ -24,28 +18,26 @@ const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only JPG, PNG and PDF allowed'));
+      cb(new Error('Only PDF, image, and document files are allowed'));
     }
   }
 });
 
 const router = express.Router();
-const adminRouter = express.Router();
-const publicRouter = express.Router();
 
-// Public Student Routes (section-filtered access only)
-publicRouter.get('/class/:classLevel', getClassMaterials);
+router.get('/', listMaterials);
+router.post('/upload', upload.single('materialFile'), uploadMaterial);
+router.put('/:id', upload.single('materialFile'), editMaterial);
+router.delete('/:id', removeMaterial);
 
-// Admin Routes (full access)
-adminRouter.get('/', getAllMaterials);
-adminRouter.get('/class/:classLevel', getClassMaterials);
-adminRouter.post('/', upload.single('materialFile'), createMaterial);
-adminRouter.put('/:id', upload.single('materialFile'), updateMaterial);
-adminRouter.delete('/:id', deleteMaterial);
-
-export { publicRouter, adminRouter };
-export default adminRouter;
+export default router;
