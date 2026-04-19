@@ -31,6 +31,7 @@ let allMaterials = [];
 let allSyllabus = [];
 let allTimetable = [];
 let availableClasses = [];
+let showAllMaterials = false;
 
 // ─── Day helpers ──────────────────────────────────────────────────────────────
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -108,26 +109,39 @@ async function populateSharedDropdowns(prefix) {
   if (!classSel || !secSel) return;
 
   try {
-    // If we already have options (other than default), don't reload
-    if (classSel.options.length > 2) return; 
-
     const res = await teacherAPI.getAttendanceClasses(teacherId || '');
     if (res.success && res.data && res.data.length > 0) {
-      // Sort classes numerically
-      const classes = [...new Set(res.data.map(c => parseInt(c)))].sort((a,b) => a-b);
-      
+      const parsed = res.data.map(raw => {
+        const value = String(raw || '').trim();
+        const sectionMatch = value.match(/^(\d+)([A-Z])$/i);
+        if (sectionMatch) return { classLevel: sectionMatch[1], section: sectionMatch[2].toUpperCase() };
+        return { classLevel: value, section: null };
+      });
+
+      const classes = [...new Set(parsed.map(p => p.classLevel))].sort((a, b) => Number(a) - Number(b));
+      const sectionsByClass = parsed.reduce((acc, item) => {
+        if (!acc[item.classLevel]) acc[item.classLevel] = new Set();
+        if (item.section) acc[item.classLevel].add(item.section);
+        return acc;
+      }, {});
+
       classSel.innerHTML = '<option value="">-- Select Class --</option>' +
-          classes.map(c => `<option value="${c}">${c}</option>`).join('');
-      
-      // For sections, provide defaults (A and B only)
-      secSel.innerHTML = '<option value="">-- Select Section --</option>' +
-          ['A', 'B'].map(s => `<option value="${s}">${s}</option>`).join('');
+        classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      const renderSections = () => {
+        const selectedClass = classSel.value;
+        const sections = selectedClass && sectionsByClass[selectedClass]
+          ? [...sectionsByClass[selectedClass]].sort()
+          : [];
+        secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>' +
+          sections.map(s => `<option value="${s}">${s}</option>`).join('');
+      };
+
+      classSel.onchange = renderSections;
+      renderSections();
     } else {
-        // Fallback for demo/test
-        classSel.innerHTML = '<option value="">-- Select Class --</option>' +
-            [9, 10, 11, 12].map(c => `<option value="${c}">${c}</option>`).join('');
-        secSel.innerHTML = '<option value="">-- Select Section --</option>' +
-            ['A', 'B'].map(s => `<option value="${s}">${s}</option>`).join('');
+      classSel.innerHTML = '<option value="">-- Select Class --</option>';
+      secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>';
     }
   } catch (err) {
     console.error('Error populating dropdowns:', err);
@@ -825,11 +839,22 @@ function setupFormListeners() {
 // ─── MATERIALS ────────────────────────────────────────────────────────────────
 async function loadMaterials() {
   try {
+    showAllMaterials = false;
     console.log('📚 [Teacher Materials] Fetching for teacherId:', teacherId);
     const res = await teacherAPI.getMaterials(teacherId);
     console.log('📚 [Teacher Materials] Response:', res);
-    allMaterials = res.data || [];
+    allMaterials = (res.data || []).map((m) => ({
+      ...m,
+      classLevel: m.classLevel || m.class_level || '-',
+      section: m.section || '',
+      subject: m.subject || 'General',
+      fileUrl: m.fileUrl || m.file_url || '',
+      uploadedBy: m.uploadedBy || m.uploaded_by || 'Admin',
+      createdAt: m.createdAt || m.created_at || null,
+    }));
     console.log(`📚 [Teacher Materials] Loaded ${allMaterials.length} materials`);
+    updateMaterialsStats();
+    populateMaterialFilters();
     renderMaterialsTable();
     setText('stat-materials', allMaterials.length);
   } catch (err) { 
@@ -840,16 +865,28 @@ async function loadMaterials() {
 
 function renderMaterialsTable() {
   const tbody = document.getElementById('mat-table-body');
+  const toggleBtn = document.getElementById('mat-toggle-btn');
+  const countText = document.getElementById('mat-count-text');
   if (!tbody) return;
-  if (!allMaterials.length) {
-    tbody.innerHTML = renderEmptyState(5, 'No materials yet.');
+  const list = getFilteredMaterials();
+  if (!list.length) {
+    tbody.innerHTML = renderEmptyState(7, 'No materials found.');
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    if (countText) countText.textContent = '';
     return;
   }
-  tbody.innerHTML = allMaterials.map(m => `
+
+  const displayLimit = 10;
+  const toShow = showAllMaterials ? list : list.slice(0, displayLimit);
+
+  tbody.innerHTML = toShow.map(m => `
     <tr>
       <td><strong>${m.title}</strong></td>
       <td>${m.subject}</td>
-      <td><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">Class ${m.classLevel}${m.section ? '-' + m.section : ''}</span></td>
+      <td><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">Class ${m.classLevel}</span></td>
+      <td><span class="badge secondary">${m.section || '-'}</span></td>
+      <td>${m.uploadedBy}</td>
+      <td><small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small></td>
       <td style="text-align: right;">
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
@@ -862,6 +899,12 @@ function renderMaterialsTable() {
         </div>
       </td>
     </tr>`).join('');
+
+  if (toggleBtn) {
+    toggleBtn.style.display = list.length > displayLimit ? 'inline-flex' : 'none';
+    toggleBtn.textContent = showAllMaterials ? 'Show Less' : `Show More Materials (${list.length})`;
+  }
+  if (countText) countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
 }
 
 window.openMatModal = async function (m = null) {
@@ -896,6 +939,67 @@ window.deleteMaterial = async id => {
     await loadMaterials();
   } catch (err) { showError(err.message); }
 };
+
+function updateMaterialsStats() {
+  const total = allMaterials.length;
+  const classCount = new Set(allMaterials.map(m => m.classLevel)).size;
+  const subjectCount = new Set(allMaterials.map(m => m.subject || 'General')).size;
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekCount = allMaterials.filter(m => m.createdAt && new Date(m.createdAt) >= weekAgo).length;
+
+  setText('mat-stat-total', total);
+  setText('mat-stat-classes', classCount);
+  setText('mat-stat-subjects', subjectCount);
+  setText('mat-stat-week', weekCount);
+}
+
+function populateMaterialFilters() {
+  const classFilter = document.getElementById('mat-class-filter');
+  const sectionFilter = document.getElementById('mat-section-filter');
+  if (!classFilter || !sectionFilter) return;
+
+  const classes = [...new Set(allMaterials.map(m => m.classLevel).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+  classFilter.innerHTML = '<option value="">All Classes</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const sections = [...new Set(allMaterials.map(m => m.section).filter(Boolean))].sort();
+  sectionFilter.innerHTML = '<option value="">All Sections</option>' + sections.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function getFilteredMaterials() {
+  const search = (document.getElementById('mat-search')?.value || '').toLowerCase();
+  const classFilter = document.getElementById('mat-class-filter')?.value || '';
+  const sectionFilter = document.getElementById('mat-section-filter')?.value || '';
+
+  return allMaterials.filter((m) => {
+    const matchesSearch = !search ||
+      (m.title || '').toLowerCase().includes(search) ||
+      (m.subject || '').toLowerCase().includes(search) ||
+      (m.description || '').toLowerCase().includes(search);
+    const matchesClass = !classFilter || m.classLevel === classFilter;
+    const matchesSection = !sectionFilter || m.section === sectionFilter;
+    return matchesSearch && matchesClass && matchesSection;
+  });
+}
+
+window.filterTeacherMaterials = function () {
+  showAllMaterials = false;
+  renderMaterialsTable();
+};
+
+window.toggleShowAllTeacherMaterials = function () {
+  showAllMaterials = !showAllMaterials;
+  renderMaterialsTable();
+};
+
+function formatDate(dateString) {
+  if (!dateString) return '-';
+  try {
+    return new Date(dateString).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return '-';
+  }
+}
 
 // ─── SYLLABUS ─────────────────────────────────────────────────────────────────
 async function loadSyllabus() {
