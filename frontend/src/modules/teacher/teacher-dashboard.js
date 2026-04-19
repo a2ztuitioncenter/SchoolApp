@@ -1,5 +1,5 @@
 import { teacherAPI, downloadFile } from '../../core/api.js';
-import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
+import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first
@@ -178,10 +178,11 @@ function init() {
   }
 
   const initialEl = document.getElementById('teacher-avatar-initial');
-  if (initialEl) initialEl.textContent = 'T';
+  const tName = getUserName() || 'Teacher';
+  if (initialEl) initialEl.textContent = tName.charAt(0).toUpperCase();
 
   const ddName = document.getElementById('dropdown-teacher-name');
-  if (ddName) ddName.textContent = `Teacher`;
+  if (ddName) ddName.textContent = tName;
 
   const ddEmail = document.getElementById('dropdown-teacher-email');
   if (ddEmail) ddEmail.textContent = teacherPhone || `teacher@a2z.local`;
@@ -740,27 +741,23 @@ function setupFormListeners() {
     } catch (err) { hideInfo(); showError(err.message); }
   });
 
-  document.getElementById('mat-form')?.addEventListener('submit', async e => {
+  document.getElementById('material-form')?.addEventListener('submit', async e => {
     e.preventDefault();
     
-    const classLevel = document.getElementById('mat-classLevel')?.value;
-    const section = document.getElementById('mat-section')?.value;
-    const subject = document.getElementById('mat-subject')?.value;
-    const title = document.getElementById('mat-title')?.value;
-    const file = document.getElementById('mat-file')?.files[0];
-    const id = document.getElementById('mat-edit-id')?.value;
+    const classLevel = document.getElementById('material-classLevel')?.value;
+    const section = document.getElementById('material-section')?.value;
+    const subject = document.getElementById('material-subject')?.value;
+    const title = document.getElementById('material-title')?.value;
+    const description = document.getElementById('material-description')?.value || '';
+    const file = document.getElementById('material-file')?.files[0];
+    const id = document.getElementById('material-edit-id')?.value;
 
-    console.log('📝 [Material Form] Submitted:', { title, subject, classLevel, section: section || 'SHARED', hasFile: !!file });
-
-    // Section is optional - leave empty to create shared materials for all sections
     if (!classLevel || !title) {
-      console.log('❌ [Material Form] Missing required fields');
-      showError('Please fill in required fields: Class and Title. Section is optional (leave empty to share across all sections).');
+      showError('Please fill in required fields: Class and Title.');
       return;
     }
 
     if (!id && !file) {
-      console.log('❌ [Material Form] No file selected for new material');
       showError('Please select a file to upload');
       return;
     }
@@ -771,46 +768,45 @@ function setupFormListeners() {
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
       
       if (!allowedTypes.includes(file.type)) {
-        console.log('❌ [Material Form] Invalid file type:', file.type);
-        showError(`Invalid file type. Only PDF, JPG, PNG allowed. Got: ${file.type}`);
+        showError(`Invalid file type. Only PDF, JPG, PNG allowed.`);
         return;
       }
       
       if (file.size > maxSize) {
-        console.log('❌ [Material Form] File too large:', file.size, 'bytes');
-        showError(`File too large. Max 20MB. Got: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+        showError(`File too large. Max 20MB.`);
         return;
       }
-      
-      console.log('✅ [Material Form] File validated:', { name: file.name, size: file.size, type: file.type });
     }
 
     const fd = new FormData();
     fd.append('teacherId', teacherId);
     fd.append('classLevel', classLevel);
-    fd.append('section', section);
+    fd.append('section', section || '');
     if (subject) fd.append('subject', subject);
     fd.append('title', title);
-    fd.append('description', document.getElementById('mat-description')?.value || '');
-    if (id) fd.append('currentFileUrl', document.getElementById('mat-current-file').value);
-    if (file) fd.append('materialFile', file);
+    fd.append('description', description);
+    
+    if (id) {
+      fd.append('currentFileUrl', document.getElementById('material-current-file').value);
+    }
+    
+    if (file) {
+      fd.append('materialFile', file);
+    }
 
     try {
-      showInfo(id ? 'Updating material...' : 'Uploading material...');
+      showInfo(id ? 'Updating material...' : 'Adding material...');
       if (id) {
-        console.log('📝 [Material Form] Updating material ID:', id);
         await teacherAPI.updateMaterial(id, fd);
       } else {
-        console.log('📝 [Material Form] Creating new material');
         await teacherAPI.createMaterial(fd);
       }
       hideInfo();
-      showSuccess(id ? 'Material updated!' : 'Material uploaded!');
-      closeMatModal();
+      showSuccess(id ? 'Material updated successfully!' : 'Material added successfully!');
+      closeMaterialModal();
       await loadMaterials();
     } catch (err) { 
       hideInfo(); 
-      console.error('❌ [Material Form] Error:', err.message);
       showError(err.message); 
     }
   });
@@ -840,9 +836,7 @@ function setupFormListeners() {
 async function loadMaterials() {
   try {
     showAllMaterials = false;
-    console.log('📚 [Teacher Materials] Fetching for teacherId:', teacherId);
     const res = await teacherAPI.getMaterials(teacherId);
-    console.log('📚 [Teacher Materials] Response:', res);
     allMaterials = (res.data || []).map((m) => ({
       ...m,
       classLevel: m.classLevel || m.class_level || '-',
@@ -852,13 +846,10 @@ async function loadMaterials() {
       uploadedBy: m.uploadedBy || m.uploaded_by || 'Admin',
       createdAt: m.createdAt || m.created_at || null,
     }));
-    console.log(`📚 [Teacher Materials] Loaded ${allMaterials.length} materials`);
     updateMaterialsStats();
     populateMaterialFilters();
     renderMaterialsTable();
-    setText('stat-materials', allMaterials.length);
   } catch (err) { 
-    console.error('❌ [Teacher Materials] Error:', err.message);
     showError('Failed to load materials: ' + err.message); 
   }
 }
@@ -907,37 +898,88 @@ function renderMaterialsTable() {
   if (countText) countText.textContent = showAllMaterials ? '' : `Showing ${toShow.length} of ${list.length}`;
 }
 
-window.openMatModal = async function (m = null) {
-  await populateSharedDropdowns('mat');
-  const form = document.getElementById('mat-form');
+window.openMaterialModal = async function (material = null) {
+  const form = document.getElementById('material-form');
   if (form) form.reset();
-  const editId = document.getElementById('mat-edit-id');
-  if (editId) editId.value = m?.id || '';
-  const currFile = document.getElementById('mat-current-file');
-  if (currFile) currFile.value = m?.fileUrl || '';
-  const titleEl = document.getElementById('mat-modal-title');
-  if (titleEl) titleEl.textContent = m ? 'Edit Material' : 'Upload Study Material';
-  const hintEl = document.getElementById('mat-file-hint');
-  if (hintEl) hintEl.style.display = m ? 'inline' : 'none';
-  if (m) {
-    document.getElementById('mat-classLevel').value = m.classLevel || '';
-    document.getElementById('mat-section').value = m.section || '';
-    document.getElementById('mat-subject').value = m.subject || '';
-    document.getElementById('mat-title').value = m.title || '';
-    document.getElementById('mat-description').value = m.description || '';
+
+  // Populate classes - restrict to permitted ones
+  const classDropdown = document.getElementById('material-classLevel');
+  if (classDropdown) {
+    try {
+      const res = await teacherAPI.getAttendanceClasses(teacherId);
+      const classes = res.data || [];
+      classDropdown.innerHTML = '<option value="">Select Class</option>' +
+        classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+    } catch (err) {
+      console.error('Failed to load permitted classes:', err);
+    }
   }
-  const modal = document.getElementById('mat-modal');
-  if (modal) modal.classList.add('open');
+
+  const editId = document.getElementById('material-edit-id');
+  const titleEl = document.getElementById('material-modal-title');
+  const submitBtn = document.getElementById('material-submit-btn');
+  const currentFileEl = document.getElementById('material-current-file');
+  const fileHint = document.getElementById('material-file-hint');
+  const fileLabel = document.getElementById('material-file-label');
+  const fileInput = document.getElementById('material-file');
+
+  if (material) {
+    if (editId) editId.value = material.id;
+    if (titleEl) titleEl.textContent = 'Edit Study Material';
+    if (submitBtn) submitBtn.textContent = 'Save Changes';
+    if (currentFileEl) currentFileEl.value = material.fileUrl || '';
+    if (fileHint) fileHint.style.display = 'block';
+    if (fileLabel) fileLabel.textContent = 'Change Resource File (Optional)';
+    if (fileInput) fileInput.required = false;
+
+    // Fill other fields
+    if (classDropdown) classDropdown.value = material.classLevel || '';
+    document.getElementById('material-section').value = material.section || '';
+    document.getElementById('material-subject').value = material.subject || '';
+    document.getElementById('material-title').value = material.title || '';
+    document.getElementById('material-description').value = material.description || '';
+  } else {
+    if (editId) editId.value = '';
+    if (titleEl) titleEl.textContent = 'Add Study Material';
+    if (submitBtn) submitBtn.textContent = 'Add Material';
+    if (currentFileEl) currentFileEl.value = '';
+    if (fileHint) fileHint.style.display = 'none';
+    if (fileLabel) fileLabel.textContent = 'Resource File (PDF/Image) *';
+    if (fileInput) fileInput.required = true;
+  }
+
+  const modal = document.getElementById('material-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.classList.add('open');
+  }
 };
-window.closeMatModal = () => { const m = document.getElementById('mat-modal'); if (m) m.classList.remove('open'); };
-window.editMaterial = id => { const m = allMaterials.find(x => x.id === id); if (m) openMatModal(m); };
-window.deleteMaterial = async id => {
-  if (!confirm('Delete this material?')) return;
+
+window.closeMaterialModal = function () {
+  const modal = document.getElementById('material-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
+  }
+};
+
+window.editMaterial = function (id) {
+  const material = allMaterials.find(m => m.id === id);
+  if (material) openMaterialModal(material);
+};
+
+window.deleteMaterial = async function (id) {
+  if (!confirm('Are you sure you want to delete this study material?')) return;
   try {
-    await teacherAPI.deleteMaterial(id, parseInt(teacherId));
-    showSuccess('Material deleted.');
+    showInfo('Deleting material...');
+    await teacherAPI.deleteMaterial(id, teacherId);
+    hideInfo();
+    showSuccess('Material deleted successfully.');
     await loadMaterials();
-  } catch (err) { showError(err.message); }
+  } catch (err) {
+    hideInfo();
+    showError(err.message);
+  }
 };
 
 function updateMaterialsStats() {

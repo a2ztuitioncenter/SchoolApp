@@ -508,8 +508,8 @@
                         <h2><i class="fas fa-copy"></i> Study Materials</h2>
                         <p class="section-subtitle">Upload and manage shared learning resources for your assigned classes</p>
                     </div>
-                    <button class="btn btn-primary btn-lg" onclick="openMatModal()">
-                        <i class="fas fa-upload"></i> Upload Material
+                    <button class="btn btn-primary btn-lg" onclick="openMaterialModal()">
+                        <i class="fas fa-plus"></i> Add Study Material
                     </button>
                 </div>
 
@@ -782,52 +782,60 @@
         </div>
     </div>
 
-    <!-- =================== MATERIAL MODAL =================== -->
-    <div id="mat-modal" class="modal">
+    <!-- =================== STUDY MATERIAL MODAL =================== -->
+    <div id="material-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="mat-modal-title">Upload Study Material</h2>
-                <span class="close" onclick="closeMatModal()">&times;</span>
+                <h2 id="material-modal-title">Add Study Material</h2>
+                <span class="close" onclick="closeMaterialModal()">&times;</span>
             </div>
-            <form id="mat-form" enctype="multipart/form-data">
-                <input type="hidden" id="mat-edit-id">
-                <input type="hidden" id="mat-current-file">
+            <form id="material-form" enctype="multipart/form-data">
+                <input type="hidden" id="material-edit-id">
+                <input type="hidden" id="material-current-file">
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Class Level *</label>
-                        <select id="mat-classLevel" class="form-control" required>
+                        <select id="material-classLevel" class="form-control" required>
                             <option value="">Select Class</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Section</label>
-                        <select id="mat-section" class="form-control">
-                            <option value="">Select Section (Optional)</option>
+                        <select id="material-section" class="form-control">
+                            <option value="">Select Section</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
                         </select>
                     </div>
                 </div>
+
                 <div class="form-group">
                     <label>Subject *</label>
-                    <input type="text" id="mat-subject" class="form-control" placeholder="e.g. Physics" required>
+                    <input type="text" id="material-subject" class="form-control" placeholder="e.g. Physics" required>
                 </div>
+
                 <div class="form-group">
                     <label>Title *</label>
-                    <input type="text" id="mat-title" class="form-control" placeholder="e.g. Gravity Notes" required>
+                    <input type="text" id="material-title" class="form-control" placeholder="e.g. Motion & Forces" required>
                 </div>
+
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea id="mat-description" class="form-control" rows="3"
-                        placeholder="Resource summary..."></textarea>
+                    <textarea id="material-description" class="form-control" rows="3" placeholder="Brief summary of the resource..."></textarea>
                 </div>
+
                 <div class="form-group">
-                    <label>File (PDF/Image) <span id="mat-file-hint"
-                            style="display:none; color:var(--text-muted); font-size:0.75rem;">— optional if keeping
-                            current</span></label>
-                    <input type="file" id="mat-file" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <label id="material-file-label">Resource File (PDF/Image) *</label>
+                    <input type="file" id="material-file" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <div id="material-file-hint" class="form-hint" style="display: none; margin-top: 5px; font-size: 0.8rem; color: var(--text-muted);">
+                        <i class="fas fa-info-circle"></i> Leave empty to keep existing file
+                    </div>
                 </div>
-                <div class="modal-footer" style="padding:0; background:none; border:none; margin-top:2rem;">
-                    <button type="button" class="btn btn-secondary" onclick="closeMatModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Upload Resource</button>
+
+                <div class="modal-footer" style="padding: 1.5rem 0 0 0; background: none; border-top: 1px solid var(--border-subtle); margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="material-submit-btn">Save Material</button>
                 </div>
             </form>
         </div>
