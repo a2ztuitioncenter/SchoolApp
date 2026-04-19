@@ -3202,8 +3202,9 @@ window.saveMaterial = async function (e) {
     const section = document.getElementById('material-section')?.value;
     const fileInput = document.getElementById('material-file');
 
-    if (!title || !subject || !classLevel || !section) {
-        showErrorAlert('Please fill in all required fields: Title, Subject, Class, and Section');
+    // Section is optional - leave empty to create shared materials for all sections
+    if (!title || !subject || !classLevel) {
+        showErrorAlert('Please fill in all required fields: Title, Subject, and Class. Section is optional (leave empty to share across all sections).');
         return;
     }
 

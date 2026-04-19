@@ -221,11 +221,14 @@ export const adminAPI = {
 /**
  * Teacher APIs
  */
+/**
+ * Teacher APIs - Fixed to use correct authentication and parameter passing
+ */
 export const teacherAPI = {
   getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId || 'me'}`, { method: 'GET' }),
   getTimetable: (teacherId) => apiCall(`/teacher/timetable/${teacherId || 'me'}`, { method: 'GET' }),
-  getAttendanceClasses: () => apiCall('/teacher/attendance/classes', { method: 'GET' }),
-  getSectionsByClass: (classLevel) => apiCall(`/teacher/attendance/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
+  getAttendanceClasses: (teacherId) => apiCall(`/teacher/attendance/classes${teacherId ? '?teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET' }),
+  getSectionsByClass: (classLevel, teacherId) => apiCall(`/teacher/attendance/sections?classLevel=${encodeURIComponent(classLevel)}${teacherId ? '&teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET' }),
   getAttendanceSheet: (_teacherId, classLevel, date, section = 'A') => apiCall(`/teacher/attendance/sheet?classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
   markBulkAttendance: (_teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ records }) }),
   getAttendanceSummary: (_teacherId, classLevel, month, section = 'A') => apiCall(`/teacher/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
@@ -233,7 +236,7 @@ export const teacherAPI = {
   createHomework: (formData) => apiCall('/teacher/homework', { method: 'POST', body: formData }),
   updateHomework: (id, formData) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData }),
   deleteHomework: (id, teacherId) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
-  getMaterials: () => apiCall('/teacher/materials', { method: 'GET' }),
+  getMaterials: (teacherId) => apiCall(`/teacher/materials${teacherId ? '?teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET' }),
   createMaterial: (formData) => apiCall('/teacher/materials', { method: 'POST', body: formData }),
   updateMaterial: (id, formData) => apiCall(`/teacher/materials/${id}`, { method: 'PUT', body: formData }),
   deleteMaterial: (id, teacherId) => apiCall(`/teacher/materials/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),

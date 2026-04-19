@@ -111,7 +111,7 @@ async function populateSharedDropdowns(prefix) {
     // If we already have options (other than default), don't reload
     if (classSel.options.length > 2) return; 
 
-    const res = await teacherAPI.getAttendanceClasses(teacherId);
+    const res = await teacherAPI.getAttendanceClasses(teacherId || '');
     if (res.success && res.data && res.data.length > 0) {
       // Sort classes numerically
       const classes = [...new Set(res.data.map(c => parseInt(c)))].sort((a,b) => a-b);
@@ -736,15 +736,39 @@ function setupFormListeners() {
     const file = document.getElementById('mat-file')?.files[0];
     const id = document.getElementById('mat-edit-id')?.value;
 
-    // Validate required fields
-    if (!classLevel || !section || !subject || !title) {
-      showError('Please fill in all required fields: Class, Section, Subject, and Title');
+    console.log('📝 [Material Form] Submitted:', { title, subject, classLevel, section: section || 'SHARED', hasFile: !!file });
+
+    // Section is optional - leave empty to create shared materials for all sections
+    if (!classLevel || !subject || !title) {
+      console.log('❌ [Material Form] Missing required fields');
+      showError('Please fill in all required fields: Class, Subject, and Title. Section is optional (leave empty to share across all sections).');
       return;
     }
 
     if (!id && !file) {
+      console.log('❌ [Material Form] No file selected for new material');
       showError('Please select a file to upload');
       return;
+    }
+
+    // File validation
+    if (file) {
+      const maxSize = 20 * 1024 * 1024; // 20MB
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+      
+      if (!allowedTypes.includes(file.type)) {
+        console.log('❌ [Material Form] Invalid file type:', file.type);
+        showError(`Invalid file type. Only PDF, JPG, PNG allowed. Got: ${file.type}`);
+        return;
+      }
+      
+      if (file.size > maxSize) {
+        console.log('❌ [Material Form] File too large:', file.size, 'bytes');
+        showError(`File too large. Max 20MB. Got: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+        return;
+      }
+      
+      console.log('✅ [Material Form] File validated:', { name: file.name, size: file.size, type: file.type });
     }
 
     const fd = new FormData();
@@ -759,13 +783,22 @@ function setupFormListeners() {
 
     try {
       showInfo(id ? 'Updating material...' : 'Uploading material...');
-      if (id) await teacherAPI.updateMaterial(id, fd);
-      else await teacherAPI.createMaterial(fd);
+      if (id) {
+        console.log('📝 [Material Form] Updating material ID:', id);
+        await teacherAPI.updateMaterial(id, fd);
+      } else {
+        console.log('📝 [Material Form] Creating new material');
+        await teacherAPI.createMaterial(fd);
+      }
       hideInfo();
       showSuccess(id ? 'Material updated!' : 'Material uploaded!');
       closeMatModal();
       await loadMaterials();
-    } catch (err) { hideInfo(); showError(err.message); }
+    } catch (err) { 
+      hideInfo(); 
+      console.error('❌ [Material Form] Error:', err.message);
+      showError(err.message); 
+    }
   });
 
   document.getElementById('syl-form')?.addEventListener('submit', async e => {
@@ -792,11 +825,17 @@ function setupFormListeners() {
 // ─── MATERIALS ────────────────────────────────────────────────────────────────
 async function loadMaterials() {
   try {
+    console.log('📚 [Teacher Materials] Fetching for teacherId:', teacherId);
     const res = await teacherAPI.getMaterials(teacherId);
+    console.log('📚 [Teacher Materials] Response:', res);
     allMaterials = res.data || [];
+    console.log(`📚 [Teacher Materials] Loaded ${allMaterials.length} materials`);
     renderMaterialsTable();
     setText('stat-materials', allMaterials.length);
-  } catch (err) { showError('Failed to load materials: ' + err.message); }
+  } catch (err) { 
+    console.error('❌ [Teacher Materials] Error:', err.message);
+    showError('Failed to load materials: ' + err.message); 
+  }
 }
 
 function renderMaterialsTable() {

@@ -116,7 +116,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
         }
         
-        await loadMaterials(profile.classLevel, profile.section || 'A');
+        // Ensure section exists or is pass as 'ALL' or empty to the API
+        await loadMaterials(profile.classLevel, profile.section || '');
     }
 
     // Tab Switching Logic
@@ -196,8 +197,8 @@ function setupTabSwitching() {
         const classMatch = classText.match(/Class: (\d+)/i);
         const sectionMatch = classText.match(/Section: ([A-B])/i);
         
-        const studentClass = classMatch ? classMatch[1] : '10';
-        const studentSection = sectionMatch ? sectionMatch[1] : 'A';
+        const studentClass = classMatch ? classMatch[1] : '';
+        const studentSection = sectionMatch ? sectionMatch[1] : '';
         
         loadMaterials(studentClass, studentSection);
       }
@@ -256,7 +257,7 @@ async function loadDashboardData(userId) {
   }
 }
 
-async function loadMaterials(classLevel, section = 'A') {
+async function loadMaterials(classLevel, section = '') {
     const container = document.getElementById('materials-container');
     if (!container) return;
     
@@ -266,17 +267,21 @@ async function loadMaterials(classLevel, section = 'A') {
         const normalizedClassLevel = String(classLevel).trim();
         const normalizedSection = String(section).trim();
         
+        console.log('📚 [Student Materials] Loading: classLevel=', normalizedClassLevel, 'section=', normalizedSection || 'ALL');
+        
         const res = await materialsAPI.getByClass(normalizedClassLevel, normalizedSection);
+        
+        console.log('📚 [Student Materials] Response:', res);
         
         // Check for API errors
         if (res.error) {
-            console.error('API Error:', res.error);
+            console.error('❌ [Student Materials] API Error:', res.error);
             container.innerHTML = `<p class="error" style="color:#e53e3e;">Failed to load materials: ${res.error}</p>`;
             return;
         }
         
         const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-        // Materials loaded
+        console.log(`📚 [Student Materials] Loaded ${list.length} materials`);
 
         if (list.length === 0) {
             container.innerHTML = '<p class="empty-state">No study materials available for your class.</p>';

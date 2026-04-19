@@ -495,9 +495,15 @@ router.delete('/homework/:id', async (req, res) => {
 router.get('/materials', async (req, res) => {
   try {
     const { teacherId } = req.query;
+    console.log('🔍 [GET /teacher/materials] Request received - teacherId:', teacherId);
+    
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
-    if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    
+    if (!teacher) {
+      console.log('❌ [GET /teacher/materials] Authorization failed for teacherId:', teacherId);
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
     // Get materials uploaded by this teacher
     const result = await pool.query(
@@ -507,6 +513,7 @@ router.get('/materials', async (req, res) => {
       [teacher.id]
     );
     
+    console.log(`✅ [GET /teacher/materials] Returned ${result.rows.length} materials for teacher ID ${teacher.id}`);
     res.json({ success: true, data: result.rows });
   } catch (err) {
     console.error('Error fetching materials:', err);
@@ -517,34 +524,54 @@ router.get('/materials', async (req, res) => {
 router.post('/materials', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
     const { teacherId } = req.body;
+    console.log('📝 [POST /teacher/materials] Upload request - teacherId:', teacherId, 'file:', req.file?.filename || 'NONE');
+    
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
-    if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
+    
+    if (!teacher) {
+      console.log('❌ [POST /teacher/materials] Authorization failed for teacherId:', teacherId);
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10);
+    const section = sanitizeNullableText(req.body.section, 10) || null; // Allow section to be NULL for shared materials
     const subject = sanitizeText(req.body.subject, 100);
 
-    // Enforce all required fields including section
-    if (!title || !classLevel || !section || !subject) {
-      return res.status(400).json({ error: 'All fields required: title, classLevel, section, subject. Section cannot be empty.' });
+    console.log('📝 [POST /teacher/materials] Parsed fields:', { title, classLevel, section: section || 'SHARED', subject });
+
+    // Section is optional - NULL allows sharing across all sections
+    if (!title || !classLevel || !subject) {
+      console.log('❌ [POST /teacher/materials] Missing required fields');
+      return res.status(400).json({ error: 'All fields required: title, classLevel, subject. Section is optional (leave empty for shared materials).' });
     }
     if (!req.file) {
       return res.status(400).json({ error: 'File is required' });
     }
 
-    // Validate teacher has permission for this class and section
-    const permissionCheck = await pool.query(
-      `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section IS NULL)`,
-      [teacher.id, classLevel, section || null]
-    );
+    // Validate teacher has permission for this class (section-specific or class-wide)
+    let permissionQuery;
+    let permissionParams;
+    
+    if (section) {
+      // For section-specific materials, check section assignment
+      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`;
+      permissionParams = [teacher.id, classLevel, section];
+    } else {
+      // For shared materials (section = NULL), just check class assignment
+      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE teacher_id = $1 AND class_level = $2`;
+      permissionParams = [teacher.id, classLevel];
+    }
+    
+    const permissionCheck = await pool.query(permissionQuery, permissionParams);
 
     if (permissionCheck.rows[0].count === 0) {
       return res.status(403).json({ 
-        error: 'You do not have permission to upload materials for this class/section. Please ensure it is assigned to you.' 
+        error: 'You do not have permission to upload materials for this class. Please ensure it is assigned to you.' 
       });
     }
 
@@ -573,13 +600,10 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10);
+    const section = sanitizeNullableText(req.body.section, 10) || null; // Allow section to be NULL for shared materials
     const subject = sanitizeText(req.body.subject, 100);
 
-    // Enforce section cannot be empty
-    if (!section) {
-      return res.status(400).json({ error: 'Section is required and cannot be empty' });
-    }
+    // Section is optional - NULL allows sharing across all sections
 
     // Check if material exists and belongs to this teacher
     const own = await pool.query(
@@ -593,16 +617,27 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
       return res.status(403).json({ error: 'You can only modify materials you uploaded' });
     }
 
-    // Validate teacher has permission for this class and section
-    const permissionCheck = await pool.query(
-      `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section IS NULL)`,
-      [teacher.id, classLevel, section || null]
-    );
+    // Validate teacher has permission for this class (section-specific or class-wide)
+    let permissionQuery;
+    let permissionParams;
+    
+    if (section) {
+      // For section-specific materials, check section assignment
+      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`;
+      permissionParams = [teacher.id, classLevel, section];
+    } else {
+      // For shared materials (section = NULL), just check class assignment
+      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
+       WHERE teacher_id = $1 AND class_level = $2`;
+      permissionParams = [teacher.id, classLevel];
+    }
+    
+    const permissionCheck = await pool.query(permissionQuery, permissionParams);
 
     if (permissionCheck.rows[0].count === 0) {
       return res.status(403).json({ 
-        error: 'You do not have permission to update materials for this class/section' 
+        error: 'You do not have permission to upload materials for this class. Please ensure it is assigned to you.' 
       });
     }
 
