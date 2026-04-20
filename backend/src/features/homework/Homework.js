@@ -34,9 +34,9 @@ export const homeworkModel = {
       attachmentUrl: row.attachment_url,
       schoolId: row.school_id,
       type: row.type,
-      createdAt: row.created_at,
+      createdAt: row.createdAt,
       teacherPhone: row.teacher_phone,
-      assignedBy: row.teacher_id,
+      assignedBy: row.teacherId,
       assignedByName: row.assigned_by_name || 'Admin'
     };
   },
@@ -44,10 +44,10 @@ export const homeworkModel = {
   async getAll(classLevel = '', section = '') {
     let query = `SELECT h.*, u.phone AS teacher_phone, u.name AS assigned_by_name
                  FROM homework h
-                 LEFT JOIN users u ON h.teacher_id = u.id`;
+                 LEFT JOIN users u ON h."teacherId" = u.id`;
     const params = [];
     if (classLevel) { 
-      query += ` WHERE h.class_level = $1`; 
+      query += ` WHERE h."classLevel" = $1`; 
       params.push(classLevel); 
       if (section) {
         query += ` AND (h.section = $2 OR h.section = 'ALL')`;
@@ -57,7 +57,7 @@ export const homeworkModel = {
       query += ` WHERE (h.section = $1 OR h.section = 'ALL')`;
       params.push(section);
     }
-    query += ` ORDER BY h.created_at DESC`;
+    query += ` ORDER BY h."createdAt" DESC`;
     const result = await db.query(query, params);
     return result.rows.map(row => this.formatRow(row));
   },
@@ -73,7 +73,7 @@ export const homeworkModel = {
 
   async create({ title, description, classLevel, section, subject, dueDate, assignedBy, attachmentUrl }) {
     const result = await db.query(
-      `INSERT INTO homework (title, description, class_level, section, subject, due_date, teacher_id, attachment_url)
+      `INSERT INTO homework (title, description, "classLevel", section, subject, "dueDate", "teacherId", "attachmentUrl")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [title, description || null, classLevel, section || 'A', subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
     );
@@ -82,7 +82,7 @@ export const homeworkModel = {
 
   async update(id, { title, description, classLevel, section, subject, dueDate, attachmentUrl }) {
     const result = await db.query(
-      `UPDATE homework SET title=$1, description=$2, class_level=$3, section=$4, subject=$5, due_date=$6, attachment_url=$7 WHERE id=$8 RETURNING *`,
+      `UPDATE homework SET title=$1, description=$2, "classLevel"=$3, section=$4, subject=$5, "dueDate"=$6, "attachmentUrl"=$7 WHERE id=$8 RETURNING *`,
       [title, description || null, classLevel, section || 'A', subject || null, dueDate || null, attachmentUrl || null, id]
     );
     return this.formatRow(result.rows[0]);
@@ -97,11 +97,11 @@ export const homeworkModel = {
 // Legacy pool-based named exports used by teacherRoutes.js and studentRoutes.js
 export const getHomeworkByClass = async (pool, classLevel, section = 'A', type = 'homework') => {
   let query = `SELECT h.*, u.phone AS teacher_phone
-               FROM homework h
-               LEFT JOIN users u ON h.teacher_id = u.id
-               WHERE h.class_level = $1 AND h.type = $2 AND (h.section = $3 OR h.section = 'ALL')`;
-  const params = [classLevel, type, section];
-  query += ` ORDER BY h.created_at DESC`;
+                FROM homework h
+                LEFT JOIN users u ON h."teacherId" = u.id
+                WHERE h."classLevel" = $1 AND h.type = $2 AND (h.section = $3 OR h.section = 'ALL')`;
+   const params = [classLevel, type, section];
+   query += ` ORDER BY h."createdAt" DESC`;
   const result = await pool.query(query, params);
   return result.rows;
 };
@@ -119,9 +119,9 @@ const formatHomeworkRow = (row) => {
     dueDate: row.due_date,
     subject: row.subject,
     attachmentUrl: row.attachment_url,
-    schoolId: row.school_id,
+    schoolId: row.schoolId,
     type: row.type,
-    createdAt: row.created_at,
+    createdAt: row.createdAt,
     teacherPhone: row.teacher_phone,
     assignedBy: row.teacher_id,
     assignedByName: row.assigned_by_name || 'Teacher'
@@ -131,9 +131,9 @@ const formatHomeworkRow = (row) => {
 export const getHomeworkByTeacher = async (pool, teacherId) => {
   // Get classes assigned to the teacher
   const classRes = await pool.query(
-    `SELECT DISTINCT class_level, section 
+    `SELECT DISTINCT "classLevel", section 
      FROM teacher_class_assignment 
-     WHERE teacher_id = $1`,
+     WHERE "teacherId" = $1`,
     [teacherId]
   );
   
@@ -141,8 +141,8 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
   if (classRes.rows.length === 0) {
     const result = await pool.query(
       `SELECT h.*, u.name AS assigned_by_name FROM homework h
-       LEFT JOIN users u ON h.teacher_id = u.id
-       WHERE h.teacher_id = $1 ORDER BY h.created_at DESC`,
+       LEFT JOIN users u ON h."teacherId" = u.id
+       WHERE h."teacherId" = $1 ORDER BY h."createdAt" DESC`,
       [teacherId]
     );
     return result.rows.map(row => formatHomeworkRow(row));
@@ -156,13 +156,13 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
   classRes.rows.forEach(row => {
     const section = row.section && row.section !== 'ALL' ? row.section : null;
     if (section) {
-      classFilters.push(`(h.class_level = $${paramIdx} AND (h.section = $${paramIdx + 1} OR h.section IS NULL OR h.section = 'ALL'))`);
-      params.push(row.class_level);
+      classFilters.push(`(h."classLevel" = $${paramIdx} AND (h.section = $${paramIdx + 1} OR h.section IS NULL OR h.section = 'ALL'))`);
+      params.push(row.classLevel);
       params.push(section);
       paramIdx += 2;
     } else {
-      classFilters.push(`(h.class_level = $${paramIdx})`);
-      params.push(row.class_level);
+      classFilters.push(`(h."classLevel" = $${paramIdx})`);
+      params.push(row.classLevel);
       paramIdx += 1;
     }
   });
@@ -170,9 +170,9 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
   const whereClause = classFilters.length > 0 ? ` OR (${classFilters.join(' OR ')})` : '';
   const query = `
     SELECT h.*, u.name AS assigned_by_name FROM homework h
-    LEFT JOIN users u ON h.teacher_id = u.id
-    WHERE h.teacher_id = $1${whereClause}
-    ORDER BY h.created_at DESC
+    LEFT JOIN users u ON h."teacherId" = u.id
+    WHERE h."teacherId" = $1${whereClause}
+    ORDER BY h."createdAt" DESC
   `;
   
   const result = await pool.query(query, params);
@@ -181,7 +181,7 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
 
 export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
   const result = await pool.query(
-    `INSERT INTO homework (title, description, class_level, section, subject, due_date, teacher_id, attachment_url, type)
+    `INSERT INTO homework (title, description, "classLevel", section, subject, "dueDate", "teacherId", "attachmentUrl", type)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
     [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null, attachmentUrl || null, type]
   );
@@ -190,8 +190,8 @@ export const createHomework = async (pool, { teacherId, classLevel, section, tit
 
 export const updateHomework = async (pool, id, { title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
   const result = await pool.query(
-    `UPDATE homework SET title=$1, description=$2, due_date=$3, subject=$4,
-     attachment_url = COALESCE($5, attachment_url), type=$6 WHERE id=$7 RETURNING *`,
+    `UPDATE homework SET title=$1, description=$2, "dueDate"=$3, subject=$4,
+     "attachmentUrl" = COALESCE($5, "attachmentUrl"), type=$6 WHERE id=$7 RETURNING *`,
     [title, description || null, dueDate || null, subject || null, attachmentUrl || null, type, id]
   );
   return result.rows[0] || null;

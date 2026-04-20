@@ -19,7 +19,7 @@ export const syllabusModel = {
 
 export const getSyllabusByTeacher = async (pool, teacherId) => {
   const res = await pool.query(
-    `SELECT * FROM syllabus WHERE teacher_id = $1 ORDER BY subject, created_at ASC`,
+    `SELECT * FROM syllabus WHERE "teacherId" = $1 ORDER BY subject, "createdAt" ASC`,
     [teacherId]
   );
   return res.rows;
@@ -27,7 +27,7 @@ export const getSyllabusByTeacher = async (pool, teacherId) => {
 
 export const createSyllabusEntry = async (pool, { teacherId, classLevel, section, subject, chapter, description }) => {
   const res = await pool.query(
-    `INSERT INTO syllabus (teacher_id, class_level, section, subject, chapter, description)
+    `INSERT INTO syllabus ("teacherId", "classLevel", section, subject, chapter, description)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [teacherId, classLevel, section || null, subject, chapter, description || null]
   );

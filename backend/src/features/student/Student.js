@@ -27,7 +27,7 @@ export const createStudent = async (pool, data) => {
     phone, email, rollNumber, joiningDate, dateOfBirth, status, schoolId = 'school-001'
   } = data;
   const result = await pool.query(
-    `INSERT INTO students (user_id, name, class_level, section, father_name, mother_name, phone, email, roll_number, joining_date, date_of_birth, status, school_id)
+    `INSERT INTO students ("userId", name, "classLevel", section, "fatherName", "motherName", phone, email, "rollNumber", "joiningDate", "dateOfBirth", status, "schoolId")
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [userId, name, classLevel, section || null, fatherName || null, motherName || null,
      phone || null, email || null, rollNumber || null, joiningDate, dateOfBirth || null, status || 'active', schoolId]
@@ -37,16 +37,16 @@ export const createStudent = async (pool, data) => {
 
 // Helper to get all student fields aliased to camelCase
 const STUDENT_FIELDS = `
-  id, user_id as "userId", name, class_level as "classLevel", section, 
-  father_name as "fatherName", mother_name as "motherName", phone, email, 
-  roll_number as "rollNumber", joining_date as "joiningDate", date_of_birth as "dateOfBirth", 
-  status, school_id as "schoolId", created_at as "createdAt"
+  id, "userId", name, "classLevel", section, 
+  "fatherName", "motherName", phone, email, 
+  "rollNumber", "joiningDate", "dateOfBirth", 
+  status, "schoolId", "createdAt"
 `;
 
 // Legacy export used by getStudentsBySchool call in adminRoutes
 export const getStudentsBySchool = async (pool, schoolId) => {
   const result = await pool.query(
-    `SELECT ${STUDENT_FIELDS} FROM students WHERE school_id = $1 ORDER BY name ASC`,
+    `SELECT ${STUDENT_FIELDS} FROM students WHERE "schoolId" = $1 ORDER BY name ASC`,
     [schoolId]
   );
   return result.rows;
@@ -54,7 +54,7 @@ export const getStudentsBySchool = async (pool, schoolId) => {
 
 export const getStudentByUserId = async (pool, userId) => {
   const result = await pool.query(
-    `SELECT ${STUDENT_FIELDS} FROM students WHERE user_id = $1 LIMIT 1`,
+    `SELECT ${STUDENT_FIELDS} FROM students WHERE "userId" = $1 LIMIT 1`,
     [userId]
   );
   return result.rows[0] || null;

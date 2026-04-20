@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone } from '../auth/User.js';
+import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone, generateTeacherId } from '../auth/User.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
@@ -15,19 +15,23 @@ router.get('/users', async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT 
-                u.id, u.name, u.phone, u.email, u.role, u.status, u.teacher_id, u.is_active, u.created_at,
+                u.id, u.name, u.phone, u.email, u.role, u.status, 
+                u."teacherId", u."isActive", u."createdAt",
                 COALESCE(
-                    ARRAY_REMOVE(ARRAY_AGG(tca.class_level ORDER BY tca.class_level), NULL),
-                    ARRAY[]::varchar[]
-                ) AS classes_assigned
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT('class', tca."classLevel", 'section', tca.section)
+                        ORDER BY tca."classLevel"
+                    ) FILTER (WHERE tca."classLevel" IS NOT NULL),
+                    '[]'::jsonb
+                ) AS "classesAssigned"
              FROM users u
-             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
+             LEFT JOIN teacher_class_assignment tca ON tca."teacherId" = u.id
              WHERE u.role IN ($1, $2)
              GROUP BY u.id
-             ORDER BY u.created_at DESC`,
+             ORDER BY u."createdAt" DESC`,
             ['teacher', 'staff']
         );
-        res.json({ success: true, users: result.rows });
+        res.json({ success: true, data: result.rows });
     } catch (err) {
         console.error('Fetch users error:', err);
         res.status(500).json({ error: 'Failed to fetch users' });
@@ -48,8 +52,13 @@ router.post('/users/create', async (req, res) => {
             if (studentCount >= 4) return res.status(409).json({ error: 'Maximum 4 students can register with the same phone number' });
             if (await getNonStudentByPhone(req.db, phone)) return res.status(409).json({ error: 'Phone already registered to a non-student account' });
         }
-        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001', username, status: 'active' });
-        res.status(201).json({ success: true, user });
+        let teacherId = null;
+        if (role === 'teacher' || role === 'staff') {
+            teacherId = await generateTeacherId(req.db, role);
+        }
+
+        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001', username, status: 'active', teacherId });
+        res.status(201).json({ success: true, data: user });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -62,9 +71,9 @@ router.put('/users/:id', async (req, res) => {
         const user = await updateUser(req.db, id, { name, phone, email, role });
         if (!user) return res.status(404).json({ error: 'User not found' });
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
-            await assignTeacherToClasses(req.db, id, classesAssigned, user.school_id);
+            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId);
         }
-        res.json({ success: true, user });
+        res.json({ success: true, data: user });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -73,7 +82,7 @@ router.put('/users/:id', async (req, res) => {
 router.get('/users/:id/assignments', async (req, res) => {
     try {
         const assignments = await getTeacherAssignments(req.db, req.params.id);
-        res.json({ success: true, assignments });
+        res.json({ success: true, data: assignments });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -93,7 +102,7 @@ router.patch('/users/:id/status', async (req, res) => {
     try {
         const user = await toggleUserStatus(req.db, req.params.id, req.body.isActive);
         if (!user) return res.status(404).json({ error: 'User not found' });
-        res.json({ success: true, user });
+        res.json({ success: true, data: user });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -106,15 +115,15 @@ router.patch('/users/:id/status', async (req, res) => {
 router.get('/students', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT s.id, s.user_id as "userId", s.name, s.class_level as "classLevel", s.section, 
-                    s.father_name as "fatherName", s.mother_name as "motherName", s.phone, s.email, 
-                    s.roll_number as "rollNumber", s.joining_date as "joiningDate", s.date_of_birth as "dateOfBirth", 
-                    s.status, s.school_id as "schoolId", s.created_at as "createdAt", u.phone as "userPhone"
+            `SELECT s.id, s."userId", s.name, s."classLevel", s.section, 
+                    s."fatherName", s."motherName", s.phone, s.email, 
+                    s."rollNumber", s."joiningDate", s."dateOfBirth", 
+                    s.status, s."schoolId", s."createdAt", u.phone as "userPhone"
              FROM students s 
-             LEFT JOIN users u ON s.user_id = u.id 
+             LEFT JOIN users u ON s."userId" = u.id 
              ORDER BY s.name ASC`
         );
-        res.json({ success: true, students: result.rows });
+        res.json({ success: true, data: result.rows });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch students' });
     }
@@ -144,7 +153,7 @@ router.post('/students/create', async (req, res) => {
 
         try {
             await client.query('BEGIN');
-            
+
             // LOCK TABLE for atomic roll number generation
             await client.query('LOCK TABLE students IN ACCESS EXCLUSIVE MODE');
 
@@ -186,7 +195,7 @@ router.post('/students/create', async (req, res) => {
             });
 
             await client.query('COMMIT');
-            res.status(201).json({ success: true, student });
+            res.status(201).json({ success: true, data: student });
         } catch (err) {
             await client.query('ROLLBACK');
             throw err;
@@ -206,17 +215,17 @@ router.put('/students/:id', async (req, res) => {
         const result = await req.db.query(
             `UPDATE students 
              SET name = COALESCE($1, name),
-                 class_level = COALESCE($2, class_level),
+                 "classLevel" = COALESCE($2, "classLevel"),
                  section = COALESCE($3, section),
-                 father_name = COALESCE($4, father_name),
-                 mother_name = COALESCE($5, mother_name),
+                 "fatherName" = COALESCE($4, "fatherName"),
+                 "motherName" = COALESCE($5, "motherName"),
                  phone = COALESCE($6, phone),
                  email = COALESCE($7, email)
              WHERE id = $8 RETURNING *`,
             [name, classLevel, section, fatherName, motherName, phone, email, id]
         );
         if (!result.rows[0]) return res.status(404).json({ error: 'Student not found' });
-        res.json({ success: true, student: result.rows[0] });
+        res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -229,7 +238,7 @@ router.patch('/students/:id/status', async (req, res) => {
             [req.body.status, req.params.id]
         );
         if (!result.rows[0]) return res.status(404).json({ error: 'Student not found' });
-        res.json({ success: true, student: result.rows[0] });
+        res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -237,9 +246,9 @@ router.patch('/students/:id/status', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
     try {
-        const studentResult = await req.db.query('SELECT user_id FROM students WHERE id = $1', [req.params.id]);
+        const studentResult = await req.db.query('SELECT "userId" FROM students WHERE id = $1', [req.params.id]);
         if (studentResult.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
-        const deleted = await deleteUser(req.db, studentResult.rows[0].user_id);
+        const deleted = await deleteUser(req.db, studentResult.rows[0].userId);
         if (!deleted) return res.status(404).json({ error: 'Associated user not found' });
         res.json({ success: true, message: 'Student deleted' });
     } catch (err) {
@@ -255,17 +264,17 @@ router.get('/financials/unpaid-fees', async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT 
-                f.id, f.amount, f.due_date, f.is_paid AS paid,
+                f.id, f.amount, f."dueDate", f."isPaid" AS paid,
                 s.name as student_name,
-                s.class_level,
+                s."classLevel",
                 u.phone
              FROM fees f
-             JOIN students s ON f.student_id = s.id
-             JOIN users u ON s.user_id = u.id
-             WHERE f.is_paid = FALSE
-             ORDER BY f.due_date ASC`
+             JOIN students s ON f."studentId" = s.id
+             JOIN users u ON s."userId" = u.id
+             WHERE f."isPaid" = FALSE
+             ORDER BY f."dueDate" ASC`
         );
-        res.json({ success: true, fees: result.rows });
+        res.json({ success: true, data: result.rows });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch unpaid fees' });
     }
@@ -277,11 +286,11 @@ router.get('/financials/report', async (req, res) => {
             `SELECT 
                 COUNT(*) as total_records,
                 COALESCE(SUM(amount), 0) as total_amount,
-                COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as total_paid,
-                COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as total_pending
+                COALESCE(SUM(CASE WHEN "isPaid" = TRUE THEN amount ELSE 0 END), 0) as total_paid,
+                COALESCE(SUM(CASE WHEN "isPaid" = FALSE THEN amount ELSE 0 END), 0) as total_pending
              FROM fees`
         );
-        res.json({ success: true, report: result.rows[0] });
+        res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: 'Failed to generate report' });
     }
@@ -293,15 +302,15 @@ router.get('/financials/trends', async (req, res) => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const result = await req.db.query(
             `SELECT 
-                DATE(created_at) as date,
+                DATE("createdAt") as date,
                 COALESCE(SUM(amount), 0) as amount
              FROM fees
-             WHERE is_paid = TRUE AND created_at >= $1
-             GROUP BY DATE(created_at)
+             WHERE "isPaid" = TRUE AND "createdAt" >= $1
+             GROUP BY DATE("createdAt")
              ORDER BY date ASC`,
             [thirtyDaysAgo]
         );
-        res.json({ success: true, trends: result.rows });
+        res.json({ success: true, data: result.rows });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch trends' });
     }
@@ -314,12 +323,13 @@ router.get('/financials/trends', async (req, res) => {
 router.get('/timetable', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT t.*, u.name as teacher_name 
+            `SELECT t.id, t."dayOfWeek", t."startTime", t."endTime", t.subject, 
+                    t."classLevel", t.section, t."teacherId", u.name as "teacherName"
              FROM timetable t
-             LEFT JOIN users u ON t.teacher_id = u.id
-             ORDER BY t.day_of_week, t.start_time ASC`
+             LEFT JOIN users u ON t."teacherId" = u.id
+             ORDER BY t."dayOfWeek", t."startTime" ASC`
         );
-        res.json({ success: true, timetable: result.rows });
+        res.json({ success: true, data: result.rows });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch timetable' });
     }
@@ -329,11 +339,11 @@ router.post('/timetable', async (req, res) => {
     const { dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId } = req.body;
     try {
         const result = await req.db.query(
-            `INSERT INTO timetable (day_of_week, start_time, end_time, subject, class_level, section, teacher_id, school_id)
+            `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", section, "teacherId", "schoolId")
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId, 'school-001']
         );
-        res.status(201).json({ success: true, timetable: result.rows[0] });
+        res.status(201).json({ success: true, data: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: 'Failed to create timetable entry' });
     }

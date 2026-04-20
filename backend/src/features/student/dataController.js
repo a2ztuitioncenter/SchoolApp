@@ -2,9 +2,9 @@
 import { getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getAttendancePercentage, getAttendanceSummary, getAttendanceByStudentId } from '../attendance/Attendance.js';
 
-// Helper to get student by user_id using inline pool query
+// Helper to get student by userId using inline pool query
 async function getStudentByUserId(pool, userId) {
-  const result = await pool.query('SELECT * FROM students WHERE user_id = $1 LIMIT 1', [userId]);
+  const result = await pool.query('SELECT * FROM students WHERE "userId" = $1 LIMIT 1', [userId]);
   return result.rows[0] || null;
 }
 
@@ -21,7 +21,7 @@ export const getStudentDashboard = async (req, res) => {
     }
 
     // Parallel fetch of attendance, fees, homework, timetable, and notifications
-    // Note: Database columns are now snake_case.
+    // Note: Database columns are now camelCase.
     const [attendancePercentage, attendanceSummary, feesSummary, allFees, homeworkResult, timetableResult, notificationsResult] = await Promise.all([
       getAttendancePercentage(pool, student.id, 30),
       getAttendanceSummary(pool, student.id),
@@ -29,22 +29,22 @@ export const getStudentDashboard = async (req, res) => {
       getAllStudentFees(pool, student.id),
       pool.query(
         `SELECT * FROM homework 
-         WHERE class_level = $1 AND (section = $2 OR section = 'ALL')
-         ORDER BY due_date ASC, created_at DESC LIMIT 15`, 
-        [student.class_level, student.section]
+         WHERE "classLevel" = $1 AND (section = $2 OR section = 'ALL')
+         ORDER BY "dueDate" ASC, "createdAt" DESC LIMIT 15`, 
+        [student.classLevel, student.section]
       ),
       pool.query(
         `SELECT * FROM timetable 
-         WHERE class_level = $1 AND (section = $2 OR section = 'ALL') 
-         ORDER BY day_of_week, start_time ASC`, 
-        [student.class_level, student.section]
+         WHERE "classLevel" = $1 AND (section = $2 OR section = 'ALL') 
+         ORDER BY "dayOfWeek", "startTime" ASC`, 
+        [student.classLevel, student.section]
       ),
       pool.query(
         `SELECT * FROM notifications 
-         WHERE (class_level = $1 OR class_level IS NULL OR recipient_role = 'student')
+         WHERE ("classLevel" = $1 OR "classLevel" IS NULL OR "recipientRole" = 'student')
          AND (section = $2 OR section IS NULL OR section = 'ALL')
-         ORDER BY created_at DESC LIMIT 10`,
-        [student.class_level, student.section]
+         ORDER BY "createdAt" DESC LIMIT 10`,
+        [student.classLevel, student.section]
       ),
     ]);
 
@@ -55,7 +55,7 @@ export const getStudentDashboard = async (req, res) => {
     const now = new Date();
     const dailyPractice = allHomework.filter(h => {
         if (h.type !== 'daily_practice') return false;
-        const created = new Date(h.created_at);
+        const created = new Date(h.createdAt);
         const hoursDiff = (now - created) / (1000 * 60 * 60);
         return hoursDiff <= 24;
     });
@@ -65,18 +65,18 @@ export const getStudentDashboard = async (req, res) => {
       data: {
         profile: {
           id: student.id,
-          userId: student.user_id,
+          userId: student.userId,
           name: student.name,
-          classLevel: student.class_level,
+          classLevel: student.classLevel,
           section: student.section,
-          rollNumber: student.roll_number,
-          fatherName: student.father_name,
-          joiningDate: student.joining_date,
+          rollNumber: student.rollNumber,
+          fatherName: student.fatherName,
+          joiningDate: student.joiningDate,
           status: student.status,
         },
         attendance: {
-          presentDays: attendancePercentage.present_days,
-          totalDays: attendancePercentage.total_days,
+          presentDays: attendancePercentage.presentDays,
+          totalDays: attendancePercentage.totalDays,
           percentage: attendancePercentage.percentage,
           summary: attendanceSummary,
         },

@@ -2,8 +2,8 @@ import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../ut
 
 export const getAllNotifications = async (req, res) => {
   try {
-    const result = await req.db.query('SELECT * FROM notifications ORDER BY created_at DESC');
-    res.json({ data: result.rows });
+    const result = await req.db.query('SELECT * FROM notifications ORDER BY "createdAt" DESC');
+    res.json({ success: true, data: result.rows });
   } catch (err) {
     console.error('getAllNotifications:', err);
     res.status(500).json({ error: 'Server error' });
@@ -26,11 +26,11 @@ export const createNotification = async (req, res) => {
     const createdByInt = createdBy ? parseInt(createdBy, 10) : null;
 
     const result = await req.db.query(
-      `INSERT INTO notifications (title, message, attachment_url, recipient_role, class_level, section, created_by)
+      `INSERT INTO notifications (title, message, "attachmentUrl", "recipientRole", "classLevel", section, "createdBy")
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [title, message, attachmentUrl, recipientRole || null, classLevel || null, section || null, createdByInt]
     );
-    res.status(201).json({ data: result.rows[0] });
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('createNotification ERROR:', err.message);
     res.status(500).json({ error: 'Server error' });

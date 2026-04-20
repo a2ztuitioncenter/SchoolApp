@@ -84,7 +84,7 @@ export async function getVisibleMaterials(db, user, filters = {}) {
   if (user.role === 'student') {
     const scope = await getStudentScope(db, user.userId);
     if (!scope) return [];
-    params.push(scope.class_level);
+    params.push(scope.classLevel);
     clauses.push(`ac.class_name = $${params.length}`);
     if (scope.section) {
       params.push(scope.section);
@@ -94,7 +94,7 @@ export async function getVisibleMaterials(db, user, filters = {}) {
     const assignments = await getTeacherAssignments(db, user.userId);
     if (!assignments.length) return [];
     const assignmentPredicates = assignments.map((a) => {
-      params.push(a.class_level);
+      params.push(a.classLevel);
       const classParam = `$${params.length}`;
       if (!a.section || a.section === 'ALL') {
         return `(ac.class_name = ${classParam})`;

@@ -41,22 +41,22 @@ router.get('/:userId/results', async (req, res) => {
     const parsedUserId = parseInt(userId, 10);
     if (isNaN(parsedUserId)) return res.status(400).json({ error: 'Invalid userId format' });
 
-    // Get student details (roll_number and name)
+    // Get student details (rollNumber and name)
     const studentResult = await pool.query(
-      'SELECT roll_number, name FROM students WHERE user_id = $1',
+      'SELECT "rollNumber", name FROM students WHERE "userId" = $1',
       [parsedUserId]
     );
 
     if (studentResult.rows.length === 0) return res.json({ data: [] });
 
-    const { roll_number, name } = studentResult.rows[0];
+    const { rollNumber, name } = studentResult.rows[0];
 
-    // Fetch results using exam_results table (snake_case)
+    // Fetch results using exam_results table (camelCase)
     const results = await pool.query(
       `SELECT * FROM exam_results 
-       WHERE roll_number = $1 OR student_name = $2
-       ORDER BY created_at DESC`,
-      [roll_number, name]
+       WHERE "rollNumber" = $1 OR "studentName" = $2
+       ORDER BY "createdAt" DESC`,
+      [rollNumber, name]
     );
 
     res.json({ data: results.rows });
@@ -76,22 +76,22 @@ router.get('/:userId/homework', async (req, res) => {
     const pool = req.db;
 
     const studentResult = await pool.query(
-      'SELECT class_level, section FROM students WHERE user_id = $1',
+      'SELECT "classLevel", section FROM students WHERE "userId" = $1',
       [userId]
     );
 
     if (studentResult.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
 
-    const { class_level, section } = studentResult.rows[0];
+    const { classLevel, section } = studentResult.rows[0];
 
-    // Get homework matching classLevel and section (snake_case)
+    // Get homework matching classLevel and section (camelCase)
     const homeworkResult = await pool.query(
       `SELECT h.*, u.phone AS teacher_phone 
        FROM homework h 
-       LEFT JOIN users u ON h.teacher_id = u.id 
-       WHERE h.class_level = $1 AND (h.section = $2 OR h.section = 'ALL')
-       ORDER BY h.created_at DESC`,
-      [class_level, section]
+       LEFT JOIN users u ON h."teacherId" = u.id 
+       WHERE h."classLevel" = $1 AND (h.section = $2 OR h.section = 'ALL')
+       ORDER BY h."createdAt" DESC`,
+      [classLevel, section]
     );
 
     return res.json({
@@ -117,21 +117,21 @@ router.get('/:userId/syllabus', async (req, res) => {
     const pool = req.db;
 
     const studentResult = await pool.query(
-      'SELECT class_level, section FROM students WHERE user_id = $1',
+      'SELECT "classLevel", section FROM students WHERE "userId" = $1',
       [userId]
     );
 
     if (studentResult.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
 
-    const { class_level, section } = studentResult.rows[0];
+    const { classLevel, section } = studentResult.rows[0];
 
     const syllabusResult = await pool.query(
       `SELECT s.*, u.name AS teacher_name 
        FROM syllabus s 
-       LEFT JOIN users u ON s.teacher_id = u.id 
-       WHERE s.class_level = $1 AND (s.section = $2 OR s.section = 'ALL')
-       ORDER BY s.subject ASC, s.created_at ASC`,
-      [class_level, section]
+       LEFT JOIN users u ON s."teacherId" = u.id 
+       WHERE s."classLevel" = $1 AND (s.section = $2 OR s.section = 'ALL')
+       ORDER BY s.subject ASC, s."createdAt" ASC`,
+      [classLevel, section]
     );
 
     return res.json({

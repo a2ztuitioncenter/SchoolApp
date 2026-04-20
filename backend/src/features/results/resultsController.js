@@ -6,18 +6,18 @@ export const getResultsByStudent = async (req, res) => {
     let result;
     if (student === 'all') {
       result = await req.db.query(
-        `SELECT * FROM exam_results ORDER BY created_at DESC`
+        `SELECT * FROM exam_results ORDER BY "createdAt" DESC`
       );
     } else {
       // Filter by roll number or student name since those are the primary identifiers in exam_results
       result = await req.db.query(
         `SELECT * FROM exam_results 
-         WHERE roll_number = $1 OR student_name = $1 
-         ORDER BY created_at DESC`,
+         WHERE "rollNumber" = $1 OR "studentName" = $1 
+         ORDER BY "createdAt" DESC`,
         [student]
       );
     }
-    res.json({ data: result.rows });
+    res.json({ success: true, data: result.rows });
   } catch (err) {
     console.error('getResultsByStudent:', err);
     res.status(500).json({ error: 'Server error' });
@@ -42,11 +42,11 @@ export const createResult = async (req, res) => {
     const subjects = req.body.subjects || {};
 
     const result = await req.db.query(
-      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id)
+      `INSERT INTO exam_results ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId]
     );
-    res.status(201).json({ data: result.rows[0] });
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('createResult:', err);
     res.status(500).json({ error: 'Server error' });
