@@ -326,13 +326,13 @@ async function loadDashboardData() {
             ]);
 
             // ✅ Store data with null-safe access
-            dashboardData.students = studentsRes?.students || [];
-            dashboardData.unpaidFees = unpaidFeesRes?.fees || [];
+            dashboardData.students = studentsRes?.data || [];
+            dashboardData.unpaidFees = unpaidFeesRes?.data || [];
             // Extract report from nested structure if it exists
-            dashboardData.financialSummary = (financialRes?.report) ? financialRes.report : (financialRes || {});
-            dashboardData.timetable = timetableRes?.timetable || [];
-            dashboardData.trends = trendsRes?.trends || [];
-            dashboardData.attendanceStats = attendanceRes || {};
+            dashboardData.financialSummary = (financialRes?.data) ? financialRes.data : (financialRes || {});
+            dashboardData.timetable = timetableRes?.data || [];
+            dashboardData.trends = trendsRes?.data || [];
+            dashboardData.attendanceStats = (attendanceRes?.data) ? attendanceRes.data : (attendanceRes || {});
 
             // Fetch additional data for activity panel (non-critical, can fail silently)
             const [latestStudents, latestPayments, latestHomework] = await Promise.all([
@@ -420,8 +420,8 @@ async function fetchLatestStudents() {
         );
 
         const res = await Promise.race([adminAPI.getStudents(), timeoutPromise]);
-        if (res?.students && res.students.length > 0) {
-            return res.students
+        if (res?.data && res.data.length > 0) {
+            return res.data
                 .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                 .slice(0, 3);
         }
@@ -443,7 +443,7 @@ async function fetchLatestPayments() {
 
         // Fetch all fees and filter for paid ones
         const feesRes = await Promise.race([feesAPI.getAll(), timeoutPromise]);
-        const fees = feesRes?.fees || [];
+        const fees = feesRes?.data || [];
 
         // Filter paid fees and get latest 3
         return fees
@@ -466,7 +466,7 @@ async function fetchLatestHomework() {
         );
 
         const res = await Promise.race([homeworkAPI.getAll(), timeoutPromise]);
-        const homework = res?.homework || [];
+        const homework = res?.data || [];
 
         // Get latest 3
         return homework
@@ -1315,7 +1315,7 @@ let showAllUsers = false;
 async function loadUsers() {
     try {
         const res = await adminAPI.getUsers();
-        allUsersData = res.users || [];
+        allUsersData = res.data || [];
         filterUsersTable();
     } catch (err) {
         showErrorAlert('Failed to load users');
@@ -1659,7 +1659,7 @@ let showAllStudents = false;
 async function loadStudents() {
     try {
         const res = await adminAPI.getStudents();
-        allStudentsData = res.students || [];
+        allStudentsData = res.data || [];
         populateStudentClassDropdowns();
         filterStudentsTable();
     } catch (err) {
@@ -3736,9 +3736,10 @@ async function loadTimetableDropdowns() {
         }
 
         // Store teachers globally for filtering
-        allTeachersForTimetable = (usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
+        allTeachersForTimetable = (usersRes.data || usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
 
         const teacherSel = document.getElementById('tt-teacher');
+        const sectionSel = document.getElementById('tt-section');
 
         // Initial populate: all teachers or disabled until class is selected
         if (teacherSel) {
@@ -3746,32 +3747,49 @@ async function loadTimetableDropdowns() {
             teacherSel.disabled = true;
         }
 
-        // Add event listener to filter teachers when class is selected
-        if (classSel) {
-            classSel.addEventListener('change', function () {
-                const selectedClass = this.value;
-                if (!selectedClass) {
-                    teacherSel.innerHTML = '<option value="">Select Class First</option>';
-                    teacherSel.disabled = true;
-                    return;
-                }
+        const updateTeacherDropdown = () => {
+            if (!classSel || !teacherSel) return;
+            const selectedClass = classSel.value;
+            const selectedSection = sectionSel ? sectionSel.value : '';
+            
+            if (!selectedClass) {
+                teacherSel.innerHTML = '<option value="">Select Class First</option>';
+                teacherSel.disabled = true;
+                return;
+            }
 
-                // Filter teachers who have the selected class in their classesAssigned array
-                const availableTeachers = allTeachersForTimetable.filter(t => {
-                    if (!t.classesAssigned || t.classesAssigned.length === 0) return false;
-                    return t.classesAssigned.includes(selectedClass);
+            // Filter teachers who have the selected class (and optionally section) in their classesAssigned array
+            const availableTeachers = allTeachersForTimetable.filter(t => {
+                if (!t.classesAssigned || !Array.isArray(t.classesAssigned) || t.classesAssigned.length === 0) return false;
+                
+                return t.classesAssigned.some(assignment => {
+                    const assignClass = assignment.class || assignment.classLevel || assignment;
+                    if (assignClass !== selectedClass) return false;
+                    
+                    // Specific section mapping check if selected
+                    if (typeof assignment === 'object' && selectedSection) {
+                        const assignSection = assignment.section;
+                        if (assignSection && assignSection !== 'All' && assignSection !== selectedSection) {
+                            return false; // Teacher assigned to a specific different section
+                        }
+                    }
+                    return true;
                 });
-
-                if (availableTeachers.length > 0) {
-                    teacherSel.disabled = false;
-                    teacherSel.innerHTML = '<option value="">Select Teacher</option>' +
-                        availableTeachers.map(t => `<option value="${t.id}">${t.name || t.phone}</option>`).join('');
-                } else {
-                    teacherSel.disabled = true;
-                    teacherSel.innerHTML = '<option value="">No Teacher Available</option>';
-                }
             });
-        }
+
+            if (availableTeachers.length > 0) {
+                teacherSel.disabled = false;
+                teacherSel.innerHTML = '<option value="">Select Teacher</option>' +
+                    availableTeachers.map(t => `<option value="${t.id}">${t.name || t.phone}</option>`).join('');
+            } else {
+                teacherSel.disabled = true;
+                teacherSel.innerHTML = '<option value="">No Teacher Available</option>';
+            }
+        };
+
+        // Add event listeners to filter teachers when class or section is selected
+        if (classSel) classSel.addEventListener('change', updateTeacherDropdown);
+        if (sectionSel) sectionSel.addEventListener('change', updateTeacherDropdown);
     } catch (err) {
         console.error('Failed to load dropdowns:', err);
     }

@@ -119,7 +119,7 @@ async function fetchPendingUsers() {
         console.log('📦 Response:', response);
 
         if (response && response.success) {
-            pendingUsers = response.users || [];
+            pendingUsers = response.data || [];
 
             if (pendingUsers.length === 0) {
                 renderEmptyState();

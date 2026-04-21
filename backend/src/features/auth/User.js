@@ -129,11 +129,11 @@ export const deleteUser = async (pool, id) => {
   try {
     await client.query('BEGIN');
     
-    // Column names updated to snake_case
+    // Use quoted identifiers ("teacherId", etc.) consistent with actual schema
     await client.query('UPDATE attendance SET "userId" = NULL WHERE "userId" = $1', [id]);
-    await client.query('UPDATE homework SET teacher_id = NULL WHERE teacher_id = $1', [id]);
+    await client.query('UPDATE homework SET "teacherId" = NULL WHERE "teacherId" = $1', [id]);
     await client.query('UPDATE fees SET "userId" = NULL WHERE "userId" = $1', [id]);
-    await client.query('UPDATE exam_results SET teacher_id = NULL WHERE teacher_id = $1', [id]);
+    await client.query('UPDATE exam_results SET "teacherId" = NULL WHERE "teacherId" = $1', [id]);
     await client.query('UPDATE notifications SET "createdBy" = NULL WHERE "createdBy" = $1', [id]);
     await client.query('UPDATE users SET "approvedBy" = NULL WHERE "approvedBy" = $1', [id]);
 
@@ -186,12 +186,12 @@ export const getUsersByStatus = async (pool, status, schoolId = 'school-001') =>
 };
 
 export const updateUserStatus = async (pool, userId, newStatus, approvedByAdminId = null, rejectionReason = null) => {
-  const result = await pool.query(
-    `UPDATE users 
-     SET status = $2, "approvedBy" = $3, "rejectionReason" = $4, "statusUpdatedAt" = NOW()
-     WHERE id = $1 RETURNING *`,
-    [userId, newStatus, approvedByAdminId, rejectionReason]
-  );
+    const result = await pool.query(
+      `UPDATE users 
+       SET status = $2, "approvedBy" = $3, "rejectionReason" = $4, "statusUpdatedAt" = NOW()
+       WHERE id = $1 RETURNING *`,
+      [userId, newStatus, approvedByAdminId, rejectionReason]
+    );
   return result.rows[0] || null;
 };
 
