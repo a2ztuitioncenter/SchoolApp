@@ -109,6 +109,9 @@
                 <a href="#" class="nav-link" data-tab="homework">
                     <i class="fas fa-book"></i> Homework
                 </a>
+                <a href="#" class="nav-link" data-tab="subjects">
+                    <i class="fas fa-book-open"></i> Subjects
+                </a>
                 <a href="#" class="nav-link" data-tab="fees">
                     <i class="fas fa-wallet"></i> Fees & Financials`
                 </a>
@@ -133,6 +136,7 @@
                 <a href="#" class="nav-link" data-tab="students"><i class="fas fa-graduation-cap"></i> <span>Students</span></a>
                 <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-clipboard-check"></i> <span>Attendance</span></a>
                 <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book"></i> <span>Homework</span></a>
+                <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book-open"></i> <span>Subjects</span></a>
                 <a href="#" class="nav-link" data-tab="fees"><i class="fas fa-wallet"></i> <span>Fees</span></a>
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
                 <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-clock"></i> <span>Timetable</span></a>
@@ -967,6 +971,89 @@
                 </div>
             </div>
 
+            <!-- Subjects Management Tab -->
+            <div id="tab-subjects" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-book-open"></i> Subjects Management</h2>
+                        <p class="section-subtitle">Define and manage subjects for each class.</p>
+                    </div>
+                    <button class="btn btn-primary btn-lg" onclick="openAddSubjectModal()">
+                        <i class="fas fa-plus"></i> Add Subject
+                    </button>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <select id="subject-class-filter" class="form-control" onchange="loadSubjects()">
+                            <option value="">All Classes</option>
+                        </select>
+                        <select id="subject-section-filter" class="form-control" onchange="loadSubjects()">
+                            <option value="">All Sections</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container no-scrollbar">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Subject Name</th>
+                                <th>Class</th>
+                                <th>Section</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subjects-list">
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>No subjects found. Click "Add Subject" to begin.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add Subject Modal -->
+            <div id="add-subject-modal" class="modal">
+                <div class="modal-content" style="max-width: 450px;">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-plus-circle"></i> Add New Subject</h2>
+                        <span class="close" onclick="closeAddSubjectModal()">&times;</span>
+                    </div>
+                    <form id="add-subject-form" class="modal-body">
+                        <div class="form-group">
+                            <label>Subject Name *</label>
+                            <input type="text" id="subject-name" placeholder="e.g. Physics" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Class Level *</label>
+                                <select id="subject-class" required>
+                                    <option value="">Select Class</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Section (Optional)</label>
+                                <select id="subject-section">
+                                    <option value="">All Sections</option>
+                                    <option value="A">A</option>
+                                    <option value="B">B</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="padding-top: 1rem; border-top: 1px solid var(--border-color); margin-top: 1rem;">
+                            <button type="button" class="btn btn-secondary" onclick="closeAddSubjectModal()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Subject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Add Homework Modal -->
             <div id="add-homework-modal" class="modal">
                 <div class="modal-content">
@@ -1006,7 +1093,9 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Subject *</label>
-                                    <input type="text" id="hw-subject" placeholder="e.g. Mathematics" required>
+                                    <select id="hw-subject" required style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.95rem;">
+                                        <option value="">Select Subject</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Due Date</label>
@@ -1080,7 +1169,9 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Subject *</label>
-                                    <input type="text" id="hw-edit-subject" placeholder="e.g. Mathematics" required>
+                                    <select id="hw-edit-subject" required style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.95rem;">
+                                        <option value="">Select Subject</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Due Date</label>
@@ -1566,7 +1657,9 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Subject *</label>
-                                    <input type="text" id="tt-subject" placeholder="e.g. Mathematics" required>
+                                    <select id="tt-subject" required>
+                                        <option value="">Select Subject</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="form-row">
@@ -2076,7 +2169,9 @@
                     </div>
                     <div class="form-group">
                         <label>Subject *</label>
-                        <input type="text" id="material-subject" required placeholder="e.g. Mathematics">
+                        <select id="material-subject" required>
+                            <option value="">Select Subject</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">

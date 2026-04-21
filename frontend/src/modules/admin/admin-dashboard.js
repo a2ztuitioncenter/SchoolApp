@@ -3,7 +3,7 @@
  * Full-featured admin dashboard with all CRUD operations restored.
  */
 
-import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
 import { escapeAttr as escapeAttrValue, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
 import './admin-pending-approvals.js';
@@ -98,7 +98,60 @@ async function initDashboard() {
     hideInfoAlert();
 
     setupTabNavigation();
-    setupForms();
+    
+    // Initial load for active tab
+    const activeTab = document.querySelector('.nav-link.active')?.getAttribute('data-tab');
+    if (activeTab === 'subjects') loadSubjects();
+}
+
+/**
+ * Helper to populate subject dropdowns dynamically
+ */
+async function populateSubjectDropdown(classLevel, section, selectIds) {
+    const ids = Array.isArray(selectIds) ? selectIds : [selectIds];
+    if (!classLevel) {
+        ids.forEach(id => {
+            const sel = typeof id === 'string' ? document.getElementById(id) : id;
+            if (sel) sel.innerHTML = '<option value="">-- Select Class First --</option>';
+        });
+        return;
+    }
+
+    try {
+        const res = await subjectsAPI.getAll();
+        const allSubjects = res.data || [];
+        
+        // Filter by class and (optionally) section
+        const filtered = allSubjects.filter(s => {
+            const classMatch = s.class_level === classLevel || s.classLevel === classLevel;
+            const sectionMatch = !s.section || s.section === section;
+            return classMatch && sectionMatch;
+        });
+
+        ids.forEach(id => {
+            const sel = typeof id === 'string' ? document.getElementById(id) : id;
+            if (!sel) return;
+            
+            const currentVal = sel.value;
+            if (filtered.length === 0) {
+                sel.innerHTML = '<option value="">No subjects found</option>';
+            } else {
+                sel.innerHTML = '<option value="">Select Subject</option>';
+                const uniqueNames = [...new Set(filtered.map(s => s.name))];
+                uniqueNames.forEach(name => {
+                    sel.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+            }
+            
+            // Try to restore previous selection if it's still valid
+            if (currentVal && filtered.some(s => s.name === currentVal)) {
+                sel.value = currentVal;
+            }
+        });
+    } catch (err) {
+        console.error('Failed to populate subjects:', err);
+    }
+}    setupForms();
 
     // ===== UNIFIED GLOBAL EVENT HANDLER =====
     // Single consolidated click handler for all UI interactions
@@ -278,6 +331,7 @@ async function loadTabContent(tabName) {
         case 'timetable': await loadTimetable(); break;
         case 'notifications': await loadNotifications(); break;
         case 'results': await loadResults(); break;
+        case 'subjects': await loadSubjects(); break;
     }
 }
 
@@ -1883,8 +1937,15 @@ async function populateHomeworkClassDropdown(selectId) {
         const classes = res.data || [];
         const sel = document.getElementById(selectId);
         if (!sel) return;
+        
+        // Preserve current selection if any
+        const currentVal = sel.value;
         sel.innerHTML = '<option value="">Select Class</option>';
         classes.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+        
+        if (currentVal && classes.includes(currentVal)) {
+            sel.value = currentVal;
+        }
     } catch (err) {
         console.error('Failed to load classes for homework:', err);
     }
@@ -3279,19 +3340,161 @@ window.openMaterialModal = function (material = null) {
             document.getElementById('material-title').value = material.title;
             document.getElementById('material-description').value = material.description || '';
             document.getElementById('material-subject').value = material.subject;
-            document.getElementById('material-class').value = material.classLevel;
-            document.getElementById('material-section').value = material.section || 'A';
+            document.getElementById('material-class').value = material.classLevel || material.class_level;
+            document.getElementById('material-section').value = material.section || '';
+            
+            // Populate subject dropdown based on loaded class/section
+            populateSubjectDropdown(material.classLevel || material.class_level, material.section, 'material-subject').then(() => {
+                document.getElementById('material-subject').value = material.subject;
+            });
+
             fileHint.style.display = 'block';
             fileInput.required = false;
         } else {
             titleObj.innerText = 'Add Study Material';
             document.getElementById('material-id').value = '';
+            document.getElementById('material-subject').innerHTML = '<option value="">-- Select Class First --</option>';
         }
     });
 
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     closeAllMaterialMenus();
+};
+
+// =============================================
+// SUBJECTS MANAGEMENT
+// =============================================
+let allSubjectsData = [];
+
+window.loadSubjects = async function() {
+    try {
+        const classFilter = document.getElementById('subject-class-filter')?.value;
+        const sectionFilter = document.getElementById('subject-section-filter')?.value;
+        
+        const res = await subjectsAPI.getAll();
+        allSubjectsData = res.data || [];
+        
+        let filtered = allSubjectsData;
+        if (classFilter) {
+            filtered = filtered.filter(s => (s.class_level === classFilter || s.classLevel === classFilter));
+        }
+        if (sectionFilter) {
+            filtered = filtered.filter(s => s.section === sectionFilter);
+        }
+        
+        renderSubjectsTable(filtered);
+        
+        // Also populate the class filter if empty
+        const classFilterSelect = document.getElementById('subject-class-filter');
+        if (classFilterSelect && classFilterSelect.options.length <= 1) {
+            const classesRes = await attendanceAPI.getClasses();
+            const classes = classesRes.data || [];
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                classFilterSelect.appendChild(opt);
+            });
+        }
+    } catch (err) {
+        console.error('Failed to load subjects:', err);
+        showErrorAlert('Failed to load subjects');
+    }
+};
+
+function renderSubjectsTable(subjects) {
+    const tbody = document.getElementById('subjects-list');
+    if (!tbody) return;
+    
+    if (subjects.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><i class="fas fa-inbox"></i><p>No subjects found.</p></td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = subjects.map(s => `
+        <tr>
+            <td><strong>${s.name}</strong></td>
+            <td>Class ${s.class_level || s.classLevel}</td>
+            <td>${s.section || 'All Sections'}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteSubject(${s.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.openAddSubjectModal = function() {
+    const modal = document.getElementById('add-subject-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        // Populate class dropdown in modal
+        populateHomeworkClassDropdown('subject-class');
+    }
+};
+
+window.closeAddSubjectModal = function() {
+    const modal = document.getElementById('add-subject-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+    document.getElementById('add-subject-form')?.reset();
+};
+
+window.deleteSubject = async function(id) {
+    if (!confirm('Are you sure you want to delete this subject? This may affect existing homework and timetables.')) return;
+    
+    try {
+        showInfoAlert('Deleting subject...');
+        const res = await subjectsAPI.delete(id);
+        hideInfoAlert();
+        if (res.success) {
+            showSuccessAlert('Subject deleted successfully');
+            await loadSubjects();
+        } else {
+            showErrorAlert(res.error || 'Failed to delete subject');
+        }
+    } catch (err) {
+        hideInfoAlert();
+        showErrorAlert(err.message || 'Failed to delete subject');
+    }
+};
+
+window.saveSubject = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    
+    const name = document.getElementById('subject-name').value.trim();
+    const classLevel = document.getElementById('subject-class').value;
+    const section = document.getElementById('subject-section').value;
+    
+    if (!name || !classLevel) {
+        showErrorAlert('Subject Name and Class are required');
+        return;
+    }
+    
+    try {
+        showInfoAlert('Adding subject...');
+        const res = await subjectsAPI.add({
+            name,
+            classLevel,
+            section: section || null
+        });
+        hideInfoAlert();
+        
+        if (res.success) {
+            showSuccessAlert('Subject added successfully');
+            closeAddSubjectModal();
+            await loadSubjects();
+        } else {
+            showErrorAlert(res.error || 'Failed to add subject');
+        }
+    } catch (err) {
+        hideInfoAlert();
+        showErrorAlert(err.message || 'Failed to add subject');
+    }
 };
 
 window.closeMaterialModal = function () {
@@ -3304,8 +3507,29 @@ async function initMaterialsTab() {
     try {
         await loadMaterials();
         // Dynamically populate class filter
-        populateHomeworkClassDropdown('material-class-filter');
+        await populateHomeworkClassDropdown('material-class-filter');
+        
+        // Setup dynamic subject filter
+        const classFilter = document.getElementById('material-class-filter');
+        const sectionFilter = document.getElementById('material-section-filter');
+        
+        const updateSubjectFilter = () => {
+            populateSubjectDropdown(classFilter.value, sectionFilter.value, 'material-subject-filter').then(() => {
+                // If it was "All Subjects", keep it or reset it
+                const subFilter = document.getElementById('material-subject-filter');
+                if (subFilter.options.length > 1) {
+                    subFilter.options[0].textContent = 'All Subjects';
+                    subFilter.options[0].value = '';
+                }
+            });
+        };
+
+        classFilter.addEventListener('change', updateSubjectFilter);
+        sectionFilter.addEventListener('change', updateSubjectFilter);
+        
+        updateSubjectFilter();
     } catch (err) {
+        console.error('Failed to init materials tab:', err);
         showErrorAlert('Failed to load materials');
     }
 }
@@ -3319,8 +3543,14 @@ window.openAddHomeworkModal = function () {
     document.getElementById('hw-edit-id').value = '';
     document.getElementById('hw-current-attachment').style.display = 'none';
     document.body.style.overflow = 'hidden';
+    
+    // Set default section
+    document.getElementById('hw-section').value = 'A';
+    
     // Populate class dropdown
-    populateHomeworkClassDropdown('hw-class');
+    populateHomeworkClassDropdown('hw-class').then(() => {
+        document.getElementById('hw-subject').innerHTML = '<option value="">-- Select Class First --</option>';
+    });
 };
 
 window.closeAddHomeworkModal = function () {
@@ -3340,7 +3570,12 @@ window.openEditHomeworkModal = function (id) {
         document.getElementById('hw-title').value = hw.title || '';
         document.getElementById('hw-class').value = hw.classLevel || '';
         document.getElementById('hw-section').value = hw.section || 'A';
-        document.getElementById('hw-subject').value = hw.subject || '';
+        
+        // Populate subject dropdown and THEN set the value
+        populateSubjectDropdown(hw.classLevel, hw.section, 'hw-subject').then(() => {
+            document.getElementById('hw-subject').value = hw.subject || '';
+        });
+        
         document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
         document.getElementById('hw-description').value = hw.description || '';
 
@@ -3392,8 +3627,28 @@ function setupForms() {
     const hwForm = document.getElementById('homework-form');
     if (hwForm) hwForm.addEventListener('submit', saveHomework);
 
+    // Event listeners for dynamic subjects in homework
+    document.getElementById('hw-class')?.addEventListener('change', (e) => {
+        populateSubjectDropdown(e.target.value, document.getElementById('hw-section').value, 'hw-subject');
+    });
+    document.getElementById('hw-section')?.addEventListener('change', (e) => {
+        populateSubjectDropdown(document.getElementById('hw-class').value, e.target.value, 'hw-subject');
+    });
+
     const matForm = document.getElementById('material-form');
     if (matForm) matForm.addEventListener('submit', saveMaterial);
+
+    // Event listeners for dynamic subjects in materials
+    document.getElementById('material-class')?.addEventListener('change', (e) => {
+        populateSubjectDropdown(e.target.value, document.getElementById('material-section').value, 'material-subject');
+    });
+    document.getElementById('material-section')?.addEventListener('change', (e) => {
+        populateSubjectDropdown(document.getElementById('material-class').value, e.target.value, 'material-subject');
+    });
+
+    const subjectForm = document.getElementById('add-subject-form');
+    if (subjectForm) subjectForm.addEventListener('submit', saveSubject);
+
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
@@ -3777,8 +4032,25 @@ async function loadTimetableDropdowns() {
             }
         };
 
-        // Add event listener to filter teachers when class is selected
-        if (classSel) classSel.addEventListener('change', updateTeacherDropdown);
+        // Add event listeners to filter teachers and subjects when class/section is selected
+        if (classSel) {
+            classSel.addEventListener('change', () => {
+                const selectedClass = classSel.value;
+                const selectedSection = sectionSel?.value || 'A';
+                
+                updateTeacherDropdown();
+                populateSubjectDropdown(selectedClass, selectedSection, 'tt-subject');
+            });
+        }
+        
+        if (sectionSel) {
+            sectionSel.addEventListener('change', () => {
+                const selectedClass = classSel?.value;
+                const selectedSection = sectionSel.value;
+                
+                populateSubjectDropdown(selectedClass, selectedSection, 'tt-subject');
+            });
+        }
     } catch (err) {
         console.error('Failed to load dropdowns:', err);
     }

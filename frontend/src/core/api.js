@@ -174,6 +174,18 @@ const resultsAPI = {
   create: (data) => apiCall('/admin/results', { method: 'POST', body: JSON.stringify(data) }),
 };
 
+const subjectsAPI = {
+  getAll: (classLevel = '', section = '') => {
+    const params = new URLSearchParams();
+    if (classLevel) params.set('classLevel', classLevel);
+    if (section) params.set('section', section);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return apiCall(`/teacher/subjects${suffix}`, { method: 'GET' });
+  },
+  create: (data) => apiCall('/teacher/subjects', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id) => apiCall(`/teacher/subjects/${id}`, { method: 'DELETE' }),
+};
+
 /**
  * Authentication APIs
  */
@@ -222,6 +234,16 @@ export const adminAPI = {
   approveUser: (userId) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST' }),
   rejectUser: (userId, reason) => apiCall(`/auth/admin/reject-user/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }),
   getTrendData: () => apiCall('/admin/financials/trends', { method: 'GET' }),
+};
+
+export {
+  attendanceAPI,
+  homeworkAPI,
+  feesAPI,
+  materialsAPI,
+  notificationsAPI,
+  resultsAPI,
+  subjectsAPI
 };
 
 /**

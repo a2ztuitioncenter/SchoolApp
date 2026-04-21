@@ -1,4 +1,4 @@
-import { teacherAPI, downloadFile } from '../../core/api.js';
+import { teacherAPI, subjectsAPI, downloadFile } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 
 // ═══════════════════════════════════════════
@@ -95,7 +95,7 @@ function setupTabs() {
       if (tab === 'homework') { loadHomework(); populateSharedDropdowns('hw'); }
       if (tab === 'materials') { loadMaterials(); populateSharedDropdowns('mat'); }
       if (tab === 'timetable') renderWeeklyTimetable();
-      if (tab === 'syllabus') loadSyllabus();
+      if (tab === 'syllabus') { loadSyllabus(); setupSyllabusDropdowns(); }
       if (tab === 'attendance') initAttendanceTab();
       if (tab === 'summary') initSummaryTab();
       if (tab === 'exam') initExamTab();
@@ -103,9 +103,58 @@ function setupTabs() {
   });
 }
 
+/**
+ * Populate subject dropdown based on class and section
+ */
+async function populateSubjectDropdown(classLevel, section, selectIds) {
+    const ids = Array.isArray(selectIds) ? selectIds : [selectIds];
+    if (!classLevel) {
+        ids.forEach(id => {
+            const sel = typeof id === 'string' ? document.getElementById(id) : id;
+            if (sel) sel.innerHTML = '<option value="">-- Select Class First --</option>';
+        });
+        return;
+    }
+
+    try {
+        const res = await subjectsAPI.getAll();
+        const allSubjects = res.data || [];
+        
+        // Filter by class and (optionally) section
+        const filtered = allSubjects.filter(s => {
+            const classMatch = s.class_level === classLevel || s.classLevel === classLevel;
+            const sectionMatch = !s.section || s.section === section;
+            return classMatch && sectionMatch;
+        });
+
+        ids.forEach(id => {
+            const sel = typeof id === 'string' ? document.getElementById(id) : id;
+            if (!sel) return;
+            
+            const currentVal = sel.value;
+            if (filtered.length === 0) {
+                sel.innerHTML = '<option value="">No subjects found</option>';
+            } else {
+                sel.innerHTML = '<option value="">Select Subject</option>';
+                const uniqueNames = [...new Set(filtered.map(s => s.name))];
+                uniqueNames.forEach(name => {
+                    sel.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+            }
+            
+            if (currentVal && filtered.some(s => s.name === currentVal)) {
+                sel.value = currentVal;
+            }
+        });
+    } catch (err) {
+        console.error('Failed to populate subjects:', err);
+    }
+}
+
 async function populateSharedDropdowns(prefix) {
   const classSel = document.getElementById(`${prefix}-classLevel`);
   const secSel = document.getElementById(`${prefix}-section`);
+  const subSelId = `${prefix}-subject`;
   if (!classSel || !secSel) return;
 
   try {
@@ -128,10 +177,13 @@ async function populateSharedDropdowns(prefix) {
       classSel.innerHTML = '<option value="">-- Select Class --</option>' +
         classes.map(c => `<option value="${c}">${c}</option>`).join('');
 
-      const renderSections = async () => {
+      const renderSectionsAndSubjects = async () => {
         const selectedClass = classSel.value;
+        const selectedSection = secSel.value;
+        
         if (!selectedClass) {
           secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>';
+          populateSubjectDropdown('', '', subSelId);
           return;
         }
 
@@ -149,10 +201,17 @@ async function populateSharedDropdowns(prefix) {
 
         secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>' +
           sections.map(s => `<option value="${s}">${s}</option>`).join('');
+          
+        if (selectedSection) secSel.value = selectedSection;
+        
+        // Update subjects
+        populateSubjectDropdown(selectedClass, secSel.value, subSelId);
       };
 
-      classSel.onchange = renderSections;
-      await renderSections();
+      classSel.onchange = renderSectionsAndSubjects;
+      secSel.onchange = () => populateSubjectDropdown(classSel.value, secSel.value, subSelId);
+      
+      await renderSectionsAndSubjects();
     } else {
       classSel.innerHTML = '<option value="">-- Select Class --</option>';
       secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>';
@@ -1116,6 +1175,29 @@ function renderSyllabus() {
   }).join('')}`;
 }
 
+async function setupSyllabusDropdowns() {
+  const classSel = document.getElementById('syl-classLevel');
+  const secSel = document.getElementById('syl-section');
+  const subSel = document.getElementById('syl-subject');
+  if (!classSel || !secSel || !subSel) return;
+
+  try {
+    const res = await teacherAPI.getAttendanceClasses(teacherId || '');
+    const classes = res.data || [];
+    classSel.innerHTML = '<option value="">Select Class</option>' + 
+      classes.map(c => `<option value="${c.class_level || c}">${c.class_level || c}</option>`).join('');
+
+    const updateSubjects = () => {
+        populateSubjectDropdown(classSel.value, secSel.value, 'syl-subject');
+    };
+
+    classSel.onchange = updateSubjects;
+    secSel.oninput = updateSubjects; // Since it's an input in HTML (Wait, I changed it to select? No, Syllabus is still input for class/section in some cases? Let's check.)
+  } catch (err) {
+    console.error('Failed to setup syllabus dropdowns:', err);
+  }
+}
+
 window.openSyllabusModal = () => {
   const form = document.getElementById('syl-form');
   if (form) form.reset();
@@ -1123,6 +1205,7 @@ window.openSyllabusModal = () => {
   if (modal) {
     modal.style.display = 'flex';
     modal.classList.add('open');
+    setupSyllabusDropdowns();
   }
 };
 window.closeSyllabusModal = () => {
@@ -1355,6 +1438,9 @@ window.onExamClassChange = async function() {
     if (nameInput) nameInput.value = '';
     examStudents = [];
 
+    // Update all subject dropdowns
+    updateAllExamSubjectDropdowns();
+
     if (!classLevel) {
         if (sectionSel) sectionSel.innerHTML = '<option value="">Select Section</option>';
         return;
@@ -1379,12 +1465,24 @@ window.onExamClassChange = async function() {
     }
 };
 
+async function updateAllExamSubjectDropdowns() {
+    const classLevel = document.getElementById('exam-class-select').value;
+    const section = document.getElementById('exam-section-select').value;
+    const selects = document.querySelectorAll('.sub-name');
+    if (selects.length > 0) {
+        populateSubjectDropdown(classLevel, section, Array.from(selects));
+    }
+}
+
 window.onExamSectionChange = async function() {
     const classLevel = document.getElementById('exam-class-select').value;
     const section = document.getElementById('exam-section-select').value;
     const rollSelect = document.getElementById('exam-roll-select');
     const nameInput = document.getElementById('exam-name-input');
     
+    // Update all subject dropdowns
+    updateAllExamSubjectDropdowns();
+
     if (!classLevel) return;
 
     try {
@@ -1427,18 +1525,7 @@ function createExamSubjectRow() {
             <div class="filter-group">
                 <label>Subject Name</label>
                 <select class="sub-name" required>
-                    <option value="">Select Subject</option>
-                    <option value="English">English</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Science">Science</option>
-                    <option value="Social Science">Social Science</option>
-                    <option value="Physics">Physics</option>
-                    <option value="Chemistry">Chemistry</option>
-                    <option value="Biology">Biology</option>
-                    <option value="Computer">Computer</option>
-                    <option value="EVS">EVS</option>
-                    <option value="Other">Other</option>
+                    <option value="">-- Select Class --</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -1463,6 +1550,13 @@ function createExamSubjectRow() {
         else { showError("At least one subject is required."); }
     });
     container.appendChild(row);
+
+    // Initial subject population for this new row
+    const classLevel = document.getElementById('exam-class-select').value;
+    const section = document.getElementById('exam-section-select').value;
+    if (classLevel) {
+        populateSubjectDropdown(classLevel, section, row.querySelector('.sub-name'));
+    }
 }
 
 window.calculateExamTotals = function() {
