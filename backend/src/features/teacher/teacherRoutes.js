@@ -477,13 +477,13 @@ router.delete('/homework/:id', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const own = await pool.query('SELECT teacher_id, class_level, section FROM homework WHERE id = $1', [id]);
+    const own = await pool.query('SELECT "teacherId", "classLevel", section FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
 
     // Check if teacher can delete: either they created it OR it's assigned to their class
     const homework = own.rows[0];
-    const canDelete = homework.teacher_id === teacher.id ||
-      await checkTeacherClassPermission(pool, teacher.id, homework.class_level, homework.section);
+    const canDelete = homework.teacherId === teacher.id ||
+      await checkTeacherClassPermission(pool, teacher.id, homework.classLevel, homework.section);
 
     if (!canDelete) return res.status(403).json({ error: 'Not authorized to delete this homework' });
 

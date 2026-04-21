@@ -5,15 +5,15 @@ export const attendanceModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS attendance (
       id SERIAL PRIMARY KEY,
-      student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-      user_id INTEGER REFERENCES users(id),
-      class_level VARCHAR(50) NOT NULL,
+      "studentId" INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      "userId" INTEGER REFERENCES users(id),
+      "classLevel" VARCHAR(50) NOT NULL,
       section VARCHAR(10) DEFAULT 'A',
       date DATE NOT NULL,
-      is_present BOOLEAN NOT NULL DEFAULT TRUE,
-      school_id VARCHAR(50) DEFAULT 'school-001',
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(student_id, date)
+      "isPresent" BOOLEAN NOT NULL DEFAULT TRUE,
+      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT NOW(),
+      UNIQUE("studentId", date)
     );
   `,
 
@@ -24,7 +24,7 @@ export const attendanceModel = {
       const date = rec.date || rec.attendanceDate;
       const classLevel = rec.classLevel || rec.class_level;
       const section = rec.section || 'A';
-      const isPresent = (rec.is_present === true || rec.is_present === 'true' || rec.status === 'present' || rec.status === 'true' || rec.status === true);
+      const isPresent = (rec.isPresent === true || rec.isPresent === 'true' || rec.is_present === true || rec.is_present === 'true' || rec.status === 'present' || rec.status === 'true' || rec.status === true);
 
       const r = await db.query(
         `INSERT INTO attendance ("studentId", "classLevel", section, date, "isPresent", "userId")
@@ -67,18 +67,18 @@ export const attendanceModel = {
     const result = await db.query(
       `SELECT
          s.id, s.name, s."rollNumber",
-         COUNT(a.id)                                         AS total_days,
-         COUNT(CASE WHEN a."isPresent"=true  THEN 1 END)     AS present_count,
-         COUNT(CASE WHEN a."isPresent"=false THEN 1 END)     AS absent_count,
-         ROUND(COUNT(CASE WHEN a."isPresent"=true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS attendance_percent
-       FROM students s
-       LEFT JOIN attendance a
-         ON s.id = a."studentId"
-         AND TO_CHAR(a.date, 'YYYY-MM') = $2
-       WHERE s."classLevel" = $1 AND s.section = $3
-       GROUP BY s.id, s.name, s."rollNumber"
-       ORDER BY s.name`,
-      [classLevel, month, section]
+        COUNT(a.id)                                         AS total_days,
+        COUNT(CASE WHEN a."isPresent"=true  THEN 1 END)     AS present_count,
+        COUNT(CASE WHEN a."isPresent"=false THEN 1 END)     AS absent_count,
+        ROUND(COUNT(CASE WHEN a."isPresent"=true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS attendance_percent
+      FROM students s
+      LEFT JOIN attendance a
+        ON s.id = a."studentId"
+        AND TO_CHAR(a.date, 'YYYY-MM') = $2
+      WHERE s."classLevel" = $1 AND s.section = $3
+      GROUP BY s.id, s.name, s."rollNumber"
+      ORDER BY s.name`,
+     [classLevel, month, section]
     );
     return result.rows;
   },
@@ -100,7 +100,7 @@ export const attendanceModel = {
   },
 
   async getAllClasses() {
-    return (await db.query(`SELECT DISTINCT "classLevel" FROM students ORDER BY "classLevel"`)).rows.map(r => r.classLevel);
+    return (await db.query(`SELECT DISTINCT "classLevel" AS class_level FROM students ORDER BY class_level`)).rows;
   },
 
   async getSectionsByClass(classLevel) {

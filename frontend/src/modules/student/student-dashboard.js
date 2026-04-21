@@ -222,12 +222,13 @@ async function loadDashboardData(userId) {
     const dashboardResponse = await studentAPI.getDashboard(userId);
 
     if (!dashboardResponse || !dashboardResponse.success) {
-      if (dashboardResponse?.error === 'Student record not found') {
+      const errTxt = dashboardResponse?.error || dashboardResponse?.message || '';
+      if (errTxt === 'Student record not found' || errTxt === 'Student not found') {
         showErrorMessage('Your student profile is being set up. Please try again in a moment.');
         setTimeout(() => { window.location.href = '/'; }, 3000);
         return null;
       }
-      throw new Error(dashboardResponse?.error || 'Failed to fetch dashboard data');
+      throw new Error(errTxt || 'Failed to fetch dashboard data');
     }
 
     const { data } = dashboardResponse;

@@ -5,14 +5,14 @@ export const syllabusModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS syllabus (
       id SERIAL PRIMARY KEY,
-      teacher_id INT REFERENCES users(id) ON DELETE CASCADE,
-      class_level VARCHAR(20) NOT NULL,
+      "teacherId" INT REFERENCES users(id) ON DELETE CASCADE,
+      "classLevel" VARCHAR(20) NOT NULL,
       section VARCHAR(10),
       subject VARCHAR(100) NOT NULL,
       chapter VARCHAR(200) NOT NULL,
       description TEXT,
       completed BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT NOW()
+      "createdAt" TIMESTAMP DEFAULT NOW()
     );
   `,
 };
@@ -29,7 +29,7 @@ export const createSyllabusEntry = async (pool, { teacherId, classLevel, section
   const res = await pool.query(
     `INSERT INTO syllabus ("teacherId", "classLevel", section, subject, chapter, description)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [teacherId, classLevel, section || null, subject, chapter, description || null]
+    [teacherId, classLevel, section || 'ALL', subject, chapter, description || null]
   );
   return res.rows[0];
 };

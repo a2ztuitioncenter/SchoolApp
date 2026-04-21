@@ -239,22 +239,25 @@ function transformAPIData(apiData) {
   // Handle both array and object with data property
   const dataArray = Array.isArray(apiData) ? apiData : (apiData.data || []);
 
-  return dataArray.map((item, index) => ({
-    id: item.id || index + 1,
-    roll: item.roll_no || item.roll || item.rollNumber || index + 1,
-    name: item.name || item.studentName || 'Unknown',
-    class: String(item.class || item.classLevel || item.className || ''),
-    section: item.section || 'N/A',
-    total: item.total || item.totalMarks || 300,
-    obtained: item.obtained || item.marksObtained || item.obtainedMarks || 0,
-    percentage: ((item.obtained || item.marksObtained || item.obtainedMarks || 0) / (item.total || item.totalMarks || 300) * 100),
-    result: ((item.obtained || item.marksObtained || item.obtainedMarks || 0) / (item.total || item.totalMarks || 300) * 100) >= 33 ? 'Pass' : 'Fail',
-    subjects: item.subjects || [
-      { name: 'Subject 1', marks: item.subject1Marks || 0 },
-      { name: 'Subject 2', marks: item.subject2Marks || 0 },
-      { name: 'Subject 3', marks: item.subject3Marks || 0 }
-    ]
-  }));
+  return dataArray.map((item, index) => {
+    // Correctly prioritize fields from API
+    const total = Number(item.total_marks || item.totalMarks || item.total || 300);
+    const obtained = Number(item.obtained_marks || item.obtainedMarks || item.marksObtained || item.obtained || 0);
+    const percentage = item.percentage !== undefined ? Number(item.percentage) : (total > 0 ? (obtained / total * 100) : 0);
+    
+    return {
+      id: item.id || index + 1,
+      roll: item.roll_number || item.roll_no || item.roll || item.rollNumber || 'N/A',
+      name: item.student_name || item.name || item.studentName || 'Unknown',
+      class: String(item.class_level || item.class || item.classLevel || item.className || ''),
+      section: item.section || 'N/A',
+      total: total,
+      obtained: obtained,
+      percentage: percentage,
+      result: item.result || (percentage >= 33 ? 'Pass' : 'Fail'),
+      subjects: item.subjects || []
+    };
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════

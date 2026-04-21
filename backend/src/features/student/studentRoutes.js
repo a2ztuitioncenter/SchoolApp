@@ -43,28 +43,36 @@ router.get('/:userId/results', async (req, res) => {
 
     // Get student details (rollNumber and name)
     const studentResult = await pool.query(
-      'SELECT "rollNumber", name FROM students WHERE "userId" = $1',
+      'SELECT id, "rollNumber", name FROM students WHERE "userId" = $1',
       [parsedUserId]
     );
 
-    if (studentResult.rows.length === 0) return res.json({ data: [] });
+    if (!studentResult.rows || studentResult.rows.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
 
-    const { rollNumber, name } = studentResult.rows[0];
+    const { id: studentId, rollNumber, name } = studentResult.rows[0];
 
-    // Fetch results using exam_results table (camelCase)
+    // Fetch results using exam_results table
     const results = await pool.query(
-      `SELECT er.*, COALESCE(s."rollNumber", er."rollNumber") as "rollNumber",
-              COALESCE(s."rollNumber", er."rollNumber") as "roll_no"
+      `SELECT er.*, s."rollNumber" as "roll_no"
        FROM exam_results er
        LEFT JOIN students s ON er."studentId" = s.id
-       WHERE er."studentId" = $1 OR er."rollNumber" = $2 OR er."studentName" = $3
+       WHERE er."studentId" = $1
        ORDER BY er."createdAt" DESC`,
-      [parsedUserId, rollNumber, name]
+      [studentId]
     );
 
-    res.json({ data: results.rows });
+    const resultData = results.rows;
+
+    if (!resultData || resultData.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    res.json({ success: true, data: resultData });
   } catch (err) {
     console.error(`❌ [STUDENT RESULTS] Error:`, err.message);
+    console.error(`❌ [STUDENT RESULTS] Stack:`, err.stack);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -87,7 +95,7 @@ router.get('/:userId/homework', async (req, res) => {
 
     const { classLevel, section } = studentResult.rows[0];
 
-    // Get homework matching classLevel and section (camelCase)
+    // Get homework matching classLevel and section (camelCase in DB)
     const homeworkResult = await pool.query(
       `SELECT h.*, u.phone AS teacher_phone 
        FROM homework h 
@@ -97,12 +105,21 @@ router.get('/:userId/homework', async (req, res) => {
       [classLevel, section]
     );
 
+    // Map to camelCase (DB columns are already camelCase, but mapping for consistency or if some are different)
+    const homework = (homeworkResult.rows || []).map(h => ({
+      ...h,
+      classLevel: h.classLevel,
+      dueDate: h.dueDate,
+      teacherId: h.teacherId,
+      attachmentUrl: h.attachmentUrl
+    }));
+
     return res.json({
       success: true,
       classLevel,
       section,
-      homework: homeworkResult.rows,
-      count: homeworkResult.rows.length,
+      homework: homework,
+      count: homework.length,
     });
   } catch (error) {
     console.error('Error fetching student homework:', error);
@@ -124,26 +141,42 @@ router.get('/:userId/syllabus', async (req, res) => {
       [userId]
     );
 
-    if (studentResult.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
+    if (!studentResult.rows || studentResult.rows.length === 0) {
+      console.log(`⚠️ [SYLLABUS] Student not found for userId: ${userId}`);
+      return res.status(404).json({ error: 'Student not found' });
+    }
 
     const { classLevel, section } = studentResult.rows[0];
+
+    // Handle empty classLevel to prevent invalid queries
+    if (!classLevel || classLevel.trim() === "") {
+      return res.json({
+        success: true,
+        syllabus: [],
+        message: 'No class assigned to student'
+      });
+    }
 
     const syllabusResult = await pool.query(
       `SELECT s.*, u.name AS teacher_name 
        FROM syllabus s 
        LEFT JOIN users u ON s."teacherId" = u.id 
-       WHERE s."classLevel" = $1 AND (s.section = $2 OR s.section = 'ALL')
+       WHERE s."classLevel" = $1 AND (s.section = $2 OR s.section = 'ALL' OR $2 = 'ALL')
        ORDER BY s.subject ASC, s."createdAt" ASC`,
-      [classLevel, section]
+      [classLevel, section || 'ALL']
     );
 
     return res.json({
       success: true,
-      syllabus: syllabusResult.rows
+      syllabus: syllabusResult.rows || []
     });
   } catch (error) {
-    console.error('Error fetching student syllabus:', error);
-    return res.status(500).json({ error: 'Failed to fetch syllabus' });
+    console.error(`❌ [SYLLABUS ERROR] StudentID ${req.params.userId}:`, error.message);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch syllabus',
+      error: error.message 
+    });
   }
 });
 

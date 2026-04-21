@@ -3732,7 +3732,7 @@ async function loadTimetableDropdowns() {
         const classes = classesRes.data || [];
         const classSel = document.getElementById('tt-class');
         if (classSel) {
-            classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+            classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c.class_level}">${c.class_level}</option>`).join('');
         }
 
         // Store teachers globally for filtering
@@ -3750,7 +3750,6 @@ async function loadTimetableDropdowns() {
         const updateTeacherDropdown = () => {
             if (!classSel || !teacherSel) return;
             const selectedClass = classSel.value;
-            const selectedSection = sectionSel ? sectionSel.value : '';
             
             if (!selectedClass) {
                 teacherSel.innerHTML = '<option value="">Select Class First</option>';
@@ -3758,22 +3757,13 @@ async function loadTimetableDropdowns() {
                 return;
             }
 
-            // Filter teachers who have the selected class (and optionally section) in their classesAssigned array
+            // Filter teachers who have the selected class in their classesAssigned array
             const availableTeachers = allTeachersForTimetable.filter(t => {
                 if (!t.classesAssigned || !Array.isArray(t.classesAssigned) || t.classesAssigned.length === 0) return false;
                 
                 return t.classesAssigned.some(assignment => {
                     const assignClass = assignment.class || assignment.classLevel || assignment;
-                    if (assignClass !== selectedClass) return false;
-                    
-                    // Specific section mapping check if selected
-                    if (typeof assignment === 'object' && selectedSection) {
-                        const assignSection = assignment.section;
-                        if (assignSection && assignSection !== 'All' && assignSection !== selectedSection) {
-                            return false; // Teacher assigned to a specific different section
-                        }
-                    }
-                    return true;
+                    return assignClass === selectedClass;
                 });
             });
 
@@ -3787,9 +3777,8 @@ async function loadTimetableDropdowns() {
             }
         };
 
-        // Add event listeners to filter teachers when class or section is selected
+        // Add event listener to filter teachers when class is selected
         if (classSel) classSel.addEventListener('change', updateTeacherDropdown);
-        if (sectionSel) sectionSel.addEventListener('change', updateTeacherDropdown);
     } catch (err) {
         console.error('Failed to load dropdowns:', err);
     }

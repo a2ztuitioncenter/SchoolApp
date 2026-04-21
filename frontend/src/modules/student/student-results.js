@@ -290,20 +290,20 @@ async function fetchStudentResult() {
  * Transform API response to match expected format
  */
 function transformResultData(apiData) {
-  // Calculate percentage
-  const obtainedMarks = apiData.obtained || apiData.marksObtained || apiData.obtainedMarks || 0;
-  const totalMarks = apiData.total || apiData.totalMarks || 300;
-  const percentage = (obtainedMarks / totalMarks) * 100;
+  // Correctly prioritized fields from API (supporting both snake and camel)
+  const obtainedMarks = Number(apiData.obtained_marks || apiData.obtained || apiData.marksObtained || apiData.obtainedMarks || 0);
+  const totalMarks = Number(apiData.total_marks || apiData.total || apiData.totalMarks || 300);
+  const percentageValue = apiData.percentage !== undefined ? Number(apiData.percentage) : (totalMarks > 0 ? (obtainedMarks / totalMarks * 100) : 0);
 
   return {
-    name: apiData.name || apiData.studentName || 'Student',
-    class: apiData.class || apiData.classLevel || apiData.className || 'N/A',
-    roll: apiData.roll || apiData.rollNumber || 'N/A',
-    exam: apiData.exam || apiData.examTitle || 'Midterm 2026',
+    name: apiData.student_name || apiData.name || apiData.studentName || 'Student',
+    class: String(apiData.class_level || apiData.class || apiData.classLevel || apiData.className || 'N/A'),
+    roll: apiData.roll_number || apiData.roll_no || apiData.roll || apiData.rollNumber || 'N/A',
+    exam: apiData.exam_title || apiData.exam || apiData.examTitle || 'Midterm 2026',
     total: totalMarks,
     obtained: obtainedMarks,
-    percentage: Number(percentage.toFixed(1)),
-    result: percentage >= 33 ? 'Pass' : 'Fail',
+    percentage: Number(percentageValue.toFixed(1)),
+    result: apiData.result || (percentageValue >= 33 ? 'Pass' : 'Fail'),
     subjects: apiData.subjects || []
   };
 }

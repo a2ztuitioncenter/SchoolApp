@@ -115,9 +115,9 @@ router.patch('/users/:id/status', async (req, res) => {
 router.get('/students', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT s.id, s."userId", s.name, s."classLevel", s.section, 
-                    s."fatherName", s."motherName", s.phone, s.email, 
-                    s."rollNumber", s."joiningDate", s."dateOfBirth", 
+            `SELECT s.id, s."userId", s.name, s.class_level AS "classLevel", s.section, 
+                    s.father_name AS "fatherName", s.mother_name AS "motherName", s.phone, s.email, 
+                    s.roll_number AS "rollNumber", s.joining_date AS "joiningDate", s.date_of_birth AS "dateOfBirth", 
                     s.status, s."schoolId", s."createdAt", u.phone as "userPhone"
              FROM students s 
              LEFT JOIN users u ON s."userId" = u.id 

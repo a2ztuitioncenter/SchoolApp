@@ -24,15 +24,15 @@ export const homeworkModel = {
     if (!row) return null;
     return {
       id: row.id,
-      teacherId: row.teacher_id,
-      classLevel: row.class_level,
+      teacherId: row.teacherId,
+      classLevel: row.classLevel,
       section: row.section,
       title: row.title,
       description: row.description,
-      dueDate: row.due_date,
+      dueDate: row.dueDate,
       subject: row.subject,
-      attachmentUrl: row.attachment_url,
-      schoolId: row.school_id,
+      attachmentUrl: row.attachmentUrl,
+      schoolId: row.schoolId,
       type: row.type,
       createdAt: row.createdAt,
       teacherPhone: row.teacher_phone,
@@ -103,7 +103,7 @@ export const getHomeworkByClass = async (pool, classLevel, section = 'A', type =
    const params = [classLevel, type, section];
    query += ` ORDER BY h."createdAt" DESC`;
   const result = await pool.query(query, params);
-  return result.rows;
+  return result.rows.map(row => formatHomeworkRow(row));
 };
 
 // Helper function to format database rows to camelCase
@@ -111,19 +111,19 @@ const formatHomeworkRow = (row) => {
   if (!row) return null;
   return {
     id: row.id,
-    teacherId: row.teacher_id,
-    classLevel: row.class_level,
+    teacherId: row.teacherId,
+    classLevel: row.classLevel,
     section: row.section,
     title: row.title,
     description: row.description,
-    dueDate: row.due_date,
+    dueDate: row.dueDate,
     subject: row.subject,
-    attachmentUrl: row.attachment_url,
+    attachmentUrl: row.attachmentUrl,
     schoolId: row.schoolId,
     type: row.type,
     createdAt: row.createdAt,
     teacherPhone: row.teacher_phone,
-    assignedBy: row.teacher_id,
+    assignedBy: row.teacherId,
     assignedByName: row.assigned_by_name || 'Teacher'
   };
 };
@@ -185,7 +185,7 @@ export const createHomework = async (pool, { teacherId, classLevel, section, tit
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
     [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null, attachmentUrl || null, type]
   );
-  return result.rows[0];
+  return formatHomeworkRow(result.rows[0]);
 };
 
 export const updateHomework = async (pool, id, { title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
@@ -194,7 +194,7 @@ export const updateHomework = async (pool, id, { title, description, dueDate, su
      "attachmentUrl" = COALESCE($5, "attachmentUrl"), type=$6 WHERE id=$7 RETURNING *`,
     [title, description || null, dueDate || null, subject || null, attachmentUrl || null, type, id]
   );
-  return result.rows[0] || null;
+  return formatHomeworkRow(result.rows[0]);
 };
 
 export const deleteHomework = async (pool, id) => {

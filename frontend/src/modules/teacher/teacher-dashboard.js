@@ -112,7 +112,7 @@ async function populateSharedDropdowns(prefix) {
     const res = await teacherAPI.getAttendanceClasses(teacherId || '');
     if (res.success && res.data && res.data.length > 0) {
       const parsed = res.data.map(raw => {
-        const value = String(raw || '').trim();
+        const value = String(raw.class_level || raw || '').trim();
         const sectionMatch = value.match(/^(\d+)([A-Z])$/i);
         if (sectionMatch) return { classLevel: sectionMatch[1], section: sectionMatch[2].toUpperCase() };
         return { classLevel: value, section: null };
@@ -128,17 +128,31 @@ async function populateSharedDropdowns(prefix) {
       classSel.innerHTML = '<option value="">-- Select Class --</option>' +
         classes.map(c => `<option value="${c}">${c}</option>`).join('');
 
-      const renderSections = () => {
+      const renderSections = async () => {
         const selectedClass = classSel.value;
-        const sections = selectedClass && sectionsByClass[selectedClass]
-          ? [...sectionsByClass[selectedClass]].sort()
-          : [];
+        if (!selectedClass) {
+          secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>';
+          return;
+        }
+
+        let sections = sectionsByClass[selectedClass] ? [...sectionsByClass[selectedClass]].sort() : [];
+        
+        // If no sections found locally (e.g. assigned to 'ALL'), fetch from API
+        if (sections.length === 0) {
+          try {
+            const secRes = await teacherAPI.getSectionsByClass(selectedClass);
+            sections = secRes.data || [];
+          } catch (err) {
+            console.error('Failed to fetch sections for HW modal:', err);
+          }
+        }
+
         secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>' +
           sections.map(s => `<option value="${s}">${s}</option>`).join('');
       };
 
       classSel.onchange = renderSections;
-      renderSections();
+      await renderSections();
     } else {
       classSel.innerHTML = '<option value="">-- Select Class --</option>';
       secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>';
@@ -405,7 +419,7 @@ async function initAttendanceTab() {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     availableClasses = res.data || [];
     sel.innerHTML = '<option value="">-- Select Class --</option>' +
-      availableClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+      availableClasses.map(c => `<option value="${c.class_level}">${c.class_level}</option>`).join('');
 
     const attDate = document.getElementById('att-date');
     if (attDate && !attDate.value) attDate.value = new Date().toISOString().split('T')[0];
@@ -900,21 +914,12 @@ function renderMaterialsTable() {
 }
 
 window.openMaterialModal = async function (material = null) {
+  await populateSharedDropdowns('material');
   const form = document.getElementById('material-form');
   if (form) form.reset();
 
-  // Populate classes - restrict to permitted ones
   const classDropdown = document.getElementById('material-classLevel');
-  if (classDropdown) {
-    try {
-      const res = await teacherAPI.getAttendanceClasses(teacherId);
-      const classes = res.data || [];
-      classDropdown.innerHTML = '<option value="">Select Class</option>' +
-        classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
-    } catch (err) {
-      console.error('Failed to load permitted classes:', err);
-    }
-  }
+  const sectionDropdown = document.getElementById('material-section');
 
   const editId = document.getElementById('material-edit-id');
   const titleEl = document.getElementById('material-modal-title');

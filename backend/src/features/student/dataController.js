@@ -17,10 +17,14 @@ export const getStudentDashboard = async (req, res) => {
     const student = await getStudentByUserId(pool, userId);
 
     if (!student) {
-      return res.status(404).json({ error: 'Student record not found' });
+      console.warn(`Student not found for userId: ${userId}`);
+      return res.status(404).json({ message: 'Student not found' });
     }
+    
+    console.log(`📌 Dashboard request for student:`, student);
 
     // Parallel fetch of attendance, fees, homework, timetable, and notifications
+
     // Note: Database columns are now camelCase.
     const [attendancePercentage, attendanceSummary, feesSummary, allFees, homeworkResult, timetableResult, notificationsResult] = await Promise.all([
       getAttendancePercentage(pool, student.id, 30),
@@ -48,7 +52,14 @@ export const getStudentDashboard = async (req, res) => {
       ),
     ]);
 
-    const allHomework = homeworkResult.rows || [];
+    const allHomework = (homeworkResult.rows || []).map(h => ({
+      ...h,
+      classLevel: h.classLevel,
+      dueDate: h.dueDate,
+      teacherId: h.teacherId,
+      attachmentUrl: h.attachmentUrl,
+      createdAt: h.createdAt
+    }));
     const homework = allHomework.filter(h => h.type === 'homework').slice(0, 5);
     
     // Daily practice valid for 24 hours
@@ -96,7 +107,8 @@ export const getStudentDashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Dashboard data error:', error);
+    console.error('❌ Dashboard data error:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Failed to fetch dashboard data' });
   }
 };
