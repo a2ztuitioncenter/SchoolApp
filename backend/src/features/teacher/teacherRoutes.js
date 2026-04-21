@@ -239,13 +239,15 @@ router.get('/attendance/sections', async (req, res) => {
 // GET /api/teacher/attendance/sheet
 router.get('/attendance/sheet', async (req, res) => {
   try {
-    const { teacherId, classLevel: classInput, date } = req.query;
+    const { teacherId, classLevel: classInput, date, section: querySection } = req.query;
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
     if (!classInput || !date) return res.status(400).json({ error: 'classLevel and date required' });
 
-    const { classLevel, section } = parseClassSection(classInput);
+    const parsed = parseClassSection(classInput);
+    const classLevel = parsed.classLevel;
+    const section = querySection || parsed.section;
 
     // Verify teacher assignment (snake_case)
     let assignmentCheck;
@@ -303,7 +305,7 @@ router.get('/attendance/sheet', async (req, res) => {
 
     res.json({
       success: true,
-      students: students.rows.map(s => ({ id: s.id, name: s.name, rollNumber: s.roll_number })),
+      students: students.rows.map(s => ({ id: s.id, name: s.name, rollNumber: s.rollNumber })),
       existing: attMap,
     });
   } catch (err) {
@@ -352,12 +354,14 @@ router.post('/attendance/mark-bulk', async (req, res) => {
 // GET /api/teacher/attendance/summary
 router.get('/attendance/summary', async (req, res) => {
   try {
-    const { teacherId, classLevel: classInput, month } = req.query;
+    const { teacherId, classLevel: classInput, month, section: querySection } = req.query;
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const { classLevel, section } = parseClassSection(classInput);
+    const parsed = parseClassSection(classInput);
+    const classLevel = parsed.classLevel;
+    const section = querySection || parsed.section;
 
     let query = `SELECT s.name, s.id AS student_id,
           COUNT(CASE WHEN a."isPresent" = true THEN 1 END) AS present_count,

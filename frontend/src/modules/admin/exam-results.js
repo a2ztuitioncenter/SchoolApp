@@ -220,7 +220,7 @@ async function fetchExamResultsFromAPI() {
     if (tbody) {
       tbody.innerHTML = `
         <tr class="expand-row">
-          <td colspan="5" class="empty-state">
+          <td colspan="6" class="empty-state">
             <i class="fas fa-exclamation-circle"></i>
             <p>Failed to load exam results. Please try again later.</p>
             <small>${error.message}</small>
@@ -241,9 +241,10 @@ function transformAPIData(apiData) {
 
   return dataArray.map((item, index) => ({
     id: item.id || index + 1,
-    roll: item.roll || item.rollNumber || index + 1,
+    roll: item.roll_no || item.roll || item.rollNumber || index + 1,
     name: item.name || item.studentName || 'Unknown',
     class: String(item.class || item.classLevel || item.className || ''),
+    section: item.section || 'N/A',
     total: item.total || item.totalMarks || 300,
     obtained: item.obtained || item.marksObtained || item.obtainedMarks || 0,
     percentage: ((item.obtained || item.marksObtained || item.obtainedMarks || 0) / (item.total || item.totalMarks || 300) * 100),
@@ -283,7 +284,7 @@ function renderExamResultsTable(filteredData = null) {
   if (data.length === 0) {
     tbody.innerHTML = `
       <tr class="expand-row">
-        <td colspan="5" class="empty-state">
+        <td colspan="6" class="empty-state">
           <i class="fas fa-search"></i>
           <p>No exam results found</p>
         </td>
@@ -300,8 +301,9 @@ function renderExamResultsTable(filteredData = null) {
     mainRow.innerHTML = `
       <td>${student.roll}</td>
       <td>${student.name}</td>
-      <td>${student.obtained}/${student.total}</td>
-      <td>${student.percentage.toFixed(1)}%</td>
+      <td>${student.section}</td>
+      <td>${Number(student.obtained)}/${Number(student.total)}</td>
+      <td>${Number(student.percentage.toFixed(1))}%</td>
       <td><span class="result-${student.result.toLowerCase()}">${student.result}</span></td>
     `;
 
@@ -312,9 +314,9 @@ function renderExamResultsTable(filteredData = null) {
     const expandRow = document.createElement('tr');
     expandRow.className = `expand-row exam-expand-${student.id}`;
     expandRow.innerHTML = `
-      <td colspan="5" class="expand-cell">
+      <td colspan="6" class="expand-cell">
         <strong>Subject Breakdown:</strong><br>
-        ${student.subjects.map(s => `<strong>${s.name}:</strong> ${s.marks !== undefined ? s.marks : (s.obtained || 0)} marks`).join('<br>')}
+        ${student.subjects.map(s => `<strong>${s.name}:</strong> ${Number(s.marks !== undefined ? s.marks : (s.obtained || 0))} marks`).join('<br>')}
       </td>
     `;
     tbody.appendChild(expandRow);

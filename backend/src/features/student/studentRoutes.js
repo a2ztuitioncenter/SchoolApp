@@ -53,10 +53,13 @@ router.get('/:userId/results', async (req, res) => {
 
     // Fetch results using exam_results table (camelCase)
     const results = await pool.query(
-      `SELECT * FROM exam_results 
-       WHERE "rollNumber" = $1 OR "studentName" = $2
-       ORDER BY "createdAt" DESC`,
-      [rollNumber, name]
+      `SELECT er.*, COALESCE(s."rollNumber", er."rollNumber") as "rollNumber",
+              COALESCE(s."rollNumber", er."rollNumber") as "roll_no"
+       FROM exam_results er
+       LEFT JOIN students s ON er."studentId" = s.id
+       WHERE er."studentId" = $1 OR er."rollNumber" = $2 OR er."studentName" = $3
+       ORDER BY er."createdAt" DESC`,
+      [parsedUserId, rollNumber, name]
     );
 
     res.json({ data: results.rows });

@@ -451,8 +451,9 @@ window.loadAttendanceSheet = async function () {
     if (!classLevel || !date) { showError('Please select a class and date.'); return; }
 
     try {
+        const section = document.getElementById('att-section-select')?.value || '';
         showInfo('Loading students...');
-        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
+        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date, section);
         hideInfo();
 
         const container = document.getElementById('att-sheet-container');
@@ -1152,19 +1153,53 @@ async function initSummaryTab() {
     const classes = res.data || [];
     sel.innerHTML = '<option value="">-- Select Class --</option>' +
       classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    sel.onchange = onSumClassChange;
+    
     const monthEl = document.getElementById('sum-month');
     if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
   } catch { /* silent */ }
 }
 
+window.onSumClassChange = async function () {
+  const classLevel = document.getElementById('sum-class-select').value;
+  const sectionGroup = document.getElementById('sum-section-group');
+  const sectionSel = document.getElementById('sum-section-select');
+  if (!sectionGroup || !sectionSel) return;
+
+  if (!classLevel) {
+    sectionGroup.style.display = 'none';
+    sectionSel.innerHTML = '<option value="">-- Choose Section --</option>';
+    return;
+  }
+
+  try {
+    const res = await teacherAPI.getSectionsByClass(classLevel);
+    const sections = res.data || [];
+    
+    if (sections.length === 0) {
+      sectionGroup.style.display = 'none';
+      sectionSel.innerHTML = '<option value="">-- Choose Section --</option>';
+    } else {
+      sectionGroup.style.display = 'block';
+      sectionSel.innerHTML = '<option value="">-- All Sections --</option>';
+      sections.forEach(s => sectionSel.innerHTML += `<option value="${s}">${s}</option>`);
+    }
+  } catch (err) {
+    console.error('Error fetching sections:', err);
+  }
+};
+
 window.loadAttendanceSummary = async function () {
   const classLevel = document.getElementById('sum-class-select').value;
   const month = document.getElementById('sum-month').value;
+  const section = document.getElementById('sum-section-select')?.value || '';
+  
   if (!classLevel || !month) { showError('Select class and month.'); return; }
 
   try {
     showInfo('Loading summary...');
-    const res = await teacherAPI.getAttendanceSummary(teacherId, classLevel, month);
+    const res = await teacherAPI.getAttendanceSummary(teacherId, classLevel, month, section);
     hideInfo();
     const data = res.data || [];
     const container = document.getElementById('summary-container');
@@ -1186,7 +1221,7 @@ window.loadAttendanceSummary = async function () {
                 <td>${r.absentCount}</td>
                 <td>${r.lateCount}</td>
                 <td>${r.totalDays}</td>
-                <td><span class="status-badge ${statusClass}">${pct}%</span></td>
+                <td><span class="status-badge ${statusClass}">${Number(pct)}%</span></td>
               </tr>`;
     }).join('')}
           </tbody>
@@ -1307,6 +1342,7 @@ async function initExamTab() {
 
 window.onExamClassChange = async function() {
     const classLevel = document.getElementById('exam-class-select').value;
+    const sectionSel = document.getElementById('exam-section-select');
     const rollSelect = document.getElementById('exam-roll-select');
     const nameInput = document.getElementById('exam-name-input');
     
@@ -1314,23 +1350,51 @@ window.onExamClassChange = async function() {
     if (nameInput) nameInput.value = '';
     examStudents = [];
 
+    if (!classLevel) {
+        if (sectionSel) sectionSel.innerHTML = '<option value="">Select Section</option>';
+        return;
+    }
+
+    try {
+        // Load sections for this class
+        const secRes = await teacherAPI.getSectionsByClass(classLevel);
+        const sections = secRes.data || [];
+        if (sectionSel) {
+            sectionSel.innerHTML = sections.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (sections.length === 0) {
+                sectionSel.innerHTML = '<option value="">N/A</option>';
+            }
+        }
+        
+        // Trigger student load for the first/selected section
+        onExamSectionChange();
+    } catch (err) {
+        console.error('Error fetching sections:', err);
+        onExamSectionChange(); // Fallback to current section
+    }
+};
+
+window.onExamSectionChange = async function() {
+    const classLevel = document.getElementById('exam-class-select').value;
+    const section = document.getElementById('exam-section-select').value;
+    const rollSelect = document.getElementById('exam-roll-select');
+    const nameInput = document.getElementById('exam-name-input');
+    
     if (!classLevel) return;
 
     try {
         showInfo('Loading students...');
         const date = new Date().toISOString().split('T')[0];
-        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date);
+        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date, section);
         hideInfo();
         
         examStudents = res.students || [];
-        if (examStudents.length === 0) {
-            showInfo('No students found for this class');
-            return;
-        }
-
         if (rollSelect) {
             rollSelect.innerHTML = '<option value="">Select Roll No.</option>' +
-                examStudents.map(s => `<option value="${s.rollNumber || s.id}">${s.rollNumber || 'ID:'+s.id}</option>`).join('');
+                examStudents.map(s => `<option value="${s.id}">${s.rollNumber || 'ID:'+s.id}</option>`).join('');
+        }
+        if (examStudents.length === 0) {
+            showInfo('No students found for this class/section');
         }
     } catch (err) {
         hideInfo();
@@ -1339,10 +1403,10 @@ window.onExamClassChange = async function() {
 };
 
 window.onExamRollChange = function() {
-    const roll = document.getElementById('exam-roll-select').value;
+    const studentId = document.getElementById('exam-roll-select').value;
     const nameInput = document.getElementById('exam-name-input');
     if (!nameInput) return;
-    const student = examStudents.find(s => (s.rollNumber || String(s.id)) === roll);
+    const student = examStudents.find(s => String(s.id) === studentId);
     nameInput.value = student ? student.name : '';
 };
 
@@ -1425,11 +1489,13 @@ window.calculateExamTotals = function() {
 async function submitExamResult() {
     const classLevel = document.getElementById('exam-class-select').value;
     const section = document.getElementById('exam-section-select').value;
-    const rollNumber = document.getElementById('exam-roll-select').value;
+    const studentId = document.getElementById('exam-roll-select').value;
+    const student = examStudents.find(s => String(s.id) === studentId);
+    const rollNumber = student ? student.rollNumber : '';
     const studentName = document.getElementById('exam-name-input').value;
     const examTitle = document.getElementById('exam-title-input').value;
 
-    if (!classLevel || !rollNumber || !studentName || !examTitle) { showError("Please fill all student details and exam title."); return; }
+    if (!classLevel || !studentId || !studentName || !examTitle) { showError("Please fill all student details and exam title."); return; }
 
     const rows = document.querySelectorAll('.subject-row-entry');
     const subjects = [];
@@ -1450,7 +1516,19 @@ async function submitExamResult() {
 
     try {
         showInfo('Submitting results...');
-        await teacherAPI.createExamResult({ classLevel, section, rollNumber, studentName, examTitle, subjects, totalMarks, obtainedMarks, percentage: parseFloat(percentage.toFixed(2)), remarks });
+        await teacherAPI.createExamResult({ 
+            classLevel, 
+            section, 
+            studentId,
+            rollNumber, 
+            studentName, 
+            examTitle, 
+            subjects, 
+            totalMarks, 
+            obtainedMarks, 
+            percentage: parseFloat(percentage.toFixed(2)), 
+            remarks 
+        });
         hideInfo();
         showSuccess("Exam result submitted successfully!");
         document.getElementById('exam-roll-select').value = '';
@@ -1475,7 +1553,7 @@ function renderExamResults(results) {
     if (!results.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>`; return; }
 
     tbody.innerHTML = results.map((r, index) => {
-        const subs = Array.isArray(r.subjects) ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${r.subjects.map(s => `<li>${s.name}: ${s.obtained}/${s.total} (${s.grade || '-'})</li>`).join('')}</ul>` : '-';
+        const subs = Array.isArray(r.subjects) ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${r.subjects.map(s => `<li>${s.name}: ${Number(s.obtained)}/${Number(s.total)} (${s.grade || '-'})</li>`).join('')}</ul>` : '-';
         return `
             <tr>
                 <td>${index + 1}</td>
@@ -1484,7 +1562,7 @@ function renderExamResults(results) {
                 <td><div style="font-weight:600;">${r.studentName}</div></td>
                 <td>${r.examTitle}</td>
                 <td>${subs}</td>
-                <td><div style="font-weight:700; color:var(--accent-blue);">${r.obtainedMarks} / ${r.totalMarks}</div></td>
+                <td><div style="font-weight:700; color:var(--accent-blue);">${Number(r.obtainedMarks)} / ${Number(r.totalMarks)}</div></td>
                 <td><span class="badge ${r.remarks === 'Pass' ? 'badge-success' : 'badge-danger'}" style="background: ${r.remarks === 'Pass' ? 'rgba(36,134,54,0.1)' : 'rgba(215,58,73,0.1)'}; color: ${r.remarks === 'Pass' ? 'var(--success)' : 'var(--danger)'};">${r.remarks}</span></td>
             </tr>`;
     }).join('');

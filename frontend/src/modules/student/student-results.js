@@ -302,7 +302,7 @@ function transformResultData(apiData) {
     exam: apiData.exam || apiData.examTitle || 'Midterm 2026',
     total: totalMarks,
     obtained: obtainedMarks,
-    percentage: percentage.toFixed(1),
+    percentage: Number(percentage.toFixed(1)),
     result: percentage >= 33 ? 'Pass' : 'Fail',
     subjects: apiData.subjects || []
   };
@@ -339,8 +339,8 @@ function renderStudentResult() {
 
         <!-- Score Display -->
         <div class="score-display">
-          <h1>${studentResult.percentage}%</h1>
-          <p>${studentResult.obtained}/${studentResult.total} Marks</p>
+          <h1>${Number(studentResult.percentage)}%</h1>
+          <p>${Number(studentResult.obtained)}/${Number(studentResult.total)} Marks</p>
           <div class="result-badge ${isPassed ? 'pass' : 'fail'}">
             ${studentResult.result}
           </div>
@@ -365,7 +365,7 @@ function renderStudentResult() {
             ${studentResult.subjects.map(subject => `
               <div class="subject-item">
                 <span class="subject-name">${subject.name || 'Subject'}</span>
-                <span class="subject-marks">${subject.marks !== undefined ? subject.marks : (subject.obtained || 0)}/${subject.total || 100}</span>
+                <span class="subject-marks">${Number(subject.marks !== undefined ? subject.marks : (subject.obtained || 0))}/${Number(subject.total || 100)}</span>
               </div>
             `).join('')}
           </div>

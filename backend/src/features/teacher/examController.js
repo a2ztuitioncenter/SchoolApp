@@ -18,6 +18,7 @@ export const createExamResult = async (req, res) => {
   const obtainedMarks = Number(req.body.obtainedMarks || req.body.obtained_marks) || 0;
   const percentage = Number(req.body.percentage) || 0;
   const remarks = sanitizeNullableText(req.body.remarks, 500);
+  const studentId = Number(req.body.studentId);
   const teacherId = req.user.userId;
   const pool = req.db;
 
@@ -28,9 +29,9 @@ export const createExamResult = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO exam_results 
-       ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId]
+       ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId", "studentId")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId, studentId]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -46,13 +47,15 @@ export const getExamResults = async (req, res) => {
 
   try {
     const results = await pool.query(
-      `SELECT id, "classLevel", section, "rollNumber", 
-              "studentName", "examTitle", subjects, 
-              "totalMarks", "obtainedMarks", 
-              percentage, remarks, "teacherId", "createdAt"
-       FROM exam_results 
-       WHERE "teacherId" = $1 
-       ORDER BY "createdAt" DESC`,
+      `SELECT er.id, er."classLevel", er.section, COALESCE(s."rollNumber", er."rollNumber") as "roll_no", 
+              COALESCE(s."rollNumber", er."rollNumber") as "rollNumber",
+              er."studentName", er."examTitle", er.subjects, 
+              er."totalMarks", er."obtainedMarks", 
+              er.percentage, er.remarks, er."teacherId", er."createdAt"
+       FROM exam_results er
+       LEFT JOIN students s ON er."studentId" = s.id
+       WHERE er."teacherId" = $1 
+       ORDER BY er."createdAt" DESC`,
       [teacherId]
     );
     res.json({ success: true, data: results.rows });

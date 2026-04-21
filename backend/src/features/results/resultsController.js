@@ -6,14 +6,21 @@ export const getResultsByStudent = async (req, res) => {
     let result;
     if (student === 'all') {
       result = await req.db.query(
-        `SELECT * FROM exam_results ORDER BY "createdAt" DESC`
+        `SELECT er.*, COALESCE(s."rollNumber", er."rollNumber") as "rollNumber",
+         COALESCE(s."rollNumber", er."rollNumber") as "roll_no"
+         FROM exam_results er
+         LEFT JOIN students s ON er."studentId" = s.id
+         ORDER BY er."createdAt" DESC`
       );
     } else {
-      // Filter by roll number or student name since those are the primary identifiers in exam_results
+      // Filter by roll number or student name
       result = await req.db.query(
-        `SELECT * FROM exam_results 
-         WHERE "rollNumber" = $1 OR "studentName" = $1 
-         ORDER BY "createdAt" DESC`,
+        `SELECT er.*, COALESCE(s."rollNumber", er."rollNumber") as "rollNumber",
+         COALESCE(s."rollNumber", er."rollNumber") as "roll_no"
+         FROM exam_results er
+         LEFT JOIN students s ON er."studentId" = s.id
+         WHERE er."rollNumber" = $1 OR er."studentName" = $1 
+         ORDER BY er."createdAt" DESC`,
         [student]
       );
     }
@@ -34,6 +41,7 @@ export const createResult = async (req, res) => {
     const totalMarks = Number(req.body.totalMarks || req.body.total_marks) || 0;
     const obtainedMarks = Number(req.body.obtainedMarks || req.body.obtained_marks) || 0;
     const remarks = sanitizeNullableText(req.body.remarks, 500);
+    const studentId = Number(req.body.studentId);
     const teacherId = sanitizeIdentifier(req.user?.userId || req.body.teacherId || req.body.teacher_id, 20);
 
     if (!classLevel || !studentName || !examTitle)
@@ -42,9 +50,9 @@ export const createResult = async (req, res) => {
     const subjects = req.body.subjects || {};
 
     const result = await req.db.query(
-      `INSERT INTO exam_results ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId]
+      `INSERT INTO exam_results ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId", "studentId")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId, studentId]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
