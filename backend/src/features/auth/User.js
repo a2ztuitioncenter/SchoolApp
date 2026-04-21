@@ -20,28 +20,38 @@ export const userModel = {
       username VARCHAR(50),
       status_updated_at TIMESTAMP
     );
-    CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique ON users (LOWER(username));
-    CREATE INDEX IF NOT EXISTS users_school_role_idx ON users (school_id, role, status);
-
-    CREATE TABLE IF NOT EXISTS teacher_class_assignment (
-      id SERIAL PRIMARY KEY,
-      teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      class_level VARCHAR(20) NOT NULL,
-      section VARCHAR(10) DEFAULT 'ALL',
-      school_id VARCHAR(50) DEFAULT 'school-001',
-      created_at TIMESTAMP DEFAULT NOW(),
-      UNIQUE(teacher_id, class_level, section)
-    );
   `,
 };
 
-export const getUserByPhone = async (pool, phone) => {
+const MAP_USER = (u) => {
+    if (!u) return null;
+    return {
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        email: u.email,
+        role: u.role,
+        isActive: u.is_active,
+        schoolId: u.school_id,
+        createdAt: u.created_at,
+        status: u.status,
+        teacherId: u.teacher_id,
+        approvedBy: u.approved_by,
+        rejectionReason: u.rejection_reason,
+        username: u.username,
+        statusUpdatedAt: u.status_updated_at
+    };
+};
+
+export const getUserByPhone = async (pool, phone, includePassword = false) => {
   const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
-  return result.rows[0] || null;
+  const user = MAP_USER(result.rows[0]);
+  if (user && includePassword) user.password = result.rows[0].password;
+  return user;
 };
 export const getUsersByPhone = async (pool, phone) => {
   const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
-  return result.rows;
+  return result.rows.map(MAP_USER);
 };
 
 export const countStudentsByPhone = async (pool, phone) => {
@@ -55,18 +65,18 @@ export const countStudentsByPhone = async (pool, phone) => {
 export const isDuplicateStudent = async (pool, phone, name, classLevel, dateOfBirth, fatherName = null, motherName = null) => {
   let query = `
     SELECT u.id FROM users u
-    JOIN students s ON u.id = s."userId"
+    JOIN students s ON u.id = s.user_id
     WHERE u.phone = $1 AND LOWER(u.name) = LOWER($2) 
-      AND s."classLevel" = $3 AND s."dateOfBirth" = $4
+      AND s.class_level = $3 AND s.date_of_birth = $4
   `;
   const params = [phone, name, classLevel, dateOfBirth];
   
   if (fatherName) {
-    query += ` AND LOWER(s."fatherName") = LOWER($${params.length + 1})`;
+    query += ` AND LOWER(s.father_name) = LOWER($${params.length + 1})`;
     params.push(fatherName);
   }
   if (motherName) {
-    query += ` AND LOWER(s."motherName") = LOWER($${params.length + 1})`;
+    query += ` AND LOWER(s.mother_name) = LOWER($${params.length + 1})`;
     params.push(motherName);
   }
   
@@ -80,19 +90,20 @@ export const getNonStudentByPhone = async (pool, phone) => {
     "SELECT * FROM users WHERE phone = $1 AND role != 'student' LIMIT 1",
     [phone]
   );
-  return result.rows[0] || null;
+  return MAP_USER(result.rows[0]);
 };
 
-
-export const getUserByUsername = async (pool, username) => {
+export const getUserByUsername = async (pool, username, includePassword = false) => {
   const result = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
-  return result.rows[0] || null;
+  const user = MAP_USER(result.rows[0]);
+  if (user && includePassword) user.password = result.rows[0].password;
+  return user;
 };
 
-export const getUserByPhoneOrUsername = async (pool, identifier) => {
+export const getUserByPhoneOrUsername = async (pool, identifier, includePassword = false) => {
   const isPhone = /^\d{10}$/.test(identifier);
-  if (isPhone) return getUserByPhone(pool, identifier);
-  return getUserByUsername(pool, identifier);
+  if (isPhone) return getUserByPhone(pool, identifier, includePassword);
+  return getUserByUsername(pool, identifier, includePassword);
 };
 
 export const isUsernameTaken = async (pool, username) => {
@@ -102,17 +113,17 @@ export const isUsernameTaken = async (pool, username) => {
 
 export const getUserById = async (pool, id) => {
   const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-  return result.rows[0] || null;
+  return MAP_USER(result.rows[0]);
 };
 
 export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null, username = null, status = 'pending' }) => {
   const hashedPassword = await bcrypt.hash(password, 12);
   const result = await pool.query(
-    `INSERT INTO users (name, phone, email, password, role, status, "schoolId", "teacherId", username)
+    `INSERT INTO users (name, phone, email, password, role, status, school_id, teacher_id, username)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
     [name || null, phone, email || null, hashedPassword, role, status, schoolId, teacherId, username]
   );
-  return result.rows[0];
+  return MAP_USER(result.rows[0]);
 };
 
 export const updateUser = async (pool, id, { name, phone, email, role }) => {
@@ -121,7 +132,7 @@ export const updateUser = async (pool, id, { name, phone, email, role }) => {
      WHERE id = $1 RETURNING *`,
     [id, name, phone, email, role]
   );
-  return result.rows[0] || null;
+  return MAP_USER(result.rows[0]);
 };
 
 export const deleteUser = async (pool, id) => {
@@ -129,18 +140,18 @@ export const deleteUser = async (pool, id) => {
   try {
     await client.query('BEGIN');
     
-    // Use quoted identifiers ("teacherId", etc.) consistent with actual schema
-    await client.query('UPDATE attendance SET "userId" = NULL WHERE "userId" = $1', [id]);
-    await client.query('UPDATE homework SET "teacherId" = NULL WHERE "teacherId" = $1', [id]);
-    await client.query('UPDATE fees SET "userId" = NULL WHERE "userId" = $1', [id]);
-    await client.query('UPDATE exam_results SET "teacherId" = NULL WHERE "teacherId" = $1', [id]);
-    await client.query('UPDATE notifications SET "createdBy" = NULL WHERE "createdBy" = $1', [id]);
-    await client.query('UPDATE users SET "approvedBy" = NULL WHERE "approvedBy" = $1', [id]);
+    // Standard snake_case identifiers
+    await client.query('UPDATE attendance SET user_id = NULL WHERE user_id = $1', [id]);
+    await client.query('UPDATE homework SET teacher_id = NULL WHERE teacher_id = $1', [id]);
+    await client.query('UPDATE fees SET user_id = NULL WHERE user_id = $1', [id]);
+    await client.query('UPDATE exam_results SET teacher_id = NULL WHERE teacher_id = $1', [id]);
+    await client.query('UPDATE notifications SET created_by = NULL WHERE created_by = $1', [id]);
+    await client.query('UPDATE users SET approved_by = NULL WHERE approved_by = $1', [id]);
 
-    await client.query('DELETE FROM timetable WHERE "teacherId" = $1', [id]);
-    await client.query('DELETE FROM syllabus WHERE "teacherId" = $1', [id]);
-    await client.query('DELETE FROM teacher_class_assignment WHERE "teacherId" = $1', [id]);
-    await client.query('DELETE FROM students WHERE "userId" = $1', [id]);
+    await client.query('DELETE FROM timetable WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM syllabus WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM students WHERE user_id = $1', [id]);
 
     const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
     
@@ -156,10 +167,10 @@ export const deleteUser = async (pool, id) => {
 
 export const toggleUserStatus = async (pool, id, isActive) => {
   const result = await pool.query(
-    'UPDATE users SET "isActive" = $2 WHERE id = $1 RETURNING *',
+    'UPDATE users SET is_active = $2 WHERE id = $1 RETURNING *',
     [id, isActive]
   );
-  return result.rows[0] || null;
+  return MAP_USER(result.rows[0]);
 };
 
 export const getApprovedUser = async (pool, phone) => {
@@ -167,32 +178,36 @@ export const getApprovedUser = async (pool, phone) => {
     'SELECT * FROM users WHERE phone = $1 AND status = $2',
     [phone, 'active']
   );
-  return result.rows[0] || null;
+  return MAP_USER(result.rows[0]);
 };
 
 export const getUsersByStatus = async (pool, status, schoolId = 'school-001') => {
   const result = await pool.query(
-    `SELECT u.id, u.name, u.phone, u.email, u.role, u."isActive", 
-            u."schoolId", u."createdAt", u.status, 
-            u."teacherId", u.username,
-            s."classLevel", s.section, s."rollNumber"
+    `SELECT u.*, 
+            s.class_level, s.section, s.roll_number
      FROM users u
-     LEFT JOIN students s ON u.id = s."userId"
-     WHERE u.status = $1 AND u."schoolId" = $2 
-     ORDER BY u."createdAt" DESC`,
+     LEFT JOIN students s ON u.id = s.user_id
+     WHERE u.status = $1 AND u.school_id = $2 
+     ORDER BY u.created_at DESC`,
     [status, schoolId]
   );
-  return result.rows;
+  // Keep the joint student fields for the frontend
+  return result.rows.map(u => ({
+      ...MAP_USER(u),
+      classLevel: u.class_level,
+      section: u.section,
+      rollNumber: u.roll_number
+  }));
 };
 
 export const updateUserStatus = async (pool, userId, newStatus, approvedByAdminId = null, rejectionReason = null) => {
     const result = await pool.query(
       `UPDATE users 
-       SET status = $2, "approvedBy" = $3, "rejectionReason" = $4, "statusUpdatedAt" = NOW()
+       SET status = $2, approved_by = $3, rejection_reason = $4, status_updated_at = NOW()
        WHERE id = $1 RETURNING *`,
       [userId, newStatus, approvedByAdminId, rejectionReason]
     );
-  return result.rows[0] || null;
+  return MAP_USER(result.rows[0]);
 };
 
 export const generateTeacherId = async (pool, role) => {
@@ -202,7 +217,7 @@ export const generateTeacherId = async (pool, role) => {
   while (!isUnique) {
     const randomDigits = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
     teacherId = `${prefix}${randomDigits}`;
-    const result = await pool.query('SELECT id FROM users WHERE "teacherId" = $1', [teacherId]);
+    const result = await pool.query('SELECT id FROM users WHERE teacher_id = $1', [teacherId]);
     isUnique = result.rows.length === 0;
   }
   return teacherId;
@@ -213,7 +228,7 @@ export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, s
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('DELETE FROM teacher_class_assignment WHERE "teacherId" = $1', [teacherId]);
+    await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [teacherId]);
     for (const assignment of classesAssigned) {
       let classLevel, section = 'ALL';
       if (typeof assignment === 'object' && assignment !== null) {
@@ -225,7 +240,7 @@ export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, s
       
       if (classLevel) {
         await client.query(
-          `INSERT INTO teacher_class_assignment ("teacherId", "classLevel", section, "schoolId")
+          `INSERT INTO teacher_class_assignment (teacher_id, class_level, section, school_id)
            VALUES ($1, $2, $3, $4)`,
           [teacherId, classLevel, section, schoolId]
         );
@@ -243,16 +258,16 @@ export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, s
 
 export const getTeacherAssignments = async (pool, teacherId) => {
   const result = await pool.query(
-    'SELECT "classLevel" FROM teacher_class_assignment WHERE "teacherId" = $1',
+    'SELECT class_level FROM teacher_class_assignment WHERE teacher_id = $1',
     [teacherId]
   );
-  return result.rows.map(row => row.classLevel);
+  return result.rows.map(row => row.class_level);
 };
 
 export const getClassLevels = async (pool, schoolId = 'school-001') => {
   const result = await pool.query(
-    `SELECT DISTINCT "classLevel" FROM students WHERE "schoolId" = $1 ORDER BY "classLevel" ASC`,
+    `SELECT DISTINCT class_level FROM students WHERE school_id = $1 ORDER BY class_level ASC`,
     [schoolId]
   );
-  return result.rows.map(row => row.classLevel);
+  return result.rows.map(row => row.class_level);
 };

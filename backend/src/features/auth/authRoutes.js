@@ -85,8 +85,9 @@ router.post('/login', async (req, res) => {
         if (candidate.status === 'pending') continue;
         if (candidate.status === 'rejected') continue;
         if (candidate.isActive === false) continue;
+        
         const dobCheck = await pool.query(
-          `SELECT id FROM students WHERE "userId" = $1 AND "dateOfBirth" = $2 LIMIT 1`,
+          `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
           [candidate.id, dobISO]
         );
         if (dobCheck.rows.length > 0) {
@@ -95,7 +96,6 @@ router.post('/login', async (req, res) => {
         }
       }
       if (!user) {
-        // Check if all candidates are pending/rejected/inactive for a better error message
         const pending = studentUsers.find(u => u.status === 'pending');
         if (pending) return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
         const rejected = studentUsers.find(u => u.status === 'rejected');
@@ -103,7 +103,7 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
     } else {
-      // Username login - single user lookup
+      // Username login
       user = await getUserByPhoneOrUsername(pool, loginId);
       if (!user) return res.status(401).json({ error: 'Invalid credentials' });
       const userRole = user.role ? user.role.toLowerCase() : '';
@@ -113,7 +113,7 @@ router.post('/login', async (req, res) => {
       if (user.isActive === false) return res.status(403).json({ error: 'Your account has been deactivated. Please contact admin.' });
 
       const dobResult = await pool.query(
-        `SELECT id FROM students WHERE "userId" = $1 AND "dateOfBirth" = $2 LIMIT 1`,
+        `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
         [user.id, dobISO]
       );
       if (dobResult.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
@@ -168,7 +168,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
 
-    // Phone uniqueness: strict for non-students, allow up to 4 for students
     if (normalizedRole !== 'student') {
       if (await getUserByPhone(pool, sanitizedPhone)) {
         return res.status(409).json({ error: 'Phone number already registered' });
@@ -178,18 +177,15 @@ router.post('/register', async (req, res) => {
       if (studentCount >= 4) {
         return res.status(409).json({ error: 'Maximum 4 students can register with the same phone number' });
       }
-      // Also block if a non-student (admin/teacher/staff) already has this phone
       if (await getNonStudentByPhone(pool, sanitizedPhone)) {
         return res.status(409).json({ error: 'Phone number already registered to a non-student account' });
       }
     }
 
-    // STUDENT REGISTRATION - WITH ATOMIC ROLL NUMBER LOCK
     if (normalizedRole === 'student') {
       const { dateOfBirth } = req.body;
       const fullName = sanitizeText(req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(), 100);
 
-      // Reject exact duplicate: same phone + name + class + DOB
       if (dateOfBirth && classLevel) {
         let dobISO_check = null;
         const dparts = dateOfBirth.split('/');
@@ -206,8 +202,6 @@ router.post('/register', async (req, res) => {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        
-        // LOCK TABLE to prevent concurrent roll number generation collisions
         await client.query('LOCK TABLE students IN ACCESS EXCLUSIVE MODE');
 
         const user = await createUser(client, {
@@ -229,7 +223,7 @@ router.post('/register', async (req, res) => {
         const prefix = `${classPart}${sectionPart}`;
 
         const countResult = await client.query(
-          `SELECT COUNT(*) FROM students WHERE "rollNumber" LIKE $1`,
+          `SELECT COUNT(*) FROM students WHERE roll_number LIKE $1`,
           [`${prefix}%`]
         );
         const rollNumber = `${prefix}${(parseInt(countResult.rows[0].count) + 1).toString().padStart(3, '0')}`;
@@ -275,7 +269,6 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // TEACHER/STAFF REGISTRATION
     if (normalizedRole === 'teacher' || normalizedRole === 'staff') {
       const teacherId = await generateTeacherId(pool, normalizedRole);
       const user = await createUser(pool, {
@@ -311,7 +304,7 @@ router.post('/admin-login', async (req, res) => {
   const pool = req.db;
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
-    const user = await getUserByPhoneOrUsername(pool, loginId);
+    const user = await getUserByPhoneOrUsername(pool, loginId, true);
     if (!user || user.role.toLowerCase() !== 'admin') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
@@ -330,7 +323,7 @@ router.post('/teacher-login', async (req, res) => {
   const pool = req.db;
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
-    const user = await getUserByPhoneOrUsername(pool, loginId);
+    const user = await getUserByPhoneOrUsername(pool, loginId, true);
     if (!user || user.role.toLowerCase() !== 'teacher') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (user.status !== 'active' || !user.isActive) return res.status(403).json({ error: 'Account not active' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
@@ -357,13 +350,12 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
   const { userId } = req.params;
   const { classesAssigned } = req.body;
   try {
-    const userResult = await req.db.query('SELECT * FROM users WHERE id = $1', [userId]);
-    const user = userResult.rows[0];
+    const user = await getUserById(req.db, userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if ((user.role === 'teacher' || user.role === 'staff') && classesAssigned) {
       await assignTeacherToClasses(req.db, userId, classesAssigned, user.schoolId);
     }
-    const updatedUser = await updateUserStatus(req.db, parseInt(userId), 'active', null);
+    const updatedUser = await updateUserStatus(req.db, parseInt(userId), 'active');
     res.json({ success: true, message: 'User approved', data: updatedUser });
   } catch (error) {
     console.error('Approve user error:', error);
@@ -382,8 +374,6 @@ router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), asyn
     res.status(500).json({ success: false, error: 'Server error rejecting user' });
   }
 });
-
-
 
 router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, res) => {
   try {

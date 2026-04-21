@@ -1,11 +1,15 @@
 export async function getTeacherAssignments(db, teacherId) {
   const result = await db.query(
-    `SELECT "classLevel", section
+    `SELECT class_level, section
      FROM teacher_class_assignment
-     WHERE "teacherId" = $1`,
+     WHERE teacher_id = $1`,
     [teacherId]
   );
-  return result.rows;
+  // Map snake_case to camelCase for the internal policy checks if needed
+  return result.rows.map(r => ({
+      classLevel: r.class_level,
+      section: r.section
+  }));
 }
 
 export function isTeacherAssignedTo(assignments, className, sectionName = null) {
@@ -19,12 +23,15 @@ export function isTeacherAssignedTo(assignments, className, sectionName = null) 
 
 export async function getStudentScope(db, userId) {
   const result = await db.query(
-    `SELECT "classLevel", section
+    `SELECT class_level, section
      FROM students
-     WHERE "userId" = $1
+     WHERE user_id = $1
      LIMIT 1`,
     [userId]
   );
-  return result.rows[0] || null;
+  if (!result.rows[0]) return null;
+  return {
+      classLevel: result.rows[0].class_level,
+      section: result.rows[0].section
+  };
 }
-

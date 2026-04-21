@@ -193,12 +193,14 @@ function setupTabSwitching() {
       }
 
       if (tabId === 'materials') {
-        const classText = document.getElementById('student-class')?.innerText || '';
-        const classMatch = classText.match(/Class: (\d+)/i);
-        const sectionMatch = classText.match(/Section: ([A-B])/i);
+        const classEl = document.getElementById('dropdown-student-class');
+        const sectionEl = document.getElementById('dropdown-student-section');
+        const classText = classEl ? classEl.textContent : '';
+        const sectionText = sectionEl ? sectionEl.textContent : '';
         
+        const classMatch = classText.match(/Class: (\d+)/i);
         const studentClass = classMatch ? classMatch[1] : '';
-        const studentSection = sectionMatch ? sectionMatch[1] : '';
+        const studentSection = sectionText !== 'N/A' ? sectionText : '';
         
         loadMaterials(studentClass, studentSection);
       }
@@ -209,12 +211,14 @@ function setupTabSwitching() {
       }
 
       if (tabId === 'subjects') {
-        const classText = document.getElementById('student-class')?.innerText || '';
-        const classMatch = classText.match(/Class: (\d+)/i);
-        const sectionMatch = classText.match(/Section: ([A-B])/i);
+        const classEl = document.getElementById('dropdown-student-class');
+        const sectionEl = document.getElementById('dropdown-student-section');
+        const classText = classEl ? classEl.textContent : '';
+        const sectionText = sectionEl ? sectionEl.textContent : '';
         
+        const classMatch = classText.match(/Class: (\d+)/i);
         const studentClass = classMatch ? classMatch[1] : '';
-        const studentSection = sectionMatch ? sectionMatch[1] : '';
+        const studentSection = sectionText !== 'N/A' ? sectionText : '';
         
         loadSubjects(studentClass, studentSection);
       }
@@ -425,10 +429,15 @@ async function loadSubjects(classLevel, section = '') {
 
 function populateProfile(profile) {
   const nameElement = document.getElementById('student-name');
-  const classElement = document.getElementById('student-class');
+  const classElement = document.getElementById('dropdown-student-class');
+  const sectionElement = document.getElementById('dropdown-student-section');
+  
   if (nameElement && profile.name) nameElement.textContent = profile.name;
   if (classElement && profile.classLevel) {
-    classElement.textContent = `Class: ${profile.classLevel} | ${profile.section || 'N/A'}`;
+    classElement.textContent = `Class: ${profile.classLevel}`;
+  }
+  if (sectionElement && profile.section) {
+    sectionElement.textContent = profile.section;
   }
 }
 

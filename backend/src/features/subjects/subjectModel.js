@@ -44,7 +44,7 @@ export const subjectModel = {
         }
 
         if (section && section !== 'ALL') {
-            conditions.push(`(sa.section = $${placeholderCount++} OR sa.section IS NULL)`);
+            conditions.push(`(sa.section = $${placeholderCount++} OR sa.section IS NULL OR sa.section = 'ALL')`);
             values.push(section);
         }
 
@@ -79,11 +79,11 @@ export const subjectModel = {
         return res.rows[0];
     },
 
-    // Check teacher permission (already correctly mapped class level logic)
+    // Check teacher permission
     async checkTeacherPermission(teacher_id, class_level, db = pool) {
         const query = `
             SELECT 1 FROM teacher_class_assignment 
-            WHERE "teacherId" = $1 AND "classLevel" = $2
+            WHERE teacher_id = $1 AND class_level = $2
             LIMIT 1
         `;
         const res = await db.query(query, [teacher_id, class_level]);

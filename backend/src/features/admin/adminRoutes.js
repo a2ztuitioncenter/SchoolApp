@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone, generateTeacherId } from '../auth/User.js';
+import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone, generateTeacherId, getUserById } from '../auth/User.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
@@ -16,22 +16,36 @@ router.get('/users', async (req, res) => {
         const result = await req.db.query(
             `SELECT 
                 u.id, u.name, u.phone, u.email, u.role, u.status, 
-                u."teacherId", u."isActive", u."createdAt",
+                u.teacher_id, u.is_active, u.created_at,
                 COALESCE(
                     JSONB_AGG(
-                        JSONB_BUILD_OBJECT('class', tca."classLevel", 'section', tca.section)
-                        ORDER BY tca."classLevel"
-                    ) FILTER (WHERE tca."classLevel" IS NOT NULL),
+                        JSONB_BUILD_OBJECT('class', tca.class_level, 'section', tca.section)
+                        ORDER BY tca.class_level
+                    ) FILTER (WHERE tca.class_level IS NOT NULL),
                     '[]'::jsonb
-                ) AS "classesAssigned"
+                ) AS classes_assigned
              FROM users u
-             LEFT JOIN teacher_class_assignment tca ON tca."teacherId" = u.id
+             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
              WHERE u.role IN ($1, $2)
              GROUP BY u.id
-             ORDER BY u."createdAt" DESC`,
+             ORDER BY u.created_at DESC`,
             ['teacher', 'staff']
         );
-        res.json({ success: true, data: result.rows });
+
+        const mapped = result.rows.map(u => ({
+            id: u.id,
+            name: u.name,
+            phone: u.phone,
+            email: u.email,
+            role: u.role,
+            status: u.status,
+            teacherId: u.teacher_id,
+            isActive: u.is_active,
+            createdAt: u.created_at,
+            classesAssigned: u.classes_assigned
+        }));
+
+        res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch users error:', err);
         res.status(500).json({ error: 'Failed to fetch users' });
@@ -44,7 +58,6 @@ router.post('/users/create', async (req, res) => {
         if (!name || !phone || !role || !password) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
-        // Phone uniqueness: strict for non-students, allow up to 4 for students
         if (role !== 'student') {
             if (await getUserByPhone(req.db, phone)) return res.status(409).json({ error: 'Phone already registered' });
         } else {
@@ -71,7 +84,7 @@ router.put('/users/:id', async (req, res) => {
         const user = await updateUser(req.db, id, { name, phone, email, role });
         if (!user) return res.status(404).json({ error: 'User not found' });
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
-            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId);
+            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId || 'school-001');
         }
         res.json({ success: true, data: user });
     } catch (err) {
@@ -115,15 +128,32 @@ router.patch('/users/:id/status', async (req, res) => {
 router.get('/students', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT s.id, s."userId", s.name, s."classLevel", s.section, 
-                    s."fatherName", s."motherName", s.phone, s.email, 
-                    s."rollNumber", s."joiningDate", s."dateOfBirth", 
-                    s.status, s."schoolId", s."createdAt", u.phone as "userPhone"
+            `SELECT s.*, u.phone as user_phone
              FROM students s 
-             LEFT JOIN users u ON s."userId" = u.id 
+             LEFT JOIN users u ON s.user_id = u.id 
              ORDER BY s.name ASC`
         );
-        res.json({ success: true, data: result.rows });
+        
+        const mapped = result.rows.map(s => ({
+            id: s.id,
+            userId: s.user_id,
+            name: s.name,
+            classLevel: s.class_level,
+            section: s.section,
+            fatherName: s.father_name,
+            motherName: s.mother_name,
+            phone: s.phone,
+            email: s.email,
+            rollNumber: s.roll_number,
+            joiningDate: s.joining_date,
+            dateOfBirth: s.date_of_birth,
+            status: s.status,
+            schoolId: s.school_id,
+            createdAt: s.created_at,
+            userPhone: s.user_phone
+        }));
+
+        res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch students error:', err.message);
         res.status(500).json({ success: false, error: 'Failed to fetch students', message: err.message });
@@ -154,8 +184,6 @@ router.post('/students/create', async (req, res) => {
 
         try {
             await client.query('BEGIN');
-
-            // LOCK TABLE for atomic roll number generation
             await client.query('LOCK TABLE students IN ACCESS EXCLUSIVE MODE');
 
             let user = await getUserByPhone(client, phone);
@@ -216,10 +244,10 @@ router.put('/students/:id', async (req, res) => {
         const result = await req.db.query(
             `UPDATE students 
              SET name = COALESCE($1, name),
-                 "classLevel" = COALESCE($2, "classLevel"),
+                 class_level = COALESCE($2, class_level),
                  section = COALESCE($3, section),
-                 "fatherName" = COALESCE($4, "fatherName"),
-                 "motherName" = COALESCE($5, "motherName"),
+                 father_name = COALESCE($4, father_name),
+                 mother_name = COALESCE($5, mother_name),
                  phone = COALESCE($6, phone),
                  email = COALESCE($7, email)
              WHERE id = $8 RETURNING *`,
@@ -247,9 +275,9 @@ router.patch('/students/:id/status', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
     try {
-        const studentResult = await req.db.query('SELECT "userId" FROM students WHERE id = $1', [req.params.id]);
+        const studentResult = await req.db.query('SELECT user_id FROM students WHERE id = $1', [req.params.id]);
         if (studentResult.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
-        const deleted = await deleteUser(req.db, studentResult.rows[0].userId);
+        const deleted = await deleteUser(req.db, studentResult.rows[0].user_id);
         if (!deleted) return res.status(404).json({ error: 'Associated user not found' });
         res.json({ success: true, message: 'Student deleted' });
     } catch (err) {
@@ -265,17 +293,29 @@ router.get('/financials/unpaid-fees', async (req, res) => {
     try {
         const result = await req.db.query(
             `SELECT 
-                f.id, f.amount, f."dueDate", f."isPaid" AS paid,
+                f.id, f.amount, f.due_date, f.is_paid,
                 s.name as student_name,
-                s."classLevel",
+                s.class_level,
                 u.phone
              FROM fees f
-             JOIN students s ON f."studentId" = s.id
-             JOIN users u ON s."userId" = u.id
-             WHERE f."isPaid" = FALSE
-             ORDER BY f."dueDate" ASC`
+             JOIN students s ON f.student_id = s.id
+             JOIN users u ON s.user_id = u.id
+             WHERE f.is_paid = FALSE
+             ORDER BY f.due_date ASC`
         );
-        res.json({ success: true, data: result.rows });
+        
+        const mapped = result.rows.map(f => ({
+            id: f.id,
+            amount: f.amount,
+            dueDate: f.due_date,
+            isPaid: f.is_paid,
+            paid: f.is_paid,
+            student_name: f.student_name,
+            classLevel: f.class_level,
+            phone: f.phone
+        }));
+
+        res.json({ success: true, data: mapped });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch unpaid fees' });
     }
@@ -287,9 +327,9 @@ router.get('/financials/report', async (req, res) => {
             `SELECT 
                 COUNT(*) as total_records,
                 COALESCE(SUM(amount), 0) as total_amount,
-                COALESCE(SUM(CASE WHEN "isPaid" = TRUE THEN amount ELSE 0 END), 0) as total_paid,
-                COALESCE(SUM(CASE WHEN "isPaid" = FALSE THEN amount ELSE 0 END), 0) as total_pending
-             FROM fees`
+                COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as total_paid,
+                COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as total_pending
+            FROM fees`
         );
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
@@ -303,11 +343,11 @@ router.get('/financials/trends', async (req, res) => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const result = await req.db.query(
             `SELECT 
-                DATE("createdAt") as date,
+                DATE(created_at) as date,
                 COALESCE(SUM(amount), 0) as amount
              FROM fees
-             WHERE "isPaid" = TRUE AND "createdAt" >= $1
-             GROUP BY DATE("createdAt")
+             WHERE is_paid = TRUE AND created_at >= $1
+             GROUP BY DATE(created_at)
              ORDER BY date ASC`,
             [thirtyDaysAgo]
         );
@@ -324,15 +364,29 @@ router.get('/financials/trends', async (req, res) => {
 router.get('/timetable', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT t.id, t.day_of_week as "dayOfWeek", t.start_time as "startTime", t.end_time as "endTime", 
+            `SELECT t.id, t.day_of_week, t.start_time, t.end_time, 
                     t.subject_id, s.name as subject, 
-                    t.class_level as "classLevel", t.section, t.teacher_id as "teacherId", u.name as "teacherName"
+                    t.class_level, t.section, t.teacher_id, u.name as teacher_name
              FROM timetable t
              LEFT JOIN users u ON t.teacher_id = u.id
              LEFT JOIN subjects s ON t.subject_id = s.id
              ORDER BY t.day_of_week, t.start_time ASC`
         );
-        res.json({ success: true, data: result.rows });
+        
+        const mapped = result.rows.map(t => ({
+            id: t.id,
+            dayOfWeek: t.day_of_week,
+            startTime: t.start_time,
+            endTime: t.end_time,
+            subjectId: t.subject_id,
+            subject: t.subject,
+            classLevel: t.class_level,
+            section: t.section,
+            teacherId: t.teacher_id,
+            teacherName: t.teacher_name
+        }));
+
+        res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch timetable error:', err);
         res.status(500).json({ error: 'Failed to fetch timetable' });

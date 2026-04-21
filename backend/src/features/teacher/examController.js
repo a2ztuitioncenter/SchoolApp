@@ -29,7 +29,7 @@ export const createExamResult = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO exam_results 
-       ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId", "studentId")
+       (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id, student_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
       [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId, studentId]
     );
@@ -47,18 +47,33 @@ export const getExamResults = async (req, res) => {
 
   try {
     const results = await pool.query(
-      `SELECT er.id, er."classLevel", er.section, COALESCE(s."rollNumber", er."rollNumber") as "roll_no", 
-              COALESCE(s."rollNumber", er."rollNumber") as "rollNumber",
-              er."studentName", er."examTitle", er.subjects, 
-              er."totalMarks", er."obtainedMarks", 
-              er.percentage, er.remarks, er."teacherId", er."createdAt"
+      `SELECT er.*, COALESCE(s.roll_number, er.roll_number) as roll_no
        FROM exam_results er
-       LEFT JOIN students s ON er."studentId" = s.id
-       WHERE er."teacherId" = $1 
-       ORDER BY er."createdAt" DESC`,
+       LEFT JOIN students s ON er.student_id = s.id
+       WHERE er.teacher_id = $1 
+       ORDER BY er.created_at DESC`,
       [teacherId]
     );
-    res.json({ success: true, data: results.rows });
+
+    const mappedResults = results.rows.map(r => ({
+      id: r.id,
+      classLevel: r.class_level,
+      section: r.section,
+      rollNumber: r.roll_no || r.roll_number,
+      roll_no: r.roll_no || r.roll_number,
+      studentName: r.student_name,
+      examTitle: r.exam_title,
+      subjects: r.subjects,
+      totalMarks: r.total_marks,
+      obtainedMarks: r.obtained_marks,
+      percentage: r.percentage,
+      remarks: r.remarks,
+      teacherId: r.teacher_id,
+      studentId: r.student_id,
+      createdAt: r.created_at
+    }));
+
+    res.json({ success: true, data: mappedResults });
   } catch (error) {
     console.error('Error fetching exam results:', error);
     res.status(500).json({ error: 'Server error' });

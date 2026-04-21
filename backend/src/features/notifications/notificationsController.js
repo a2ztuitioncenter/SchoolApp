@@ -2,7 +2,7 @@ import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../ut
 
 export const getAllNotifications = async (req, res) => {
   try {
-    const result = await req.db.query('SELECT * FROM notifications ORDER BY "createdAt" DESC');
+    const result = await req.db.query('SELECT * FROM notifications ORDER BY created_at DESC');
     res.json({ success: true, data: result.rows });
   } catch (err) {
     console.error('getAllNotifications:', err);
@@ -26,7 +26,7 @@ export const createNotification = async (req, res) => {
     const createdByInt = createdBy ? parseInt(createdBy, 10) : null;
 
     const result = await req.db.query(
-      `INSERT INTO notifications (title, message, "attachmentUrl", "recipientRole", "classLevel", section, "createdBy")
+      `INSERT INTO notifications (title, message, attachment_url, recipient_role, class_level, section, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [title, message, attachmentUrl, recipientRole || null, classLevel || null, section || null, createdByInt]
     );

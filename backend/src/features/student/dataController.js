@@ -1,12 +1,7 @@
 // dataController.js - Logic for fetching student dashboard data using snake_case
 import { getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getAttendancePercentage, getAttendanceSummary, getAttendanceByStudentId } from '../attendance/Attendance.js';
-
-// Helper to get student by userId using inline pool query
-async function getStudentByUserId(pool, userId) {
-  const result = await pool.query('SELECT * FROM students WHERE "userId" = $1 LIMIT 1', [userId]);
-  return result.rows[0] || null;
-}
+import { getStudentByUserId as fetchStudentByUserId } from './Student.js';
 
 export const getStudentDashboard = async (req, res) => {
   const { userId } = req.params;
@@ -14,77 +9,79 @@ export const getStudentDashboard = async (req, res) => {
 
   try {
     const pool = req.db;
-    const student = await getStudentByUserId(pool, userId);
+    const student = await fetchStudentByUserId(pool, userId);
 
     if (!student) {
       console.warn(`Student not found for userId: ${userId}`);
-      return res.status(404).json({ message: 'Student not found' });
+      return res.status(404).json({ success: false, message: 'Student not found' });
     }
     
-    console.log(`📌 Dashboard request for student:`, student);
+    // Student fields are already mapped to camelCase by Student.js fetch
+    const { id: studentId, classLevel, section } = student;
+
+    console.log(`📌 Dashboard request for student:`, studentId, classLevel, section);
 
     // Parallel fetch of attendance, fees, homework, timetable, and notifications
+    // Using try-catch wrappers for safety
+    const safeQuery = async (q, p) => {
+      try { return await pool.query(q, p); }
+      catch (e) { console.error(`Query failed: ${q}`, e.message); return { rows: [] }; }
+    };
 
-    // Note: Database columns are now camelCase.
     const [attendancePercentage, attendanceSummary, feesSummary, allFees, homeworkResult, timetableResult, notificationsResult] = await Promise.all([
-      getAttendancePercentage(pool, student.id, 30),
-      getAttendanceSummary(pool, student.id),
-      getFeesSummary(pool, student.id),
-      getAllStudentFees(pool, student.id),
-      pool.query(
+      getAttendancePercentage(pool, studentId, 30).catch(e => ({ presentDays: 0, totalDays: 0, percentage: 0 })),
+      getAttendanceSummary(pool, studentId).catch(e => ({})),
+      getFeesSummary(pool, studentId).catch(e => ({})),
+      getAllStudentFees(pool, studentId).catch(e => []),
+      safeQuery(
         `SELECT * FROM homework 
-         WHERE "classLevel" = $1 AND (section = $2 OR section = 'ALL')
-         ORDER BY "dueDate" ASC, "createdAt" DESC LIMIT 15`, 
-        [student.classLevel, student.section]
+         WHERE class_level = $1 AND (section = $2 OR section = 'ALL')
+         ORDER BY due_date ASC, created_at DESC LIMIT 15`, 
+        [classLevel, section]
       ),
-      pool.query(
+      safeQuery(
         `SELECT * FROM timetable 
-         WHERE "classLevel" = $1 AND (section = $2 OR section = 'ALL') 
-         ORDER BY "dayOfWeek", "startTime" ASC`, 
-        [student.classLevel, student.section]
+         WHERE class_level = $1 AND (section = $2 OR section = 'ALL') 
+         ORDER BY day_of_week, start_time ASC`, 
+        [classLevel, section]
       ),
-      pool.query(
+      safeQuery(
         `SELECT * FROM notifications 
-         WHERE ("classLevel" = $1 OR "classLevel" IS NULL OR "recipientRole" = 'student')
+         WHERE (class_level = $1 OR class_level IS NULL OR recipient_role = 'student')
          AND (section = $2 OR section IS NULL OR section = 'ALL')
-         ORDER BY "createdAt" DESC LIMIT 10`,
-        [student.classLevel, student.section]
+         ORDER BY created_at DESC LIMIT 10`,
+        [classLevel, section]
       ),
     ]);
 
-    const allHomework = (homeworkResult.rows || []).map(h => ({
+    const normalizeRow = (h) => ({
       ...h,
-      classLevel: h.classLevel,
-      dueDate: h.dueDate,
-      teacherId: h.teacherId,
-      attachmentUrl: h.attachmentUrl,
-      createdAt: h.createdAt
-    }));
-    const homework = allHomework.filter(h => h.type === 'homework').slice(0, 5);
+      id: h.id,
+      title: h.title,
+      description: h.description,
+      classLevel: h.class_level,
+      section: h.section,
+      dueDate: h.due_date,
+      teacherId: h.teacher_id,
+      attachmentUrl: h.attachment_url,
+      createdAt: h.created_at,
+      type: h.type
+    });
+
+    const allItems = (homeworkResult.rows || []).map(normalizeRow);
+    const homework = allItems.filter(h => h.type === 'homework').slice(0, 5);
     
-    // Daily practice valid for 24 hours
     const now = new Date();
-    const dailyPractice = allHomework.filter(h => {
+    const dailyPractice = allItems.filter(h => {
         if (h.type !== 'daily_practice') return false;
         const created = new Date(h.createdAt);
-        const hoursDiff = (now - created) / (1000 * 60 * 60);
-        return hoursDiff <= 24;
+        return (now - created) / (1000 * 60 * 60) <= 24;
     });
 
     return res.json({
       success: true,
       data: {
-        profile: {
-          id: student.id,
-          userId: student.userId,
-          name: student.name,
-          classLevel: student.classLevel,
-          section: student.section,
-          rollNumber: student.rollNumber,
-          fatherName: student.fatherName,
-          joiningDate: student.joiningDate,
-          status: student.status,
-        },
+        profile: student,
         attendance: {
           presentDays: attendancePercentage.presentDays,
           totalDays: attendancePercentage.totalDays,
@@ -92,24 +89,36 @@ export const getStudentDashboard = async (req, res) => {
           summary: attendanceSummary,
         },
         fees: {
-          totalAmount: parseFloat(feesSummary.total_amount) || 0,
-          totalPaid: parseFloat(feesSummary.total_paid) || 0,
-          totalPending: parseFloat(feesSummary.total_pending) || 0,
-          pendingCount: parseInt(feesSummary.pending_count) || 0,
-          paidCount: parseInt(feesSummary.paid_count) || 0,
+          totalAmount: parseFloat(feesSummary?.total_amount) || 0,
+          totalPaid: parseFloat(feesSummary?.total_paid) || 0,
+          totalPending: parseFloat(feesSummary?.total_pending) || 0,
+          pendingCount: parseInt(feesSummary?.pending_count) || 0,
+          paidCount: parseInt(feesSummary?.paid_count) || 0,
           fees: (allFees || []).slice(0, 5),
         },
         homework,
         dailyPractice,
-        timetable: timetableResult.rows || [],
-        notifications: notificationsResult.rows || [],
+        timetable: (timetableResult.rows || []).map(t => ({
+          ...t,
+          classLevel: t.class_level,
+          startTime: t.start_time,
+          endTime: t.end_time,
+          subjectId: t.subject_id,
+          teacherId: t.teacher_id,
+          dayOfWeek: t.day_of_week
+        })),
+        notifications: (notificationsResult.rows || []).map(n => ({
+          ...n,
+          recipientRole: n.recipient_role,
+          attachmentUrl: n.attachment_url,
+          createdAt: n.created_at
+        })),
         courseProgress: { percentage: 0, completedLessons: 0, totalLessons: 0 },
       },
     });
   } catch (error) {
-    console.error('❌ Dashboard data error:', error.message);
-    console.error('Stack:', error.stack);
-    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    console.error('❌ Dashboard Exception:', error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
@@ -117,7 +126,7 @@ export const getStudentAttendance = async (req, res) => {
   const { userId } = req.params;
   try {
     const pool = req.db;
-    const student = await getStudentByUserId(pool, userId);
+    const student = await fetchStudentByUserId(pool, userId);
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     const [records, summary, pct] = await Promise.all([
@@ -136,7 +145,7 @@ export const getStudentFees = async (req, res) => {
   const { userId } = req.params;
   try {
     const pool = req.db;
-    const student = await getStudentByUserId(pool, userId);
+    const student = await fetchStudentByUserId(pool, userId);
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     const [fees, summary] = await Promise.all([

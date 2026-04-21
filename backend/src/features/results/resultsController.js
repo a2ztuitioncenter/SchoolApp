@@ -6,23 +6,42 @@ export const getResultsByStudent = async (req, res) => {
     let result;
     if (student === 'all') {
       result = await req.db.query(
-        `SELECT er.*, s."rollNumber" as "roll_no"
+        `SELECT er.*, s.roll_number as roll_no
          FROM exam_results er
-         LEFT JOIN students s ON er."studentId" = s.id
-         ORDER BY er."createdAt" DESC`
+         LEFT JOIN students s ON er.student_id = s.id
+         ORDER BY er.created_at DESC`
       );
     } else {
       // Filter by roll number or student name
       result = await req.db.query(
-        `SELECT er.*, s."rollNumber" as "roll_no"
+        `SELECT er.*, s.roll_number as roll_no
          FROM exam_results er
-         LEFT JOIN students s ON er."studentId" = s.id
-         WHERE er."rollNumber" = $1 OR er."studentName" = $1 
-         ORDER BY er."createdAt" DESC`,
+         LEFT JOIN students s ON er.student_id = s.id
+         WHERE er.roll_number = $1 OR er.student_name = $1 
+         ORDER BY er.created_at DESC`,
         [student]
       );
     }
-    res.json({ success: true, data: result.rows });
+
+    const mappedData = result.rows.map(r => ({
+        id: r.id,
+        classLevel: r.class_level,
+        section: r.section,
+        rollNumber: r.roll_no || r.roll_number,
+        studentName: r.student_name,
+        examTitle: r.exam_title,
+        subjects: r.subjects,
+        totalMarks: r.total_marks,
+        obtainedMarks: r.obtained_marks,
+        percentage: r.percentage,
+        remarks: r.remarks,
+        teacherId: r.teacher_id,
+        studentId: r.student_id,
+        createdAt: r.created_at,
+        roll_no: r.roll_no || r.roll_number
+    }));
+
+    res.json({ success: true, data: mappedData });
   } catch (err) {
     console.error('getResultsByStudent:', err);
     res.status(500).json({ error: 'Server error' });
@@ -48,7 +67,7 @@ export const createResult = async (req, res) => {
     const subjects = req.body.subjects || {};
 
     const result = await req.db.query(
-      `INSERT INTO exam_results ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId", "studentId")
+      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id, student_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
       [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId, studentId]
     );

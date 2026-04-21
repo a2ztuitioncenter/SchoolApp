@@ -60,7 +60,7 @@ async function checkTeacherClassPermission(pool, teacherId, classLevel, section)
   try {
     const result = await pool.query(
       `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section = 'ALL')`,
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`,
       [teacherId, classLevel, section || 'A']
     );
     return result.rows[0].count > 0;
@@ -96,35 +96,35 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized: Not a teacher' });
 
-    // 1. Get Assigned Classes from teacher_class_assignment table (snake_case)
+    // 1. Get Assigned Classes from teacher_class_assignment table
     const assignRes = await pool.query(
-      `SELECT DISTINCT "classLevel", section 
+      `SELECT DISTINCT class_level, section 
        FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 
-       ORDER BY "classLevel", section`,
+       WHERE teacher_id = $1 
+       ORDER BY class_level, section`,
       [parsedTeacherId]
     );
-    let classes = assignRes.rows.map(r => (r.section && r.section !== 'ALL') ? `${r.classLevel}${r.section}` : r.classLevel);
+    let classes = assignRes.rows.map(r => (r.section && r.section !== 'ALL') ? `${r.class_level}${r.section}` : r.class_level);
 
-    // 2. Fallback: If no assignments found, get from timetable (snake_case)
+    // 2. Fallback: If no assignments found, get from timetable
     if (classes.length === 0) {
       const ttRes = await pool.query(
-        'SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"',
+        'SELECT DISTINCT class_level FROM timetable WHERE teacher_id = $1 ORDER BY class_level',
         [parsedTeacherId]
       );
-      classes = ttRes.rows.map(r => r.classLevel);
+      classes = ttRes.rows.map(r => r.class_level);
     }
 
-    // 3. Get Timetable (snake_case)
+    // 3. Get Timetable
     const ttRes = await pool.query(
-      'SELECT * FROM timetable WHERE "teacherId" = $1 ORDER BY "dayOfWeek", "startTime"',
+      'SELECT * FROM timetable WHERE teacher_id = $1 ORDER BY day_of_week, start_time',
       [parsedTeacherId]
     );
 
-    // 4. Get Homework & Student Count (camelCase)
+    // 4. Get Homework & Student Count
     const [hwRes, studRes] = await Promise.all([
       pool.query(
-        'SELECT * FROM homework WHERE "teacherId" = $1 ORDER BY "createdAt" DESC',
+        'SELECT * FROM homework WHERE teacher_id = $1 ORDER BY created_at DESC',
         [parsedTeacherId]
       ),
       assignRes.rows.length > 0
@@ -132,15 +132,15 @@ router.get('/dashboard/:teacherId', async (req, res) => {
           `SELECT COUNT(id) AS total_students FROM students 
              WHERE id IN (
                SELECT s.id FROM students s
-               JOIN teacher_class_assignment tca ON s."classLevel" = tca."classLevel"
-               WHERE tca."teacherId" = $1 
+               JOIN teacher_class_assignment tca ON s.class_level = tca.class_level
+               WHERE tca.teacher_id = $1 
                AND (tca.section IS NULL OR tca.section = 'ALL' OR tca.section = s.section)
              )`,
           [parsedTeacherId]
         )
         : (classes.length > 0
           ? pool.query(
-            `SELECT COUNT(id) AS total_students FROM students WHERE "classLevel" = ANY($1)`,
+            `SELECT COUNT(id) AS total_students FROM students WHERE class_level = ANY($1)`,
             [classes]
           )
           : Promise.resolve({ rows: [{ total_students: 0 }] })
@@ -156,8 +156,19 @@ router.get('/dashboard/:teacherId', async (req, res) => {
         totalStudents: parseInt(studRes.rows[0].total_students || 0),
       },
       classes: classes.map(c => ({ classLevel: c })),
-      homework: hwRes.rows,
-      timetable: ttRes.rows,
+      homework: hwRes.rows.map(h => ({
+          ...h,
+          classLevel: h.class_level,
+          dueDate: h.due_date,
+          createdAt: h.created_at
+      })),
+      timetable: ttRes.rows.map(t => ({
+          ...t,
+          classLevel: t.class_level,
+          dayOfWeek: t.day_of_week,
+          startTime: t.start_time,
+          endTime: t.end_time
+      })),
     });
   } catch (err) {
     console.error('❌ Teacher dashboard error:', err.message);
@@ -174,10 +185,16 @@ router.get('/timetable/:teacherId', async (req, res) => {
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const res2 = await pool.query(
-      `SELECT * FROM timetable WHERE "teacherId" = $1 ORDER BY "dayOfWeek", "startTime"`,
+      `SELECT * FROM timetable WHERE teacher_id = $1 ORDER BY day_of_week, start_time`,
       [teacher.id]
     );
-    res.json({ success: true, data: res2.rows });
+    res.json({ success: true, data: res2.rows.map(t => ({
+        ...t,
+        classLevel: t.class_level,
+        dayOfWeek: t.day_of_week,
+        startTime: t.start_time,
+        endTime: t.end_time
+    })) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch timetable' });
   }
@@ -192,22 +209,22 @@ router.get('/attendance/classes', async (req, res) => {
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const result = await pool.query(
-      `SELECT DISTINCT "classLevel", section FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 
-       ORDER BY "classLevel", section`,
+      `SELECT DISTINCT class_level, section FROM teacher_class_assignment 
+       WHERE teacher_id = $1 
+       ORDER BY class_level, section`,
       [teacher.id]
     );
 
-    let classes = result.rows.map(r => (r.section && r.section !== 'ALL') ? `${r.classLevel}${r.section}` : r.classLevel);
+    let classes = result.rows.map(r => (r.section && r.section !== 'ALL') ? `${r.class_level}${r.section}` : r.class_level);
     if (classes.length === 0) {
       const ttResult = await pool.query(
-        `SELECT DISTINCT "classLevel" FROM timetable WHERE "teacherId" = $1 ORDER BY "classLevel"`,
+        `SELECT DISTINCT class_level FROM timetable WHERE teacher_id = $1 ORDER BY class_level`,
         [teacher.id]
       );
-      classes = ttResult.rows.map(r => r.classLevel);
+      classes = ttResult.rows.map(r => r.class_level);
     }
 
-    res.json({ success: true, data: classes });
+    res.json({ success: true, data: classes.map(c => ({ class_level: c })) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch classes' });
   }
@@ -224,7 +241,7 @@ router.get('/attendance/sections', async (req, res) => {
 
     const result = await pool.query(
       `SELECT DISTINCT section FROM students 
-       WHERE "classLevel" = $1 AND section IS NOT NULL 
+       WHERE class_level = $1 AND section IS NOT NULL 
        ORDER BY section`,
       [sanitizeIdentifier(classLevel)]
     );
@@ -249,18 +266,18 @@ router.get('/attendance/sheet', async (req, res) => {
     const classLevel = parsed.classLevel;
     const section = querySection || parsed.section;
 
-    // Verify teacher assignment (snake_case)
+    // Verify teacher assignment
     let assignmentCheck;
     if (section) {
       assignmentCheck = await pool.query(
         `SELECT id FROM teacher_class_assignment 
-             WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section = 'ALL' OR section IS NULL)`,
+             WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR section IS NULL)`,
         [teacher.id, classLevel, section]
       );
     } else {
       assignmentCheck = await pool.query(
         `SELECT id FROM teacher_class_assignment 
-             WHERE "teacherId" = $1 AND "classLevel" = $2`,
+             WHERE teacher_id = $1 AND class_level = $2`,
         [teacher.id, classLevel]
       );
     }
@@ -268,7 +285,7 @@ router.get('/attendance/sheet', async (req, res) => {
     if (assignmentCheck.rows.length === 0) {
       const timetableCheck = await pool.query(
         `SELECT id FROM timetable 
-         WHERE "teacherId" = $1 AND "classLevel" = $2`,
+         WHERE teacher_id = $1 AND class_level = $2`,
         [teacher.id, classLevel]
       );
       if (timetableCheck.rows.length === 0) {
@@ -276,7 +293,7 @@ router.get('/attendance/sheet', async (req, res) => {
       }
     }
 
-    let studentsQuery = `SELECT id, name, "rollNumber" FROM students WHERE "classLevel" = $1`;
+    let studentsQuery = `SELECT id, name, roll_number FROM students WHERE class_level = $1`;
     let studentsParams = [classLevel];
     if (section) {
       studentsQuery += ` AND section = $2`;
@@ -284,9 +301,9 @@ router.get('/attendance/sheet', async (req, res) => {
     }
     studentsQuery += ` ORDER BY name`;
 
-    let existingQuery = `SELECT a."studentId", a."isPresent" FROM attendance a
-                        JOIN students s ON a."studentId" = s.id
-                        WHERE s."classLevel" = $1`;
+    let existingQuery = `SELECT a.student_id, a.is_present FROM attendance a
+                        JOIN students s ON a.student_id = s.id
+                        WHERE s.class_level = $1`;
     let existingParams = [classLevel];
     if (section) {
       existingQuery += ` AND s.section = $2`;
@@ -301,11 +318,11 @@ router.get('/attendance/sheet', async (req, res) => {
     ]);
 
     const attMap = {};
-    existing.rows.forEach(a => { attMap[a.studentId] = a.isPresent ? 'present' : 'absent'; });
+    existing.rows.forEach(a => { attMap[a.student_id] = a.is_present ? 'present' : 'absent'; });
 
     res.json({
       success: true,
-      students: students.rows.map(s => ({ id: s.id, name: s.name, rollNumber: s.rollNumber })),
+      students: students.rows.map(s => ({ id: s.id, name: s.name, rollNumber: s.roll_number })),
       existing: attMap,
     });
   } catch (err) {
@@ -330,10 +347,10 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       for (const r of records) {
         const isPresent = r.status === 'present';
         await client.query(
-          `INSERT INTO attendance ("studentId", "userId", "classLevel", date, "isPresent")
-         VALUES ($1, (SELECT "userId" FROM students WHERE id = $1), $2, $3, $4)
-         ON CONFLICT ("studentId", date)
-         DO UPDATE SET "isPresent" = EXCLUDED."isPresent", "classLevel" = EXCLUDED."classLevel"`,
+          `INSERT INTO attendance (student_id, user_id, class_level, date, is_present)
+         VALUES ($1, (SELECT user_id FROM students WHERE id = $1), $2, $3, $4)
+         ON CONFLICT (student_id, date)
+         DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level`,
           [r.studentId, r.classLevel, r.date, isPresent]
         );
       }
@@ -364,15 +381,15 @@ router.get('/attendance/summary', async (req, res) => {
     const section = querySection || parsed.section;
 
     let query = `SELECT s.name, s.id AS student_id,
-          COUNT(CASE WHEN a."isPresent" = true THEN 1 END) AS present_count,
-          COUNT(CASE WHEN a."isPresent" = false THEN 1 END) AS absent_count,
+          COUNT(CASE WHEN a.is_present = true THEN 1 END) AS present_count,
+          COUNT(CASE WHEN a.is_present = false THEN 1 END) AS absent_count,
           COUNT(a.id) AS total_days,
           ROUND(
-            COUNT(CASE WHEN a."isPresent" = true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1
+            COUNT(CASE WHEN a.is_present = true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1
           ) AS attendance_percent
         FROM students s
-        LEFT JOIN attendance a ON a."studentId" = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $${section ? 3 : 2}
-        WHERE s."classLevel" = $1`;
+        LEFT JOIN attendance a ON a.student_id = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $${section ? 3 : 2}
+        WHERE s.class_level = $1`;
 
     let params = [classLevel, month];
     if (section) {
@@ -450,13 +467,13 @@ router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res
     const description = sanitizeNullableText(req.body.description, 5000);
     const subject = sanitizeNullableText(req.body.subject, 100);
 
-    const own = await pool.query('SELECT "teacherId", "classLevel", section FROM homework WHERE id = $1', [id]);
+    const own = await pool.query('SELECT teacher_id, class_level, section FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
 
-    // Check if teacher can edit: either they created it OR it's assigned to their class
+    // Check if teacher can edit
     const homework = own.rows[0];
-    const canEdit = homework.teacherId === teacher.id ||
-      await checkTeacherClassPermission(pool, teacher.id, homework.classLevel, homework.section);
+    const canEdit = homework.teacher_id === teacher.id ||
+      await checkTeacherClassPermission(pool, teacher.id, homework.class_level, homework.section);
 
     if (!canEdit) return res.status(403).json({ error: 'Not authorized to edit this homework' });
 
@@ -477,13 +494,12 @@ router.delete('/homework/:id', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    const own = await pool.query('SELECT "teacherId", "classLevel", section FROM homework WHERE id = $1', [id]);
+    const own = await pool.query('SELECT teacher_id, class_level, section FROM homework WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Homework not found' });
 
-    // Check if teacher can delete: either they created it OR it's assigned to their class
     const homework = own.rows[0];
-    const canDelete = homework.teacherId === teacher.id ||
-      await checkTeacherClassPermission(pool, teacher.id, homework.classLevel, homework.section);
+    const canDelete = homework.teacher_id === teacher.id ||
+      await checkTeacherClassPermission(pool, teacher.id, homework.class_level, homework.section);
 
     if (!canDelete) return res.status(403).json({ error: 'Not authorized to delete this homework' });
 
@@ -495,23 +511,17 @@ router.delete('/homework/:id', async (req, res) => {
 });
 
 // ============================================
-// STUDY MATERIALS — teacher-scoped CRUD with authorization
+// STUDY MATERIALS — teacher-scoped CRUD
 // ============================================
 
 router.get('/materials', async (req, res) => {
   try {
     const { teacherId } = req.query;
-    console.log('🔍 [GET /teacher/materials] Request received - teacherId:', teacherId);
-
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
 
-    if (!teacher) {
-      console.log('❌ [GET /teacher/materials] Authorization failed for teacherId:', teacherId);
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
+    if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    // Get materials uploaded by this teacher
     const result = await pool.query(
       `SELECT * FROM materials 
        WHERE uploaded_by_id = $1 
@@ -519,10 +529,15 @@ router.get('/materials', async (req, res) => {
       [teacher.id]
     );
 
-    console.log(`✅ [GET /teacher/materials] Returned ${result.rows.length} materials for teacher ID ${teacher.id}`);
-    res.json({ success: true, data: result.rows });
+    res.json({ success: true, data: result.rows.map(m => ({
+        ...m,
+        classLevel: m.class_level,
+        fileUrl: m.file_url,
+        uploadedById: m.uploaded_by_id,
+        uploadedBy: m.uploaded_by,
+        createdAt: m.created_at
+    })) });
   } catch (err) {
-    console.error('Error fetching materials:', err);
     res.status(500).json({ error: 'Failed to fetch materials' });
   }
 });
@@ -530,55 +545,37 @@ router.get('/materials', async (req, res) => {
 router.post('/materials', uploadMaterial.single('materialFile'), async (req, res) => {
   try {
     const { teacherId } = req.body;
-    console.log('📝 [POST /teacher/materials] Upload request - teacherId:', teacherId, 'file:', req.file?.filename || 'NONE');
-
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
 
-    if (!teacher) {
-      console.log('❌ [POST /teacher/materials] Authorization failed for teacherId:', teacherId);
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
+    if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10) || null; // Allow section to be NULL for shared materials
+    const section = sanitizeNullableText(req.body.section, 10) || null; 
     const subject = sanitizeText(req.body.subject, 100);
 
-    console.log('📝 [POST /teacher/materials] Parsed fields:', { title, classLevel, section: section || 'SHARED', subject });
+    if (!title || !classLevel || !subject) return res.status(400).json({ error: 'All fields required' });
+    if (!req.file) return res.status(400).json({ error: 'File is required' });
 
-    // Section is optional - NULL allows sharing across all sections
-    if (!title || !classLevel || !subject) {
-      console.log('❌ [POST /teacher/materials] Missing required fields');
-      return res.status(400).json({ error: 'All fields required: title, classLevel, subject. Section is optional (leave empty for shared materials).' });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: 'File is required' });
-    }
-
-    // Validate teacher has permission for this class (section-specific or class-wide)
+    // Validate permission
     let permissionQuery;
     let permissionParams;
 
     if (section) {
-      // For section-specific materials, check section assignment
       permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section = 'ALL')`;
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`;
       permissionParams = [teacher.id, classLevel, section];
     } else {
-      // For shared materials (section = NULL), just check class assignment
       permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2`;
+       WHERE teacher_id = $1 AND class_level = $2`;
       permissionParams = [teacher.id, classLevel];
     }
 
     const permissionCheck = await pool.query(permissionQuery, permissionParams);
-
     if (permissionCheck.rows[0].count === 0) {
-      return res.status(403).json({
-        error: 'You do not have permission to upload materials for this class. Please ensure it is assigned to you.'
-      });
+      return res.status(403).json({ error: 'Permission denied for this class' });
     }
 
     const fileUrl = `/uploads/materials/${req.file.filename}`;
@@ -590,7 +587,6 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
-    console.error('Error uploading material:', err);
     res.status(500).json({ error: 'Failed to upload material' });
   }
 });
@@ -606,46 +602,12 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10) || null; // Allow section to be NULL for shared materials
+    const section = sanitizeNullableText(req.body.section, 10) || null;
     const subject = sanitizeText(req.body.subject, 100);
 
-    // Section is optional - NULL allows sharing across all sections
-
-    // Check if material exists and belongs to this teacher
-    const own = await pool.query(
-      'SELECT uploaded_by_id FROM materials WHERE id = $1',
-      [id]
-    );
-    if (!own.rows.length) {
-      return res.status(404).json({ error: 'Material not found' });
-    }
-    if (own.rows[0].uploaded_by_id !== teacher.id) {
-      return res.status(403).json({ error: 'You can only modify materials you uploaded' });
-    }
-
-    // Validate teacher has permission for this class (section-specific or class-wide)
-    let permissionQuery;
-    let permissionParams;
-
-    if (section) {
-      // For section-specific materials, check section assignment
-      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2 AND (section = $3 OR section = 'ALL')`;
-      permissionParams = [teacher.id, classLevel, section];
-    } else {
-      // For shared materials (section = NULL), just check class assignment
-      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE "teacherId" = $1 AND "classLevel" = $2`;
-      permissionParams = [teacher.id, classLevel];
-    }
-
-    const permissionCheck = await pool.query(permissionQuery, permissionParams);
-
-    if (permissionCheck.rows[0].count === 0) {
-      return res.status(403).json({
-        error: 'You do not have permission to upload materials for this class. Please ensure it is assigned to you.'
-      });
-    }
+    const own = await pool.query('SELECT uploaded_by_id FROM materials WHERE id = $1', [id]);
+    if (!own.rows.length) return res.status(404).json({ error: 'Material not found' });
+    if (own.rows[0].uploaded_by_id !== teacher.id) return res.status(403).json({ error: 'Access denied' });
 
     let fileUrl = req.body.currentFileUrl;
     if (req.file) fileUrl = `/uploads/materials/${req.file.filename}`;
@@ -659,7 +621,6 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
 
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
-    console.error('Error updating material:', err);
     res.status(500).json({ error: 'Failed to update material' });
   }
 });
@@ -672,22 +633,13 @@ router.delete('/materials/:id', async (req, res) => {
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
-    // Check if material exists and belongs to this teacher
-    const own = await pool.query(
-      'SELECT uploaded_by_id FROM materials WHERE id = $1',
-      [id]
-    );
-    if (!own.rows.length) {
-      return res.status(404).json({ error: 'Material not found' });
-    }
-    if (own.rows[0].uploaded_by_id !== teacher.id) {
-      return res.status(403).json({ error: 'You can only delete materials you uploaded' });
-    }
+    const own = await pool.query('SELECT uploaded_by_id FROM materials WHERE id = $1', [id]);
+    if (!own.rows.length) return res.status(404).json({ error: 'Material not found' });
+    if (own.rows[0].uploaded_by_id !== teacher.id) return res.status(403).json({ error: 'Access denied' });
 
     await pool.query('DELETE FROM materials WHERE id = $1', [id]);
     res.json({ success: true, message: 'Material deleted' });
   } catch (err) {
-    console.error('Error deleting material:', err);
     res.status(500).json({ error: 'Failed to delete material' });
   }
 });
@@ -704,7 +656,12 @@ router.get('/syllabus', async (req, res) => {
     if (!teacher) return res.status(403).json({ error: 'Unauthorized' });
 
     const data = await getSyllabusByTeacher(pool, teacher.id);
-    res.json({ success: true, data });
+    res.json({ success: true, data: data.map(s => ({
+        ...s,
+        teacherId: s.teacher_id,
+        classLevel: s.class_level,
+        createdAt: s.created_at
+    })) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch syllabus' });
   }
@@ -721,7 +678,7 @@ router.post('/syllabus', async (req, res) => {
     const subject = sanitizeText(req.body.subject, 100);
     const chapter = sanitizeText(req.body.chapter, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
-    if (!classLevel || !subject || !chapter) return res.status(400).json({ error: 'classLevel, subject and chapter required' });
+    if (!classLevel || !subject || !chapter) return res.status(400).json({ error: 'Required fields missing' });
 
     const entry = await createSyllabusEntry(pool, { teacherId: teacher.id, classLevel, section, subject, chapter, description });
     res.status(201).json({ success: true, data: entry });
@@ -742,7 +699,7 @@ router.put('/syllabus/:id', async (req, res) => {
 
     const own = await pool.query('SELECT teacher_id FROM syllabus WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Entry not found' });
-    if (own.rows[0].teacher_id !== teacher.id) return res.status(403).json({ error: 'Not your entry' });
+    if (own.rows[0].teacher_id !== teacher.id) return res.status(403).json({ error: 'Not authorized' });
 
     const updated = await updateSyllabusEntry(pool, id, { chapter, description, completed });
     res.json({ success: true, data: updated });
@@ -761,7 +718,7 @@ router.delete('/syllabus/:id', async (req, res) => {
 
     const own = await pool.query('SELECT teacher_id FROM syllabus WHERE id = $1', [id]);
     if (!own.rows.length) return res.status(404).json({ error: 'Entry not found' });
-    if (own.rows[0].teacher_id !== teacher.id) return res.status(403).json({ error: 'Not your entry' });
+    if (own.rows[0].teacher_id !== teacher.id) return res.status(403).json({ error: 'Not authorized' });
 
     await deleteSyllabusEntry(pool, id);
     res.json({ success: true, message: 'Entry deleted' });
@@ -773,10 +730,7 @@ router.delete('/syllabus/:id', async (req, res) => {
 // ============================================
 // EXAM RESULTS — teacher-scoped
 // ============================================
-
 router.post('/exam-results', createExamResult);
 router.get('/exam-results', getExamResults);
-
-
 
 export default router;
