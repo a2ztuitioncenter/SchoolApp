@@ -10,7 +10,6 @@ import {
 } from '../homework/Homework.js';
 import { syllabusModel, getSyllabusByTeacher, createSyllabusEntry, updateSyllabusEntry, deleteSyllabusEntry } from './syllabusModel.js';
 import { createExamResult, getExamResults } from './examController.js';
-import { subjectModel } from './subjectModel.js';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
 
 const router = express.Router();
@@ -779,73 +778,5 @@ router.post('/exam-results', createExamResult);
 router.get('/exam-results', getExamResults);
 
 
-// ============================================
-// SUBJECTS MANAGEMENT
-// ============================================
-
-// Get subjects (filtered by classLevel/section)
-router.get('/subjects', async (req, res) => {
-  try {
-    const { classLevel, section } = req.query;
-    const subjects = await subjectModel.getAll({ classLevel, section }, req.db);
-    res.json({ success: true, data: subjects });
-  } catch (err) {
-    console.error('Fetch subjects error:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch subjects' });
-  }
-});
-
-// Add a subject (Admin or Teacher with class permission)
-router.post('/subjects', async (req, res) => {
-  try {
-    const { name, classLevel, section, teacherId } = req.body;
-    
-    if (!name || !classLevel) {
-      return res.status(400).json({ success: false, error: 'Name and classLevel are required' });
-    }
-
-    const authenticatedUser = req.user; // from authMiddleware
-    if (!authenticatedUser) return res.status(401).json({ error: 'Auth required' });
-
-    // Admins can add any subject
-    if (authenticatedUser.role !== 'admin') {
-      // Teachers must be assigned to the class
-      const hasPermission = await subjectModel.checkPermission(authenticatedUser.userId, classLevel, req.db);
-      if (!hasPermission) {
-        return res.status(403).json({ success: false, error: 'You are not assigned to this class' });
-      }
-    }
-
-    const subject = await subjectModel.create({
-      name,
-      classLevel,
-      section,
-      teacherId: authenticatedUser.userId
-    }, req.db);
-
-    res.status(201).json({ success: true, data: subject });
-  } catch (err) {
-    if (err.code === '23505') {
-       return res.status(409).json({ success: false, error: 'Subject already exists for this class/section' });
-    }
-    console.error('Add subject error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Delete a subject (Admin only, for now)
-router.delete('/subjects/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (req.user.role !== 'admin') {
-       return res.status(403).json({ success: false, error: 'Only admins can delete subjects' });
-    }
-    await subjectModel.delete(id, req.db);
-    res.json({ success: true, message: 'Subject deleted' });
-  } catch (err) {
-    console.error('Delete subject error:', err);
-    res.status(500).json({ success: false, error: 'Failed to delete subject' });
-  }
-});
 
 export default router;

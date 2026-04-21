@@ -976,83 +976,81 @@
                 <div class="section-header">
                     <div>
                         <h2><i class="fas fa-book-open"></i> Subjects Management</h2>
-                        <p class="section-subtitle">Define and manage subjects for each class.</p>
+                        <p class="section-subtitle">Manage master subjects and class assignments.</p>
                     </div>
-                    <button class="btn btn-primary btn-lg" onclick="openAddSubjectModal()">
-                        <i class="fas fa-plus"></i> Add Subject
-                    </button>
-                </div>
-
-                <div class="filter-bar">
-                    <div class="filter-group">
-                        <select id="subject-class-filter" class="form-control" onchange="loadSubjects()">
-                            <option value="">All Classes</option>
-                        </select>
-                        <select id="subject-section-filter" class="form-control" onchange="loadSubjects()">
-                            <option value="">All Sections</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                        </select>
+                    <div style="display:flex;gap:1rem;">
+                        <button class="btn btn-secondary btn-lg" onclick="openAssignSubjectModal()">
+                            <i class="fas fa-link"></i> Assign Subject
+                        </button>
+                        <button class="btn btn-primary btn-lg" onclick="openAddSubjectModal()">
+                            <i class="fas fa-plus"></i> New Subject
+                        </button>
                     </div>
                 </div>
 
-                <div class="table-container no-scrollbar">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Subject Name</th>
-                                <th>Class</th>
-                                <th>Section</th>
-                                <th style="text-align:right;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="subjects-list">
-                            <tr>
-                                <td colspan="4" class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>No subjects found. Click "Add Subject" to begin.</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Master Subjects Grid -->
+                <div style="margin-top:2rem;">
+                    <h3><i class="fas fa-list"></i> Master Subjects</h3>
+                    <div class="table-container no-scrollbar" style="margin-top:1rem;">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject Name</th>
+                                    <th>Code</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-subjects-list">
+                                <tr>
+                                    <td colspan="3" class="empty-state">Loading master subjects...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Subject Assignments Grid -->
+                <div style="margin-top:3rem;">
+                    <h3><i class="fas fa-project-diagram"></i> Class Assignments</h3>
+                    <div class="filter-bar" style="margin-top: 1rem; margin-bottom: 1rem;">
+                        <div class="filter-group">
+                            <select id="subject-class-filter" class="form-control" onchange="loadSubjectAssignments()">
+                                <option value="">Filter by Class</option>
+                                <option value="9">Class 9</option>
+                                <option value="10">Class 10</option>
+                                <option value="11">Class 11</option>
+                                <option value="12">Class 12</option>
+                            </select>
+                            <select id="subject-section-filter" class="form-control" onchange="loadSubjectAssignments()">
+                                <option value="">Filter by Section</option>
+                                <option value="A">Section A</option>
+                                <option value="B">Section B</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container no-scrollbar">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Class Level</th>
+                                    <th>Section</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subject-assignments-list">
+                                <tr>
+                                    <td colspan="4" class="empty-state">Loading assigned subjects...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Add Subject Modal -->
-            <div id="add-subject-modal" class="modal">
-                <div class="modal-content" style="max-width: 450px;">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-plus-circle"></i> Add New Subject</h2>
-                        <span class="close" onclick="closeAddSubjectModal()">&times;</span>
-                    </div>
-                    <form id="add-subject-form" class="modal-body">
-                        <div class="form-group">
-                            <label>Subject Name *</label>
-                            <input type="text" id="subject-name" placeholder="e.g. Physics" required>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Class Level *</label>
-                                <select id="subject-class" required>
-                                    <option value="">Select Class</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Section (Optional)</label>
-                                <select id="subject-section">
-                                    <option value="">All Sections</option>
-                                    <option value="A">A</option>
-                                    <option value="B">B</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="modal-footer" style="padding-top: 1rem; border-top: 1px solid var(--border-color); margin-top: 1rem;">
-                            <button type="button" class="btn btn-secondary" onclick="closeAddSubjectModal()">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Subject</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+
+
+
 
             <!-- Add Homework Modal -->
             <div id="add-homework-modal" class="modal">
@@ -2100,6 +2098,9 @@
                     </div>
                 </div>
             </div>
+
+
+
         </div>
     </div>
     <!-- Send Notice Modal -->
@@ -2210,6 +2211,72 @@
                 <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary" onclick="saveMaterial()">Save Material</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Master Subject Modal -->
+    <div id="add-subject-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-plus-circle"></i> New Master Subject</h2>
+                <span class="close" onclick="closeAddSubjectModal()">&times;</span>
+            </div>
+            <form id="add-subject-form" style="padding: 1.5rem; display: grid; gap: 1rem;">
+                <div class="form-group">
+                    <label>Subject Name *</label>
+                    <input type="text" id="add-subject-name" required placeholder="e.g. Physics">
+                </div>
+                <div class="form-group">
+                    <label>Subject Code</label>
+                    <input type="text" id="add-subject-code" placeholder="e.g. PHY">
+                </div>
+                <div class="modal-footer" style="margin-top: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddSubjectModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Subject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign Subject Modal -->
+    <div id="assign-subject-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-link"></i> Assign Subject</h2>
+                <span class="close" onclick="closeAssignSubjectModal()">&times;</span>
+            </div>
+            <form id="assign-subject-form" style="padding: 1.5rem; display: grid; gap: 1rem;">
+                <div class="form-group">
+                    <label>Master Subject *</label>
+                    <select id="assign-subject-id" required>
+                        <option value="">Select a Subject...</option>
+                    </select>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div class="form-group">
+                        <label>Target Class *</label>
+                        <select id="assign-subject-class" required>
+                            <option value="">Select Class</option>
+                            <option value="9">Class 9</option>
+                            <option value="10">Class 10</option>
+                            <option value="11">Class 11</option>
+                            <option value="12">Class 12</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Section <small>(Optional)</small></label>
+                        <select id="assign-subject-section">
+                            <option value="ALL">All Sections (Shared)</option>
+                            <option value="A">Section A</option>
+                            <option value="B">Section B</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="margin-top: 1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAssignSubjectModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                </div>
+            </form>
         </div>
     </div>
 

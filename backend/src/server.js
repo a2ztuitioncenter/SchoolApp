@@ -24,6 +24,7 @@ import materialsRoutes from './features/materials/materialsRoutes.js';
 import notificationsRoutes from './features/notifications/notificationsRoutes.js';
 import resultsRoutes    from './features/results/resultsRoutes.js';
 import downloadRoutes   from './features/download/downloadRoutes.js';
+import subjectsRoutes   from './features/subjects/subjectsRoutes.js';
 import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securityLogger } from './middleware/auth-middleware.js';
 
 import { initializeDatabase } from './config/database.js';
@@ -102,6 +103,7 @@ app.use('/api/materials', authenticate, materialsRoutes);
 app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
 app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
 app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users
+app.use('/api/subjects', authenticate, subjectsRoutes); // Combined RBAC internally
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

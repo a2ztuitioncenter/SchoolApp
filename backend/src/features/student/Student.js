@@ -3,20 +3,20 @@ export const studentModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      "userId" INTEGER REFERENCES users(id) ON DELETE CASCADE,
       name VARCHAR(100) NOT NULL,
-      class_level VARCHAR(50) NOT NULL,
+      "classLevel" VARCHAR(50) NOT NULL,
       section VARCHAR(10),
-      father_name VARCHAR(100),
-      mother_name VARCHAR(100),
+      "fatherName" VARCHAR(100),
+      "motherName" VARCHAR(100),
       phone VARCHAR(20),
       email VARCHAR(255),
-      roll_number VARCHAR(20),
-      joining_date DATE NOT NULL,
-      date_of_birth DATE DEFAULT NULL,
+      "rollNumber" VARCHAR(20),
+      "joiningDate" DATE NOT NULL,
+      "dateOfBirth" DATE DEFAULT NULL,
       status VARCHAR(20) DEFAULT 'active',
-      school_id VARCHAR(50) DEFAULT 'school-001',
-      created_at TIMESTAMP DEFAULT NOW()
+      "schoolId" VARCHAR(50) DEFAULT 'school-001',
+      "createdAt" TIMESTAMP DEFAULT NOW()
     );
   `,
 };

@@ -115,9 +115,9 @@ router.patch('/users/:id/status', async (req, res) => {
 router.get('/students', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT s.id, s."userId", s.name, s.class_level AS "classLevel", s.section, 
-                    s.father_name AS "fatherName", s.mother_name AS "motherName", s.phone, s.email, 
-                    s.roll_number AS "rollNumber", s.joining_date AS "joiningDate", s.date_of_birth AS "dateOfBirth", 
+            `SELECT s.id, s."userId", s.name, s."classLevel", s.section, 
+                    s."fatherName", s."motherName", s.phone, s.email, 
+                    s."rollNumber", s."joiningDate", s."dateOfBirth", 
                     s.status, s."schoolId", s."createdAt", u.phone as "userPhone"
              FROM students s 
              LEFT JOIN users u ON s."userId" = u.id 
@@ -125,7 +125,8 @@ router.get('/students', async (req, res) => {
         );
         res.json({ success: true, data: result.rows });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch students' });
+        console.error('Fetch students error:', err.message);
+        res.status(500).json({ success: false, error: 'Failed to fetch students', message: err.message });
     }
 });
 
@@ -323,29 +324,33 @@ router.get('/financials/trends', async (req, res) => {
 router.get('/timetable', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT t.id, t."dayOfWeek", t."startTime", t."endTime", t.subject, 
-                    t."classLevel", t.section, t."teacherId", u.name as "teacherName"
+            `SELECT t.id, t.day_of_week as "dayOfWeek", t.start_time as "startTime", t.end_time as "endTime", 
+                    t.subject_id, s.name as subject, 
+                    t.class_level as "classLevel", t.section, t.teacher_id as "teacherId", u.name as "teacherName"
              FROM timetable t
-             LEFT JOIN users u ON t."teacherId" = u.id
-             ORDER BY t."dayOfWeek", t."startTime" ASC`
+             LEFT JOIN users u ON t.teacher_id = u.id
+             LEFT JOIN subjects s ON t.subject_id = s.id
+             ORDER BY t.day_of_week, t.start_time ASC`
         );
         res.json({ success: true, data: result.rows });
     } catch (err) {
+        console.error('Fetch timetable error:', err);
         res.status(500).json({ error: 'Failed to fetch timetable' });
     }
 });
 
 router.post('/timetable', async (req, res) => {
-    const { dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId } = req.body;
+    const { dayOfWeek, startTime, endTime, subjectId, classLevel, section, teacherId } = req.body;
     try {
         const result = await req.db.query(
-            `INSERT INTO timetable ("dayOfWeek", "startTime", "endTime", subject, "classLevel", section, "teacherId", "schoolId")
+            `INSERT INTO timetable (day_of_week, start_time, end_time, subject_id, class_level, section, teacher_id, school_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [dayOfWeek, startTime, endTime, subject, classLevel, section, teacherId, 'school-001']
+            [dayOfWeek, startTime, endTime, subjectId, classLevel, section, teacherId, 'school-001']
         );
         res.status(201).json({ success: true, data: result.rows[0] });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to create timetable entry' });
+        console.error('Create timetable error:', err);
+        res.status(500).json({ error: 'Failed to create timetable entry: ' + err.message });
     }
 });
 

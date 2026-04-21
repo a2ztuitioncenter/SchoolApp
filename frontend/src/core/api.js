@@ -66,7 +66,7 @@ export const apiCall = async (endpoint, options = {}) => {
 
     clearTimeout(timeoutId);
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/teacher-login') || url.includes('/auth/admin-login') || url.includes('/auth/register');
       if (!isAuthRequest) {
         setTimeout(() => {
@@ -175,15 +175,26 @@ const resultsAPI = {
 };
 
 const subjectsAPI = {
+  // Master Subjects (The global library of subjects)
+  getMaster: () => apiCall('/subjects/master', { method: 'GET' }),
+  addMaster: (data) => apiCall('/subjects/admin', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMaster: (id) => apiCall(`/subjects/admin/${id}`, { method: 'DELETE' }),
+
+  // Subject Assignments (Mapping subjects to specific classes/sections)
   getAll: (classLevel = '', section = '') => {
     const params = new URLSearchParams();
     if (classLevel) params.set('classLevel', classLevel);
     if (section) params.set('section', section);
     const suffix = params.toString() ? `?${params.toString()}` : '';
-    return apiCall(`/teacher/subjects${suffix}`, { method: 'GET' });
+    return apiCall(`/subjects${suffix}`, { method: 'GET' });
   },
-  create: (data) => apiCall('/teacher/subjects', { method: 'POST', body: JSON.stringify(data) }),
-  delete: (id) => apiCall(`/teacher/subjects/${id}`, { method: 'DELETE' }),
+  assign: (data) => apiCall('/subjects/assign', { method: 'POST', body: JSON.stringify(data) }),
+  deleteAssignment: (id) => apiCall(`/subjects/assign/${id}`, { method: 'DELETE' }),
+
+  // Aliases for compatibility
+  create: (data) => subjectsAPI.addMaster(data),
+  add: (data) => subjectsAPI.addMaster(data),
+  delete: (id) => subjectsAPI.deleteMaster(id),
 };
 
 /**
@@ -298,4 +309,3 @@ export const downloadFile = async (filePath, fileName = 'download') => {
 };
 
 window.downloadFile = downloadFile;
-export { attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI };

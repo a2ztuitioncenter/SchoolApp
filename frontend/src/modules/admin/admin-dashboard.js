@@ -102,56 +102,8 @@ async function initDashboard() {
     // Initial load for active tab
     const activeTab = document.querySelector('.nav-link.active')?.getAttribute('data-tab');
     if (activeTab === 'subjects') loadSubjects();
-}
 
-/**
- * Helper to populate subject dropdowns dynamically
- */
-async function populateSubjectDropdown(classLevel, section, selectIds) {
-    const ids = Array.isArray(selectIds) ? selectIds : [selectIds];
-    if (!classLevel) {
-        ids.forEach(id => {
-            const sel = typeof id === 'string' ? document.getElementById(id) : id;
-            if (sel) sel.innerHTML = '<option value="">-- Select Class First --</option>';
-        });
-        return;
-    }
-
-    try {
-        const res = await subjectsAPI.getAll();
-        const allSubjects = res.data || [];
-        
-        // Filter by class and (optionally) section
-        const filtered = allSubjects.filter(s => {
-            const classMatch = s.class_level === classLevel || s.classLevel === classLevel;
-            const sectionMatch = !s.section || s.section === section;
-            return classMatch && sectionMatch;
-        });
-
-        ids.forEach(id => {
-            const sel = typeof id === 'string' ? document.getElementById(id) : id;
-            if (!sel) return;
-            
-            const currentVal = sel.value;
-            if (filtered.length === 0) {
-                sel.innerHTML = '<option value="">No subjects found</option>';
-            } else {
-                sel.innerHTML = '<option value="">Select Subject</option>';
-                const uniqueNames = [...new Set(filtered.map(s => s.name))];
-                uniqueNames.forEach(name => {
-                    sel.innerHTML += `<option value="${name}">${name}</option>`;
-                });
-            }
-            
-            // Try to restore previous selection if it's still valid
-            if (currentVal && filtered.some(s => s.name === currentVal)) {
-                sel.value = currentVal;
-            }
-        });
-    } catch (err) {
-        console.error('Failed to populate subjects:', err);
-    }
-}    setupForms();
+    setupForms();
 
     // ===== UNIFIED GLOBAL EVENT HANDLER =====
     // Single consolidated click handler for all UI interactions
@@ -270,6 +222,50 @@ async function populateSubjectDropdown(classLevel, section, selectIds) {
         }
     });
 }
+
+/**
+ * Helper to populate subject dropdowns dynamically from assignments
+ */
+async function populateSubjectDropdown(classLevel, section = '', selectIds) {
+    const ids = Array.isArray(selectIds) ? selectIds : [selectIds];
+    if (!classLevel) {
+        ids.forEach(id => {
+            const sel = typeof id === 'string' ? document.getElementById(id) : id;
+            if (sel) sel.innerHTML = '<option value="">-- Select Class First --</option>';
+        });
+        return;
+    }
+
+    try {
+        // Fetch subjects assigned to this class level (and section if applicable)
+        const res = await subjectsAPI.getAll(classLevel, section);
+        const assignments = res.data || [];
+        
+        ids.forEach(id => {
+            const sel = typeof id === 'string' ? document.getElementById(id) : id;
+            if (!sel) return;
+            
+            const currentVal = sel.value;
+            if (assignments.length === 0) {
+                sel.innerHTML = '<option value="">No subjects assigned</option>';
+            } else {
+                sel.innerHTML = '<option value="">Select Subject</option>';
+                assignments.forEach(item => {
+                    // Use assignment.subject_id as value, master_name for label
+                    sel.innerHTML += `<option value="${item.subject_id}">${escapeHtml(item.master_name || item.name)}</option>`;
+                });
+            }
+            
+            // Try to restore previous selection if it's still valid
+            if (currentVal && assignments.some(a => a.subject_id === currentVal)) {
+                sel.value = currentVal;
+            }
+        });
+    } catch (err) {
+        console.error('Failed to populate subjects:', err);
+    }
+}
+
 
 // Execute initialization
 if (document.readyState === 'loading') {
@@ -2324,11 +2320,11 @@ window.saveHomework = async function (e) {
     const title = document.getElementById('hw-title')?.value.trim();
     const classLevel = document.getElementById('hw-class')?.value.trim();
     const section = document.getElementById('hw-section')?.value.trim();
-    const subject = document.getElementById('hw-subject')?.value.trim();
+    const subjectId = document.getElementById('hw-subject')?.value.trim();
     const dueDate = document.getElementById('hw-due-date')?.value;
     const description = document.getElementById('hw-description')?.value.trim();
 
-    if (!title || !classLevel || !section || !subject) {
+    if (!title || !classLevel || !section || !subjectId) {
         showErrorAlert('Title, Class, Section and Subject are required');
         return;
     }
@@ -2337,7 +2333,7 @@ window.saveHomework = async function (e) {
     formData.append('title', title);
     formData.append('classLevel', classLevel);
     formData.append('section', section);
-    formData.append('subject', subject);
+    formData.append('subjectId', subjectId);
     formData.append('dueDate', dueDate);
     formData.append('description', description);
     formData.append('assignedBy', sessionStorage.getItem('adminUserId') || '');
@@ -3157,9 +3153,9 @@ function renderMaterialsTable() {
                 <strong>${escapeHtml(m.title)}</strong>
                 ${m.description ? `<br><small style="color: var(--text-muted);">${escapeHtml(m.description.substring(0, 50))}</small>` : ''}
             </td>
-            <td>${escapeHtml(m.subject)}</td>
+            <td>${escapeHtml(m.subject_name || m.subject || '-')}</td>
             <td><span class="badge">Class ${escapeHtml(m.class_level || m.classLevel)}</span></td>
-            <td><span class="badge secondary">${escapeHtml(m.section || 'A')}</span></td>
+            <td><span class="badge secondary">${escapeHtml(m.section || 'All')}</span></td>
             <td>${escapeHtml(m.uploaded_by || m.uploadedBy || '-')}</td>
             <td><small style="color: var(--text-muted);">${formatDate(m.created_at || m.createdAt)}</small></td>
             <td>
@@ -3169,7 +3165,7 @@ function renderMaterialsTable() {
                         <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
                             <i class="fas fa-download" style="width: 16px;"></i> Download
                         </button>
-                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}',description:'${(m.description || '').replace(/'/g, "\\'")}',subject:'${m.subject}',classLevel:'${m.class_level || m.classLevel}',section:'${m.section || 'A'}',fileUrl:'${m.file_url || m.fileUrl}'})">
+                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}',description:'${(m.description || '').replace(/'/g, "\\'")}',subjectId:'${m.subject_id}',classLevel:'${m.class_level || m.classLevel}',section:'${m.section || ''}',fileUrl:'${m.file_url || m.fileUrl}'})">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
                         </button>
                         <div class="action-menu-divider"></div>
@@ -3225,12 +3221,12 @@ function getFilteredMaterials() {
     return allMaterialsData.filter(m => {
         const matchesSearch = !searchTerm ||
             m.title.toLowerCase().includes(searchTerm) ||
-            m.subject.toLowerCase().includes(searchTerm) ||
+            (m.subject_name && m.subject_name.toLowerCase().includes(searchTerm)) ||
             (m.description && m.description.toLowerCase().includes(searchTerm));
 
         const matchesClass = !classFilter || (m.class_level || m.classLevel) === classFilter;
-        const matchesSection = !sectionFilter || (m.section || 'A') === sectionFilter;
-        const matchesSubject = !subjectFilter || m.subject === subjectFilter;
+        const matchesSection = !sectionFilter || (m.section || '') === sectionFilter;
+        const matchesSubject = !subjectFilter || (m.subject_id === subjectFilter || m.subject === subjectFilter);
 
         return matchesSearch && matchesClass && matchesSection && matchesSubject;
     });
@@ -3258,21 +3254,21 @@ window.saveMaterial = async function (e) {
     const id = document.getElementById('material-id')?.value;
     const title = document.getElementById('material-title')?.value;
     const description = document.getElementById('material-description')?.value;
-    const subject = document.getElementById('material-subject')?.value;
+    const subjectId = document.getElementById('material-subject')?.value;
     const classLevel = document.getElementById('material-class')?.value;
     const section = document.getElementById('material-section')?.value;
     const fileInput = document.getElementById('material-file');
 
     // Section is optional - leave empty to create shared materials for all sections
-    if (!title || !classLevel) {
-        showErrorAlert('Please fill in required fields: Title and Class. Section is optional (leave empty to share across all sections).');
+    if (!title || !classLevel || !subjectId) {
+        showErrorAlert('Please fill in required fields: Title, Class, and Subject.');
         return;
     }
 
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
-    if (subject) formData.append('subject', subject);
+    if (subjectId) formData.append('subjectId', subjectId);
     formData.append('classLevel', classLevel);
     formData.append('section', section);
     formData.append('uploadedBy', sessionStorage.getItem('adminName') || 'Admin');
@@ -3339,13 +3335,12 @@ window.openMaterialModal = function (material = null) {
             document.getElementById('material-id').value = material.id;
             document.getElementById('material-title').value = material.title;
             document.getElementById('material-description').value = material.description || '';
-            document.getElementById('material-subject').value = material.subject;
             document.getElementById('material-class').value = material.classLevel || material.class_level;
             document.getElementById('material-section').value = material.section || '';
             
             // Populate subject dropdown based on loaded class/section
             populateSubjectDropdown(material.classLevel || material.class_level, material.section, 'material-subject').then(() => {
-                document.getElementById('material-subject').value = material.subject;
+                document.getElementById('material-subject').value = material.subjectId || material.subject_id || '';
             });
 
             fileHint.style.display = 'block';
@@ -3363,138 +3358,182 @@ window.openMaterialModal = function (material = null) {
 };
 
 // =============================================
-// SUBJECTS MANAGEMENT
+// SUBJECTS MANAGEMENT (NORMALIZED)
 // =============================================
-let allSubjectsData = [];
+let masterSubjectsData = [];
+let subjectAssignmentsData = [];
 
 window.loadSubjects = async function() {
-    try {
-        const classFilter = document.getElementById('subject-class-filter')?.value;
-        const sectionFilter = document.getElementById('subject-section-filter')?.value;
-        
-        const res = await subjectsAPI.getAll();
-        allSubjectsData = res.data || [];
-        
-        let filtered = allSubjectsData;
-        if (classFilter) {
-            filtered = filtered.filter(s => (s.class_level === classFilter || s.classLevel === classFilter));
-        }
-        if (sectionFilter) {
-            filtered = filtered.filter(s => s.section === sectionFilter);
-        }
-        
-        renderSubjectsTable(filtered);
-        
-        // Also populate the class filter if empty
-        const classFilterSelect = document.getElementById('subject-class-filter');
-        if (classFilterSelect && classFilterSelect.options.length <= 1) {
-            const classesRes = await attendanceAPI.getClasses();
-            const classes = classesRes.data || [];
-            classes.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c;
-                opt.textContent = c;
-                classFilterSelect.appendChild(opt);
-            });
-        }
-    } catch (err) {
-        console.error('Failed to load subjects:', err);
-        showErrorAlert('Failed to load subjects');
-    }
+    // This loads both lists for the Subjects tab
+    await Promise.all([
+        loadMasterSubjects(),
+        loadSubjectAssignments()
+    ]);
 };
 
-function renderSubjectsTable(subjects) {
-    const tbody = document.getElementById('subjects-list');
+async function loadMasterSubjects() {
+    const tbody = document.getElementById('master-subjects-list');
     if (!tbody) return;
-    
-    if (subjects.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><i class="fas fa-inbox"></i><p>No subjects found.</p></td></tr>';
-        return;
+
+    try {
+        const res = await subjectsAPI.getMaster();
+        masterSubjectsData = res.data || [];
+        
+        if (masterSubjectsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No master subjects defined yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = masterSubjectsData.map(s => `
+            <tr>
+                <td><strong>${escapeHtml(s.name)}</strong></td>
+                <td><span class="badge secondary">${escapeHtml(s.code || '-')}</span></td>
+                <td style="text-align:right;">
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMasterSubject('${s.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load master subjects:', err);
     }
-    
-    tbody.innerHTML = subjects.map(s => `
-        <tr>
-            <td><strong>${s.name}</strong></td>
-            <td>Class ${s.class_level || s.classLevel}</td>
-            <td>${s.section || 'All Sections'}</td>
-            <td style="text-align:right;">
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteSubject(${s.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
 }
+
+window.loadSubjectAssignments = async function() {
+    const tbody = document.getElementById('subject-assignments-list');
+    if (!tbody) return;
+
+    const classFilt = document.getElementById('subject-class-filter')?.value;
+    const sectionFilt = document.getElementById('subject-section-filter')?.value;
+
+    try {
+        const res = await subjectsAPI.getAll(classFilt, sectionFilt);
+        subjectAssignmentsData = res.data || [];
+
+        if (subjectAssignmentsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No assignments found for selected criteria.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = subjectAssignmentsData.map(a => `
+            <tr>
+                <td><strong>${escapeHtml(a.master_name || a.name)}</strong></td>
+                <td><span class="badge">Class ${escapeHtml(a.class_level || a.classLevel)}</span></td>
+                <td><span class="badge secondary">${escapeHtml(a.section || 'All Sections')}</span></td>
+                <td style="text-align:right;">
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load assignments:', err);
+    }
+};
 
 window.openAddSubjectModal = function() {
     const modal = document.getElementById('add-subject-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        
-        // Populate class dropdown in modal
-        populateHomeworkClassDropdown('subject-class');
-    }
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 };
 
 window.closeAddSubjectModal = function() {
-    const modal = document.getElementById('add-subject-modal');
-    if (modal) modal.style.display = 'none';
+    document.getElementById('add-subject-modal').style.display = 'none';
+    document.getElementById('add-subject-form').reset();
     document.body.style.overflow = '';
-    document.getElementById('add-subject-form')?.reset();
 };
 
-window.deleteSubject = async function(id) {
-    if (!confirm('Are you sure you want to delete this subject? This may affect existing homework and timetables.')) return;
+window.openAssignSubjectModal = async function() {
+    const modal = document.getElementById('assign-subject-modal');
+    const select = document.getElementById('assign-subject-id');
     
+    // Fill subject dropdown from master list
     try {
-        showInfoAlert('Deleting subject...');
-        const res = await subjectsAPI.delete(id);
-        hideInfoAlert();
-        if (res.success) {
-            showSuccessAlert('Subject deleted successfully');
-            await loadSubjects();
-        } else {
-            showErrorAlert(res.error || 'Failed to delete subject');
-        }
+        const res = await subjectsAPI.getMaster();
+        const masters = res.data || [];
+        select.innerHTML = '<option value="">Select a Subject...</option>' + 
+            masters.map(m => `<option value="${m.id}">${escapeHtml(m.name)} ${m.code ? `(${m.code})` : ''}</option>`).join('');
     } catch (err) {
-        hideInfoAlert();
-        showErrorAlert(err.message || 'Failed to delete subject');
+        showErrorAlert('Failed to load master subjects');
     }
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 };
 
-window.saveSubject = async function(e) {
+window.closeAssignSubjectModal = function() {
+    document.getElementById('assign-subject-modal').style.display = 'none';
+    document.getElementById('assign-subject-form').reset();
+    document.body.style.overflow = '';
+};
+
+// Handlers for Save/Delete
+window.saveMasterSubject = async function(e) {
     if (e && e.preventDefault) e.preventDefault();
-    
-    const name = document.getElementById('subject-name').value.trim();
-    const classLevel = document.getElementById('subject-class').value;
-    const section = document.getElementById('subject-section').value;
-    
-    if (!name || !classLevel) {
-        showErrorAlert('Subject Name and Class are required');
+    const name = document.getElementById('add-subject-name').value.trim();
+    const code = document.getElementById('add-subject-code').value.trim();
+
+    if (!name) { showErrorAlert('Name is required'); return; }
+
+    showInfoAlert('Saving subject...');
+    try {
+        const res = await subjectsAPI.addMaster({ name, code });
+        if (res.success) {
+            showSuccessAlert('Subject added to master list');
+            closeAddSubjectModal();
+            loadMasterSubjects();
+        } else {
+            showErrorAlert(res.error || 'Failed to save');
+        }
+    } catch (err) { showErrorAlert(err.message); }
+};
+
+window.saveAssignment = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const subject_id = document.getElementById('assign-subject-id').value;
+    const classLevel = document.getElementById('assign-subject-class').value;
+    const section = document.getElementById('assign-subject-section').value;
+
+    if (!subject_id || !classLevel) {
+        showErrorAlert('Subject and Class are required');
         return;
     }
-    
+
+    showInfoAlert('Assigning subject...');
     try {
-        showInfoAlert('Adding subject...');
-        const res = await subjectsAPI.add({
-            name,
-            classLevel,
-            section: section || null
+        const res = await subjectsAPI.assign({ 
+            subject_id, 
+            classLevel, 
+            section: section === 'ALL' ? null : section 
         });
-        hideInfoAlert();
-        
         if (res.success) {
-            showSuccessAlert('Subject added successfully');
-            closeAddSubjectModal();
-            await loadSubjects();
+            showSuccessAlert('Subject assigned successfully');
+            closeAssignSubjectModal();
+            loadSubjectAssignments();
         } else {
-            showErrorAlert(res.error || 'Failed to add subject');
+            showErrorAlert(res.error || 'Failed to assign');
         }
-    } catch (err) {
-        hideInfoAlert();
-        showErrorAlert(err.message || 'Failed to add subject');
-    }
+    } catch (err) { showErrorAlert(err.message); }
+};
+
+window.deleteMasterSubject = async function(id) {
+    if (!confirm('Delete this master subject? This will NOT delete assignments but may cause issues if still in use.')) return;
+    try {
+        await subjectsAPI.deleteMaster(id);
+        showSuccessAlert('Master subject deleted');
+        loadMasterSubjects();
+    } catch (err) { showErrorAlert(err.message); }
+};
+
+window.deleteAssignment = async function(id) {
+    if (!confirm('Remove this subject assignment?')) return;
+    try {
+        await subjectsAPI.deleteAssignment(id);
+        showSuccessAlert('Assignment removed');
+        loadSubjectAssignments();
+    } catch (err) { showErrorAlert(err.message); }
 };
 
 window.closeMaterialModal = function () {
@@ -3573,7 +3612,7 @@ window.openEditHomeworkModal = function (id) {
         
         // Populate subject dropdown and THEN set the value
         populateSubjectDropdown(hw.classLevel, hw.section, 'hw-subject').then(() => {
-            document.getElementById('hw-subject').value = hw.subject || '';
+            document.getElementById('hw-subject').value = hw.subjectId || hw.subject || '';
         });
         
         document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
@@ -3647,7 +3686,10 @@ function setupForms() {
     });
 
     const subjectForm = document.getElementById('add-subject-form');
-    if (subjectForm) subjectForm.addEventListener('submit', saveSubject);
+    if (subjectForm) subjectForm.addEventListener('submit', saveMasterSubject);
+
+    const assignForm = document.getElementById('assign-subject-form');
+    if (assignForm) assignForm.addEventListener('submit', saveAssignment);
 
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -3987,7 +4029,7 @@ async function loadTimetableDropdowns() {
         const classes = classesRes.data || [];
         const classSel = document.getElementById('tt-class');
         if (classSel) {
-            classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c.class_level}">${c.class_level}</option>`).join('');
+            classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
         // Store teachers globally for filtering
@@ -4062,14 +4104,14 @@ window.saveTimetableEntry = async function () {
         dayOfWeek: document.getElementById('tt-day')?.value,
         startTime: document.getElementById('tt-start')?.value,
         endTime: document.getElementById('tt-end')?.value,
-        subject: document.getElementById('tt-subject')?.value.trim(),
+        subjectId: document.getElementById('tt-subject')?.value,
         classLevel: document.getElementById('tt-class')?.value,
         section: document.getElementById('tt-section')?.value,
         teacherId: document.getElementById('tt-teacher')?.value,
     };
 
-    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subject || !payload.classLevel || !payload.section || !payload.teacherId) {
-        showErrorAlert('All fields including Section are required.');
+    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subjectId || !payload.classLevel || !payload.section || !payload.teacherId) {
+        showErrorAlert('All fields including Section and Subject are required.');
         return;
     }
 

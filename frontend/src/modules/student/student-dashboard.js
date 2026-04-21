@@ -207,6 +207,17 @@ function setupTabSwitching() {
           const userId = sessionStorage.getItem('studentUserId');
           if (userId) loadSyllabus(userId);
       }
+
+      if (tabId === 'subjects') {
+        const classText = document.getElementById('student-class')?.innerText || '';
+        const classMatch = classText.match(/Class: (\d+)/i);
+        const sectionMatch = classText.match(/Section: ([A-B])/i);
+        
+        const studentClass = classMatch ? classMatch[1] : '';
+        const studentSection = sectionMatch ? sectionMatch[1] : '';
+        
+        loadSubjects(studentClass, studentSection);
+      }
     });
   });
 }
@@ -354,6 +365,61 @@ async function loadSyllabus(userId) {
     } catch (err) {
         console.error('Error loading syllabus:', err);
         container.innerHTML = '<p class="error" style="color:#e53e3e;">Failed to load syllabus. Please try again.</p>';
+    }
+}
+
+async function loadSubjects(classLevel, section = '') {
+    const container = document.getElementById('subjects-container');
+    if (!container) return;
+    
+    try {
+        container.innerHTML = '<div class="loading">Loading subjects...</div>';
+        
+        const normalizedClassLevel = String(classLevel).trim();
+        const normalizedSection = String(section).trim();
+        
+        console.log('📚 [Student Subjects] Loading: classLevel=', normalizedClassLevel, 'section=', normalizedSection || 'ALL');
+        
+        // Import subjectsAPI from core/api.js (it's already imported at the top)
+        const { subjectsAPI } = await import('../../core/api.js'); 
+        const res = await subjectsAPI.getAll(normalizedClassLevel, normalizedSection);
+        
+        console.log('📚 [Student Subjects] Response:', res);
+        
+        const list = Array.isArray(res) ? res : (res.data || []);
+        
+        if (list.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="text-align: center; padding: 2rem; color: #718096;">
+                    <i class="fas fa-book-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>No subjects assigned to your class yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                ${list.map(s => `
+                    <div class="dashboard-card" style="border-top: 4px solid #667eea; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: transform 0.2s;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="width: 48px; height: 48px; background: #ebf4ff; color: #667eea; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0; color: #2d3748; font-size: 1.1rem;">${escapeHtml(s.name)}</h4>
+                                <p style="margin: 4px 0 0 0; color: #718096; font-size: 0.85rem;">
+                                    ${s.section && s.section !== 'ALL' ? `Section ${s.section}` : 'All Sections'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (err) {
+        console.error('❌ Error loading subjects:', err);
+        container.innerHTML = `<p class="error" style="color: #e53e3e; text-align: center; padding: 1rem;">Failed to load subjects: ${err.message || 'Unknown error'}</p>`;
     }
 }
 

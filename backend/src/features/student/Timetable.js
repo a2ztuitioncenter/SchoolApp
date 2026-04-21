@@ -6,7 +6,7 @@ export const timetableModel = {
         day_of_week VARCHAR(20) NOT NULL,
         start_time TIME NOT NULL,
         end_time TIME NOT NULL,
-        subject VARCHAR(100) NOT NULL,
+        subject_id UUID REFERENCES subjects(id),
         class_level VARCHAR(50) NOT NULL,
         section VARCHAR(20) NOT NULL,
         teacher_id INTEGER REFERENCES users(id),

@@ -32,6 +32,10 @@ function toApiMaterial(row) {
     created_at: row.created_at,
     updatedAt: row.updated_at,
     updated_at: row.updated_at,
+    subjectId: row.subject_id,
+    subject_id: row.subject_id,
+    subjectName: row.subject_name,
+    subject_name: row.subject_name,
   };
 }
 
@@ -77,6 +81,7 @@ export const uploadMaterial = async (req, res) => {
       description,
       classLevel,
       section,
+      subjectId: req.body.subjectId || req.body.subject_id,
       fileUrl: `/uploads/materials/${req.file.filename}`,
     });
     res.status(201).json({ success: true, data: toApiMaterial(material) });
@@ -111,6 +116,7 @@ export const editMaterial = async (req, res) => {
       description: sanitizeNullableText(req.body.description, 5000),
       classLevel: nextClass,
       section: nextSection,
+      subjectId: req.body.subjectId || req.body.subject_id,
       fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : req.body.fileUrl || req.body.file_url,
     });
 

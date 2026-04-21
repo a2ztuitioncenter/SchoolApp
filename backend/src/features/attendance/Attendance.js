@@ -100,7 +100,7 @@ export const attendanceModel = {
   },
 
   async getAllClasses() {
-    return (await db.query(`SELECT DISTINCT "classLevel" AS class_level FROM students ORDER BY class_level`)).rows;
+    return (await db.query(`SELECT DISTINCT "classLevel" AS class_level FROM students ORDER BY class_level`)).rows.map(r => r.class_level);
   },
 
   async getSectionsByClass(classLevel) {

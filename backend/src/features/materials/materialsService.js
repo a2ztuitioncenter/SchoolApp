@@ -35,10 +35,10 @@ export async function createMaterial(db, user, payload) {
 
   const result = await db.query(
     `INSERT INTO study_materials
-      (title, description, file_url, class_id, section_id, uploaded_by, uploader_role)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (title, description, file_url, class_id, section_id, uploaded_by, uploader_role, subject_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id`,
-    [payload.title, payload.description || null, payload.fileUrl, classId, sectionId, user.userId, uploaderRole]
+    [payload.title, payload.description || null, payload.fileUrl, classId, sectionId, user.userId, uploaderRole, payload.subjectId || null]
   );
 
   return getMaterialById(db, result.rows[0].id);
@@ -55,6 +55,8 @@ export async function getMaterialById(db, materialId) {
       sm.uploader_role,
       sm.created_at,
       sm.updated_at,
+      sm.subject_id,
+      sb.name AS subject_name,
       ac.id AS class_id,
       ac.class_name AS class_level,
       s.id AS section_id,
@@ -62,6 +64,7 @@ export async function getMaterialById(db, materialId) {
      FROM study_materials sm
      JOIN academic_classes ac ON ac.id = sm.class_id
      LEFT JOIN academic_sections s ON s.id = sm.section_id
+     LEFT JOIN subjects sb ON sb.id = sm.subject_id
      WHERE sm.id = $1`,
     [materialId]
   );
@@ -126,6 +129,8 @@ export async function getVisibleMaterials(db, user, filters = {}) {
       sm.uploader_role,
       sm.created_at,
       sm.updated_at,
+      sm.subject_id,
+      sb.name AS subject_name,
       ac.id AS class_id,
       ac.class_name AS class_level,
       s.id AS section_id,
@@ -133,6 +138,7 @@ export async function getVisibleMaterials(db, user, filters = {}) {
      FROM study_materials sm
      JOIN academic_classes ac ON ac.id = sm.class_id
      LEFT JOIN academic_sections s ON s.id = sm.section_id
+     LEFT JOIN subjects sb ON sb.id = sm.subject_id
      ${whereClause}
      ORDER BY sm.created_at DESC`,
     params
@@ -155,14 +161,16 @@ export async function updateMaterial(db, materialId, payload) {
          file_url = $3,
          class_id = $4,
          section_id = $5,
+         subject_id = $6,
          updated_at = CURRENT_TIMESTAMP
-     WHERE id = $6`,
+     WHERE id = $7`,
     [
       payload.title || current.title,
       payload.description ?? current.description,
       payload.fileUrl || current.file_url,
       classId,
       sectionId,
+      payload.subjectId || current.subject_id,
       materialId,
     ]
   );
