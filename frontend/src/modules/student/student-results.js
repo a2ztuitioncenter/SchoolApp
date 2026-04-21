@@ -291,7 +291,7 @@ async function fetchStudentResult() {
  */
 function transformResultData(apiData) {
   // Calculate percentage
-  const obtainedMarks = apiData.obtained || apiData.marksObtained || 0;
+  const obtainedMarks = apiData.obtained || apiData.marksObtained || apiData.obtainedMarks || 0;
   const totalMarks = apiData.total || apiData.totalMarks || 300;
   const percentage = (obtainedMarks / totalMarks) * 100;
 
@@ -365,7 +365,7 @@ function renderStudentResult() {
             ${studentResult.subjects.map(subject => `
               <div class="subject-item">
                 <span class="subject-name">${subject.name || 'Subject'}</span>
-                <span class="subject-marks">${subject.marks || 0}/${subject.total || 100}</span>
+                <span class="subject-marks">${subject.marks !== undefined ? subject.marks : (subject.obtained || 0)}/${subject.total || 100}</span>
               </div>
             `).join('')}
           </div>

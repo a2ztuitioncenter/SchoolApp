@@ -96,7 +96,7 @@ router.get('/:userId/homework', async (req, res) => {
 
     return res.json({
       success: true,
-      classLevel: class_level,
+      classLevel,
       section,
       homework: homeworkResult.rows,
       count: homeworkResult.rows.length,

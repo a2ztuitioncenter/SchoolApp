@@ -245,9 +245,9 @@ function transformAPIData(apiData) {
     name: item.name || item.studentName || 'Unknown',
     class: String(item.class || item.classLevel || item.className || ''),
     total: item.total || item.totalMarks || 300,
-    obtained: item.obtained || item.marksObtained || 0,
-    percentage: ((item.obtained || item.marksObtained || 0) / (item.total || item.totalMarks || 300) * 100),
-    result: ((item.obtained || item.marksObtained || 0) / (item.total || item.totalMarks || 300) * 100) >= 33 ? 'Pass' : 'Fail',
+    obtained: item.obtained || item.marksObtained || item.obtainedMarks || 0,
+    percentage: ((item.obtained || item.marksObtained || item.obtainedMarks || 0) / (item.total || item.totalMarks || 300) * 100),
+    result: ((item.obtained || item.marksObtained || item.obtainedMarks || 0) / (item.total || item.totalMarks || 300) * 100) >= 33 ? 'Pass' : 'Fail',
     subjects: item.subjects || [
       { name: 'Subject 1', marks: item.subject1Marks || 0 },
       { name: 'Subject 2', marks: item.subject2Marks || 0 },
@@ -314,7 +314,7 @@ function renderExamResultsTable(filteredData = null) {
     expandRow.innerHTML = `
       <td colspan="5" class="expand-cell">
         <strong>Subject Breakdown:</strong><br>
-        ${student.subjects.map(s => `<strong>${s.name}:</strong> ${s.marks} marks`).join('<br>')}
+        ${student.subjects.map(s => `<strong>${s.name}:</strong> ${s.marks !== undefined ? s.marks : (s.obtained || 0)} marks`).join('<br>')}
       </td>
     `;
     tbody.appendChild(expandRow);

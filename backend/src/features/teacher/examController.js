@@ -28,7 +28,7 @@ export const createExamResult = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO exam_results 
-       (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id)
+       ("classLevel", section, "rollNumber", "studentName", "examTitle", subjects, "totalMarks", "obtainedMarks", percentage, remarks, "teacherId")
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId]
     );
@@ -46,13 +46,13 @@ export const getExamResults = async (req, res) => {
 
   try {
     const results = await pool.query(
-      `SELECT id, class_level as "classLevel", section, roll_number as "rollNumber", 
-              student_name as "studentName", exam_title as "examTitle", subjects, 
-              total_marks as "totalMarks", obtained_marks as "obtainedMarks", 
-              percentage, remarks, teacher_id as "teacherId", created_at as "createdAt"
+      `SELECT id, "classLevel", section, "rollNumber", 
+              "studentName", "examTitle", subjects, 
+              "totalMarks", "obtainedMarks", 
+              percentage, remarks, "teacherId", "createdAt"
        FROM exam_results 
-       WHERE teacher_id = $1 
-       ORDER BY created_at DESC`,
+       WHERE "teacherId" = $1 
+       ORDER BY "createdAt" DESC`,
       [teacherId]
     );
     res.json({ success: true, data: results.rows });
