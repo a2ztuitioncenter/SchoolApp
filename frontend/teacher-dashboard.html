@@ -213,6 +213,7 @@
             </div>
             <nav>
                 <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
+                <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> My Subjects</a>
                 <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-user-check"></i> Attendance</a>
                 <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book-open"></i> Homework</a>
                 <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-tasks"></i> Daily Practice</a>
@@ -225,6 +226,7 @@
             <!-- Mobile-only Bottom Navigation Bar -->
             <nav class="bottom-nav">
                 <a href="#" class="nav-link active" data-tab="dashboard"><i class="fas fa-th-large"></i> <span>Dashboard</span></a>
+                <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> <span>Subjects</span></a>
                 <a href="#" class="nav-link" data-tab="attendance"><i class="fas fa-user-check"></i> <span>Attendance</span></a>
                 <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-book-open"></i> <span>Homework</span></a>
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
@@ -336,6 +338,36 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- =================== MY SUBJECTS TAB =================== -->
+            <div id="tab-subjects" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-book"></i> My Assigned Subjects</h2>
+                        <p class="section-subtitle">List of classes and subjects assigned to you by the administration</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject Name</th>
+                                    <th>Class Level</th>
+                                    <th>Section</th>
+                                    <th>Assignment Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacher-subjects-body">
+                                <tr>
+                                    <td colspan="4" class="empty-state">Loading assigned subjects...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

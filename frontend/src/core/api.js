@@ -181,13 +181,15 @@ const subjectsAPI = {
   deleteMaster: (id) => apiCall(`/subjects/admin/${id}`, { method: 'DELETE' }),
 
   // Subject Assignments (Mapping subjects to specific classes/sections)
-  getAll: (classLevel = '', section = '') => {
+  getAll: (classLevel = '', section = '', teacherId = '') => {
     const params = new URLSearchParams();
     if (classLevel) params.set('classLevel', classLevel);
     if (section) params.set('section', section);
+    if (teacherId) params.set('teacherId', teacherId);
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return apiCall(`/subjects${suffix}`, { method: 'GET' });
   },
+  getTeacherSubjects: () => apiCall('/teacher/subjects', { method: 'GET' }),
   assign: (data) => apiCall('/subjects/assign', { method: 'POST', body: JSON.stringify(data) }),
   deleteAssignment: (id) => apiCall(`/subjects/assign/${id}`, { method: 'DELETE' }),
 
@@ -245,6 +247,10 @@ export const adminAPI = {
   approveUser: (userId) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST' }),
   rejectUser: (userId, reason) => apiCall(`/auth/admin/reject-user/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }),
   getTrendData: () => apiCall('/admin/financials/trends', { method: 'GET' }),
+  // ERP Dynamic Dropdowns
+  getClasses: () => apiCall('/admin/classes', { method: 'GET' }),
+  getSections: (classLevel) => apiCall(`/admin/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
+  getTeachersByClass: (classLevel, section) => apiCall(`/admin/teachers-by-class?classLevel=${encodeURIComponent(classLevel)}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
 };
 
 export {

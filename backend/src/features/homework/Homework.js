@@ -110,15 +110,28 @@ export const getHomeworkByClass = async (pool, classLevel, section = 'A', type =
 };
 
 export const getHomeworkByTeacher = async (pool, teacherId) => {
-  // Get classes assigned to the teacher
+  // Get classes assigned to the teacher from the new subject_assignments table
   const classRes = await pool.query(
     `SELECT DISTINCT class_level, section 
-     FROM teacher_class_assignment 
+     FROM subject_assignments 
      WHERE teacher_id = $1`,
     [teacherId]
   );
   
-  // If teacher has no classes assigned, return only homework they created
+  // If no assignments found in new table, check legacy table for backward compatibility
+  if (classRes.rows.length === 0) {
+    const legacyRes = await pool.query(
+      `SELECT DISTINCT class_level, section 
+       FROM teacher_class_assignment 
+       WHERE teacher_id = $1`,
+      [teacherId]
+    );
+    if (legacyRes.rows.length > 0) {
+      classRes.rows = legacyRes.rows;
+    }
+  }
+
+  // If teacher has no classes assigned anywhere, return only homework they created
   if (classRes.rows.length === 0) {
     const result = await pool.query(
       `SELECT h.*, u.name AS assigned_by_name FROM homework h

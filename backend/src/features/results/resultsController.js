@@ -44,7 +44,7 @@ export const getResultsByStudent = async (req, res) => {
     res.json({ success: true, data: mappedData });
   } catch (err) {
     console.error('getResultsByStudent:', err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ success: false, error: 'Server error', message: err.message });
   }
 };
 
@@ -62,7 +62,7 @@ export const createResult = async (req, res) => {
     const teacherId = sanitizeIdentifier(req.user?.userId || req.body.teacherId || req.body.teacher_id, 20);
 
     if (!classLevel || !studentName || !examTitle)
-      return res.status(400).json({ error: 'classLevel, studentName, and examTitle are required' });
+      return res.status(400).json({ success: false, error: 'classLevel, studentName, and examTitle are required' });
 
     const subjects = req.body.subjects || {};
 
@@ -74,6 +74,6 @@ export const createResult = async (req, res) => {
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('createResult:', err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ success: false, error: 'Server error', message: err.message });
   }
 };

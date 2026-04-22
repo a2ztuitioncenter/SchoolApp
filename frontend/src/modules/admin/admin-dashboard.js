@@ -5,7 +5,7 @@
 
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
-import { escapeAttr as escapeAttrValue, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
+import { escapeAttr as escapeAttrValue, escapeHtml, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
 import './admin-pending-approvals.js';
 import './exam-results.js';
 
@@ -104,6 +104,7 @@ async function initDashboard() {
     if (activeTab === 'subjects') loadSubjects();
 
     setupForms();
+    await populateERPFilters();
 
     // ===== UNIFIED GLOBAL EVENT HANDLER =====
     // Single consolidated click handler for all UI interactions
@@ -267,6 +268,140 @@ async function populateSubjectDropdown(classLevel, section = '', selectIds) {
 }
 
 
+export async function populateERPFilters({
+    classSelectId,
+    sectionSelectId,
+    subjectSelectId,
+    teacherSelectId,
+    onClassChange,
+    onSectionChange,
+    defaultClass = '',
+    defaultSection = '',
+    allClassesLabel = 'Select Class',
+    allSectionsLabel = 'Select Section'
+} = {}) {
+    const classSel = typeof classSelectId === 'string' ? document.getElementById(classSelectId) : classSelectId;
+    const sectionSel = typeof sectionSelectId === 'string' ? document.getElementById(sectionSelectId) : sectionSelectId;
+    const subjectSel = typeof subjectSelectId === 'string' ? document.getElementById(subjectSelectId) : subjectSelectId;
+    const teacherSel = typeof teacherSelectId === 'string' ? document.getElementById(teacherSelectId) : teacherSelectId;
+
+    if (!classSel) return;
+
+    // Helper to populate sections based on class
+    const populateSections = async (classLevel, targetSection = '') => {
+        if (!sectionSel) return;
+        
+        if (!classLevel) {
+            sectionSel.innerHTML = `<option value="">${allSectionsLabel === 'Select Section' ? 'Select Class First' : allSectionsLabel}</option>`;
+            sectionSel.disabled = (allSectionsLabel === 'Select Section');
+            return;
+        }
+
+        try {
+            sectionSel.innerHTML = '<option value="">Loading...</option>';
+            sectionSel.disabled = false;
+            
+            const res = await adminAPI.getSections(classLevel);
+            const sections = res.data || [];
+            
+            if (sections.length === 0) {
+                sectionSel.innerHTML = '<option value="">No Sections</option>';
+            } else {
+                sectionSel.innerHTML = `<option value="">${allSectionsLabel}</option>` +
+                    sections.map(s => `<option value="${s}">${s}</option>`).join('');
+                
+                if (targetSection && sections.includes(targetSection)) {
+                    sectionSel.value = targetSection;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch sections:', err);
+            sectionSel.innerHTML = '<option value="">Error</option>';
+        }
+    };
+
+    // Helper to populate subjects/teachers based on class+section
+    const populateDependents = async (classLevel, section) => {
+        if (subjectSel) {
+            await populateSubjectDropdown(classLevel, section, subjectSel);
+        }
+
+        if (teacherSel) {
+            if (!classLevel || !section) {
+                teacherSel.innerHTML = '<option value="">Select Section First</option>';
+                teacherSel.disabled = true;
+                return;
+            }
+
+            try {
+                teacherSel.innerHTML = '<option value="">Loading...</option>';
+                teacherSel.disabled = false;
+                
+                const res = await adminAPI.getTeachersByClass(classLevel, section);
+                const teachers = res.data || [];
+                
+                if (teachers.length === 0) {
+                    teacherSel.innerHTML = '<option value="">No Teacher Assigned</option>';
+                } else {
+                    teacherSel.innerHTML = '<option value="">Select Teacher</option>' +
+                        teachers.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+                }
+            } catch (err) {
+                console.error('Failed to fetch teachers:', err);
+                teacherSel.innerHTML = '<option value="">Error</option>';
+            }
+        }
+    };
+
+    try {
+        // 1. Initial Class Population
+        const classRes = await adminAPI.getClasses();
+        const classes = classRes.data || [];
+        
+        classSel.innerHTML = `<option value="">${allClassesLabel}</option>` + 
+            classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+
+        // 2. Set Defaults if provided
+        if (defaultClass && classes.includes(defaultClass)) {
+            classSel.value = defaultClass;
+            await populateSections(defaultClass, defaultSection);
+            if (defaultSection) {
+                await populateDependents(defaultClass, defaultSection);
+            }
+        }
+
+        // 3. Event Listeners
+        classSel.addEventListener('change', async () => {
+            const classLevel = classSel.value;
+            
+            // Reset dependents
+            if (sectionSel) sectionSel.value = '';
+            if (subjectSel) subjectSel.innerHTML = '<option value="">Select Section First</option>';
+            if (teacherSel) {
+                teacherSel.innerHTML = '<option value="">Select Section First</option>';
+                teacherSel.disabled = true;
+            }
+
+            await populateSections(classLevel);
+            if (onClassChange) onClassChange(classLevel);
+        });
+
+        if (sectionSel) {
+            sectionSel.addEventListener('change', async () => {
+                const classLevel = classSel.value;
+                const section = sectionSel.value;
+                
+                await populateDependents(classLevel, section);
+                if (onSectionChange) onSectionChange(classLevel, section);
+            });
+        }
+
+    } catch (err) {
+        console.error('ERP Filter Population Error:', err);
+    }
+}
+
+
 // Execute initialization
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initDashboard);
@@ -326,7 +461,7 @@ async function loadTabContent(tabName) {
         case 'materials': await loadMaterials(); break;
         case 'timetable': await loadTimetable(); break;
         case 'notifications': await loadNotifications(); break;
-        case 'results': await loadResults(); break;
+        case 'results': await initExamResults(); break;
         case 'subjects': await loadSubjects(); break;
     }
 }
@@ -1827,33 +1962,51 @@ function renderStudentsTable(students) {
 }
 
 window.openAddStudentModal = function () {
-    document.getElementById('add-student-modal').style.display = 'block';
-    document.getElementById('add-student-form').reset();
-    document.body.style.overflow = 'hidden';
+    const modal = document.getElementById('add-student-modal');
+    if (modal) {
+        modal.style.display = 'block';
+        document.getElementById('add-student-form').reset();
+        document.body.style.overflow = 'hidden';
+
+        // Initialize dynamic dropdowns
+        populateERPFilters({
+            classSelectId: 'student-classLevel',
+            sectionSelectId: 'student-section'
+        });
+    }
 };
 
 window.closeAddStudentModal = function () {
-    document.getElementById('add-student-modal').style.display = 'none';
-    document.getElementById('add-student-form').reset();
+    const modal = document.getElementById('add-student-modal');
+    if (modal) modal.style.display = 'none';
     document.body.style.overflow = '';
 };
 
-window.openEditStudentModal = function (id) {
+window.openEditStudentModal = async function (id) {
     const s = allStudentsData.find(st => st.id === id);
     if (!s) return;
 
-    document.getElementById('edit-student-id').value = s.id;
-    document.getElementById('edit-student-name').value = s.name || '';
-    document.getElementById('edit-student-classLevel').value = s.classLevel || '';
-    document.getElementById('edit-student-section').value = s.section || '';
-    document.getElementById('edit-student-phone').value = s.phone || '';
-    document.getElementById('edit-student-email').value = s.email || '';
-    document.getElementById('edit-student-fatherName').value = s.fatherName || '';
-    document.getElementById('edit-student-motherName').value = s.motherName || '';
+    const modal = document.getElementById('edit-student-modal');
+    if (modal) {
+        document.getElementById('edit-student-id').value = s.id;
+        document.getElementById('edit-student-name').value = s.name || '';
+        document.getElementById('edit-student-phone').value = s.phone || '';
+        document.getElementById('edit-student-email').value = s.email || '';
+        document.getElementById('edit-student-fatherName').value = s.fatherName || '';
+        document.getElementById('edit-student-motherName').value = s.motherName || '';
 
-    document.getElementById('edit-student-modal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
-    closeAllStudentMenus();
+        // Initialize and pre-select dynamic dropdowns
+        await populateERPFilters({
+            classSelectId: 'edit-student-classLevel',
+            sectionSelectId: 'edit-student-section',
+            defaultClass: String(s.classLevel),
+            defaultSection: s.section
+        });
+
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        closeAllStudentMenus();
+    }
 };
 
 window.closeEditStudentModal = function () {
@@ -1949,79 +2102,28 @@ async function populateHomeworkClassDropdown(selectId) {
 
 async function initAttendanceTab() {
     try {
-        const res = await attendanceAPI.getClasses();
-        const classes = res.data || [];
-        ['att-class-select', 'summary-class-select'].forEach(id => {
-            const sel = document.getElementById(id);
-            if (!sel) return;
-            sel.innerHTML = '<option value="">-- Select Class --</option>';
-            classes.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+        // Initialize Daily Attendance Filters
+        await populateERPFilters({
+            classSelectId: 'att-class-select',
+            sectionSelectId: 'att-section-select'
         });
+
+        // Initialize Summary Filters
+        await populateERPFilters({
+            classSelectId: 'summary-class-select',
+            sectionSelectId: 'summary-section-select'
+        });
+
         const today = new Date().toISOString().split('T')[0];
         const dateEl = document.getElementById('att-date');
         if (dateEl) dateEl.value = today;
         const monthEl = document.getElementById('summary-month');
         if (monthEl) monthEl.value = today.slice(0, 7);
     } catch (err) {
-        showErrorAlert('Failed to load attendance data');
+        console.error('Attendance init error:', err);
+        showErrorAlert('Failed to load attendance dropdowns');
     }
 }
-
-window.onAttClassChange = async function () {
-    const classLevel = document.getElementById('att-class-select').value;
-    const sectionSel = document.getElementById('att-section-select');
-    if (!sectionSel) return;
-
-    if (!classLevel) {
-        sectionSel.style.display = 'none';
-        sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
-        return;
-    }
-
-    try {
-        const res = await attendanceAPI.getSectionsByClass(classLevel);
-        const sections = res.data || [];
-        
-        if (sections.length === 0) {
-            sectionSel.style.display = 'none';
-            sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
-        } else {
-            sectionSel.style.display = 'block';
-            sectionSel.innerHTML = '<option value="">-- All Sections --</option>';
-            sections.forEach(s => sectionSel.innerHTML += `<option value="${s}">${s}</option>`);
-        }
-    } catch (err) {
-        console.error('Error fetching sections:', err);
-    }
-};
-
-window.onSummaryClassChange = async function () {
-    const classLevel = document.getElementById('summary-class-select').value;
-    const sectionSel = document.getElementById('summary-section-select');
-    if (!sectionSel) return;
-
-    if (!classLevel) {
-        sectionSel.style.display = 'none';
-        sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
-        return;
-    }
-
-    try {
-        const res = await attendanceAPI.getSectionsByClass(classLevel);
-        const sections = res.data || [];
-        
-        if (sections.length === 0) {
-            sectionSel.style.display = 'none';
-            sectionSel.innerHTML = '<option value="">-- Select Section --</option>';
-        } else {
-            sectionSel.style.display = 'block';
-            sectionSel.innerHTML = '<option value="">-- All Sections --</option>';
-            sections.forEach(s => sectionSel.innerHTML += `<option value="${s}">${s}</option>`);
-        }
-    } catch (err) {
-        console.error('Error fetching sections:', err);
-    }
-};
 
 /**
  * Initialize Pending Approvals tab by fetching pending users
@@ -3242,11 +3344,7 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+
 
 window.saveMaterial = async function (e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -3317,40 +3415,44 @@ window.deleteMaterial = async function (id) {
     }
 };
 
-window.openMaterialModal = function (material = null) {
+window.openMaterialModal = async function (material = null) {
     const modal = document.getElementById('material-modal');
     const titleObj = document.getElementById('material-modal-title');
     const form = document.getElementById('material-form');
     const fileHint = document.getElementById('material-file-hint');
     const fileInput = document.getElementById('material-file');
 
+    if (!modal || !form) return;
+
     form.reset();
-    fileHint.style.display = 'none';
-    fileInput.required = true;
+    if (fileHint) fileHint.style.display = 'none';
+    if (fileInput) fileInput.required = true;
 
-    // Load available classes dynamically
-    populateHomeworkClassDropdown('material-class').then(() => {
-        if (material) {
-            titleObj.innerText = 'Edit Study Material';
-            document.getElementById('material-id').value = material.id;
-            document.getElementById('material-title').value = material.title;
-            document.getElementById('material-description').value = material.description || '';
-            document.getElementById('material-class').value = material.classLevel || material.class_level;
-            document.getElementById('material-section').value = material.section || '';
-            
-            // Populate subject dropdown based on loaded class/section
-            populateSubjectDropdown(material.classLevel || material.class_level, material.section, 'material-subject').then(() => {
-                document.getElementById('material-subject').value = material.subjectId || material.subject_id || '';
-            });
-
-            fileHint.style.display = 'block';
-            fileInput.required = false;
-        } else {
-            titleObj.innerText = 'Add Study Material';
-            document.getElementById('material-id').value = '';
-            document.getElementById('material-subject').innerHTML = '<option value="">-- Select Class First --</option>';
-        }
+    // Use ERP helper
+    await populateERPFilters({
+        classSelectId: 'material-class',
+        sectionSelectId: 'material-section',
+        subjectSelectId: 'material-subject',
+        defaultClass: material ? (material.classLevel || material.class_level) : '',
+        defaultSection: material ? material.section : ''
     });
+
+    if (material) {
+        titleObj.innerText = 'Edit Study Material';
+        document.getElementById('material-id').value = material.id;
+        document.getElementById('material-title').value = material.title;
+        document.getElementById('material-description').value = material.description || '';
+        
+        // Subject value setting
+        const subSel = document.getElementById('material-subject');
+        if (subSel) subSel.value = material.subjectId || material.subject_id || '';
+
+        if (fileHint) fileHint.style.display = 'block';
+        if (fileInput) fileInput.required = false;
+    } else {
+        titleObj.innerText = 'Add Study Material';
+        document.getElementById('material-id').value = '';
+    }
 
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -3369,6 +3471,17 @@ window.loadSubjects = async function() {
         loadMasterSubjects(),
         loadSubjectAssignments()
     ]);
+
+    // Initialize Filters if not already done
+    const classFilt = document.getElementById('subject-class-filter');
+    if (classFilt && !classFilt.hasAttribute('data-initialized')) {
+        await populateERPFilters({
+            classSelectId: 'subject-class-filter',
+            sectionSelectId: 'subject-section-filter',
+            onSectionChange: () => loadSubjectAssignments()
+        });
+        classFilt.setAttribute('data-initialized', 'true');
+    }
 };
 
 async function loadMasterSubjects() {
@@ -3421,6 +3534,7 @@ window.loadSubjectAssignments = async function() {
                 <td><strong>${escapeHtml(a.master_name || a.name)}</strong></td>
                 <td><span class="badge">Class ${escapeHtml(a.class_level || a.classLevel)}</span></td>
                 <td><span class="badge secondary">${escapeHtml(a.section || 'All Sections')}</span></td>
+                <td><span style="color:var(--text-main); font-weight:500;">${escapeHtml(a.teacher_name || 'Not Assigned')}</span></td>
                 <td style="text-align:right;">
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
                         <i class="fas fa-trash"></i>
@@ -3448,15 +3562,27 @@ window.closeAddSubjectModal = function() {
 window.openAssignSubjectModal = async function() {
     const modal = document.getElementById('assign-subject-modal');
     const select = document.getElementById('assign-subject-id');
+    const teacherSelect = document.getElementById('assign-subject-teacher');
     
+    if (!modal || !select) return;
+
     // Fill subject dropdown from master list
     try {
-        const res = await subjectsAPI.getMaster();
-        const masters = res.data || [];
+        const subRes = await subjectsAPI.getMaster();
+        const masters = subRes.data || [];
         select.innerHTML = '<option value="">Select a Subject...</option>' + 
             masters.map(m => `<option value="${m.id}">${escapeHtml(m.name)} ${m.code ? `(${m.code})` : ''}</option>`).join('');
+            
+        // Use ERP helper for Class -> Section -> Teacher
+        await populateERPFilters({
+            classSelectId: 'assign-subject-class',
+            sectionSelectId: 'assign-subject-section',
+            teacherSelectId: 'assign-subject-teacher'
+        });
+            
     } catch (err) {
-        showErrorAlert('Failed to load master subjects');
+        showErrorAlert('Failed to load subjects or teachers');
+        console.error(err);
     }
 
     modal.style.display = 'flex';
@@ -3495,9 +3621,10 @@ window.saveAssignment = async function(e) {
     const subject_id = document.getElementById('assign-subject-id').value;
     const classLevel = document.getElementById('assign-subject-class').value;
     const section = document.getElementById('assign-subject-section').value;
+    const teacher_id = document.getElementById('assign-subject-teacher').value;
 
-    if (!subject_id || !classLevel) {
-        showErrorAlert('Subject and Class are required');
+    if (!subject_id || !classLevel || !teacher_id) {
+        showErrorAlert('Subject, Class, and Teacher are required');
         return;
     }
 
@@ -3505,6 +3632,7 @@ window.saveAssignment = async function(e) {
     try {
         const res = await subjectsAPI.assign({ 
             subject_id, 
+            teacher_id,
             classLevel, 
             section: section === 'ALL' ? null : section 
         });
@@ -3545,28 +3673,28 @@ window.closeMaterialModal = function () {
 async function initMaterialsTab() {
     try {
         await loadMaterials();
-        // Dynamically populate class filter
-        await populateHomeworkClassDropdown('material-class-filter');
         
-        // Setup dynamic subject filter
-        const classFilter = document.getElementById('material-class-filter');
-        const sectionFilter = document.getElementById('material-section-filter');
-        
-        const updateSubjectFilter = () => {
-            populateSubjectDropdown(classFilter.value, sectionFilter.value, 'material-subject-filter').then(() => {
-                // If it was "All Subjects", keep it or reset it
-                const subFilter = document.getElementById('material-subject-filter');
-                if (subFilter.options.length > 1) {
-                    subFilter.options[0].textContent = 'All Subjects';
-                    subFilter.options[0].value = '';
-                }
-            });
-        };
+        // Initialize filters
+        await populateERPFilters({
+            classSelectId: 'material-class-filter',
+            sectionSelectId: 'material-section-filter',
+            subjectSelectId: 'material-subject-filter',
+            onSectionChange: () => {
+                // Optional: trigger refresh on filter change if needed
+            }
+        });
 
-        classFilter.addEventListener('change', updateSubjectFilter);
-        sectionFilter.addEventListener('change', updateSubjectFilter);
-        
-        updateSubjectFilter();
+        // Set "All Subjects" for the filter
+        const subFilter = document.getElementById('material-subject-filter');
+        if (subFilter) {
+            const originalOption = subFilter.innerHTML;
+            subFilter.addEventListener('focus', () => {
+                 if (subFilter.options.length > 0 && subFilter.options[0].value === '') {
+                     subFilter.options[0].textContent = 'All Subjects';
+                 }
+            }, { once: true });
+        }
+
     } catch (err) {
         console.error('Failed to init materials tab:', err);
         showErrorAlert('Failed to load materials');
@@ -3576,19 +3704,21 @@ async function initMaterialsTab() {
 // =============================================
 // HOMEWORK - MODAL FUNCTIONS
 // =============================================
-window.openAddHomeworkModal = function () {
-    document.getElementById('add-homework-modal').style.display = 'block';
+window.openAddHomeworkModal = async function () {
+    const modal = document.getElementById('add-homework-modal');
+    if (!modal) return;
+    
+    modal.style.display = 'block';
     document.getElementById('homework-form').reset();
     document.getElementById('hw-edit-id').value = '';
     document.getElementById('hw-current-attachment').style.display = 'none';
     document.body.style.overflow = 'hidden';
     
-    // Set default section
-    document.getElementById('hw-section').value = 'A';
-    
-    // Populate class dropdown
-    populateHomeworkClassDropdown('hw-class').then(() => {
-        document.getElementById('hw-subject').innerHTML = '<option value="">-- Select Class First --</option>';
+    // Use ERP helper
+    await populateERPFilters({
+        classSelectId: 'hw-class',
+        sectionSelectId: 'hw-section',
+        subjectSelectId: 'hw-subject'
     });
 };
 
@@ -3598,40 +3728,48 @@ window.closeAddHomeworkModal = function () {
     document.body.style.overflow = '';
 };
 
-window.openEditHomeworkModal = function (id) {
+window.openEditHomeworkModal = async function (id) {
     const hw = allHomeworkData.find(h => h.id === id);
     if (!hw) return;
 
-    // Populate class dropdown first
-    populateHomeworkClassDropdown('hw-class').then(() => {
-        // Populate form with homework data
-        document.getElementById('hw-edit-id').value = hw.id;
-        document.getElementById('hw-title').value = hw.title || '';
-        document.getElementById('hw-class').value = hw.classLevel || '';
-        document.getElementById('hw-section').value = hw.section || 'A';
-        
-        // Populate subject dropdown and THEN set the value
-        populateSubjectDropdown(hw.classLevel, hw.section, 'hw-subject').then(() => {
-            document.getElementById('hw-subject').value = hw.subjectId || hw.subject || '';
-        });
-        
-        document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
-        document.getElementById('hw-description').value = hw.description || '';
-
-        const attachInfo = document.getElementById('hw-current-attachment');
-        if (attachInfo) {
-            if (hw.attachmentUrl) {
-                const fileName = hw.attachmentUrl.split('/').pop();
-                attachInfo.textContent = `Current: ${fileName}`;
-                attachInfo.style.display = 'block';
-            } else {
-                attachInfo.style.display = 'none';
-            }
-        }
-    });
-
     document.getElementById('add-homework-modal').style.display = 'block';
     document.body.style.overflow = 'hidden';
+
+    // Populate ERP filters with defaults
+    await populateERPFilters({
+        classSelectId: 'hw-class',
+        sectionSelectId: 'hw-section',
+        subjectSelectId: 'hw-subject',
+        defaultClass: hw.classLevel,
+        defaultSection: hw.section || 'A'
+    });
+
+    // Populate form with homework data
+    document.getElementById('hw-edit-id').value = hw.id;
+    document.getElementById('hw-title').value = hw.title || '';
+    
+    // Note: class and section are handled by defaultClass/defaultSection in populateERPFilters
+    // We might need a small delay or a way to ensure subject is set after it's loaded
+    if (hw.subject_id || hw.subject) {
+        // Since populateERPFilters is async and we await it, the subjects should be there
+        const subSel = document.getElementById('hw-subject');
+        if (subSel) subSel.value = hw.subject_id || hw.subject || '';
+    }
+    
+    document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
+    document.getElementById('hw-description').value = hw.description || '';
+
+    const attachInfo = document.getElementById('hw-current-attachment');
+    if (attachInfo) {
+        if (hw.attachmentUrl) {
+            const fileName = hw.attachmentUrl.split('/').pop();
+            attachInfo.textContent = `Current: ${fileName}`;
+            attachInfo.style.display = 'block';
+        } else {
+            attachInfo.style.display = 'none';
+        }
+    }
+
     closeAllHomeworkMenus();
 };
 
@@ -3661,6 +3799,144 @@ window.toggleHomeworkMenu = function (event) {
 window.closeAllHomeworkMenus = function () {
     document.querySelectorAll('.action-menu-dropdown.active').forEach(d => d.classList.remove('active'));
 };
+
+
+function populateDropdowns(ids, items, labelPrefix = '', defaultText = 'All') {
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        // Visibility handling: show if has data, hide if empty (for specific UI elements)
+        if (id.includes('att-') || id.includes('summary-')) {
+            el.style.display = items.length > 0 ? 'block' : 'none';
+        }
+
+        const currentValue = el.value;
+        const isFilter = id.includes('filter') || id.includes('select');
+        const firstOptionText = isFilter ? `${defaultText} ${labelPrefix}s` : `Select ${labelPrefix}`;
+        
+        el.innerHTML = `<option value="">${firstOptionText}</option>`;
+        
+        items.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.textContent = labelPrefix ? `${labelPrefix} ${item}` : item;
+            el.appendChild(opt);
+        });
+
+        if (currentValue && items.includes(currentValue)) {
+            el.value = currentValue;
+        }
+    });
+}
+
+function setupCascadingListeners() {
+    // Map of class dropdowns to their dependent section dropdowns
+    const cascadeMap = [
+        { classId: 'student-class-filter', sectionIds: ['student-section-filter'] },
+        { classId: 'att-class-select', sectionIds: ['att-section-select'] },
+        { classId: 'summary-class-select', sectionIds: ['summary-section-select'] },
+        { classId: 'subject-class-filter', sectionIds: ['subject-section-filter'] },
+        { classId: 'tt-class', sectionIds: ['tt-section'], teacherIds: ['tt-teacher'] },
+        { classId: 'material-class-filter', sectionIds: [] }, 
+        { classId: 'assign-subject-class', sectionIds: ['assign-subject-section'], teacherIds: ['assign-subject-teacher'] },
+        { classId: 'hw-class', sectionIds: ['hw-section'] },
+        { classId: 'hw-edit-class', sectionIds: ['hw-edit-section'] },
+    ];
+
+    cascadeMap.forEach(map => {
+        const classEl = document.getElementById(map.classId);
+        if (!classEl) return;
+
+        classEl.addEventListener('change', async () => {
+            const classLevel = classEl.value;
+            
+            // 1. Update Sections
+            if (map.sectionIds && map.sectionIds.length > 0) {
+                const sections = classLevel ? await fetchSections(classLevel) : [];
+                populateDropdowns(map.sectionIds, sections, 'Section');
+                
+                // Reset sections if class cleared
+                if (!classLevel) {
+                    map.sectionIds.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                }
+            }
+
+            // 2. Update Teachers (if applicable)
+            if (map.teacherIds && map.teacherIds.length > 0) {
+                const sectionEl = map.sectionIds && map.sectionIds.length > 0 ? document.getElementById(map.sectionIds[0]) : null;
+                const section = sectionEl ? sectionEl.value : 'ALL';
+                
+                if (classLevel) {
+                    const teachers = await fetchTeachersByClass(classLevel, section);
+                    if (teachers) {
+                        map.teacherIds.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                el.innerHTML = '<option value="">Select Teacher</option>';
+                                teachers.forEach(t => {
+                                    const opt = document.createElement('option');
+                                    opt.value = t.id;
+                                    opt.textContent = t.name;
+                                    el.appendChild(opt);
+                                });
+                            }
+                        });
+                    }
+                } else {
+                    map.teacherIds.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerHTML = '<option value="">Select Class First</option>';
+                    });
+                }
+            }
+            
+            // 3. Special case for Timetable: Load subjects too
+            if (map.classId === 'tt-class') {
+                const sectionEl = document.getElementById('tt-section');
+                const section = sectionEl ? sectionEl.value : '';
+                if (classLevel && typeof populateSubjectDropdown === 'function') {
+                    populateSubjectDropdown(classLevel, section, 'tt-subject');
+                }
+            }
+        });
+
+        // Add section listeners for teacher updates
+        if (map.sectionIds && map.teacherIds) {
+            map.sectionIds.forEach(sectionId => {
+                const sectionEl = document.getElementById(sectionId);
+                if (sectionEl) {
+                    sectionEl.addEventListener('change', async () => {
+                        const classLevel = classEl.value;
+                        const section = sectionEl.value || 'ALL';
+                        if (classLevel) {
+                            const teachers = await fetchTeachersByClass(classLevel, section);
+                            if (teachers) {
+                                map.teacherIds.forEach(id => {
+                                    const el = document.getElementById(id);
+                                    if (el) {
+                                        const currentTeacher = el.value;
+                                        el.innerHTML = '<option value="">Select Teacher</option>';
+                                        teachers.forEach(t => {
+                                            const opt = document.createElement('option');
+                                            opt.value = t.id;
+                                            opt.textContent = t.name;
+                                            el.appendChild(opt);
+                                        });
+                                        if (currentTeacher) el.value = currentTeacher;
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    });
+}
 
 function setupForms() {
     const hwForm = document.getElementById('homework-form');
@@ -3862,7 +4138,7 @@ function hideInfoAlert() {
     if (el) el.style.display = 'none';
 }
 
-export { loadDashboardData, loadUsers, loadStudents, loadMaterials, loadResults, loadNotifications };
+export { loadDashboardData, loadUsers, loadStudents, loadMaterials, loadNotifications };
 
 // =============================================
 // NOTIFICATIONS
@@ -3917,6 +4193,12 @@ window.showSendNoticeModal = function () {
         modal.style.display = 'flex';
         document.getElementById('notice-form')?.reset();
         document.body.style.overflow = 'hidden';
+
+        // Initialize dynamic class dropdown
+        populateERPFilters({
+            classSelectId: 'notice-class',
+            allClassesLabel: 'All Classes'
+        });
     }
 };
 
@@ -3939,38 +4221,7 @@ window.deleteNotification = async function (id) {
 };
 
 
-/**
- * MISSING TAB FUNCTIONS to prevent errors
- */
 
-async function loadResults() {
-    const list = document.getElementById('results-list');
-    if (!list) return;
-    try {
-        showInfoAlert('Loading results...');
-        const res = await resultsAPI.getAll();
-        const items = res.data || [];
-        hideInfoAlert();
-        if (items.length === 0) {
-            list.innerHTML = '<tr><td colspan="6" class="empty-state">No exam results recorded.</td></tr>';
-            return;
-        }
-        list.innerHTML = items.map(r => `
-            <tr>
-                <td>${escapeMarkup(r.studentName || 'Student')}</td>
-                <td>${escapeMarkup(r.exam_title)}</td>
-                <td>${escapeMarkup(r.subject)}</td>
-                <td>${r.marks_obtained}/${r.total_marks}</td>
-                <td>${escapeMarkup(r.remarks || 'No remarks')}</td>
-                <td>
-                    <span style="color:var(--text-muted)">-</span>
-                </td>
-            </tr>
-        `).join('');
-    } catch (err) {
-        showErrorAlert('Failed to load results: ' + err.message);
-    }
-}
 
 // =============================================
 // TIMETABLE
@@ -4020,81 +4271,14 @@ let allTeachersForTimetable = [];
 
 async function loadTimetableDropdowns() {
     try {
-        const [classesRes, usersRes] = await Promise.all([
-            attendanceAPI.getClasses(),
-            adminAPI.getUsers()
-        ]);
-
-        // Populate Class Dropdown
-        const classes = classesRes.data || [];
-        const classSel = document.getElementById('tt-class');
-        if (classSel) {
-            classSel.innerHTML = '<option value="">Select Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
-        }
-
-        // Store teachers globally for filtering
-        allTeachersForTimetable = (usersRes.data || usersRes.users || []).filter(u => u.role === 'teacher' && u.isActive);
-
-        const teacherSel = document.getElementById('tt-teacher');
-        const sectionSel = document.getElementById('tt-section');
-
-        // Initial populate: all teachers or disabled until class is selected
-        if (teacherSel) {
-            teacherSel.innerHTML = '<option value="">Select Class First</option>';
-            teacherSel.disabled = true;
-        }
-
-        const updateTeacherDropdown = () => {
-            if (!classSel || !teacherSel) return;
-            const selectedClass = classSel.value;
-            
-            if (!selectedClass) {
-                teacherSel.innerHTML = '<option value="">Select Class First</option>';
-                teacherSel.disabled = true;
-                return;
-            }
-
-            // Filter teachers who have the selected class in their classesAssigned array
-            const availableTeachers = allTeachersForTimetable.filter(t => {
-                if (!t.classesAssigned || !Array.isArray(t.classesAssigned) || t.classesAssigned.length === 0) return false;
-                
-                return t.classesAssigned.some(assignment => {
-                    const assignClass = assignment.class || assignment.classLevel || assignment;
-                    return assignClass === selectedClass;
-                });
-            });
-
-            if (availableTeachers.length > 0) {
-                teacherSel.disabled = false;
-                teacherSel.innerHTML = '<option value="">Select Teacher</option>' +
-                    availableTeachers.map(t => `<option value="${t.id}">${t.name || t.phone}</option>`).join('');
-            } else {
-                teacherSel.disabled = true;
-                teacherSel.innerHTML = '<option value="">No Teacher Available</option>';
-            }
-        };
-
-        // Add event listeners to filter teachers and subjects when class/section is selected
-        if (classSel) {
-            classSel.addEventListener('change', () => {
-                const selectedClass = classSel.value;
-                const selectedSection = sectionSel?.value || 'A';
-                
-                updateTeacherDropdown();
-                populateSubjectDropdown(selectedClass, selectedSection, 'tt-subject');
-            });
-        }
-        
-        if (sectionSel) {
-            sectionSel.addEventListener('change', () => {
-                const selectedClass = classSel?.value;
-                const selectedSection = sectionSel.value;
-                
-                populateSubjectDropdown(selectedClass, selectedSection, 'tt-subject');
-            });
-        }
+        await populateERPFilters({
+            classSelectId: 'tt-class',
+            sectionSelectId: 'tt-section',
+            subjectSelectId: 'tt-subject',
+            teacherSelectId: 'tt-teacher'
+        });
     } catch (err) {
-        console.error('Failed to load dropdowns:', err);
+        console.error('Failed to load timetable dropdowns:', err);
     }
 }
 

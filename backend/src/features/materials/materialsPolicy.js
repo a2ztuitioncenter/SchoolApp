@@ -1,12 +1,19 @@
 export async function getTeacherAssignments(db, teacherId) {
-  const result = await db.query(
-    `SELECT class_level, section
-     FROM teacher_class_assignment
-     WHERE teacher_id = $1`,
-    [teacherId]
-  );
-  // Map snake_case to camelCase for the internal policy checks if needed
-  return result.rows.map(r => ({
+  // Query both new subject_assignments and legacy teacher_class_assignment
+  const [subRes, legacyRes] = await Promise.all([
+    db.query(
+      `SELECT DISTINCT class_level, section FROM subject_assignments WHERE teacher_id = $1`,
+      [teacherId]
+    ),
+    db.query(
+      `SELECT DISTINCT class_level, section FROM teacher_class_assignment WHERE teacher_id = $1`,
+      [teacherId]
+    )
+  ]);
+
+  // Merge results and normalize to camelCase
+  const assignments = [...subRes.rows, ...legacyRes.rows];
+  return assignments.map(r => ({
       classLevel: r.class_level,
       section: r.section
   }));

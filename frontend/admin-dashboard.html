@@ -667,19 +667,13 @@
                                 <div class="form-group">
                                     <label>Class Level *</label>
                                     <select id="student-classLevel" required>
-                                        <option value="">Select</option>
-                                        <option value="9">9</option>
-                                        <option value="10">10</option>
-                                        <option value="11">11</option>
-                                        <option value="12">12</option>
+                                        <option value="">Select Class</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Section *</label>
                                     <select id="student-section" required>
                                         <option value="">Select</option>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
                                     </select>
                                 </div>
                             </div>
@@ -760,18 +754,12 @@
                                     <label>Class Level *</label>
                                     <select id="edit-student-classLevel" required>
                                         <option value="">Select</option>
-                                        <option value="9">9</option>
-                                        <option value="10">10</option>
-                                        <option value="11">11</option>
-                                        <option value="12">12</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Section *</label>
                                     <select id="edit-student-section" required>
                                         <option value="">Select</option>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
                                     </select>
                                 </div>
                             </div>
@@ -830,7 +818,7 @@
                     <div class="att-filter-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                         <div class="form-group">
                             <label>Class</label>
-                            <select id="att-class-select" class="form-control" onchange="onAttClassChange()">
+                            <select id="att-class-select" class="form-control">
                                 <option value="">-- Select Class --</option>
                             </select>
                         </div>
@@ -891,7 +879,7 @@
                     <div class="att-filter-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                         <div class="form-group">
                             <label>Class</label>
-                            <select id="summary-class-select" class="form-control" onchange="onSummaryClassChange()">
+                            <select id="summary-class-select" class="form-control">
                                 <option value="">-- Select Class --</option>
                             </select>
                         </div>
@@ -1035,6 +1023,7 @@
                                     <th>Subject</th>
                                     <th>Class Level</th>
                                     <th>Section</th>
+                                    <th>Teacher</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -1080,8 +1069,6 @@
                                     <label>Section *</label>
                                     <select id="hw-section" required style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.95rem;">
                                         <option value="">Select Section</option>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
                                     </select>
                                 </div>
                             </div>
@@ -1156,8 +1143,6 @@
                                     <label>Section *</label>
                                     <select id="hw-edit-section" required style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.95rem;">
                                         <option value="">Select Section</option>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
                                     </select>
                                 </div>
                             </div>
@@ -1531,16 +1516,9 @@
                         </select>
                         <select id="material-section-filter" onchange="filterMaterials()">
                             <option value="">All Sections</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
                         </select>
                         <select id="material-subject-filter" onchange="filterMaterials()">
                             <option value="">All Subjects</option>
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Science">Science</option>
-                            <option value="English">English</option>
-                            <option value="History">History</option>
-                            <option value="Geography">Geography</option>
                         </select>
                     </div>
                 </div>
@@ -1671,8 +1649,6 @@
                                     <label>Section</label>
                                     <select id="tt-section">
                                         <option value="">Select</option>
-                                        <option value="A">A</option>
-                                        <option value="B">B</option>
                                     </select>
                                 </div>
                             </div>
@@ -2061,8 +2037,6 @@
                             <div class="filters">
                                 <select id="exam-filter-class">
                                     <option value="">All Classes</option>
-                                    <option value="10">Class 10</option>
-                                    <option value="12">Class 12</option>
                                 </select>
                                 <select id="exam-filter-result">
                                     <option value="">All Results</option>
@@ -2125,11 +2099,6 @@
                         <label>Target Class <small style="color:var(--text-muted)">(leave blank for ALL)</small></label>
                         <select id="notice-class">
                             <option value="">All Classes</option>
-                            <option value="8">Class 8</option>
-                            <option value="9">Class 9</option>
-                            <option value="10">Class 10</option>
-                            <option value="11">Class 11</option>
-                            <option value="12">Class 12</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -2186,8 +2155,6 @@
                         <label>Section *</label>
                         <select id="material-section" required>
                             <option value="">Select Section</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
                         </select>
                     </div>
                 </div>
@@ -2257,20 +2224,20 @@
                         <label>Target Class *</label>
                         <select id="assign-subject-class" required>
                             <option value="">Select Class</option>
-                            <option value="9">Class 9</option>
-                            <option value="10">Class 10</option>
-                            <option value="11">Class 11</option>
-                            <option value="12">Class 12</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Target Section <small>(Optional)</small></label>
                         <select id="assign-subject-section">
                             <option value="ALL">All Sections (Shared)</option>
-                            <option value="A">Section A</option>
-                            <option value="B">Section B</option>
                         </select>
                     </div>
+                </div>
+                <div class="form-group">
+                    <label>Assigned Teacher *</label>
+                    <select id="assign-subject-teacher" required>
+                        <option value="">Select Teacher...</option>
+                    </select>
                 </div>
                 <div class="modal-footer" style="margin-top: 1rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeAssignSubjectModal()">Cancel</button>

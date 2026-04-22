@@ -19,10 +19,10 @@ export const createHomework = async (req, res) => {
       return res.status(400).json({ error: 'title, classLevel, subject required' });
 
     const hw = await homeworkModel.create({ title, description, classLevel, section, subject, dueDate, assignedBy, attachmentUrl });
-    res.status(201).json({ message: 'Homework created', data: hw });
+    res.status(201).json({ success: true, message: 'Homework created', data: hw });
   } catch (err) {
     console.error('createHomework:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ success: false, error: 'Server error', detail: err.message });
   }
 };
 
@@ -31,21 +31,21 @@ export const getAllHomework = async (req, res) => {
     const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level || '';
     const section = req.query.section || '';
     const list = await homeworkModel.getAll(classLevel, section);
-    res.json({ data: list });
+    res.json({ success: true, data: list });
   } catch (err) {
     console.error('getAllHomework:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ success: false, error: 'Server error', detail: err.message });
   }
 };
 
 export const getHomeworkById = async (req, res) => {
   try {
     const hw = await homeworkModel.getById(req.params.id);
-    if (!hw) return res.status(404).json({ error: 'Not found' });
-    res.json({ data: hw });
+    if (!hw) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: hw });
   } catch (err) {
     console.error('getHomeworkById:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ success: false, error: 'Server error', detail: err.message });
   }
 };
 
@@ -67,21 +67,21 @@ export const updateHomework = async (req, res) => {
       return res.status(400).json({ error: 'title, classLevel, subject required' });
 
     const hw = await homeworkModel.update(req.params.id, { title, description, classLevel, section, subject, dueDate, attachmentUrl });
-    if (!hw) return res.status(404).json({ error: 'Not found' });
-    res.json({ message: 'Updated', data: hw });
+    if (!hw) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, message: 'Updated', data: hw });
   } catch (err) {
     console.error('updateHomework:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ success: false, error: 'Server error', detail: err.message });
   }
 };
 
 export const deleteHomework = async (req, res) => {
   try {
     const deleted = await homeworkModel.delete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Not found' });
-    res.json({ message: 'Homework deleted' });
+    if (!deleted) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, message: 'Homework deleted' });
   } catch (err) {
     console.error('deleteHomework:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ success: false, error: 'Server error', detail: err.message });
   }
 };

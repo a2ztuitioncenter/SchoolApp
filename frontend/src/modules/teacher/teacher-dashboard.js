@@ -1,5 +1,6 @@
 import { teacherAPI, subjectsAPI, downloadFile } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
+import { escapeHtml } from '../../core/sanitize.js';
 
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first
@@ -92,6 +93,8 @@ function setupTabs() {
       const el = document.getElementById(`tab-${tab}`);
       if (el) el.style.display = 'block';
 
+      if (tab === 'dashboard') loadDashboard();
+      if (tab === 'subjects') loadTeacherSubjects();
       if (tab === 'homework') { loadHomework(); populateSharedDropdowns('hw'); }
       if (tab === 'materials') { loadMaterials(); populateSharedDropdowns('mat'); }
       if (tab === 'timetable') renderWeeklyTimetable();
@@ -101,6 +104,34 @@ function setupTabs() {
       if (tab === 'exam') initExamTab();
     });
   });
+}
+
+// ─── TEACHER SUBJECTS ──────────────────────────────────────────────────────────
+async function loadTeacherSubjects() {
+    const tbody = document.getElementById('teacher-subjects-body');
+    if (!tbody) return;
+
+    try {
+        const res = await subjectsAPI.getTeacherSubjects();
+        const data = res.data || [];
+        
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No subjects assigned to you yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(s => `
+            <tr>
+                <td><strong>${escapeHtml(s.master_name || s.name)}</strong></td>
+                <td><span class="badge">Class ${escapeHtml(s.class_level || s.classLevel)}</span></td>
+                <td><span class="badge secondary">${escapeHtml(s.section || 'All Sections')}</span></td>
+                <td>${formatDate(s.created_at || s.createdAt)}</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load teacher subjects:', err);
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state text-danger">Failed to load assigned subjects.</td></tr>';
+    }
 }
 
 /**
@@ -117,7 +148,7 @@ async function populateSubjectDropdown(classLevel, section, selectIds) {
     }
 
     try {
-        const res = await subjectsAPI.getAll();
+        const res = await subjectsAPI.getTeacherSubjects();
         const allSubjects = res.data || [];
         
         // Filter by class and (optionally) section
@@ -659,7 +690,7 @@ function renderHomeworkTable() {
   }
   
   tbody.innerHTML = onlyHws.map(hw => {
-    const due = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('en-IN') : '-';
+    const due = formatDate(hw.dueDate);
     const classLevel = hw.classLevel || '-';
     const section = hw.section || '-';
     const assignedByName = hw.assignedByName || 'Teacher';
@@ -694,7 +725,7 @@ function renderDppTable() {
   }
   
   tbody.innerHTML = onlyDpps.map(hw => {
-    const posted = hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('en-IN') : '-';
+    const posted = formatDate(hw.createdAt);
     const classLevel = hw.classLevel || '-';
     const section = hw.section || '-';
     
@@ -1335,6 +1366,8 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 function renderEmptyState(colspan, message, icon = 'fa-inbox') {
   return `<tr><td colspan="${colspan}" class="empty-state"><i class="fas ${icon}"></i><p>${message}</p></td></tr>`;
 }
+
+
 
 // ─── Dropdown Positioning & Logic ──────────────────────────────────────────
 window.toggleActionMenu = function (e) {

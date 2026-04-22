@@ -5,6 +5,7 @@
  */
 
 import { resultsAPI } from '../../core/api.js';
+import { populateERPFilters } from './admin-dashboard.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // SCOPED STYLES - Prevents conflicts with dashboard CSS
@@ -390,15 +391,15 @@ function applyExamFilters() {
 export function initExamResults() {
   console.log('📊 Initializing Exam Results Module...');
 
-  // Attach event listeners
-  const classFilter = document.getElementById('exam-filter-class');
+  // Initialize dynamic class filter
+  populateERPFilters({
+    classSelectId: 'exam-filter-class',
+    allClassesLabel: 'All Classes',
+    onClassChange: applyExamFilters
+  });
+
+  // Attach listener for result filter
   const resultFilter = document.getElementById('exam-filter-result');
-
-  if (classFilter) {
-    classFilter.removeEventListener('change', applyExamFilters);
-    classFilter.addEventListener('change', applyExamFilters);
-  }
-
   if (resultFilter) {
     resultFilter.removeEventListener('change', applyExamFilters);
     resultFilter.addEventListener('change', applyExamFilters);
