@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels, countStudentsByPhone, isDuplicateStudent, getNonStudentByPhone } from './User.js';
+import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels, countStudentsByPhone, isDuplicateStudent, getNonStudentByPhone, getUserById } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
@@ -349,17 +349,51 @@ router.get('/admin/pending-users', authenticate, authorize('admin'), async (req,
 router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
   const { classesAssigned } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'User ID is required' });
+  }
+
   try {
-    const user = await getUserById(req.db, userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if ((user.role === 'teacher' || user.role === 'staff') && classesAssigned) {
-      await assignTeacherToClasses(req.db, userId, classesAssigned, user.schoolId);
+    const id = parseInt(userId);
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid User ID format' });
     }
-    const updatedUser = await updateUserStatus(req.db, parseInt(userId), 'active');
-    res.json({ success: true, message: 'User approved', data: updatedUser });
+
+    const user = await getUserById(req.db, id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    if (user.status === 'active') {
+      return res.status(400).json({ success: false, error: 'User is already approved' });
+    }
+
+    // Assign classes if applicable
+    if ((user.role === 'teacher' || user.role === 'staff') && classesAssigned) {
+      if (!Array.isArray(classesAssigned)) {
+        return res.status(400).json({ success: false, error: 'classesAssigned must be an array' });
+      }
+      await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId);
+    }
+
+    const updatedUser = await updateUserStatus(req.db, id, 'active', req.user.userId);
+    
+    console.log(`[AUTH] Admin ${req.user.userId} approved user ${id} (${user.role})`);
+    
+    res.json({ 
+      success: true, 
+      message: 'User approved successfully', 
+      user: updatedUser,
+      data: updatedUser 
+    });
   } catch (error) {
     console.error('Approve user error:', error);
-    res.status(500).json({ success: false, error: 'Server error approving user' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error approving user',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -368,7 +402,7 @@ router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), asyn
   const { reason } = req.body;
   try {
     const updatedUser = await updateUserStatus(req.db, parseInt(userId), 'rejected', null, reason || 'Admin rejection');
-    res.json({ success: true, message: 'User rejected', data: updatedUser });
+    res.json({ success: true, message: 'User rejected', user: updatedUser, data: updatedUser });
   } catch (error) {
     console.error('Reject user error:', error);
     res.status(500).json({ success: false, error: 'Server error rejecting user' });

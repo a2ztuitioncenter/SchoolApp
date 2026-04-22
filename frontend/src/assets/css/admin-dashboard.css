@@ -775,8 +775,18 @@ textarea:focus {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 1rem;
+  vertical-align: middle;
 }
+
+.students-table th:nth-child(1) { width: 20%; }
+.students-table th:nth-child(2) { width: 8%; }
+.students-table th:nth-child(3) { width: 18%; }
+.students-table th:nth-child(4) { width: 14%; }
+.students-table th:nth-child(5) { width: 10%; }
+.students-table th:nth-child(6) { width: 10%; }
+.students-table th:nth-child(7) { width: 10%; }
+.students-table th:nth-child(8) { width: 10%; }
 
 .students-table tbody tr {
   border-bottom: 1px solid var(--border-subtle);
@@ -792,8 +802,19 @@ textarea:focus {
 }
 
 .students-table td {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 1rem;
   color: var(--text-main);
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.students-table td code {
+  font-family: inherit;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 500;
+  color: inherit;
 }
 
 .students-table td:first-child {
@@ -1884,12 +1905,12 @@ textarea:focus {
   gap: 1rem;
   margin-bottom: 2rem;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
 }
 
 .search-box {
-  flex: 1;
-  min-width: 280px;
+  flex: 0 1 280px;
   position: relative;
   display: flex;
   align-items: center;
@@ -2016,7 +2037,9 @@ textarea:focus {
 /* Action menu positioning */
 .action-menu {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .action-menu-btn {

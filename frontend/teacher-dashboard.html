@@ -122,21 +122,107 @@
             background: rgba(26, 127, 55, 0.03);
         }
 
-        /* Mobile Specific Overrides */
+        /* RESPONSIVE MOBILE FIXES */
         @media (max-width: 768px) {
+            * {
+                box-sizing: border-box !important;
+            }
+
+            html, body {
+                overflow-x: hidden !important;
+                position: relative;
+                width: 100% !important;
+            }
+
+            .main-content {
+                padding: 10px !important;
+                width: 100% !important;
+                overflow-x: hidden !important;
+            }
+
+            .card {
+                padding: 15px !important;
+                margin-bottom: 1rem !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+            }
+
+            /* Fix Attendance Filter Bar Stacking */
+            .filter-bar {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+
+            .filter-group {
+                width: 100% !important;
+                margin: 0 !important;
+                flex: none !important;
+            }
+
+            .filter-group select, 
+            .filter-group input {
+                width: 100% !important;
+                font-size: 16px !important; /* Prevents auto-zoom on iOS */
+            }
+
+            /* Fix Attendance Sub-Tabs Header */
+            div[style*="display:flex"][style*="border-bottom"],
+            div[style*="display: flex"][style*="border-bottom"] {
+                flex-wrap: wrap !important;
+                gap: 5px !important;
+            }
+
+            .att-subtab {
+                flex: 1 1 auto !important;
+                padding: 10px 5px !important;
+                font-size: 0.85rem !important;
+                text-align: center !important;
+            }
+
+            /* Table Responsive Container */
+            .table-container {
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+
             .section-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.75rem;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
             }
 
             .section-header .btn {
-                width: 100%;
+                width: 100% !important;
+            }
+
+            /* KPI Cards */
+            .card-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Fix table nowrap from admin-dashboard.css */
+            table, tr, td, th {
+                white-space: normal !important;
+                word-break: break-word !important;
+            }
+
+            /* Absolute containment for main structures */
+            .admin-container, .main-wrapper, .main-content {
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+            
+            /* Specific fix for the select popup overflow */
+            select {
+                max-width: 100% !important;
+                min-width: 0 !important;
+                text-overflow: ellipsis !important;
             }
         }
-
-        /* Optimized Action Menu for Mobile/Small Screens */
-        /* Action menu styles are now in admin-dashboard.css for consistency */
     </style>
     <script>
         // ⚠️ IMMEDIATE AUTH CHECK - MUST RUN FIRST

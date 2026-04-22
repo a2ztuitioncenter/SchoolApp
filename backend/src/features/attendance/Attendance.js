@@ -41,7 +41,7 @@ export const attendanceModel = {
 
   async getByClassAndDate(classLevel, date, section = 'A') {
     const result = await db.query(
-      `SELECT a.*, s.name AS student_name, s.roll_number
+      `SELECT a.*, s.name AS student_name, s.roll_number AS "rollNumber"
        FROM attendance a
        JOIN students s ON a.student_id = s.id
        WHERE s.class_level = $1 AND s.section = $2 AND a.date = $3
@@ -53,7 +53,7 @@ export const attendanceModel = {
 
   async getStudentsByClass(classLevel, section = 'A') {
     const result = await db.query(
-      `SELECT id, name, roll_number FROM students WHERE class_level = $1 AND section = $2 ORDER BY name`,
+      `SELECT id, name, roll_number AS "rollNumber" FROM students WHERE class_level = $1 AND section = $2 ORDER BY name`,
       [classLevel, section]
     );
     return result.rows;
@@ -66,7 +66,7 @@ export const attendanceModel = {
   async getMonthlySummary(classLevel, month, section = 'A') {
     const result = await db.query(
       `SELECT
-         s.id, s.name, s.roll_number,
+         s.id, s.name, s.roll_number AS "rollNumber",
         COUNT(a.id)                                         AS total_days,
         COUNT(CASE WHEN a.is_present=true  THEN 1 END)     AS present_count,
         COUNT(CASE WHEN a.is_present=false THEN 1 END)     AS absent_count,

@@ -12,6 +12,7 @@ export const homeworkModel = {
       description TEXT,
       due_date DATE,
       subject_id UUID REFERENCES subjects(id),
+      subject VARCHAR(200),
       attachment_url VARCHAR(500),
       school_id VARCHAR(50) DEFAULT 'school-001',
       type VARCHAR(50) DEFAULT 'homework',
@@ -39,12 +40,12 @@ export const homeworkModel = {
       createdAt: row.created_at,
       teacherPhone: row.teacher_phone,
       assignedBy: row.teacher_id,
-      assignedByName: row.assigned_by_name || 'Teacher'
+      assignedByName: row.assigned_by_name || (row.assigned_by_role === 'admin' ? 'Admin' : 'Teacher')
     };
   },
 
   async getAll(classLevel = '', section = '') {
-    let query = `SELECT h.*, u.phone AS teacher_phone, u.name AS assigned_by_name, s.name AS subject_name
+    let query = `SELECT h.*, u.phone AS teacher_phone, u.name AS assigned_by_name, u.role AS assigned_by_role, s.name AS subject_name
                  FROM homework h
                  LEFT JOIN users u ON h.teacher_id = u.id
                  LEFT JOIN subjects s ON h.subject_id = s.id`;
@@ -70,7 +71,12 @@ export const homeworkModel = {
   },
 
   async getById(id) {
-    const result = await db.query('SELECT * FROM homework WHERE id = $1', [id]);
+    const query = `SELECT h.*, u.phone AS teacher_phone, u.name AS assigned_by_name, u.role AS assigned_by_role, s.name AS subject_name
+                   FROM homework h
+                   LEFT JOIN users u ON h.teacher_id = u.id
+                   LEFT JOIN subjects s ON h.subject_id = s.id
+                   WHERE h.id = $1`;
+    const result = await db.query(query, [id]);
     return this.formatRow(result.rows[0]);
   },
 

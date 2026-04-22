@@ -291,6 +291,9 @@ export async function populateERPFilters({
     const populateSections = async (classLevel, targetSection = '') => {
         if (!sectionSel) return;
         
+        // Ensure visibility and reset state
+        sectionSel.style.display = 'block';
+        
         if (!classLevel) {
             sectionSel.innerHTML = `<option value="">${allSectionsLabel === 'Select Section' ? 'Select Class First' : allSectionsLabel}</option>`;
             sectionSel.disabled = (allSectionsLabel === 'Select Section');
@@ -302,17 +305,22 @@ export async function populateERPFilters({
             sectionSel.disabled = false;
             
             const res = await adminAPI.getSections(classLevel);
-            const sections = res.data || [];
             
-            if (sections.length === 0) {
-                sectionSel.innerHTML = '<option value="">No Sections</option>';
-            } else {
-                sectionSel.innerHTML = `<option value="">${allSectionsLabel}</option>` +
-                    sections.map(s => `<option value="${s}">${s}</option>`).join('');
-                
-                if (targetSection && sections.includes(targetSection)) {
-                    sectionSel.value = targetSection;
+            if (res.success) {
+                const sections = res.data || [];
+                if (sections.length === 0) {
+                    sectionSel.innerHTML = '<option value="">No Sections</option>';
+                } else {
+                    sectionSel.innerHTML = `<option value="">${allSectionsLabel}</option>` +
+                        sections.map(s => `<option value="${s}">${s}</option>`).join('');
+                    
+                    if (targetSection && sections.includes(targetSection)) {
+                        sectionSel.value = targetSection;
+                    }
                 }
+            } else {
+                console.error('API returned error for sections:', res.error);
+                sectionSel.innerHTML = '<option value="">Error Loading</option>';
             }
         } catch (err) {
             console.error('Failed to fetch sections:', err);
@@ -375,7 +383,10 @@ export async function populateERPFilters({
             const classLevel = classSel.value;
             
             // Reset dependents
-            if (sectionSel) sectionSel.value = '';
+            if (sectionSel) {
+                sectionSel.innerHTML = '<option value="">Resetting...</option>';
+                sectionSel.value = '';
+            }
             if (subjectSel) subjectSel.innerHTML = '<option value="">Select Section First</option>';
             if (teacherSel) {
                 teacherSel.innerHTML = '<option value="">Select Section First</option>';
@@ -1931,14 +1942,10 @@ function renderStudentsTable(students) {
         <tr>
             <td><strong>${s.name}</strong></td>
             <td><code>${s.rollNumber || '-'}</code></td>
-            <td>
-                <div style="font-size: 0.8rem;">
-                    <div>${s.fatherName || '-'}</div>
-                    <div style="color: var(--text-muted); font-size: 0.75rem;">${s.motherName || ''}</div>
-                </div>
-            </td>
+            <td>${s.fatherName || '-'}${s.motherName ? ' · ' + s.motherName : ''}</td>
             <td>${s.phone || '-'}</td>
-            <td>${s.classLevel || '-'}${s.section ? ' - ' + s.section : ''}</td>
+            <td>${s.classLevel || '-'}</td>
+            <td>${s.section || '-'}</td>
             <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
             <td>
                 <div class="action-menu">
@@ -2193,7 +2200,7 @@ window.loadAttendanceSheet = async function () {
                 <div class="att-student-info">
                     <div>
                         <div class="att-student-name">${s.name}</div>
-                        <div class="att-student-roll">Roll/ID: #${s.rollNumber || s.id}</div>
+                        <div class="att-student-roll">Roll No: ${s.rollNumber || 'N/A'}</div>
                     </div>
                 </div>
                 <div class="att-toggles">

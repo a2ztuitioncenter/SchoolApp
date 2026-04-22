@@ -2,23 +2,51 @@ import { homeworkModel } from './Homework.js';
 
 export const createHomework = async (req, res) => {
   try {
-    const title = req.body.title;
-    const description = req.body.description;
+    const { 
+      title, 
+      description, 
+      section = 'A', 
+      subject 
+    } = req.body;
+    
+    // Normalize field names from various potential sources (frontend vs internal)
     const classLevel = req.body.classLevel || req.body.class_level || req.body.class_name;
-    const section = req.body.section || 'A';
-    const subject = req.body.subject;
+    const subjectId = req.body.subjectId || req.body.subject_id;
     const dueDate = req.body.dueDate || req.body.due_date;
     const assignedBy = req.user?.userId || req.body.assignedBy || req.body.assigned_by || null;
+    
     let attachmentUrl = null;
-
     if (req.file) {
       attachmentUrl = `/uploads/homework/${req.file.filename}`;
     }
 
-    if (!title || !classLevel || !subject)
-      return res.status(400).json({ error: 'title, classLevel, subject required' });
+    // Comprehensive validation with specific error messages
+    const errors = [];
+    if (!title) errors.push('title is required');
+    if (!classLevel) errors.push('classLevel is required');
+    if (!subject && !subjectId) errors.push('subject or subjectId is required');
 
-    const hw = await homeworkModel.create({ title, description, classLevel, section, subject, dueDate, assignedBy, attachmentUrl });
+    if (errors.length > 0) {
+      console.warn('Homework creation validation failed:', { errors, body: req.body });
+      return res.status(400).json({ 
+        success: false, 
+        error: errors.join(', '),
+        details: errors 
+      });
+    }
+
+    const hw = await homeworkModel.create({ 
+      title, 
+      description, 
+      classLevel, 
+      section, 
+      subjectId, 
+      subject, 
+      dueDate, 
+      assignedBy, 
+      attachmentUrl 
+    });
+    
     res.status(201).json({ success: true, message: 'Homework created', data: hw });
   } catch (err) {
     console.error('createHomework:', err);
@@ -51,22 +79,48 @@ export const getHomeworkById = async (req, res) => {
 
 export const updateHomework = async (req, res) => {
   try {
-    const title = req.body.title;
-    const description = req.body.description;
-    const classLevel = req.body.classLevel || req.body.class_level || req.body.class_name;
-    const section = req.body.section || 'A';
-    const subject = req.body.subject;
-    const dueDate = req.body.dueDate || req.body.due_date;
-    let attachmentUrl = req.body.attachmentUrl || null;
+    const { 
+      title, 
+      description, 
+      section = 'A', 
+      subject,
+      attachmentUrl: bodyAttachmentUrl 
+    } = req.body;
 
+    const classLevel = req.body.classLevel || req.body.class_level || req.body.class_name;
+    const subjectId = req.body.subjectId || req.body.subject_id;
+    const dueDate = req.body.dueDate || req.body.due_date;
+    
+    let attachmentUrl = bodyAttachmentUrl || null;
     if (req.file) {
       attachmentUrl = `/uploads/homework/${req.file.filename}`;
     }
 
-    if (!title || !classLevel || !subject)
-      return res.status(400).json({ error: 'title, classLevel, subject required' });
+    // Comprehensive validation
+    const errors = [];
+    if (!title) errors.push('title is required');
+    if (!classLevel) errors.push('classLevel is required');
+    if (!subject && !subjectId) errors.push('subject or subjectId is required');
 
-    const hw = await homeworkModel.update(req.params.id, { title, description, classLevel, section, subject, dueDate, attachmentUrl });
+    if (errors.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: errors.join(', '),
+        details: errors 
+      });
+    }
+
+    const hw = await homeworkModel.update(req.params.id, { 
+      title, 
+      description, 
+      classLevel, 
+      section, 
+      subjectId, 
+      subject, 
+      dueDate, 
+      attachmentUrl 
+    });
+    
     if (!hw) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, message: 'Updated', data: hw });
   } catch (err) {
