@@ -1169,6 +1169,7 @@ function renderUnpaidFeesTable() {
             <tr>
                 <td data-label="Name">${fee.studentName || '-'}</td>
                 <td data-label="Class">${fee.classLevel || '-'}</td>
+                <td data-label="Section">${fee.section || '-'}</td>
                 <td data-label="Amount">₹${parseFloat(fee.amount || 0).toLocaleString('en-IN')}</td>
                 <td data-label="Due Date">${new Date(fee.dueDate || fee.due_date).toLocaleDateString('en-IN')}</td>
                 <td data-label="Days Overdue" class="status-${daysOverdue > 0 ? 'danger' : 'warning'}">${overdueText}</td>
@@ -2512,7 +2513,8 @@ function setupFeeStudentAutocomplete() {
     const dropdown = document.getElementById('fee-student-dropdown');
     const hiddenId = document.getElementById('fee-student-id');
     
-    if (!searchInput) return;
+    if (!searchInput || searchInput.dataset.autocompleteSetup) return;
+    searchInput.dataset.autocompleteSetup = 'true';
 
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.trim().toLowerCase();
@@ -2527,11 +2529,23 @@ function setupFeeStudentAutocomplete() {
         }
 
         feeStudentAutocompleteTimeout = setTimeout(() => {
+            if (allStudentsData.length === 0) {
+                dropdown.innerHTML = '<div class="autocomplete-item" style="text-align:center; color:var(--text-muted);">Loading students...</div>';
+                dropdown.style.display = 'block';
+                // Try to load students if for some reason they aren't loaded
+                loadStudents().then(() => {
+                    // Trigger input again to refresh with data
+                    searchInput.dispatchEvent(new Event('input'));
+                });
+                return;
+            }
+
             const filtered = allStudentsData.filter(s => {
                 const name = (s.name || '').toLowerCase();
                 const phone = (s.phone || '').toLowerCase();
+                const roll = (s.rollNumber || '').toLowerCase();
                 const id = (s.id || '').toString();
-                return name.includes(query) || phone.includes(query) || id.includes(query);
+                return name.includes(query) || phone.includes(query) || roll.includes(query) || id.includes(query);
             });
 
             if (filtered.length === 0) {
@@ -2546,7 +2560,7 @@ function setupFeeStudentAutocomplete() {
                         <div>
                             <div class="autocomplete-item-name">${escapeHtml(s.name || 'N/A')}</div>
                             <div class="autocomplete-item-meta">
-                                Class ${s.classLevel}${s.section ? '-' + s.section : ''} | ${s.phone}
+                                Roll: ${s.rollNumber || 'N/A'} | Class ${s.classLevel}${s.section ? '-' + s.section : ''}
                             </div>
                         </div>
                         <div style="font-size:0.75rem; color:var(--text-muted);">ID: ${s.id}</div>
@@ -2819,6 +2833,9 @@ function renderPaymentHistoryTable(fees) {
 
 async function initFeesTab() {
     try {
+        if (allStudentsData.length === 0) {
+            await loadStudents();
+        }
         await loadFeeStats();
         await loadFees('all');
         // Reset to active tab

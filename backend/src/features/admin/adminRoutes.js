@@ -304,6 +304,7 @@ router.get('/financials/unpaid-fees', async (req, res) => {
                 f.id, f.amount, f.due_date, f.is_paid,
                 s.name as student_name,
                 s.class_level,
+                s.section,
                 u.phone
              FROM fees f
              JOIN students s ON f.student_id = s.id
@@ -318,8 +319,9 @@ router.get('/financials/unpaid-fees', async (req, res) => {
             dueDate: f.due_date,
             isPaid: f.is_paid,
             paid: f.is_paid,
-            student_name: f.student_name,
+            studentName: f.student_name,
             classLevel: f.class_level,
+            section: f.section,
             phone: f.phone
         }));
 
