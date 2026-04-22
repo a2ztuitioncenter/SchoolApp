@@ -221,7 +221,6 @@
                 <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
                 <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> Syllabus</a>
                 <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> Exam Result</a>
-                <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-clipboard-list"></i> Att. Summary</a>
             </nav>
             <!-- Mobile-only Bottom Navigation Bar -->
             <nav class="bottom-nav">
@@ -232,7 +231,6 @@
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
                 <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> <span>Syllabus</span></a>
                 <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> <span>Exam</span></a>
-                <a href="#" class="nav-link" data-tab="summary"><i class="fas fa-clipboard-list"></i> <span>Summary</span></a>
             </nav>
         </aside>
 
@@ -386,67 +384,110 @@
 
             <!-- =================== ATTENDANCE TAB =================== -->
             <div id="tab-attendance" class="tab-content" style="display:none;">
-                <div class="section-header">
+                <div class="section-header" style="margin-bottom: 1.5rem;">
                     <div>
-                        <h2><i class="fas fa-user-check"></i> Mark Attendance</h2>
-                        <p class="section-subtitle">Record daily attendance for your classes</p>
+                        <h2><i class="fas fa-user-check"></i> Attendance Module</h2>
+                        <p class="section-subtitle">Manage daily attendance and view performance reports</p>
                     </div>
                 </div>
 
-                <div class="card" style="margin-bottom: 2rem;">
-                    <div class="filter-bar">
-                        <div class="filter-group" style="flex: 1;">
-                            <label>Select Class</label>
-                            <select id="att-class-select" onchange="onAttClassChange()">
-                                <option value="">-- Choose Class --</option>
-                            </select>
+                <!-- Attendance Sub-Tabs -->
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem; border-bottom:1px solid var(--border-subtle); align-items:stretch;">
+                    <button class="att-subtab active" data-subtab="mark" onclick="switchAttendanceSubTab('mark')" style="padding:0.75rem 1.25rem; border:none; background:none; cursor:pointer; font-weight:500; color:var(--text-main); border-bottom:3px solid var(--accent-blue); margin-bottom:-1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-edit"></i> Mark Attendance
+                    </button>
+                    <button class="att-subtab" data-subtab="report" onclick="switchAttendanceSubTab('report')" style="padding:0.75rem 1.25rem; border:none; background:none; cursor:pointer; font-weight:500; color:var(--text-muted); border-bottom:3px solid transparent; margin-bottom:-1px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-chart-bar"></i> Attendance Summary
+                    </button>
+                </div>
+
+                <!-- Sub-Tab 1: Mark Attendance -->
+                <div id="att-subtab-mark" style="display:block;">
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <div class="filter-bar">
+                            <div class="filter-group" style="flex: 1;">
+                                <label>Select Class</label>
+                                <select id="att-class-select" onchange="onAttClassChange()">
+                                    <option value="">-- Choose Class --</option>
+                                </select>
+                            </div>
+                            <div class="filter-group" style="flex: 1; display: none;" id="att-section-group">
+                                <label>Section</label>
+                                <select id="att-section-select">
+                                    <option value="">-- Choose Section --</option>
+                                </select>
+                            </div>
+                            <div class="filter-group" style="flex: 1;">
+                                <label>Attendance Date</label>
+                                <input type="date" id="att-date">
+                            </div>
+                            <button class="btn btn-primary btn-lg" onclick="loadAttendanceSheet()"
+                                style="align-self: flex-end;">
+                                <i class="fas fa-search"></i> Load Sheet
+                            </button>
                         </div>
-                        <div class="filter-group" style="flex: 1; display: none;" id="att-section-group">
-                            <label>Section</label>
-                            <select id="att-section-select">
-                                <option value="">-- Choose Section --</option>
-                            </select>
+                    </div>
+
+                    <div id="att-sheet-container" style="display:none;">
+                        <div class="att-summary-bar">
+                            <div class="att-stats">
+                                <div class="att-stat-item">
+                                    <span class="text-muted">Total:</span>
+                                    <span id="att-total-count">0</span>
+                                </div>
+                                <div class="att-stat-item">
+                                    <span style="color: var(--success)">P:</span>
+                                    <b id="att-present-count">0</b>
+                                </div>
+                                <div class="att-stat-item">
+                                    <span style="color: var(--danger)">A:</span>
+                                    <b id="att-absent-count">0</b>
+                                </div>
+                            </div>
+                            <button class="att-btn-mark-all" id="btn-mark-all-present">
+                                <i class="fas fa-check-double"></i> Mark All Present
+                            </button>
                         </div>
-                        <div class="filter-group" style="flex: 1;">
-                            <label>Attendance Date</label>
-                            <input type="date" id="att-date">
+
+                        <div id="att-list-container" class="att-list-container">
+                            <!-- Cards will be rendered here -->
                         </div>
-                        <button class="btn btn-primary btn-lg" onclick="loadAttendanceSheet()"
-                            style="align-self: flex-end;">
-                            <i class="fas fa-search"></i> Load Sheet
-                        </button>
+
+                        <div class="att-submit-container">
+                            <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="saveAttendance()">
+                                <i class="fas fa-cloud-upload-alt"></i> Submit Attendance Sheet
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div id="att-sheet-container" style="display:none;">
-                    <div class="att-summary-bar">
-                        <div class="att-stats">
-                            <div class="att-stat-item">
-                                <span class="text-muted">Total:</span>
-                                <span id="att-total-count">0</span>
+                <!-- Sub-Tab 2: Attendance Summary -->
+                <div id="att-subtab-report" style="display:none;">
+                    <div class="card">
+                        <div class="filter-bar">
+                            <div class="filter-group" style="flex: 1;">
+                                <label>Select Class</label>
+                                <select id="sum-class-select" class="form-control">
+                                    <option value="">-- Choose Class --</option>
+                                </select>
                             </div>
-                            <div class="att-stat-item">
-                                <span style="color: var(--success)">P:</span>
-                                <b id="att-present-count">0</b>
+                            <div class="filter-group" style="flex: 1;">
+                                <label>Select Month</label>
+                                <input type="month" id="sum-month" class="form-control">
                             </div>
-                            <div class="att-stat-item">
-                                <span style="color: var(--danger)">A:</span>
-                                <b id="att-absent-count">0</b>
+                            <div class="filter-group" style="flex: 1; display: none;" id="sum-section-group">
+                                <label>Section</label>
+                                <select id="sum-section-select" class="form-control">
+                                    <option value="">-- Choose Section --</option>
+                                </select>
                             </div>
+                            <button class="btn btn-primary btn-lg" onclick="loadAttendanceSummary()"
+                                style="align-self: flex-end;">
+                                <i class="fas fa-search"></i> View Report
+                            </button>
                         </div>
-                        <button class="att-btn-mark-all" id="btn-mark-all-present">
-                            <i class="fas fa-check-double"></i> Mark All Present
-                        </button>
-                    </div>
 
-                    <div id="att-list-container" class="att-list-container">
-                        <!-- Cards will be rendered here -->
-                    </div>
-
-                    <div class="att-submit-container">
-                        <button class="btn btn-primary btn-lg" style="width: 100%;" onclick="saveAttendance()">
-                            <i class="fas fa-cloud-upload-alt"></i> Submit Attendance Sheet
-                        </button>
+                        <div id="summary-container" style="margin-top: 1.5rem;"></div>
                     </div>
                 </div>
             </div>
@@ -641,40 +682,7 @@
                 <div id="syllabus-container"></div>
             </div>
 
-            <!-- =================== SUMMARY TAB =================== -->
-            <div id="tab-summary" class="tab-content" style="display:none;">
-                <div class="dashboard-section-title">
-                    <h2><i class="fas fa-clipboard-list"></i> Attendance Summary</h2>
-                    <p class="section-subtitle">View monthly performance reports</p>
-                </div>
 
-                <div class="card">
-                    <div class="filter-bar">
-                        <div class="filter-group" style="flex: 1;">
-                            <label>Select Class</label>
-                            <select id="sum-class-select" class="form-control">
-                                <option value="">-- Choose Class --</option>
-                            </select>
-                        </div>
-                        <div class="filter-group" style="flex: 1;">
-                            <label>Select Month</label>
-                            <input type="month" id="sum-month" class="form-control">
-                        </div>
-                        <div class="filter-group" style="flex: 1; display: none;" id="sum-section-group">
-                            <label>Section</label>
-                            <select id="sum-section-select" class="form-control">
-                                <option value="">-- Choose Section --</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary btn-lg" onclick="loadAttendanceSummary()"
-                            style="align-self: flex-end;">
-                            <i class="fas fa-search"></i> View Report
-                        </button>
-                    </div>
-
-                    <div id="summary-container" style="margin-top: 1.5rem;"></div>
-                </div>
-            </div>
 
             <!-- =================== EXAM RESULT TAB =================== -->
             <div id="tab-exam" class="tab-content" style="display:none;">
@@ -894,11 +902,15 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Class Level *</label>
-                        <input type="text" id="syl-classLevel" class="form-control" placeholder="e.g. 10" required>
+                        <select id="syl-classLevel" class="form-control" required>
+                            <option value="">Select Class</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Section</label>
-                        <input type="text" id="syl-section" class="form-control" placeholder="e.g. A (Optional)">
+                        <select id="syl-section" class="form-control">
+                            <option value="">Select Section (Optional)</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-group">

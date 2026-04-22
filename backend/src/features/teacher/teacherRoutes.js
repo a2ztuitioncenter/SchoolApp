@@ -80,20 +80,6 @@ async function checkTeacherClassPermission(pool, teacherId, classLevel, section)
 }
 
 // ============================================
-// HELPER — Parse Class & Section
-// ============================================
-function parseClassSection(input) {
-  if (!input) return { classLevel: null, section: null };
-  const match = input.match(/^(\d+)([A-Z])$/i);
-  if (match) {
-    return { classLevel: match[1], section: match[2] };
-  }
-  const matchNumeric = input.match(/^(\d+)$/);
-  if (matchNumeric) return { classLevel: matchNumeric[1], section: null };
-  return { classLevel: input, section: null };
-}
-
-// ============================================
 // DASHBOARD — enriched with timetable & stats
 // ============================================
 router.get('/dashboard/:teacherId', async (req, res) => {
@@ -108,18 +94,18 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     // 1. Get Assigned Classes from both tables
     const [subAssignRes, tcaAssignRes] = await Promise.all([
       pool.query(
-        `SELECT DISTINCT class_level, section FROM subject_assignments WHERE teacher_id = $1`,
+        `SELECT DISTINCT class_level FROM subject_assignments WHERE teacher_id = $1`,
         [parsedTeacherId]
       ),
       pool.query(
-        `SELECT DISTINCT class_level, section FROM teacher_class_assignment WHERE teacher_id = $1`,
+        `SELECT DISTINCT class_level FROM teacher_class_assignment WHERE teacher_id = $1`,
         [parsedTeacherId]
       )
     ]);
 
     // Merge results
     const mergedAssignments = [...subAssignRes.rows, ...tcaAssignRes.rows];
-    let classes = [...new Set(mergedAssignments.map(r => (r.section && r.section !== 'ALL') ? `${r.class_level}${r.section}` : r.class_level))];
+    let classes = [...new Set(mergedAssignments.map(r => r.class_level))];
 
     // 2. Fallback: If no assignments found, get from timetable
     if (classes.length === 0) {
@@ -221,18 +207,17 @@ router.get('/attendance/classes', async (req, res) => {
 
     const [subRes, tcaRes] = await Promise.all([
       pool.query(
-        `SELECT DISTINCT class_level, section FROM subject_assignments WHERE teacher_id = $1`,
+        `SELECT DISTINCT class_level FROM subject_assignments WHERE teacher_id = $1`,
         [teacher.id]
       ),
       pool.query(
-        `SELECT DISTINCT class_level, section FROM teacher_class_assignment WHERE teacher_id = $1`,
+        `SELECT DISTINCT class_level FROM teacher_class_assignment WHERE teacher_id = $1`,
         [teacher.id]
       )
     ]);
 
     const merged = [...subRes.rows, ...tcaRes.rows];
-    let classes = merged.map(r => (r.section && r.section !== 'ALL') ? `${r.class_level}${r.section}` : r.class_level);
-    classes = [...new Set(classes)];
+    let classes = [...new Set(merged.map(r => r.class_level))];
 
     if (classes.length === 0) {
       const ttResult = await pool.query(
@@ -299,15 +284,11 @@ router.get('/attendance/sections', async (req, res) => {
 // GET /api/teacher/attendance/sheet
 router.get('/attendance/sheet', async (req, res) => {
   try {
-    const { teacherId, classLevel: classInput, date, section: querySection } = req.query;
+    const { teacherId, classLevel, date, section } = req.query;
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
-    if (!classInput || !date) return res.status(400).json({ success: false, error: 'classLevel and date required' });
-
-    const parsed = parseClassSection(classInput);
-    const classLevel = parsed.classLevel;
-    const section = querySection || parsed.section;
+    if (!classLevel || !date) return res.status(400).json({ success: false, error: 'classLevel and date required' });
 
     // Verify teacher assignment
     let assignmentCheck;
@@ -390,11 +371,11 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       for (const r of records) {
         const isPresent = r.status === 'present';
         await client.query(
-          `INSERT INTO attendance (student_id, user_id, class_level, date, is_present)
-         VALUES ($1, (SELECT user_id FROM students WHERE id = $1), $2, $3, $4)
+          `INSERT INTO attendance (student_id, user_id, class_level, section, date, is_present)
+         VALUES ($1, (SELECT user_id FROM students WHERE id = $1), $2, $3, $4, $5)
          ON CONFLICT (student_id, date)
-         DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level`,
-          [r.studentId, r.classLevel, r.date, isPresent]
+         DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level, section = EXCLUDED.section`,
+          [r.studentId, r.classLevel, r.section || 'A', r.date, isPresent]
         );
       }
       await client.query('COMMIT');
@@ -414,14 +395,10 @@ router.post('/attendance/mark-bulk', async (req, res) => {
 // GET /api/teacher/attendance/summary
 router.get('/attendance/summary', async (req, res) => {
   try {
-    const { teacherId, classLevel: classInput, month, section: querySection } = req.query;
+    const { teacherId, classLevel, month, section } = req.query;
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
-
-    const parsed = parseClassSection(classInput);
-    const classLevel = parsed.classLevel;
-    const section = querySection || parsed.section;
 
     let query = `SELECT s.name, s.id AS student_id,
           COUNT(CASE WHEN a.is_present = true THEN 1 END) AS present_count,

@@ -2,14 +2,14 @@ import { attendanceModel } from './Attendance.js';
 
 export const markAttendance = async (req, res) => {
   try {
-    const { studentId, classLevel, date, status, is_present } = req.body;
+    const { studentId, classLevel, section, date, status, is_present } = req.body;
     const final_present = is_present !== undefined ? is_present : (status === 'present' || status === 'true' || status === true);
     
     if (!studentId || !classLevel || !date)
       return res.status(400).json({ error: 'studentId, classLevel, date required' });
       
     const record = await attendanceModel.markBulk(
-      [{ studentId, classLevel, date, is_present: final_present }],
+      [{ studentId, classLevel, section: section || 'A', date, is_present: final_present }],
       req.user?.userId || null
     );
     res.status(201).json({ success: true, message: 'Attendance marked', data: record[0] });
@@ -35,10 +35,10 @@ export const markBulkAttendance = async (req, res) => {
 export const getByClassAndDate = async (req, res) => {
   try {
     const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
-    const { date } = req.query;
+    const { date, section } = req.query;
     if (!classLevel || !date)
       return res.status(400).json({ error: 'classLevel and date required' });
-    const records = await attendanceModel.getByClassAndDate(classLevel, date);
+    const records = await attendanceModel.getByClassAndDate(classLevel, date, section || 'A');
     res.json({ success: true, data: records });
   } catch (err) {
     console.error('getByClassAndDate:', err);
@@ -49,9 +49,10 @@ export const getByClassAndDate = async (req, res) => {
 export const getStudentsByClass = async (req, res) => {
   try {
     const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
+    const section = req.query.section || 'A';
     if (!classLevel)
       return res.status(400).json({ error: 'classLevel required' });
-    const students = await attendanceModel.getStudentsByClass(classLevel);
+    const students = await attendanceModel.getStudentsByClass(classLevel, section);
     res.json({ success: true, data: students });
   } catch (err) {
     console.error('getStudentsByClass:', err);
@@ -72,10 +73,10 @@ export const getByStudent = async (req, res) => {
 export const getMonthlySummary = async (req, res) => {
   try {
     const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
-    const { month } = req.query;
+    const { month, section } = req.query;
     if (!classLevel || !month)
       return res.status(400).json({ error: 'classLevel and month required' });
-    const summary = await attendanceModel.getMonthlySummary(classLevel, month);
+    const summary = await attendanceModel.getMonthlySummary(classLevel, month, section || 'A');
     res.json({ success: true, data: summary });
   } catch (err) {
     console.error('getMonthlySummary:', err);

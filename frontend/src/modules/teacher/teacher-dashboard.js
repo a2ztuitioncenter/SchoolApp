@@ -1,6 +1,7 @@
 import { teacherAPI, subjectsAPI, downloadFile } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 import { escapeHtml } from '../../core/sanitize.js';
+import { formatDate } from '../../core/utils.js';
 
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first
@@ -99,8 +100,7 @@ function setupTabs() {
       if (tab === 'materials') { loadMaterials(); populateSharedDropdowns('mat'); }
       if (tab === 'timetable') renderWeeklyTimetable();
       if (tab === 'syllabus') { loadSyllabus(); setupSyllabusDropdowns(); }
-      if (tab === 'attendance') initAttendanceTab();
-      if (tab === 'summary') initSummaryTab();
+      if (tab === 'attendance') { initAttendanceTab(); initSummaryTab(); }
       if (tab === 'exam') initExamTab();
     });
   });
@@ -192,7 +192,10 @@ async function populateSharedDropdowns(prefix) {
     const res = await teacherAPI.getAttendanceClasses(teacherId || '');
     if (res.success && res.data && res.data.length > 0) {
       const parsed = res.data.map(raw => {
-        const value = String(raw.class_level || raw || '').trim();
+        if (typeof raw === 'object' && raw !== null) {
+          return { classLevel: String(raw.class_level || ''), section: raw.section || null };
+        }
+        const value = String(raw || '').trim();
         const sectionMatch = value.match(/^(\d+)([A-Z])$/i);
         if (sectionMatch) return { classLevel: sectionMatch[1], section: sectionMatch[2].toUpperCase() };
         return { classLevel: value, section: null };
@@ -501,6 +504,35 @@ function renderWeeklyTimetable() {
   renderContent();
 }
 
+// ─── ATTENDANCE SUB-TAB SWITCHING ──────────────────────────────────────────
+window.switchAttendanceSubTab = function(subtab) {
+    // Update button states
+    document.querySelectorAll('.att-subtab').forEach(btn => {
+        if (btn.dataset.subtab === subtab) {
+            btn.classList.add('active');
+            btn.style.color = 'var(--text-main)';
+            btn.style.borderBottom = '3px solid var(--accent-blue)';
+        } else {
+            btn.classList.remove('active');
+            btn.style.color = 'var(--text-muted)';
+            btn.style.borderBottom = '3px solid transparent';
+        }
+    });
+
+    // Toggle content sections
+    const markSection = document.getElementById('att-subtab-mark');
+    const reportSection = document.getElementById('att-subtab-report');
+    
+    if (subtab === 'mark') {
+        if (markSection) markSection.style.display = 'block';
+        if (reportSection) reportSection.style.display = 'none';
+    } else {
+        if (markSection) markSection.style.display = 'none';
+        if (reportSection) reportSection.style.display = 'block';
+        initSummaryTab(); // Re-init summary if needed
+    }
+};
+
 // ─── ATTENDANCE ───────────────────────────────────────────────────────────────
 async function initAttendanceTab() {
   const sel = document.getElementById('att-class-select');
@@ -509,7 +541,10 @@ async function initAttendanceTab() {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     availableClasses = res.data || [];
     sel.innerHTML = '<option value="">-- Select Class --</option>' +
-      availableClasses.map(c => `<option value="${c.class_level}">${c.class_level}</option>`).join('');
+      availableClasses.map(c => {
+        const val = c.class_level || c;
+        return `<option value="${val}">${val}</option>`;
+      }).join('');
 
     const attDate = document.getElementById('att-date');
     if (attDate && !attDate.value) attDate.value = new Date().toISOString().split('T')[0];
@@ -648,9 +683,11 @@ window.saveAttendance = async function () {
         return;
     }
 
+    const section = document.getElementById('att-section-select')?.value || 'A';
     const records = Object.entries(attendanceData).map(([id, status]) => ({
         studentId: parseInt(id),
         classLevel,
+        section,
         date,
         status
     }));
@@ -1130,14 +1167,7 @@ window.toggleShowAllTeacherMaterials = function () {
   renderMaterialsTable();
 };
 
-function formatDate(dateString) {
-  if (!dateString) return '-';
-  try {
-    return new Date(dateString).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
-  } catch {
-    return '-';
-  }
-}
+
 
 // ─── SYLLABUS ─────────────────────────────────────────────────────────────────
 async function loadSyllabus() {
@@ -1158,7 +1188,7 @@ function renderSyllabus() {
 
   const bySubject = {};
   allSyllabus.forEach(s => {
-    const key = `${s.subject} — Class ${s.classLevel}`;
+    const key = `${s.subject} — Class ${s.classLevel}${s.section ? ' (' + s.section + ')' : ''}`;
     if (!bySubject[key]) bySubject[key] = [];
     bySubject[key].push(s);
   });
@@ -1207,26 +1237,7 @@ function renderSyllabus() {
 }
 
 async function setupSyllabusDropdowns() {
-  const classSel = document.getElementById('syl-classLevel');
-  const secSel = document.getElementById('syl-section');
-  const subSel = document.getElementById('syl-subject');
-  if (!classSel || !secSel || !subSel) return;
-
-  try {
-    const res = await teacherAPI.getAttendanceClasses(teacherId || '');
-    const classes = res.data || [];
-    classSel.innerHTML = '<option value="">Select Class</option>' + 
-      classes.map(c => `<option value="${c.class_level || c}">${c.class_level || c}</option>`).join('');
-
-    const updateSubjects = () => {
-        populateSubjectDropdown(classSel.value, secSel.value, 'syl-subject');
-    };
-
-    classSel.onchange = updateSubjects;
-    secSel.oninput = updateSubjects; // Since it's an input in HTML (Wait, I changed it to select? No, Syllabus is still input for class/section in some cases? Let's check.)
-  } catch (err) {
-    console.error('Failed to setup syllabus dropdowns:', err);
-  }
+  await populateSharedDropdowns('syl');
 }
 
 window.openSyllabusModal = () => {
@@ -1271,7 +1282,10 @@ async function initSummaryTab() {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     const classes = res.data || [];
     sel.innerHTML = '<option value="">-- Select Class --</option>' +
-      classes.map(c => `<option value="${c}">${c}</option>`).join('');
+      classes.map(c => {
+        const val = c.class_level || c;
+        return `<option value="${val}">${val}</option>`;
+      }).join('');
     
     sel.onchange = onSumClassChange;
     
@@ -1445,9 +1459,18 @@ async function initExamTab() {
   
   try {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
-    availableClasses = res.data || [];
+    const rawData = res.data || [];
+    
+    // Normalize and unique classes
+    const classes = [...new Set(rawData.map(c => {
+      if (typeof c === 'object' && c !== null) return String(c.class_level || '');
+      const value = String(c || '').trim();
+      const match = value.match(/^(\d+)/);
+      return match ? match[1] : value;
+    }))].filter(Boolean).sort((a, b) => Number(a) - Number(b));
+
     sel.innerHTML = '<option value="">Select Class</option>' +
-      availableClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+      classes.map(c => `<option value="${c}">${c}</option>`).join('');
     
     document.getElementById('exam-add-subject-btn')?.addEventListener('click', createExamSubjectRow);
     document.getElementById('exam-submit-btn')?.addEventListener('click', submitExamResult);
