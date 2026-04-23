@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels, countStudentsByPhone, isDuplicateStudent, getNonStudentByPhone, getUserById } from './User.js';
+import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels, countStudentsByPhone, isDuplicateStudent, getNonStudentByPhone, getUserById, updateLastLogin } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
@@ -120,6 +120,7 @@ router.post('/login', async (req, res) => {
     }
 
     studentData = await getStudentByUserId(pool, user.id);
+    await updateLastLogin(pool, user.id);
     const token = generateToken(user.id, user.role, user.phone);
 
     res.json({
@@ -252,6 +253,7 @@ router.post('/register', async (req, res) => {
           schoolId: 'school-001',
         });
 
+        await updateLastLogin(client, user.id);
         await client.query('COMMIT');
         const token = generateToken(user.id, user.role, sanitizedPhone);
 
@@ -283,6 +285,7 @@ router.post('/register', async (req, res) => {
       });
 
       if (!username) await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+      await updateLastLogin(pool, user.id);
       const token = generateToken(user.id, user.role, sanitizedPhone);
 
       return res.json({
@@ -308,7 +311,8 @@ router.post('/admin-login', async (req, res) => {
     if (!user || user.role.toLowerCase() !== 'admin') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
-
+    
+    await updateLastLogin(pool, user.id);
     const token = generateToken(user.id, user.role, user.phone);
     res.json({ success: true, token, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {
@@ -324,10 +328,11 @@ router.post('/teacher-login', async (req, res) => {
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
     const user = await getUserByPhoneOrUsername(pool, loginId, true);
-    if (!user || user.role.toLowerCase() !== 'teacher') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
+    if (!user || (user.role.toLowerCase() !== 'teacher' && user.role.toLowerCase() !== 'staff')) return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (user.status !== 'active' || !user.isActive) return res.status(403).json({ error: 'Account not active' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
-
+    
+    await updateLastLogin(pool, user.id);
     const token = generateToken(user.id, user.role, user.phone);
     res.json({ success: true, token, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {

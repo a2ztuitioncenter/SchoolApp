@@ -28,8 +28,8 @@ export const subjectModel = {
     // 3. Get Subjects (Filtered by Class/Section/Teacher)
     async getSubjects({ class_level, section, teacher_id }, db = pool) {
         let query = `
-            SELECT s.id, s.id as subject_id, s.name, s.name as master_name, s.code, 
-                   sa.class_level, sa.section, sa.id as assignment_id,
+            SELECT sa.id, s.id as subject_id, s.name, s.name as master_name, s.code, 
+                   sa.class_level, sa.section,
                    sa.teacher_id, u.name as teacher_name
             FROM subjects s
             JOIN subject_assignments sa ON s.id = sa.subject_id

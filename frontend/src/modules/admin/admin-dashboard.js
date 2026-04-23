@@ -9,9 +9,9 @@ import { escapeAttr as escapeAttrValue, escapeHtml, escapeHtml as escapeMarkup, 
 import './admin-pending-approvals.js';
 import './exam-results.js';
 
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ROUTE PROTECTION - Must be first
-// ═══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 if (!requireRole('admin')) {
     throw new Error('Unauthorized: Admin role required');
 }
@@ -39,7 +39,7 @@ let currentTab = 'dashboard';
 let allHomeworkData = [];
 let allFeesData = [];
 let currentEditHwId = null;
-console.log('🚀 admin-dashboard.js loaded. Global state exposed.');
+console.log('ðŸš€ admin-dashboard.js loaded. Global state exposed.');
 
 // =============================================
 // INIT
@@ -52,7 +52,7 @@ async function initDashboard() {
     const adminPhone = sessionStorage.getItem('adminPhone');
 
     if (!adminId) {
-        console.error('❌ No admin ID found');
+        console.error('âŒ No admin ID found');
         window.location.href = '/';
         return;
     }
@@ -84,13 +84,16 @@ async function initDashboard() {
         dropLogoutBtn.addEventListener('click', window.handleLogout);
     }
 
+    // Load dynamic profile data
+    await updateAdminProfileUI();
+
     // Check backend health before loading dashboard
     showInfoAlert('Checking backend connection...');
     const isBackendReady = await waitForBackend(3, 1000);
 
     if (!isBackendReady) {
         hideInfoAlert();
-        showErrorAlert('❌ Backend server is not responding. Please ensure the backend server is running on port 3000.');
+        showErrorAlert('âŒ Backend server is not responding. Please ensure the backend server is running on port 3000.');
         console.error('Backend not available on localhost:3000');
         return;
     }
@@ -175,11 +178,32 @@ async function initDashboard() {
 
     // Close profile dropdown when clicking outside
     document.addEventListener('click', (e) => {
-        const profileContainer = document.querySelector('.admin-profile-container');
-        const dropdown = document.getElementById('profile-dropdown');
+        const profileContainer = document.querySelector('.admin-profile-menu');
+        const dropdown = document.getElementById('admin-profile-dropdown');
+        const profileBtn = document.getElementById('admin-profile-btn');
+        
         if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
-            dropdown.classList.remove('active');
+            dropdown.classList.remove('open');
+            if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
         }
+    });
+
+    // Handle Category Dropdown clicks
+    document.querySelectorAll('.dropdown-item[data-action]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            const action = e.currentTarget.getAttribute('data-action');
+            console.log(`Action clicked: ${action}`);
+            // Logic for different actions can be added here
+            if (action === 'view-profile' || action === 'edit-profile') {
+                showTab('settings'); // Or specific profile section
+            }
+            if (action === 'audit-logs') {
+                loadAuditLogs();
+            }
+            // Close dropdown after action
+            const dropdown = document.getElementById('admin-profile-dropdown');
+            if (dropdown) dropdown.classList.remove('open');
+        });
     });
 
     // Default tab
@@ -215,7 +239,7 @@ async function initDashboard() {
             await notificationsAPI.create(formData);
             hideInfoAlert();
             closeNoticeModal();
-            showSuccessAlert('✅ Notice sent with attachment!');
+            showSuccessAlert('âœ… Notice sent with attachment!');
             await loadNotifications();
         } catch (err) {
             hideInfoAlert();
@@ -503,25 +527,25 @@ async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
 
-        // ✅ Add timeout wrapper to prevent hanging
+        // âœ… Add timeout wrapper to prevent hanging
         const dashboardTimeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Dashboard load timeout')), 15000)
         );
 
         const loadDataPromise = (async () => {
-            // ✅ Load all data in parallel with proper timeout and error handling
+            // âœ… Load all data in parallel with proper timeout and error handling
             const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
                 adminAPI.getStudents().catch(() => ({ students: [] })),
                 adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
                 adminAPI.getFinancialSummary?.().catch(() => ({})) ?? Promise.resolve({}),
                 adminAPI.getTimetable?.().catch(() => ({ timetable: [] })) ?? Promise.resolve({ timetable: [] }),
-                // ✅ Fetch 30-day trend data with timeout
+                // âœ… Fetch 30-day trend data with timeout
                 fetchTrendDataSafe().catch(() => ({ trends: [], summary: {} })),
-                // ✅ Fetch attendance statistics with timeout
+                // âœ… Fetch attendance statistics with timeout
                 adminAPI.getAttendanceStats?.().catch(() => ({})) ?? Promise.resolve({})
             ]);
 
-            // ✅ Store data with null-safe access
+            // âœ… Store data with null-safe access
             dashboardData.students = studentsRes?.data || [];
             dashboardData.unpaidFees = unpaidFeesRes?.data || [];
             // Extract report from nested structure if it exists
@@ -541,24 +565,24 @@ async function loadDashboardData() {
             dashboardData.latestPayments = latestPayments;
             dashboardData.latestHomework = latestHomework;
 
-            // ✅ Render all sections with individual error handling
-            try { renderQuickStatsKPI(); } catch (e) { console.warn('❌ KPI render error:', e); }
-            try { renderFeesOverviewChart(); } catch (e) { console.warn('❌ Fees overview error:', e); }
-            try { renderGrowthTrendChart(); } catch (e) { console.warn('❌ Growth trend error:', e); }
-            try { renderFeesChart(); } catch (e) { console.warn('❌ Fees chart error:', e); }
-            try { renderClassDistributionLineChart(); } catch (e) { console.warn('❌ Class distribution error:', e); }
-            try { renderTrendChart(); } catch (e) { console.warn('❌ Trend chart error:', e); }
-            try { renderActivityPanel(); } catch (e) { console.warn('❌ Activity panel error:', e); }
-            try { renderUnpaidFeesTable(); } catch (e) { console.warn('❌ Unpaid fees table error:', e); }
-            try { renderRecentStudents(); } catch (e) { console.warn('❌ Recent students error:', e); }
-            try { renderTodayTimetable(); } catch (e) { console.warn('❌ Today timetable error:', e); }
+            // âœ… Render all sections with individual error handling
+            try { renderQuickStatsKPI(); } catch (e) { console.warn('âŒ KPI render error:', e); }
+            try { renderFeesOverviewChart(); } catch (e) { console.warn('âŒ Fees overview error:', e); }
+            try { renderGrowthTrendChart(); } catch (e) { console.warn('âŒ Growth trend error:', e); }
+            try { renderFeesChart(); } catch (e) { console.warn('âŒ Fees chart error:', e); }
+            try { renderClassDistributionLineChart(); } catch (e) { console.warn('âŒ Class distribution error:', e); }
+            try { renderTrendChart(); } catch (e) { console.warn('âŒ Trend chart error:', e); }
+            try { renderActivityPanel(); } catch (e) { console.warn('âŒ Activity panel error:', e); }
+            try { renderUnpaidFeesTable(); } catch (e) { console.warn('âŒ Unpaid fees table error:', e); }
+            try { renderRecentStudents(); } catch (e) { console.warn('âŒ Recent students error:', e); }
+            try { renderTodayTimetable(); } catch (e) { console.warn('âŒ Today timetable error:', e); }
         })();
 
         // Wait for dashboard load with timeout protection
         await Promise.race([loadDataPromise, dashboardTimeout]);
 
         hideInfoAlert();
-        console.log('✅ Dashboard loaded successfully');
+        console.log('âœ… Dashboard loaded successfully');
 
         // Setup auto-refresh: only refresh when this tab is active AND page is visible
         if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
@@ -570,9 +594,9 @@ async function loadDashboardData() {
 
     } catch (err) {
         hideInfoAlert();
-        console.error('❌ Failed to load dashboard data:', err);
+        console.error('âŒ Failed to load dashboard data:', err);
         // Show dashboard anyway with empty data
-        showErrorAlert(`⚠️ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
+        showErrorAlert(`âš ï¸ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
 
         // Attempt to render empty dashboard so user isn't stuck
         try {
@@ -587,7 +611,7 @@ async function loadDashboardData() {
 
 /**
  * Fetch 30-day trend data from backend with timeout
- * ✅ Uses proper apiCall wrapper with token and timeout
+ * âœ… Uses proper apiCall wrapper with token and timeout
  */
 async function fetchTrendDataSafe() {
     try {
@@ -600,7 +624,7 @@ async function fetchTrendDataSafe() {
 
         return await Promise.race([trendPromise, timeoutPromise]);
     } catch (error) {
-        console.warn('⚠️ Failed to fetch trend data:', error.message);
+        console.warn('âš ï¸ Failed to fetch trend data:', error.message);
         // Return empty trends on failure - don't break dashboard
         return { trends: [], summary: {} };
     }
@@ -623,7 +647,7 @@ async function fetchLatestStudents() {
         }
         return [];
     } catch (err) {
-        console.warn('⚠️ Error fetching latest students:', err.message);
+        console.warn('âš ï¸ Error fetching latest students:', err.message);
         return [];
     }
 }
@@ -647,7 +671,7 @@ async function fetchLatestPayments() {
             .sort((a, b) => new Date(b.paidDate || b.createdAt || 0) - new Date(a.paidDate || a.createdAt || 0))
             .slice(0, 3);
     } catch (err) {
-        console.warn('⚠️ Error fetching latest payments:', err.message);
+        console.warn('âš ï¸ Error fetching latest payments:', err.message);
         return [];
     }
 }
@@ -669,7 +693,7 @@ async function fetchLatestHomework() {
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, 3);
     } catch (err) {
-        console.warn('⚠️ Error fetching latest homework:', err.message);
+        console.warn('âš ï¸ Error fetching latest homework:', err.message);
         return [];
     }
 }
@@ -684,7 +708,7 @@ function renderQuickStatsKPI() {
     try {
         const el = id => document.getElementById(id);
 
-        // ✅ Null-safe data access
+        // âœ… Null-safe data access
         const students = dashboardData?.students || [];
         const unpaidFees = dashboardData?.unpaidFees || [];
         const financials = dashboardData?.financialSummary || {};
@@ -723,16 +747,22 @@ function renderQuickStatsKPI() {
         const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
         const attendanceRate = attendanceStats.attendancePercent ? parseFloat(attendanceStats.attendancePercent).toFixed(1) : 0;
 
-        // Helper function to format currency
-        const formatCurrency = (amount) => {
+        // Global Currency Formatter
+        const formatCurrency = (amount, options = {}) => {
             try {
-                return `₹${parseFloat(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                return new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                    minimumFractionDigits: options.showDecimals ? 2 : 0,
+                    maximumFractionDigits: 2,
+                    ...options
+                }).format(amount || 0);
             } catch (e) {
-                return '₹0.00';
+                return '₹0';
             }
         };
 
-        // ✅ Safe DOM updates with null checks
+        // âœ… Safe DOM updates with null checks
         if (el('kpi-total-students')) {
             el('kpi-total-students').textContent = totalStudents || 0;
             if (el('kpi-total-students-detail')) {
@@ -775,9 +805,9 @@ function renderQuickStatsKPI() {
             }
         }
 
-        console.log('✅ Quick Stats rendered successfully');
+        console.log('âœ… Quick Stats rendered successfully');
     } catch (err) {
-        console.error('❌ Error rendering quick stats KPI:', err);
+        console.error('âŒ Error rendering quick stats KPI:', err);
         showErrorAlert('Error rendering KPI cards: ' + err.message);
     }
 }
@@ -858,7 +888,7 @@ function renderFeesChart() {
                     tooltip: {
                         callbacks: {
                             label: function (context) {
-                                return `₹${context.parsed.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+                                return formatCurrency(context.parsed, { maximumFractionDigits: 0 });
                             }
                         }
                     }
@@ -983,7 +1013,7 @@ function renderFeesOverviewChart() {
 
         if (!canvas) return;
 
-        // ✅ Null-safe data access
+        // âœ… Null-safe data access
         const financials = dashboardData?.financialSummary || {};
         const unpaidFees = dashboardData?.unpaidFees || [];
 
@@ -1021,9 +1051,9 @@ function renderFeesOverviewChart() {
                 type: 'doughnut',
                 data: {
                     labels: [
-                        `Collected (₹${(collected / 100000).toFixed(1)}L)`,
-                        `Pending (₹${(pending / 100000).toFixed(1)}L)`,
-                        `Overdue (₹${(overdue / 100000).toFixed(1)}L)`
+                        `Collected (${formatCurrency(collected / 100000, { maximumFractionDigits: 1, style: 'decimal' })}L)`,
+                        `Pending (${formatCurrency(pending / 100000, { maximumFractionDigits: 1, style: 'decimal' })}L)`,
+                        `Overdue (${formatCurrency(overdue / 100000, { maximumFractionDigits: 1, style: 'decimal' })}L)`
                     ],
                     datasets: [{
                         data: [collected, pending, overdue],
@@ -1046,7 +1076,7 @@ function renderFeesOverviewChart() {
                 },
                 plugins: [ChartDataLabels]
             });
-            console.log('✅ Fees overview chart rendered');
+            console.log('âœ… Fees overview chart rendered');
         } catch (chartErr) {
             console.error('Chart rendering error:', chartErr);
             if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
@@ -1066,7 +1096,7 @@ function renderGrowthTrendChart() {
 
         if (!canvas) return;
 
-        // ✅ Null-safe data access
+        // âœ… Null-safe data access
         const students = dashboardData?.students || [];
 
         // Group students by enrollment month
@@ -1170,7 +1200,7 @@ function renderUnpaidFeesTable() {
                 <td data-label="Name">${fee.studentName || '-'}</td>
                 <td data-label="Class">${fee.classLevel || '-'}</td>
                 <td data-label="Section">${fee.section || '-'}</td>
-                <td data-label="Amount">₹${parseFloat(fee.amount || 0).toLocaleString('en-IN')}</td>
+                <td data-label="Amount">${formatCurrency(fee.amount)}</td>
                 <td data-label="Due Date">${new Date(fee.dueDate || fee.due_date).toLocaleDateString('en-IN')}</td>
                 <td data-label="Days Overdue" class="status-${daysOverdue > 0 ? 'danger' : 'warning'}">${overdueText}</td>
                 <td data-label="Contact">${fee.phone || '-'}</td>
@@ -1379,7 +1409,7 @@ function renderTrendChart() {
                         bodyFont: { size: 12 },
                         callbacks: {
                             label: function (context) {
-                                return `₹${context.parsed.y.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+                                return formatCurrency(context.parsed.y, { maximumFractionDigits: 0 });
                             }
                         }
                     }
@@ -1435,7 +1465,7 @@ function renderActivityPanel() {
                 type: 'recent-payment',
                 icon: 'fas fa-money-bill-wave',
                 title: `Payment: ${payment.studentName || 'Unknown'}`,
-                subtitle: `₹${parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+                subtitle: formatCurrency(payment.amount, { maximumFractionDigits: 0 }),
                 time: getRelativeTime(date),
                 link: 'showTab("fees")',
                 timestamp: date.getTime()
@@ -1451,7 +1481,7 @@ function renderActivityPanel() {
                 type: 'recent-homework',
                 icon: 'fas fa-book',
                 title: hw.title || 'New Homework',
-                subtitle: `Class ${hw.classLevel || '-'} • ${hw.subject || '-'}`,
+                subtitle: `Class ${hw.classLevel || '-'} â€¢ ${hw.subject || '-'}`,
                 time: getRelativeTime(date),
                 link: 'showTab("homework")',
                 timestamp: date.getTime()
@@ -1477,7 +1507,7 @@ function renderActivityPanel() {
                     <div class="activity-title">${activity.title}</div>
                     <div class="activity-subtitle">${activity.subtitle}</div>
                     <div class="activity-time">${activity.time}</div>
-                    <a class="activity-link" href="#" onclick="${activity.link}; return false;">View →</a>
+                    <a class="activity-link" href="#" onclick="${activity.link}; return false;">View â†’</a>
                 </div>
             </div>
         `;
@@ -1630,7 +1660,7 @@ function renderUsersTable(users) {
             <td><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${u.status || (u.isActive ? 'active' : 'inactive')}</span></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleUserMenu(event);">⋮</button>
+                    <button class="action-menu-btn" onclick="toggleUserMenu(event);">â‹®</button>
                     <div class="action-menu-dropdown" data-user-id="${u.id}">
                         <button class="action-menu-item" onclick="editUser(${u.id})">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
@@ -1943,14 +1973,14 @@ function renderStudentsTable(students) {
         <tr>
             <td><strong>${s.name}</strong></td>
             <td><code>${s.rollNumber || '-'}</code></td>
-            <td>${s.fatherName || '-'}${s.motherName ? ' · ' + s.motherName : ''}</td>
+            <td>${s.fatherName || '-'}${s.motherName ? ' Â· ' + s.motherName : ''}</td>
             <td>${s.phone || '-'}</td>
             <td>${s.classLevel || '-'}</td>
             <td>${s.section || '-'}</td>
             <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleStudentMenu(event);">⋮</button>
+                    <button class="action-menu-btn" onclick="toggleStudentMenu(event);">â‹®</button>
                     <div class="action-menu-dropdown" data-student-id="${s.id}">
                         <button class="action-menu-item" onclick="openEditStudentModal(${s.id})">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
@@ -2356,7 +2386,7 @@ function renderHomeworkTable(list) {
             <td><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${assignedByName}</span></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
+                    <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">â‹®</button>
                     <div class="action-menu-dropdown" data-hw-id="${hw.id}">
                         <button class="action-menu-item" type="button" data-action="edit" data-hw-id="${hw.id}">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
@@ -2813,13 +2843,13 @@ function renderPaymentHistoryTable(fees) {
         return `
             <tr>
                 <td><strong>${studentName}</strong></td>
-                <td>₹${parseFloat(f.amount || 0).toFixed(2)}</td>
+                <td>${formatCurrency(f.amount, { showDecimals: true })}</td>
                 <td>${f.description || '-'}</td>
                 <td>${dueDate}</td>
                 <td>${paidDate}</td>
                 <td>
                     <span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">
-                        ${f.paid ? '✓ Paid' : '⏳ Pending'}
+                        ${f.paid ? 'âœ“ Paid' : 'â³ Pending'}
                     </span>
                 </td>
             </tr>
@@ -2857,8 +2887,8 @@ async function loadFeeStats() {
         const paidCount = parseInt(s.paidCount || s.paid_count || 0);
         const unpaidCount = parseInt(s.unpaidCount || s.unpaid_count || 0);
         
-        set('fee-stat-collected', `₹${totalCollected.toFixed(2)}`);
-        set('fee-stat-pending', `₹${totalPending.toFixed(2)}`);
+        set('fee-stat-collected', formatCurrency(totalCollected, { showDecimals: true }));
+        set('fee-stat-pending', formatCurrency(totalPending, { showDecimals: true }));
         set('fee-stat-paid-count', paidCount);
         set('fee-stat-unpaid-count', unpaidCount);
     } catch (err) {
@@ -2927,12 +2957,12 @@ function renderFeesTable(fees) {
                 <td><strong>${studentName}</strong></td>
                 <td>${f.classLevel || '-'}</td>
                 <td>${f.section || '-'}</td>
-                <td>₹${parseFloat(f.amount || 0).toFixed(2)}</td>
+                <td>${formatCurrency(f.amount, { showDecimals: true })}</td>
                 <td>${dueDate}</td>
                 <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
                 <td>
                     <div class="action-menu">
-                        <button class="action-menu-btn" onclick="toggleFeeMenu(event);">⋮</button>
+                        <button class="action-menu-btn" onclick="toggleFeeMenu(event);">â‹®</button>
                         <div class="action-menu-dropdown" data-fee-id="${f.id}">
                             <button class="action-menu-item" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
                                 <i class="fas fa-${f.paid ? 'times-circle' : 'check-circle'}" style="width: 16px;"></i> ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
@@ -3053,7 +3083,7 @@ window.saveFee = async function () {
         
         if (res.data) {
             hideInfoAlert();
-            showSuccessAlert('✓ Fee added successfully');
+            showSuccessAlert('âœ“ Fee added successfully');
             
             if (addAnother) {
                 // Keep modal open, reset form (keep student)
@@ -3140,7 +3170,7 @@ window.confirmMarkPaid = async function() {
         const res = await feesAPI.markPaid(feeId);
         if (res.data) {
             hideInfoAlert();
-            showSuccessAlert('✓ Fee marked as paid');
+            showSuccessAlert('âœ“ Fee marked as paid');
             
             // Optimistically remove from active list
             allFeesData = allFeesData.filter(f => f.id !== feeId);
@@ -3286,7 +3316,7 @@ function renderMaterialsTable() {
             <td><small style="color: var(--text-muted);">${formatDate(m.created_at || m.createdAt)}</small></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
+                    <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">â‹®</button>
                     <div class="action-menu-dropdown" data-material-id="${m.id}">
                         <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
                             <i class="fas fa-download" style="width: 16px;"></i> Download
@@ -4092,7 +4122,7 @@ function setupForms() {
             const res = await adminAPI.addStudent(payload);
             if (res.success) {
                 hideInfoAlert();
-                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`);
+                showSuccessAlert(`âœ… Student added successfully! Roll Number: ${res.student.rollNumber}`);
                 closeAddStudentModal();
                 e.target.reset();
                 await loadStudents();
@@ -4185,7 +4215,7 @@ async function loadNotifications() {
         tbody.innerHTML = items.map(n => {
             const date = new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
             const recipient = n.classLevel
-                ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
+                ? `Class ${n.classLevel}${n.recipientRole ? ' Â· ' + n.recipientRole : ''}`
                 : (n.recipientRole || 'All Users');
             const fileHtml = n.attachmentUrl
                 ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>`
@@ -4235,7 +4265,7 @@ window.closeNoticeModal = function () {
 window.deleteNotification = async function (id) {
     if (!confirm('Delete this notification?')) return;
     try {
-        // The notifications controller doesn't have a DELETE — call the API directly
+        // The notifications controller doesn't have a DELETE â€” call the API directly
         await notificationsAPI.delete(id);
         showSuccessAlert('Notification deleted');
         await loadNotifications();
@@ -4568,3 +4598,74 @@ window.toggleUserActionMenu = function (event, id) {
     }
     dropdown?.classList.add('open');
 };
+
+/**
+ * Fetches and updates the admin profile UI in the header/dropdown
+ */
+async function updateAdminProfileUI() {
+    try {
+        const response = await adminAPI.getProfile();
+        if (response.success && response.data) {
+            const data = response.data;
+            
+            // Update names
+            document.querySelectorAll('#admin-name, #dropdown-admin-name').forEach(el => el.textContent = data.name);
+            
+            // Update emails
+            document.querySelectorAll('#dropdown-admin-email').forEach(el => el.textContent = data.email || data.phone);
+            
+            // Update designation
+            const designationEl = document.getElementById('dropdown-admin-designation');
+            if (designationEl) {
+                designationEl.textContent = data.designation || (data.organization_name ? `Admin • ${data.organization_name}` : 'Super Admin');
+            }
+            
+            // Update avatars
+            const initialLarge = document.getElementById('dropdown-admin-avatar-initial-large');
+            const initialSmall = document.getElementById('admin-avatar-initial');
+            const initial = data.name ? data.name.charAt(0).toUpperCase() : 'A';
+            if (initialLarge) initialLarge.textContent = initial;
+            if (initialSmall) initialSmall.textContent = initial;
+            
+            const avatarImg = document.getElementById('dropdown-admin-avatar-img');
+            if (avatarImg && data.avatar_url) {
+                avatarImg.src = data.avatar_url;
+                avatarImg.style.display = 'block';
+                if (initialLarge) initialLarge.style.display = 'none';
+            }
+            
+            // Update last login
+            const lastLoginEl = document.getElementById('dropdown-admin-last-login');
+            if (lastLoginEl && data.last_login_at) {
+                const date = new Date(data.last_login_at);
+                const options = { weekday: 'short', hour: '2-digit', minute: '2-digit' };
+                const formattedDate = date.toLocaleDateString(undefined, options);
+                lastLoginEl.textContent = `Last login: ${formattedDate}`;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to update admin profile UI:', err);
+    }
+}
+
+/**
+ * Loads and displays audit logs in a modal or dedicated section
+ */
+async function loadAuditLogs() {
+    if (typeof showInfoAlert === 'function') showInfoAlert('Fetching audit logs...');
+    try {
+        const response = await adminAPI.getAuditLogs();
+        if (response.success && response.data) {
+            console.table(response.data);
+            if (typeof showInfoAlert === 'function') {
+                showInfoAlert(`Loaded ${response.data.length} audit logs. (Check console)`);
+                setTimeout(hideInfoAlert, 2000);
+            }
+        } else {
+            if (typeof showErrorAlert === 'function') showErrorAlert('Failed to load audit logs');
+        }
+    } catch (err) {
+        if (typeof showErrorAlert === 'function') showErrorAlert('Error fetching audit logs');
+    }
+}
+ 

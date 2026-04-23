@@ -93,7 +93,7 @@ app.use('/api/auth', authRoutes); // Auth routes are public for login/register
 // Protected routes - Require authentication
 app.use('/api/student', authenticate, studentRoutes);
 app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
-app.use('/api/teacher', authenticate, authorize('teacher'), teacherRoutes);
+app.use('/api/teacher', authenticate, authorize(['teacher', 'staff']), teacherRoutes);
 
 // Admin Module Routes (from verification requirements)
 app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);

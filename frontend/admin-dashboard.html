@@ -159,16 +159,51 @@
                     </button>
 
                     <div id="admin-profile-dropdown" class="profile-dropdown">
-                        <div class="dropdown-header">
-                            <div class="user-name" id="dropdown-admin-name">Administrator</div>
-                            <div class="user-email" id="dropdown-admin-email">admin@a2z.local</div>
+                        <div class="dropdown-header-premium">
+                            <div class="dropdown-profile-info">
+                                <div class="avatar-large">
+                                    <img id="dropdown-admin-avatar-img" src="" alt="" style="display:none;">
+                                    <span id="dropdown-admin-avatar-initial-large">A</span>
+                                </div>
+                                <div class="profile-text">
+                                    <div class="user-name" id="dropdown-admin-name">Administrator</div>
+                                    <div class="user-designation" id="dropdown-admin-designation">Super Admin • ABC School</div>
+                                    <div class="user-email" id="dropdown-admin-email">admin@a2z.local</div>
+                                </div>
+                            </div>
+                            <div class="status-indicator-bar">
+                                <span class="status-dot online"></span>
+                                <span class="status-text">Online</span>
+                                <span class="last-login" id="dropdown-admin-last-login">Last login: Today, 10:42 AM</span>
+                            </div>
                         </div>
                         <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> View Profile</a>
-                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Settings</a>
+                        <div class="dropdown-section">
+                            <a href="#" class="dropdown-item" data-action="view-profile"><i class="fas fa-user-circle"></i> View Profile</a>
+                            <a href="#" class="dropdown-item" data-action="edit-profile"><i class="fas fa-user-edit"></i> Edit Profile</a>
+                            <a href="#" class="dropdown-item" data-action="change-password"><i class="fas fa-key"></i> Change Password</a>
+                        </div>
                         <div class="dropdown-divider"></div>
-                        <button id="dropdown-logout-btn" class="dropdown-item text-danger"><i
-                                class="fas fa-sign-out-alt"></i> Logout</button>
+                        <div class="dropdown-section">
+                            <a href="#" class="dropdown-item" data-action="account-settings"><i class="fas fa-sliders-h"></i> Account Settings</a>
+                            <a href="#" class="dropdown-item" data-action="org-settings"><i class="fas fa-university"></i> Organization Settings</a>
+                            <a href="#" class="dropdown-item" data-action="notifications"><i class="fas fa-bell"></i> Notifications</a>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-section">
+                            <a href="#" class="dropdown-item" data-action="roles-permissions"><i class="fas fa-shield-alt"></i> Role & Permissions</a>
+                            <a href="#" class="dropdown-item" data-action="audit-logs"><i class="fas fa-list-alt"></i> Audit Logs</a>
+                            <a href="#" class="dropdown-item" data-action="user-management"><i class="fas fa-users-cog"></i> User Management</a>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-section">
+                            <a href="#" class="dropdown-item" data-action="help"><i class="fas fa-question-circle"></i> Help & Support</a>
+                            <a href="#" class="dropdown-item" data-action="docs"><i class="fas fa-book"></i> Documentation</a>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <button id="dropdown-logout-btn" class="dropdown-item text-danger logout-btn-premium">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
                     </div>
                 </div>
             </div>

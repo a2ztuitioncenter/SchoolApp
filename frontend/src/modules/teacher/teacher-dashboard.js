@@ -353,6 +353,37 @@ async function loadDashboard() {
       setText('stat-homework', dashRes.homework?.length ?? 0);
       allTimetable = dashRes.timetable || [];
       allHomework = dashRes.homework || [];
+
+      // Update Profile Information
+      const teacher = dashRes.teacher;
+      if (teacher) {
+        const ddName = document.getElementById('dropdown-teacher-name');
+        if (ddName) ddName.textContent = teacher.name || getUserName() || 'Teacher';
+        
+        const ddId = document.getElementById('dropdown-teacher-id');
+        if (ddId) ddId.textContent = `ID: ${teacher.teacherId || 'N/A'}`;
+        
+        const ddEmail = document.getElementById('dropdown-teacher-email');
+        if (ddEmail) ddEmail.textContent = teacher.email || 'No email';
+        
+        const ddPhone = document.getElementById('dropdown-teacher-phone');
+        if (ddPhone) ddPhone.textContent = `+91 ${teacher.phone || 'N/A'}`;
+
+        const initialEl = document.getElementById('teacher-avatar-initial');
+        if (initialEl && teacher.name) initialEl.textContent = teacher.name.charAt(0).toUpperCase();
+      }
+
+      // Update Assigned Classes in Dropdown
+      const classListEl = document.getElementById('dropdown-teacher-classes');
+      if (classListEl && dashRes.classes) {
+        if (dashRes.classes.length === 0) {
+          classListEl.innerHTML = '<span style="font-size: 0.75rem; color: var(--text-muted);">None assigned</span>';
+        } else {
+          classListEl.innerHTML = dashRes.classes.map(c => 
+            `<span class="status-badge" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(0, 82, 204, 0.1); color: var(--accent-blue);">Class ${c.classLevel}</span>`
+          ).join('');
+        }
+      }
     }
 
     if (matRes.success) {

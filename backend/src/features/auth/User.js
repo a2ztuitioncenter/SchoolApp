@@ -39,7 +39,10 @@ const MAP_USER = (u) => {
         approvedBy: u.approved_by,
         rejectionReason: u.rejection_reason,
         username: u.username,
-        statusUpdatedAt: u.status_updated_at
+        statusUpdatedAt: u.status_updated_at,
+        avatarUrl: u.avatar_url,
+        lastLoginAt: u.last_login_at,
+        designation: u.designation
     };
 };
 
@@ -48,6 +51,10 @@ export const getUserByPhone = async (pool, phone, includePassword = false) => {
   const user = MAP_USER(result.rows[0]);
   if (user && includePassword) user.password = result.rows[0].password;
   return user;
+};
+
+export const updateLastLogin = async (pool, userId) => {
+  await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [userId]);
 };
 export const getUsersByPhone = async (pool, phone) => {
   const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);

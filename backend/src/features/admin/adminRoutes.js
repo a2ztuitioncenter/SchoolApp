@@ -24,11 +24,11 @@ router.get('/users', async (req, res) => {
                     ) FILTER (WHERE tca.class_level IS NOT NULL),
                     '[]'::jsonb
                 ) AS classes_assigned
-             FROM users u
-             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
-             WHERE u.role IN ($1, $2)
-             GROUP BY u.id
-             ORDER BY u.created_at DESC`,
+            FROM users u
+            LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
+            WHERE u.role IN ($1, $2)
+            GROUP BY u.id
+            ORDER BY u.created_at DESC`,
             ['teacher', 'staff']
         );
 
@@ -500,6 +500,78 @@ router.get('/teachers-by-class', async (req, res) => {
     } catch (err) {
         console.error('Fetch teachers by class error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch teachers' });
+    }
+});
+
+
+// ============================================================
+// PROFILE & ORGANIZATION MODULE
+// ============================================================
+
+router.get('/profile', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            `SELECT u.id, u.name, u.email, u.phone, u.role, u.avatar_url, u.last_login_at, u.designation,
+                    o.name as organization_name, o.logo_url as organization_logo
+             FROM users u
+             CROSS JOIN organizations o
+             WHERE u.id = $1
+             LIMIT 1`,
+            [req.user.userId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Profile not found' });
+        }
+        
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Fetch profile error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch profile' });
+    }
+});
+
+router.put('/profile', async (req, res) => {
+    const { name, email, avatar_url, designation } = req.body;
+    try {
+        const result = await req.db.query(
+            `UPDATE users 
+             SET name = COALESCE($2, name), 
+                 email = COALESCE($3, email), 
+                 avatar_url = COALESCE($4, avatar_url),
+                 designation = COALESCE($5, designation)
+             WHERE id = $1 RETURNING *`,
+            [req.user.userId, name, email, avatar_url, designation]
+        );
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Update profile error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update profile' });
+    }
+});
+
+router.get('/organization', async (req, res) => {
+    try {
+        const result = await req.db.query('SELECT * FROM organizations LIMIT 1');
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Fetch organization error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch organization' });
+    }
+});
+
+router.get('/audit-logs', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            `SELECT a.*, u.name as admin_name 
+             FROM audit_logs a
+             JOIN users u ON a.user_id = u.id
+             ORDER BY a.created_at DESC LIMIT 50`
+        );
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Fetch audit logs error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch audit logs' });
     }
 });
 

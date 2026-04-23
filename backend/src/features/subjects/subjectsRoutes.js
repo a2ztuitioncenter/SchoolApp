@@ -94,9 +94,10 @@ router.get('/teacher', async (req, res) => {
 // 6. Assign Subject to Class/Section/Teacher (Admin or Permitted Teacher)
 router.post('/assign', async (req, res) => {
     try {
-        const { subject_id, classLevel, section, teacher_id } = req.body;
+        const { subject_id, classLevel, class_level, section, teacher_id } = req.body;
+        const actualClassLevel = classLevel || class_level;
         
-        if (!subject_id || !classLevel || !teacher_id) {
+        if (!subject_id || !actualClassLevel || !teacher_id) {
             return res.status(400).json({ success: false, error: 'Subject, class, and teacher are required' });
         }
 
@@ -113,7 +114,7 @@ router.post('/assign', async (req, res) => {
 
         const assignment = await subjectModel.assignSubject({
             subject_id,
-            class_level: classLevel,
+            class_level: actualClassLevel,
             section,
             teacher_id,
             assigned_by: authenticatedUser.userId

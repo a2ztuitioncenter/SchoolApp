@@ -286,7 +286,7 @@ async function handleTeacherLoginModal(e) {
     try {
         const response = await window.authAPI.teacherLogin(identifier, password);
         
-        if (response.success && response.user.role === 'teacher') {
+        if (response.success && (response.user.role === 'teacher' || response.user.role === 'staff')) {
             window.setAuth({
                 isLoggedIn: true,
                 role: 'teacher',

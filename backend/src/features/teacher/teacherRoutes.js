@@ -39,7 +39,7 @@ const uploadMaterial = multer({ storage: makeStorage('materials'), fileFilter, l
 // ============================================
 async function requireTeacher(req, suppliedTeacherId = null) {
   const authenticatedTeacherId = parseInt(req.user?.userId, 10);
-  const requestedTeacherId = suppliedTeacherId === null || suppliedTeacherId === undefined || suppliedTeacherId === ''
+  const requestedTeacherId = (suppliedTeacherId === null || suppliedTeacherId === undefined || suppliedTeacherId === '' || suppliedTeacherId === 'me')
     ? authenticatedTeacherId
     : parseInt(suppliedTeacherId, 10);
 
@@ -47,12 +47,14 @@ async function requireTeacher(req, suppliedTeacherId = null) {
     return null;
   }
 
+
   if (authenticatedTeacherId !== requestedTeacherId) {
     return null;
   }
 
   const teacher = await getUserById(req.db, authenticatedTeacherId);
-  return (teacher && teacher.role === 'teacher') ? teacher : null;
+  // Allow both 'teacher' and 'staff' roles to access teacher dashboard if they have assignments
+  return (teacher && (teacher.role === 'teacher' || teacher.role === 'staff')) ? teacher : null;
 }
 
 // Check if teacher is assigned to teach a class
@@ -87,9 +89,13 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     const { teacherId } = req.params;
     const pool = req.db;
     const parsedTeacherId = parseInt(req.user.userId, 10);
+    console.log(`[DEBUG] Teacher Dashboard Request: teacherId=${teacherId}, authenticatedUserId=${req.user.userId}, parsedTeacherId=${parsedTeacherId}`);
 
     const teacher = await requireTeacher(req, teacherId);
-    if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized: Not a teacher' });
+    if (!teacher) {
+      console.warn(`[DEBUG] Authorization failed for teacherId=${teacherId}`);
+      return res.status(403).json({ success: false, error: 'Unauthorized access to teacher data' });
+    }
 
     // 1. Get Assigned Classes from both tables
     const [subAssignRes, tcaAssignRes] = await Promise.all([
@@ -130,10 +136,10 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       ),
       pool.query(
           `SELECT COUNT(id) AS total_students FROM students 
-             WHERE class_level || section IN (
-               SELECT class_level || section FROM subject_assignments WHERE teacher_id = $1
+             WHERE (class_level, section) IN (
+               SELECT class_level, section FROM subject_assignments WHERE teacher_id = $1
                UNION
-               SELECT class_level || section FROM teacher_class_assignment WHERE teacher_id = $1
+               SELECT class_level, section FROM teacher_class_assignment WHERE teacher_id = $1
              )
              OR class_level IN (
                SELECT class_level FROM subject_assignments WHERE teacher_id = $1 AND (section IS NULL OR section = 'ALL')
@@ -141,12 +147,19 @@ router.get('/dashboard/:teacherId', async (req, res) => {
                SELECT class_level FROM teacher_class_assignment WHERE teacher_id = $1 AND (section IS NULL OR section = 'ALL')
              )`,
           [parsedTeacherId]
-        )
+      )
     ]);
 
     res.json({
       success: true,
-      teacher: { id: teacher.id, phone: teacher.phone, role: teacher.role },
+      teacher: { 
+        id: teacher.id, 
+        phone: teacher.phone, 
+        role: teacher.role,
+        name: teacher.name,
+        email: teacher.email,
+        teacherId: teacher.teacherId
+      },
       stats: {
         totalHomework: hwRes.rows.length,
         totalClasses: classes.length,

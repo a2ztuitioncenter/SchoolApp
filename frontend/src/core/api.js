@@ -251,6 +251,12 @@ export const adminAPI = {
   getClasses: () => apiCall('/admin/classes', { method: 'GET' }),
   getSections: (classLevel) => apiCall(`/admin/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
   getTeachersByClass: (classLevel, section) => apiCall(`/admin/teachers-by-class?classLevel=${encodeURIComponent(classLevel)}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
+  
+  // Profile & Settings
+  getProfile: () => apiCall('/admin/profile', { method: 'GET' }),
+  updateProfile: (data) => apiCall('/admin/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  getOrganization: () => apiCall('/admin/organization', { method: 'GET' }),
+  getAuditLogs: () => apiCall('/admin/audit-logs', { method: 'GET' }),
 };
 
 export {
