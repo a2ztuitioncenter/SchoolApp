@@ -10,28 +10,20 @@
 .env.production.local
 .myenv
 .myenv.local
-backend/scratch/*
 .myenv.*.local
-backend/seed.js
-# But DO commit example files for developers
-!.env.example
-!.env.production.example
-!.env.development.example
+drive key.json
+*.json.bak
+*.json.old
 
 # ============================================================================
 # DEPENDENCIES & LOCK FILES
 # ============================================================================
 node_modules/
 */node_modules/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-bun.lockb
-bun.lock
-npm-shrinkwrap.json
-.npm/
-.yarn/
-.pnpm-store/
+# Keep lock files for consistency
+# package-lock.json
+# bun.lockb
+# bun.lock
 
 # ============================================================================
 # BUILD & DISTRIBUTION OUTPUT
@@ -43,9 +35,8 @@ out/
 .vercel
 *.tsbuildinfo
 .turbo/
-.turbo
 .cache/
-.eslintcache/
+graphify-out/
 
 # ============================================================================
 # LOGS & DEBUG OUTPUT
@@ -58,13 +49,11 @@ pnpm-debug.log*
 lerna-debug.log*
 debug.log
 server_out.txt
-lerna-lerna.log
 *.log.*
 
 # ============================================================================
 # OPERATING SYSTEM FILES
 # ============================================================================
-# macOS
 .DS_Store
 .AppleDouble
 .AppleDB
@@ -72,204 +61,51 @@ lerna-lerna.log
 .Spotlight-V100
 .Trashes
 ._*
-.Thumbs.db
-
-# Windows
 Thumbs.db
 Desktop.ini
 ehthumbs.db
-*.exe
-*.msi
-*.lnk
-Zone.identifier
-
-# Linux
-.directory
 
 # ============================================================================
 # IDE & EDITOR FILES
 # ============================================================================
-# VS Code
 .vscode/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json.example
-
-# JetBrains
 .idea/
-.idea_modules/
-*.iml
-*.iws
-*.ipr
-*.iml
-
-# Sublime Text
+.cursor/
+.gemini/
+.agent/
+.agents/
+.claude/
 *.sublime-workspace
 *.sublime-project
-
-# Vim
 *.swp
 *.swo
 *~
-.vim/
-
-# Emacs
-*~
-\#*\#
-.\#*
-
-# Other editors
-.project
-.classpath
-.c9/
-.vs/
-*.DS_Store
 
 # ============================================================================
-# PYTHON VIRTUAL ENVIRONMENTS
-# ============================================================================
-.venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-__pycache__/
-*.py[cod]
-*$py.class
-
-# ============================================================================
-# TESTING & CODE COVERAGE
-# ============================================================================
-coverage/
-.nyc_output/
-*.lcov
-.nyc_report/
-.mocha
-__tests__/coverage
-
-# ============================================================================
-# DEVELOPMENT ARTIFACTS
-# ============================================================================
-# Temporary/debug files
-tmp/
-temp/
-temporary/
-test-connection.js
-tmp_*.json
-tmp_*.ts
-tmp_*.js
-tmp_hw.json
-tmp_test_conn.ts
-*.tmp
-*.temp
-*.old
-*_backup
-*_old
-*.bak
-*.backup
-
-# ============================================================================
-# DATABASE BACKUPS
-# ============================================================================
-*.sql
-!schema.sql
-!*.example.sql
-*.sql.bak
-*.sql.backup
-*.dump
-*.backup.sql
-postgres_backup/
-db_backup/
-database_backup/
-
-# ============================================================================
-# AGENT & DEVELOPMENT TOOLS
-# ============================================================================
-.agents/
-.copilot/
-.copilot-instructions
-.instructions.md
-.prompt.md
-.agent.md
-skills-lock.json
-.gemini/
-.antigravityignore
-
-# ============================================================================
-# RUNTIME & PROCESS FILES
-# ============================================================================
-.husky/
-.git-hooks/
-.pids
-*.pid
-*.seed
-*.pid.lock
-
-# ============================================================================
-# UPLOAD DIRECTORIES - Keep structure, ignore contents
+# PROJECT SPECIFIC
 # ============================================================================
 uploads/
 backend/uploads/
+backend/scratch/
+backend/migrations/backup/
 frontend/uploads/
-# Keep .gitkeep files to maintain directory structure
-!uploads/.gitkeep
-!uploads/homework/.gitkeep
-!uploads/materials/.gitkeep
-!uploads/notifications/.gitkeep
-!backend/uploads/.gitkeep
-!backend/uploads/homework/.gitkeep
-!backend/uploads/materials/.gitkeep
-!backend/uploads/notifications/.gitkeep
-frontend/uploads/*
-!frontend/uploads/.gitkeep
+init-db.js.old
 
 # ============================================================================
-# CACHE DIRECTORIES
+# AGENT PLANNING & STATE
 # ============================================================================
-.cache/
-.eslintcache/
-.next/cache/
-.tsc-cache/
-eslint-cache/
-jest_cache/
-.parcel-cache/
+# Ignore state and roadmap if you want them local-only, 
+# but often good to track CORE docs.
+# For now, let's keep CORE docs tracked and ignore caches.
+.planning/graphs/
+.planning/STATE.md
+.planning/config.json
 
 # ============================================================================
-# DEPENDENCY MANAGER SPECIFIC
+# SECURITY & DEFAULT HIDDEN
 # ============================================================================
-.npm-cache/
-.yarn-cache/
-.pnpm-workspace.yaml.local
-
-# ============================================================================
-# VERCEL/DEPLOYMENT SPECIFIC
-# ============================================================================
-.vercel/
-.vercel_build/
-
-# ============================================================================
-# SECURITY - Hide all hidden files by default
-# ============================================================================
-.*
-
-# BUT KEEP these important files
-!.gitignore
-!.gitattributes
-!.env.example
-!.env.production.example
-!.env.development.example
-!.github/
-!.husky/
-!.vscode/
-!.editorconfig
-
-# ============================================================================
-# MISC ARTIFACTS
-# ============================================================================
-.#*
-*.swp
-*.swo
-*~
-.LSOverride
-bump-version.js
+# Optional: Hide all hidden files by default
+# .*
+# !.gitignore
+# !.github/
+# !.planning/
