@@ -44,6 +44,9 @@ try {
   const client = await pool.connect();
   console.log('PostgreSQL Database connected successfully');
   client.release();
+
+  // Initialize and Seed Database
+  await initializeDatabase();
 } catch (error) {
   console.error('PostgreSQL connection error:', error.message);
   console.error('Ensure PostgreSQL is running and your .env file is configured correctly.');
@@ -104,6 +107,28 @@ app.use('/api/admin/notifications', authenticate, authorize('admin'), notificati
 app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
 app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users
 app.use('/api/subjects', authenticate, subjectsRoutes); // Combined RBAC internally
+
+// PUBLIC content route (no auth required — for landing page)
+const PUBLIC_CONTENT_KEYS = ['programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms', 'help', 'documentation'];
+app.get('/api/public/content/:key', async (req, res) => {
+  const { key } = req.params;
+  if (!PUBLIC_CONTENT_KEYS.includes(key)) {
+    return res.status(400).json({ success: false, error: 'Invalid content key' });
+  }
+  try {
+    const result = await pool.query(
+      'SELECT key, content, updated_at FROM content_pages WHERE key = $1',
+      [key]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Content not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Public content fetch error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch content' });
+  }
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

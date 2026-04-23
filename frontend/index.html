@@ -21,10 +21,10 @@
             </div>
             <nav class="erp-nav-desktop">
                 <ul>
-                    <li><a href="#programs">Programs</a></li>
-                    <li><a href="#resources">Resources</a></li>
-                    <li><a href="#contact">Contact Us</a></li>
-                    <li><a href="#privacy">Privacy</a></li>
+                    <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
+                    <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
+                    <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
+                    <li><a href="javascript:showLandingContent('privacy','Privacy Policy',event)">Privacy</a></li>
                 </ul>
             </nav>
             <div class="erp-header-auth">
@@ -37,9 +37,9 @@
         </div>
         <div class="erp-mobile-nav">
             <ul>
-                <li><a href="#programs">Programs</a></li>
-                <li><a href="#resources">Resources</a></li>
-                <li><a href="#contact">Contact Us</a></li>
+                <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
+                <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
+                <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
                 <li><a href="#" onclick="openAuthLoginSelector(event)">Log in</a></li>
                 <li><a href="#" onclick="openAuthSignupSelector(event)">Sign up</a></li>
             </ul>
@@ -57,7 +57,7 @@
                     <button class="erp-btn erp-btn-primary erp-btn-large" id="btn-get-started-hero" onclick="openAuthLoginSelector(event)">
                         Get Started <i class="fa fa-arrow-right"></i>
                     </button>
-                    <a href="#modules" class="erp-btn erp-btn-outline erp-btn-large">Learn More</a>
+                    <a href="#" class="erp-btn erp-btn-outline erp-btn-large" onclick="showLandingContent('learn-more','About A2Z Tuition',event)">Learn More</a>
                 </div>
             </div>
         </section>
@@ -493,22 +493,22 @@
                 <div class="erp-footer-col">
                     <h4>Platform</h4>
                     <ul>
-                        <li><a href="#programs">Programs</a></li>
-                        <li><a href="#resources">Resources</a></li>
+                        <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
+                        <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
                     </ul>
                 </div>
                 <div class="erp-footer-col">
                     <h4>Company</h4>
                     <ul>
-                        <li><a href="#about">About Us</a></li>
-                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="javascript:showLandingContent('learn-more','About A2Z Tuition',event)">About Us</a></li>
+                        <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact</a></li>
                     </ul>
                 </div>
                 <div class="erp-footer-col">
                     <h4>Legal</h4>
                     <ul>
-                        <li><a href="#privacy">Privacy Policy</a></li>
-                        <li><a href="#terms">Terms of Service</a></li>
+                        <li><a href="javascript:showLandingContent('privacy','Privacy Policy',event)">Privacy Policy</a></li>
+                        <li><a href="javascript:showLandingContent('terms','Terms of Service',event)">Terms of Service</a></li>
                     </ul>
                 </div>
             </div>
@@ -561,6 +561,62 @@
     <script type="module" src="./src/core/auth-modal.js"></script>
     <script type="module" src="./src/core/unified-register.js"></script>
     <script type="module" src="./src/core/index.js"></script>
-</body>
+
+    <!-- Landing Page Content Modal -->
+    <div id="landing-content-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeLandingContent()">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #e5e7eb;">
+                <h2 id="lc-title" style="margin:0;font-size:1.1rem;font-weight:700;color:#111827;"></h2>
+                <button onclick="closeLandingContent()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+            </div>
+            <div id="lc-body" style="overflow-y:auto;padding:1.5rem 2rem;flex:1;line-height:1.7;color:#374151;font-size:0.95rem;"></div>
+            <div style="padding:1rem 1.5rem;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+                <small id="lc-ts" style="color:#9ca3af;font-size:0.75rem;"></small>
+                <button onclick="closeLandingContent()" style="padding:0.5rem 1.25rem;background:#f3f4f6;border:none;border-radius:8px;cursor:pointer;font-weight:500;color:#374151;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      const _lcBaseUrl = (function() {
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        return isLocal ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
+      })();
+
+      window.showLandingContent = async function(key, title, event) {
+        if (event) { event.preventDefault(); }
+        const modal = document.getElementById('landing-content-modal');
+        const body = document.getElementById('lc-body');
+        const titleEl = document.getElementById('lc-title');
+        const ts = document.getElementById('lc-ts');
+        if (!modal) return;
+        titleEl.textContent = title;
+        body.innerHTML = '<div style="text-align:center;padding:2rem;color:#9ca3af;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><p style="margin-top:0.75rem;font-size:0.9rem;">Loading...</p></div>';
+        ts.textContent = '';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        try {
+          const res = await fetch(`${_lcBaseUrl}/api/public/content/${key}`);
+          const data = await res.json();
+          if (data.success && data.data && data.data.content.trim()) {
+            body.innerHTML = data.data.content;
+            ts.textContent = 'Last updated: ' + new Date(data.data.updated_at).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+          } else {
+            body.innerHTML = '<p style="color:#9ca3af;text-align:center;">No content available for this page yet.</p>';
+          }
+        } catch(e) {
+          body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load content. Please try again.</p>';
+        }
+      };
+
+      window.closeLandingContent = function() {
+        const modal = document.getElementById('landing-content-modal');
+        if (modal) modal.style.display = 'none';
+        document.body.style.overflow = '';
+      };
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') window.closeLandingContent?.();
+      });
+    </script></body>
 
 </html>

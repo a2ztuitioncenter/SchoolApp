@@ -9,16 +9,15 @@ import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitize
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is required');
-}
 const JWT_EXPIRY = '24h';
 
 const generateToken = (userId, role, phone) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is required but not found in process.env');
+  }
   return jwt.sign(
     { userId, role, phone, iat: Math.floor(Date.now() / 1000) },
-    JWT_SECRET,
+    process.env.JWT_SECRET,
     { expiresIn: JWT_EXPIRY }
   );
 };
@@ -422,6 +421,43 @@ router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, 
     console.error('Error fetching class levels:', error);
     res.status(500).json({ error: 'Server error fetching class levels' });
   }
+});
+
+router.post('/change-password', authenticate, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const pool = req.db;
+    try {
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
+        }
+
+        // Fetch user with password
+        const userResult = await pool.query('SELECT password FROM users WHERE id = $1', [req.user.userId]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const user = userResult.rows[0];
+
+        // Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, error: 'Incorrect current password' });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        // Update password
+        await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.userId]);
+
+        console.log(`[AUTH] User ${req.user.userId} changed their password`);
+
+        res.json({ success: true, message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ success: false, error: 'Server error changing password' });
+    }
 });
 
 export default router;

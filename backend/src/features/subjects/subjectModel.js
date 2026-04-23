@@ -102,10 +102,14 @@ export const subjectModel = {
         return res.rows[0];
     },
 
-    // 8. Check teacher permission (using existing teacher_class_assignment table)
+    // 8. Check teacher permission (using both tables for safety)
     async checkTeacherPermission(teacher_id, class_level, db = pool) {
         const query = `
-            SELECT 1 FROM teacher_class_assignment 
+            SELECT 1 FROM (
+                SELECT teacher_id, class_level FROM teacher_class_assignment
+                UNION
+                SELECT teacher_id, class_level FROM subject_assignments
+            ) AS combined_assignments
             WHERE teacher_id = $1 AND class_level = $2
             LIMIT 1
         `;

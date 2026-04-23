@@ -598,10 +598,47 @@ textarea:focus {
   width: 90%;
   max-width: 420px;
   border-radius: 20px;
-  border: 1px solid var(--border-color);
-  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  overflow: visible; /* Changed from hidden to allow editor dropdowns */
   animation: slideUp 0.3s ease-out;
   margin: auto;
+  position: relative;
+}
+
+/* Quill Rich Text Editor Customizations */
+.ql-toolbar.ql-snow {
+  border-color: var(--border-subtle) !important;
+  background-color: var(--bg-hover);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.ql-container.ql-snow {
+  border-color: var(--border-subtle) !important;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.95rem !important;
+}
+
+.ql-snow .ql-stroke {
+  stroke: var(--text-main) !important;
+}
+
+.ql-snow .ql-fill {
+  fill: var(--text-main) !important;
+}
+
+.ql-snow .ql-picker {
+  color: var(--text-main) !important;
+}
+
+.ql-snow .ql-picker-options {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+  border-radius: 8px !important;
+  z-index: 2100 !important; /* Above modal */
 }
 
 @keyframes slideUp {
@@ -4740,4 +4777,57 @@ textarea:focus {
         height: 36px;
         font-size: 0.8rem;
     }
+}
+
+/* Documentation Styles */
+.documentation-body h3 {
+    font-size: 1rem;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.documentation-body ul {
+    list-style: none;
+    padding: 0;
+}
+
+.documentation-body li {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+    position: relative;
+    padding-left: 1rem;
+}
+
+.documentation-body li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--accent-blue);
+}
+
+.doc-card {
+    background: var(--bg-hover);
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+}
+/* Quill Editor dark-mode compat */
+.ql-toolbar.ql-snow {
+  background: var(--bg-hover);
+  border-color: var(--border-subtle) !important;
+  border-radius: 8px 8px 0 0;
+}
+.ql-container.ql-snow {
+  border-color: var(--border-subtle) !important;
+  border-radius: 0 0 8px 8px;
+  font-family: var(--font-main, 'Inter', sans-serif);
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+.ql-editor {
+  min-height: 320px;
 }

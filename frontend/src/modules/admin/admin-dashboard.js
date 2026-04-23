@@ -36,6 +36,7 @@ window.addEventListener('pageshow', (e) => {
 
 
 let currentTab = 'dashboard';
+
 let allHomeworkData = [];
 let allFeesData = [];
 let currentEditHwId = null;
@@ -101,7 +102,7 @@ async function initDashboard() {
     hideInfoAlert();
 
     setupTabNavigation();
-    
+
     // Initial load for active tab
     const activeTab = document.querySelector('.nav-link.active')?.getAttribute('data-tab');
     if (activeTab === 'subjects') loadSubjects();
@@ -181,7 +182,7 @@ async function initDashboard() {
         const profileContainer = document.querySelector('.admin-profile-menu');
         const dropdown = document.getElementById('admin-profile-dropdown');
         const profileBtn = document.getElementById('admin-profile-btn');
-        
+
         if (profileContainer && dropdown && !profileContainer.contains(e.target)) {
             dropdown.classList.remove('open');
             if (profileBtn) profileBtn.setAttribute('aria-expanded', 'false');
@@ -239,7 +240,7 @@ async function initDashboard() {
             await notificationsAPI.create(formData);
             hideInfoAlert();
             closeNoticeModal();
-            showSuccessAlert('âœ… Notice sent with attachment!');
+            showSuccessAlert('✅ Notice sent with attachment!');
             await loadNotifications();
         } catch (err) {
             hideInfoAlert();
@@ -265,11 +266,11 @@ async function populateSubjectDropdown(classLevel, section = '', selectIds) {
         // Fetch subjects assigned to this class level (and section if applicable)
         const res = await subjectsAPI.getAll(classLevel, section);
         const assignments = res.data || [];
-        
+
         ids.forEach(id => {
             const sel = typeof id === 'string' ? document.getElementById(id) : id;
             if (!sel) return;
-            
+
             const currentVal = sel.value;
             if (assignments.length === 0) {
                 sel.innerHTML = '<option value="">No subjects assigned</option>';
@@ -280,7 +281,7 @@ async function populateSubjectDropdown(classLevel, section = '', selectIds) {
                     sel.innerHTML += `<option value="${item.subject_id}">${escapeHtml(item.master_name || item.name)}</option>`;
                 });
             }
-            
+
             // Try to restore previous selection if it's still valid
             if (currentVal && assignments.some(a => a.subject_id === currentVal)) {
                 sel.value = currentVal;
@@ -314,10 +315,10 @@ export async function populateERPFilters({
     // Helper to populate sections based on class
     const populateSections = async (classLevel, targetSection = '') => {
         if (!sectionSel) return;
-        
+
         // Ensure visibility and reset state
         sectionSel.style.display = 'block';
-        
+
         if (!classLevel) {
             sectionSel.innerHTML = `<option value="">${allSectionsLabel === 'Select Section' ? 'Select Class First' : allSectionsLabel}</option>`;
             sectionSel.disabled = (allSectionsLabel === 'Select Section');
@@ -327,9 +328,9 @@ export async function populateERPFilters({
         try {
             sectionSel.innerHTML = '<option value="">Loading...</option>';
             sectionSel.disabled = false;
-            
+
             const res = await adminAPI.getSections(classLevel);
-            
+
             if (res.success) {
                 const sections = res.data || [];
                 if (sections.length === 0) {
@@ -337,7 +338,7 @@ export async function populateERPFilters({
                 } else {
                     sectionSel.innerHTML = `<option value="">${allSectionsLabel}</option>` +
                         sections.map(s => `<option value="${s}">${s}</option>`).join('');
-                    
+
                     if (targetSection && sections.includes(targetSection)) {
                         sectionSel.value = targetSection;
                     }
@@ -368,10 +369,10 @@ export async function populateERPFilters({
             try {
                 teacherSel.innerHTML = '<option value="">Loading...</option>';
                 teacherSel.disabled = false;
-                
+
                 const res = await adminAPI.getTeachersByClass(classLevel, section);
                 const teachers = res.data || [];
-                
+
                 if (teachers.length === 0) {
                     teacherSel.innerHTML = '<option value="">No Teacher Assigned</option>';
                 } else {
@@ -389,8 +390,8 @@ export async function populateERPFilters({
         // 1. Initial Class Population
         const classRes = await adminAPI.getClasses();
         const classes = classRes.data || [];
-        
-        classSel.innerHTML = `<option value="">${allClassesLabel}</option>` + 
+
+        classSel.innerHTML = `<option value="">${allClassesLabel}</option>` +
             classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
 
         // 2. Set Defaults if provided
@@ -405,7 +406,7 @@ export async function populateERPFilters({
         // 3. Event Listeners
         classSel.addEventListener('change', async () => {
             const classLevel = classSel.value;
-            
+
             // Reset dependents
             if (sectionSel) {
                 sectionSel.innerHTML = '<option value="">Resetting...</option>';
@@ -425,7 +426,7 @@ export async function populateERPFilters({
             sectionSel.addEventListener('change', async () => {
                 const classLevel = classSel.value;
                 const section = sectionSel.value;
-                
+
                 await populateDependents(classLevel, section);
                 if (onSectionChange) onSectionChange(classLevel, section);
             });
@@ -484,6 +485,8 @@ function showTab(tabName) {
     loadTabContent(tabName);
 }
 
+window.showTab = showTab;
+
 async function loadTabContent(tabName) {
     switch (tabName) {
         case 'dashboard': await loadDashboardData(); break;
@@ -498,6 +501,7 @@ async function loadTabContent(tabName) {
         case 'notifications': await loadNotifications(); break;
         case 'results': await initExamResults(); break;
         case 'subjects': await loadSubjects(); break;
+        case 'content-management': await loadContentManagement(); break;
     }
 }
 
@@ -527,25 +531,25 @@ async function loadDashboardData() {
     try {
         showInfoAlert('Loading dashboard...');
 
-        // âœ… Add timeout wrapper to prevent hanging
+        // ✅ Add timeout wrapper to prevent hanging
         const dashboardTimeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Dashboard load timeout')), 15000)
         );
 
         const loadDataPromise = (async () => {
-            // âœ… Load all data in parallel with proper timeout and error handling
+            // ✅ Load all data in parallel with proper timeout and error handling
             const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
                 adminAPI.getStudents().catch(() => ({ students: [] })),
                 adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
                 adminAPI.getFinancialSummary?.().catch(() => ({})) ?? Promise.resolve({}),
                 adminAPI.getTimetable?.().catch(() => ({ timetable: [] })) ?? Promise.resolve({ timetable: [] }),
-                // âœ… Fetch 30-day trend data with timeout
+                // ✅ Fetch 30-day trend data with timeout
                 fetchTrendDataSafe().catch(() => ({ trends: [], summary: {} })),
-                // âœ… Fetch attendance statistics with timeout
+                // ✅ Fetch attendance statistics with timeout
                 adminAPI.getAttendanceStats?.().catch(() => ({})) ?? Promise.resolve({})
             ]);
 
-            // âœ… Store data with null-safe access
+            // ✅ Store data with null-safe access
             dashboardData.students = studentsRes?.data || [];
             dashboardData.unpaidFees = unpaidFeesRes?.data || [];
             // Extract report from nested structure if it exists
@@ -565,24 +569,24 @@ async function loadDashboardData() {
             dashboardData.latestPayments = latestPayments;
             dashboardData.latestHomework = latestHomework;
 
-            // âœ… Render all sections with individual error handling
-            try { renderQuickStatsKPI(); } catch (e) { console.warn('âŒ KPI render error:', e); }
-            try { renderFeesOverviewChart(); } catch (e) { console.warn('âŒ Fees overview error:', e); }
-            try { renderGrowthTrendChart(); } catch (e) { console.warn('âŒ Growth trend error:', e); }
-            try { renderFeesChart(); } catch (e) { console.warn('âŒ Fees chart error:', e); }
-            try { renderClassDistributionLineChart(); } catch (e) { console.warn('âŒ Class distribution error:', e); }
-            try { renderTrendChart(); } catch (e) { console.warn('âŒ Trend chart error:', e); }
-            try { renderActivityPanel(); } catch (e) { console.warn('âŒ Activity panel error:', e); }
-            try { renderUnpaidFeesTable(); } catch (e) { console.warn('âŒ Unpaid fees table error:', e); }
-            try { renderRecentStudents(); } catch (e) { console.warn('âŒ Recent students error:', e); }
-            try { renderTodayTimetable(); } catch (e) { console.warn('âŒ Today timetable error:', e); }
+            // ✅ Render all sections with individual error handling
+            try { renderQuickStatsKPI(); } catch (e) { console.warn('❌ KPI render error:', e); }
+            try { renderFeesOverviewChart(); } catch (e) { console.warn('❌ Fees overview error:', e); }
+            try { renderGrowthTrendChart(); } catch (e) { console.warn('❌ Growth trend error:', e); }
+            try { renderFeesChart(); } catch (e) { console.warn('❌ Fees chart error:', e); }
+            try { renderClassDistributionLineChart(); } catch (e) { console.warn('❌ Class distribution error:', e); }
+            try { renderTrendChart(); } catch (e) { console.warn('❌ Trend chart error:', e); }
+            try { renderActivityPanel(); } catch (e) { console.warn('❌ Activity panel error:', e); }
+            try { renderUnpaidFeesTable(); } catch (e) { console.warn('❌ Unpaid fees table error:', e); }
+            try { renderRecentStudents(); } catch (e) { console.warn('❌ Recent students error:', e); }
+            try { renderTodayTimetable(); } catch (e) { console.warn('❌ Today timetable error:', e); }
         })();
 
         // Wait for dashboard load with timeout protection
         await Promise.race([loadDataPromise, dashboardTimeout]);
 
         hideInfoAlert();
-        console.log('âœ… Dashboard loaded successfully');
+        console.log('✅ Dashboard loaded successfully');
 
         // Setup auto-refresh: only refresh when this tab is active AND page is visible
         if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
@@ -594,9 +598,9 @@ async function loadDashboardData() {
 
     } catch (err) {
         hideInfoAlert();
-        console.error('âŒ Failed to load dashboard data:', err);
+        console.error('❌ Failed to load dashboard data:', err);
         // Show dashboard anyway with empty data
-        showErrorAlert(`âš ï¸ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
+        showErrorAlert(`⚠ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
 
         // Attempt to render empty dashboard so user isn't stuck
         try {
@@ -611,7 +615,7 @@ async function loadDashboardData() {
 
 /**
  * Fetch 30-day trend data from backend with timeout
- * âœ… Uses proper apiCall wrapper with token and timeout
+ * ✅ Uses proper apiCall wrapper with token and timeout
  */
 async function fetchTrendDataSafe() {
     try {
@@ -624,7 +628,7 @@ async function fetchTrendDataSafe() {
 
         return await Promise.race([trendPromise, timeoutPromise]);
     } catch (error) {
-        console.warn('âš ï¸ Failed to fetch trend data:', error.message);
+        console.warn('⚠ Failed to fetch trend data:', error.message);
         // Return empty trends on failure - don't break dashboard
         return { trends: [], summary: {} };
     }
@@ -647,7 +651,7 @@ async function fetchLatestStudents() {
         }
         return [];
     } catch (err) {
-        console.warn('âš ï¸ Error fetching latest students:', err.message);
+        console.warn('⚠ Error fetching latest students:', err.message);
         return [];
     }
 }
@@ -671,7 +675,7 @@ async function fetchLatestPayments() {
             .sort((a, b) => new Date(b.paidDate || b.createdAt || 0) - new Date(a.paidDate || a.createdAt || 0))
             .slice(0, 3);
     } catch (err) {
-        console.warn('âš ï¸ Error fetching latest payments:', err.message);
+        console.warn('⚠ Error fetching latest payments:', err.message);
         return [];
     }
 }
@@ -693,12 +697,31 @@ async function fetchLatestHomework() {
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, 3);
     } catch (err) {
-        console.warn('âš ï¸ Error fetching latest homework:', err.message);
+        console.warn('⚠ Error fetching latest homework:', err.message);
         return [];
     }
 }
 
 // ===== RENDER FUNCTIONS =====
+
+/**
+ * Global Currency Formatter
+ */
+function formatCurrency(amount, options = {}) {
+    try {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: options.showDecimals ? 2 : 0,
+            maximumFractionDigits: 2,
+            ...options
+        }).format(amount || 0);
+    } catch (e) {
+        return '₹0';
+    }
+}
+window.formatCurrency = formatCurrency;
+
 
 /**
  * Render Quick Stats KPI Cards - with improved error handling
@@ -708,7 +731,7 @@ function renderQuickStatsKPI() {
     try {
         const el = id => document.getElementById(id);
 
-        // âœ… Null-safe data access
+        // ✅ Null-safe data access
         const students = dashboardData?.students || [];
         const unpaidFees = dashboardData?.unpaidFees || [];
         const financials = dashboardData?.financialSummary || {};
@@ -747,22 +770,7 @@ function renderQuickStatsKPI() {
         const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
         const attendanceRate = attendanceStats.attendancePercent ? parseFloat(attendanceStats.attendancePercent).toFixed(1) : 0;
 
-        // Global Currency Formatter
-        const formatCurrency = (amount, options = {}) => {
-            try {
-                return new Intl.NumberFormat('en-IN', {
-                    style: 'currency',
-                    currency: 'INR',
-                    minimumFractionDigits: options.showDecimals ? 2 : 0,
-                    maximumFractionDigits: 2,
-                    ...options
-                }).format(amount || 0);
-            } catch (e) {
-                return '₹0';
-            }
-        };
-
-        // âœ… Safe DOM updates with null checks
+        // ✅ Safe DOM updates with null checks
         if (el('kpi-total-students')) {
             el('kpi-total-students').textContent = totalStudents || 0;
             if (el('kpi-total-students-detail')) {
@@ -805,9 +813,9 @@ function renderQuickStatsKPI() {
             }
         }
 
-        console.log('âœ… Quick Stats rendered successfully');
+        console.log('✅ Quick Stats rendered successfully');
     } catch (err) {
-        console.error('âŒ Error rendering quick stats KPI:', err);
+        console.error('❌ Error rendering quick stats KPI:', err);
         showErrorAlert('Error rendering KPI cards: ' + err.message);
     }
 }
@@ -1013,7 +1021,7 @@ function renderFeesOverviewChart() {
 
         if (!canvas) return;
 
-        // âœ… Null-safe data access
+        // ✅ Null-safe data access
         const financials = dashboardData?.financialSummary || {};
         const unpaidFees = dashboardData?.unpaidFees || [];
 
@@ -1076,7 +1084,7 @@ function renderFeesOverviewChart() {
                 },
                 plugins: [ChartDataLabels]
             });
-            console.log('âœ… Fees overview chart rendered');
+            console.log('✅ Fees overview chart rendered');
         } catch (chartErr) {
             console.error('Chart rendering error:', chartErr);
             if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';
@@ -1096,7 +1104,7 @@ function renderGrowthTrendChart() {
 
         if (!canvas) return;
 
-        // âœ… Null-safe data access
+        // ✅ Null-safe data access
         const students = dashboardData?.students || [];
 
         // Group students by enrollment month
@@ -1481,7 +1489,7 @@ function renderActivityPanel() {
                 type: 'recent-homework',
                 icon: 'fas fa-book',
                 title: hw.title || 'New Homework',
-                subtitle: `Class ${hw.classLevel || '-'} â€¢ ${hw.subject || '-'}`,
+                subtitle: `Class ${hw.classLevel || '-'} • ${hw.subject || '-'}`,
                 time: getRelativeTime(date),
                 link: 'showTab("homework")',
                 timestamp: date.getTime()
@@ -1507,7 +1515,7 @@ function renderActivityPanel() {
                     <div class="activity-title">${activity.title}</div>
                     <div class="activity-subtitle">${activity.subtitle}</div>
                     <div class="activity-time">${activity.time}</div>
-                    <a class="activity-link" href="#" onclick="${activity.link}; return false;">View â†’</a>
+                    <a class="activity-link" href="#" onclick="${activity.link}; return false;">View →</a>
                 </div>
             </div>
         `;
@@ -1660,7 +1668,7 @@ function renderUsersTable(users) {
             <td><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${u.status || (u.isActive ? 'active' : 'inactive')}</span></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleUserMenu(event);">â‹®</button>
+                    <button class="action-menu-btn" onclick="toggleUserMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-user-id="${u.id}">
                         <button class="action-menu-item" onclick="editUser(${u.id})">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
@@ -1973,14 +1981,14 @@ function renderStudentsTable(students) {
         <tr>
             <td><strong>${s.name}</strong></td>
             <td><code>${s.rollNumber || '-'}</code></td>
-            <td>${s.fatherName || '-'}${s.motherName ? ' Â· ' + s.motherName : ''}</td>
+            <td>${s.fatherName || '-'}${s.motherName ? ' · ' + s.motherName : ''}</td>
             <td>${s.phone || '-'}</td>
             <td>${s.classLevel || '-'}</td>
             <td>${s.section || '-'}</td>
             <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleStudentMenu(event);">â‹®</button>
+                    <button class="action-menu-btn" onclick="toggleStudentMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-student-id="${s.id}">
                         <button class="action-menu-item" onclick="openEditStudentModal(${s.id})">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
@@ -2124,12 +2132,12 @@ async function populateHomeworkClassDropdown(selectId) {
         const classes = res.data || [];
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        
+
         // Preserve current selection if any
         const currentVal = sel.value;
         sel.innerHTML = '<option value="">Select Class</option>';
         classes.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
-        
+
         if (currentVal && classes.includes(currentVal)) {
             sel.value = currentVal;
         }
@@ -2386,7 +2394,7 @@ function renderHomeworkTable(list) {
             <td><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${assignedByName}</span></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">â‹®</button>
+                    <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-hw-id="${hw.id}">
                         <button class="action-menu-item" type="button" data-action="edit" data-hw-id="${hw.id}">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
@@ -2542,15 +2550,15 @@ function setupFeeStudentAutocomplete() {
     const searchInput = document.getElementById('fee-student-search');
     const dropdown = document.getElementById('fee-student-dropdown');
     const hiddenId = document.getElementById('fee-student-id');
-    
+
     if (!searchInput || searchInput.dataset.autocompleteSetup) return;
     searchInput.dataset.autocompleteSetup = 'true';
 
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.trim().toLowerCase();
-        
+
         clearTimeout(feeStudentAutocompleteTimeout);
-        
+
         if (query.length < 1) {
             dropdown.style.display = 'none';
             selectedFeeStudentId = null;
@@ -2619,23 +2627,23 @@ function setupFeeStudentAutocomplete() {
 /**
  * Select student from autocomplete
  */
-window.selectFeeStudent = function(studentId, studentName) {
+window.selectFeeStudent = function (studentId, studentName) {
     const searchInput = document.getElementById('fee-student-search');
     const hiddenId = document.getElementById('fee-student-id');
     const dropdown = document.getElementById('fee-student-dropdown');
-    
+
     if (searchInput) searchInput.value = studentName;
     if (hiddenId) hiddenId.value = studentId;
     if (dropdown) dropdown.style.display = 'none';
-    
+
     selectedFeeStudentId = studentId;
-    
+
     // Auto-focus amount field for quick entry
     setTimeout(() => {
         const amountField = document.getElementById('fee-amount');
         if (amountField) amountField.focus();
     }, 100);
-    
+
     // Auto-fill description with default
     const descField = document.getElementById('fee-description');
     if (descField && !descField.value) {
@@ -2646,7 +2654,7 @@ window.selectFeeStudent = function(studentId, studentName) {
 /**
  * Set fee amount from quick button
  */
-window.setFeeAmount = function(amount) {
+window.setFeeAmount = function (amount) {
     const field = document.getElementById('fee-amount');
     if (field) {
         field.value = amount;
@@ -2657,10 +2665,10 @@ window.setFeeAmount = function(amount) {
 /**
  * Set due date from quick option
  */
-window.setFeeDate = function(option) {
+window.setFeeDate = function (option) {
     const today = new Date();
     let targetDate = new Date(today);
-    
+
     if (option === 'today') {
         targetDate = today;
     } else if (option === 'plus30') {
@@ -2668,7 +2676,7 @@ window.setFeeDate = function(option) {
     } else if (option === 'plus60') {
         targetDate.setDate(today.getDate() + 60);
     }
-    
+
     const dateStr = targetDate.toISOString().split('T')[0];
     const field = document.getElementById('fee-due-date');
     if (field) field.value = dateStr;
@@ -2680,9 +2688,9 @@ window.setFeeDate = function(option) {
 function setupFeeDescriptionDropdown() {
     const select = document.getElementById('fee-description');
     const customInput = document.getElementById('fee-description-custom');
-    
+
     if (!select) return;
-    
+
     select.addEventListener('change', (e) => {
         if (e.target.value === 'custom') {
             customInput.style.display = 'block';
@@ -2699,7 +2707,7 @@ window.openAddFeeModal = function () {
     if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        
+
         // Reset form
         document.getElementById('fee-student-search').value = '';
         document.getElementById('fee-student-id').value = '';
@@ -2711,11 +2719,11 @@ window.openAddFeeModal = function () {
         document.getElementById('fee-add-another').checked = false;
         document.getElementById('fee-student-dropdown').style.display = 'none';
         selectedFeeStudentId = null;
-        
+
         // Setup event listeners
         setupFeeStudentAutocomplete();
         setupFeeDescriptionDropdown();
-        
+
         // Focus search
         setTimeout(() => {
             document.getElementById('fee-student-search')?.focus();
@@ -2742,8 +2750,8 @@ window.debouncedFilterFees = function () {
         const filtered = allFeesData.filter(f =>
             !f.paid &&
             ((f.studentName || '').toLowerCase().includes(query) ||
-            (f.student_id?.toString() || '').includes(query) ||
-            (f.description || '').toLowerCase().includes(query))
+                (f.student_id?.toString() || '').includes(query) ||
+                (f.description || '').toLowerCase().includes(query))
         );
         renderFeesTable(filtered);
     }, 300);
@@ -2752,7 +2760,7 @@ window.debouncedFilterFees = function () {
 /**
  * Switch between fee sub-tabs (Active vs Payment History)
  */
-window.switchFeeSubTab = function(subtab) {
+window.switchFeeSubTab = function (subtab) {
     // Update button styles
     document.querySelectorAll('.fee-subtab').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-subtab') === subtab);
@@ -2775,7 +2783,7 @@ let paymentHistoryFilterTimeout;
 let allPaymentHistoryData = [];
 let paymentHistoryFilter = 'all';
 
-window.debouncedFilterPaymentHistory = function() {
+window.debouncedFilterPaymentHistory = function () {
     clearTimeout(paymentHistoryFilterTimeout);
     paymentHistoryFilterTimeout = setTimeout(() => {
         const query = document.getElementById('history-search')?.value.toLowerCase() || '';
@@ -2804,7 +2812,7 @@ window.debouncedFilterPaymentHistory = function() {
 /**
  * Load payment history (all records, paid + pending)
  */
-window.loadPaymentHistory = async function(filter = 'all') {
+window.loadPaymentHistory = async function (filter = 'all') {
     paymentHistoryFilter = filter;
 
     // Update button styles
@@ -2849,7 +2857,7 @@ function renderPaymentHistoryTable(fees) {
                 <td>${paidDate}</td>
                 <td>
                     <span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">
-                        ${f.paid ? 'âœ“ Paid' : 'â³ Pending'}
+                        ${f.paid ? '✅ Paid' : '⌛ Pending'}
                     </span>
                 </td>
             </tr>
@@ -2880,13 +2888,13 @@ async function loadFeeStats() {
         const res = await feesAPI.getStats();
         const s = res.data || {};
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-        
+
         // Handle both camelCase and snake_case
         const totalCollected = parseFloat(s.totalCollected || s.total_collected || 0);
         const totalPending = parseFloat(s.totalPending || s.total_pending || 0);
         const paidCount = parseInt(s.paidCount || s.paid_count || 0);
         const unpaidCount = parseInt(s.unpaidCount || s.unpaid_count || 0);
-        
+
         set('fee-stat-collected', formatCurrency(totalCollected, { showDecimals: true }));
         set('fee-stat-pending', formatCurrency(totalPending, { showDecimals: true }));
         set('fee-stat-paid-count', paidCount);
@@ -2913,7 +2921,7 @@ window.loadFees = async function (mode = 'all') {
 
 function renderFeesTable(fees) {
     console.log('[DEBUG] renderFeesTable called with:', fees);
-    
+
     const tbody = document.getElementById('fees-table-body');
     const toggleBtn = document.getElementById('btn-toggle-fees');
     const countText = document.getElementById('fees-count-text');
@@ -2945,12 +2953,12 @@ function renderFeesTable(fees) {
     tbody.innerHTML = toShow.map((f, i) => {
         const dueDate = f.dueDate ? new Date(f.dueDate).toLocaleDateString('en-IN') : 'Invalid Date';
         const studentName = f.studentName && f.studentName !== 'undefined' ? f.studentName : `Student #${f.studentId}`;
-        
+
         // Validate ID exists
         if (!f.id && f.id !== 0) {
             console.warn('[WARN] Fee record missing id:', f);
         }
-        
+
         return `
             <tr>
                 <td>${i + 1}</td>
@@ -2962,7 +2970,7 @@ function renderFeesTable(fees) {
                 <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
                 <td>
                     <div class="action-menu">
-                        <button class="action-menu-btn" onclick="toggleFeeMenu(event);">â‹®</button>
+                        <button class="action-menu-btn" onclick="toggleFeeMenu(event);">⋮</button>
                         <div class="action-menu-dropdown" data-fee-id="${f.id}">
                             <button class="action-menu-item" onclick="toggleFeePaid(${f.id}, ${!f.paid})">
                                 <i class="fas fa-${f.paid ? 'times-circle' : 'check-circle'}" style="width: 16px;"></i> ${f.paid ? 'Mark Unpaid' : 'Mark Paid'}
@@ -3074,17 +3082,17 @@ window.saveFee = async function () {
 
     showInfoAlert('Adding fee...');
     try {
-        const res = await feesAPI.add({ 
-            studentId: parseInt(studentIdInput), 
-            amount: parseFloat(amount), 
-            dueDate, 
-            description 
+        const res = await feesAPI.add({
+            studentId: parseInt(studentIdInput),
+            amount: parseFloat(amount),
+            dueDate,
+            description
         });
-        
+
         if (res.data) {
             hideInfoAlert();
-            showSuccessAlert('âœ“ Fee added successfully');
-            
+            showSuccessAlert('✅ Fee added successfully');
+
             if (addAnother) {
                 // Keep modal open, reset form (keep student)
                 const studentName = document.getElementById('fee-student-search')?.value;
@@ -3093,7 +3101,7 @@ window.saveFee = async function () {
                 document.getElementById('fee-description').value = 'Monthly Tuition Fee';
                 document.getElementById('fee-description-custom').style.display = 'none';
                 document.getElementById('fee-description-custom').value = '';
-                
+
                 // Focus amount field for quick entry
                 setTimeout(() => {
                     document.getElementById('fee-amount')?.focus();
@@ -3118,19 +3126,19 @@ window.saveFee = async function () {
  */
 let pendingMarkPaidFeeId = null;
 
-window.showMarkPaidConfirmation = function(feeId) {
+window.showMarkPaidConfirmation = function (feeId) {
     console.log('[DEBUG] showMarkPaidConfirmation called with feeId:', feeId);
     console.log('[DEBUG] allFeesData:', allFeesData);
-    
+
     if (!feeId) {
         console.error('[ERROR] Invalid feeId passed to showMarkPaidConfirmation:', feeId);
         showErrorAlert('Error: Invalid fee ID');
         return;
     }
-    
+
     const fee = allFeesData.find(f => f.id === feeId);
     console.log('[DEBUG] Found fee:', fee);
-    
+
     if (!fee) {
         console.error('[ERROR] Fee not found in allFeesData for ID:', feeId);
         showErrorAlert('Error: Fee not found');
@@ -3138,12 +3146,12 @@ window.showMarkPaidConfirmation = function(feeId) {
     }
 
     pendingMarkPaidFeeId = feeId;
-    
+
     // Populate modal
     document.getElementById('mark-paid-student-name').textContent = fee.studentName || `Student #${fee.studentId}`;
     document.getElementById('mark-paid-amount').textContent = parseFloat(fee.amount).toFixed(2);
     document.getElementById('mark-paid-due-date').textContent = new Date(fee.dueDate).toLocaleDateString('en-IN');
-    
+
     // Show modal
     const modal = document.getElementById('mark-paid-modal');
     if (modal) {
@@ -3152,33 +3160,33 @@ window.showMarkPaidConfirmation = function(feeId) {
     }
 };
 
-window.closeMarkPaidModal = function() {
+window.closeMarkPaidModal = function () {
     const modal = document.getElementById('mark-paid-modal');
     if (modal) modal.style.display = 'none';
     document.body.style.overflow = '';
     pendingMarkPaidFeeId = null;
 };
 
-window.confirmMarkPaid = async function() {
+window.confirmMarkPaid = async function () {
     if (!pendingMarkPaidFeeId) return;
-    
+
     const feeId = pendingMarkPaidFeeId;
     closeMarkPaidModal();
     showInfoAlert('Marking fee as paid...');
-    
+
     try {
         const res = await feesAPI.markPaid(feeId);
         if (res.data) {
             hideInfoAlert();
-            showSuccessAlert('âœ“ Fee marked as paid');
-            
+            showSuccessAlert('✅ Fee marked as paid');
+
             // Optimistically remove from active list
             allFeesData = allFeesData.filter(f => f.id !== feeId);
-            
+
             // Refresh table and stats
             await loadFeeStats();
             await loadFees('all');
-            
+
             // Also update the payment history tab so it shows up immediately
             await loadPaymentHistory(paymentHistoryFilter);
         } else {
@@ -3189,13 +3197,13 @@ window.confirmMarkPaid = async function() {
         hideInfoAlert();
         showErrorAlert('Failed to mark fee as paid: ' + (err.message || ''));
     }
-    
+
     pendingMarkPaidFeeId = null;
 };
 
 window.toggleFeePaid = async function (id, markAsPaid) {
     console.log('[DEBUG] toggleFeePaid called with id:', id, 'markAsPaid:', markAsPaid);
-    
+
     if (markAsPaid) {
         // Show confirmation modal before marking as paid
         showMarkPaidConfirmation(id);
@@ -3316,7 +3324,7 @@ function renderMaterialsTable() {
             <td><small style="color: var(--text-muted);">${formatDate(m.created_at || m.createdAt)}</small></td>
             <td>
                 <div class="action-menu">
-                    <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">â‹®</button>
+                    <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-material-id="${m.id}">
                         <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
                             <i class="fas fa-download" style="width: 16px;"></i> Download
@@ -3496,7 +3504,7 @@ window.openMaterialModal = async function (material = null) {
         document.getElementById('material-id').value = material.id;
         document.getElementById('material-title').value = material.title;
         document.getElementById('material-description').value = material.description || '';
-        
+
         // Subject value setting
         const subSel = document.getElementById('material-subject');
         if (subSel) subSel.value = material.subjectId || material.subject_id || '';
@@ -3519,7 +3527,7 @@ window.openMaterialModal = async function (material = null) {
 let masterSubjectsData = [];
 let subjectAssignmentsData = [];
 
-window.loadSubjects = async function() {
+window.loadSubjects = async function () {
     // This loads both lists for the Subjects tab
     await Promise.all([
         loadMasterSubjects(),
@@ -3545,7 +3553,7 @@ async function loadMasterSubjects() {
     try {
         const res = await subjectsAPI.getMaster();
         masterSubjectsData = res.data || [];
-        
+
         if (masterSubjectsData.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No master subjects defined yet.</td></tr>';
             return;
@@ -3567,7 +3575,7 @@ async function loadMasterSubjects() {
     }
 }
 
-window.loadSubjectAssignments = async function() {
+window.loadSubjectAssignments = async function () {
     const tbody = document.getElementById('subject-assignments-list');
     if (!tbody) return;
 
@@ -3601,39 +3609,39 @@ window.loadSubjectAssignments = async function() {
     }
 };
 
-window.openAddSubjectModal = function() {
+window.openAddSubjectModal = function () {
     const modal = document.getElementById('add-subject-modal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 };
 
-window.closeAddSubjectModal = function() {
+window.closeAddSubjectModal = function () {
     document.getElementById('add-subject-modal').style.display = 'none';
     document.getElementById('add-subject-form').reset();
     document.body.style.overflow = '';
 };
 
-window.openAssignSubjectModal = async function() {
+window.openAssignSubjectModal = async function () {
     const modal = document.getElementById('assign-subject-modal');
     const select = document.getElementById('assign-subject-id');
     const teacherSelect = document.getElementById('assign-subject-teacher');
-    
+
     if (!modal || !select) return;
 
     // Fill subject dropdown from master list
     try {
         const subRes = await subjectsAPI.getMaster();
         const masters = subRes.data || [];
-        select.innerHTML = '<option value="">Select a Subject...</option>' + 
+        select.innerHTML = '<option value="">Select a Subject...</option>' +
             masters.map(m => `<option value="${m.id}">${escapeHtml(m.name)} ${m.code ? `(${m.code})` : ''}</option>`).join('');
-            
+
         // Use ERP helper for Class -> Section -> Teacher
         await populateERPFilters({
             classSelectId: 'assign-subject-class',
             sectionSelectId: 'assign-subject-section',
             teacherSelectId: 'assign-subject-teacher'
         });
-            
+
     } catch (err) {
         showErrorAlert('Failed to load subjects or teachers');
         console.error(err);
@@ -3643,14 +3651,14 @@ window.openAssignSubjectModal = async function() {
     document.body.style.overflow = 'hidden';
 };
 
-window.closeAssignSubjectModal = function() {
+window.closeAssignSubjectModal = function () {
     document.getElementById('assign-subject-modal').style.display = 'none';
     document.getElementById('assign-subject-form').reset();
     document.body.style.overflow = '';
 };
 
 // Handlers for Save/Delete
-window.saveMasterSubject = async function(e) {
+window.saveMasterSubject = async function (e) {
     if (e && e.preventDefault) e.preventDefault();
     const name = document.getElementById('add-subject-name').value.trim();
     const code = document.getElementById('add-subject-code').value.trim();
@@ -3670,7 +3678,7 @@ window.saveMasterSubject = async function(e) {
     } catch (err) { showErrorAlert(err.message); }
 };
 
-window.saveAssignment = async function(e) {
+window.saveAssignment = async function (e) {
     if (e && e.preventDefault) e.preventDefault();
     const subject_id = document.getElementById('assign-subject-id').value;
     const classLevel = document.getElementById('assign-subject-class').value;
@@ -3684,11 +3692,11 @@ window.saveAssignment = async function(e) {
 
     showInfoAlert('Assigning subject...');
     try {
-        const res = await subjectsAPI.assign({ 
-            subject_id, 
+        const res = await subjectsAPI.assign({
+            subject_id,
             teacher_id,
-            classLevel, 
-            section: section === 'ALL' ? null : section 
+            classLevel,
+            section: section === 'ALL' ? null : section
         });
         if (res.success) {
             showSuccessAlert('Subject assigned successfully');
@@ -3700,7 +3708,7 @@ window.saveAssignment = async function(e) {
     } catch (err) { showErrorAlert(err.message); }
 };
 
-window.deleteMasterSubject = async function(id) {
+window.deleteMasterSubject = async function (id) {
     if (!confirm('Delete this master subject? This will NOT delete assignments but may cause issues if still in use.')) return;
     try {
         await subjectsAPI.deleteMaster(id);
@@ -3709,7 +3717,7 @@ window.deleteMasterSubject = async function(id) {
     } catch (err) { showErrorAlert(err.message); }
 };
 
-window.deleteAssignment = async function(id) {
+window.deleteAssignment = async function (id) {
     if (!confirm('Remove this subject assignment?')) return;
     try {
         await subjectsAPI.deleteAssignment(id);
@@ -3727,7 +3735,7 @@ window.closeMaterialModal = function () {
 async function initMaterialsTab() {
     try {
         await loadMaterials();
-        
+
         // Initialize filters
         await populateERPFilters({
             classSelectId: 'material-class-filter',
@@ -3743,9 +3751,9 @@ async function initMaterialsTab() {
         if (subFilter) {
             const originalOption = subFilter.innerHTML;
             subFilter.addEventListener('focus', () => {
-                 if (subFilter.options.length > 0 && subFilter.options[0].value === '') {
-                     subFilter.options[0].textContent = 'All Subjects';
-                 }
+                if (subFilter.options.length > 0 && subFilter.options[0].value === '') {
+                    subFilter.options[0].textContent = 'All Subjects';
+                }
             }, { once: true });
         }
 
@@ -3761,13 +3769,13 @@ async function initMaterialsTab() {
 window.openAddHomeworkModal = async function () {
     const modal = document.getElementById('add-homework-modal');
     if (!modal) return;
-    
+
     modal.style.display = 'block';
     document.getElementById('homework-form').reset();
     document.getElementById('hw-edit-id').value = '';
     document.getElementById('hw-current-attachment').style.display = 'none';
     document.body.style.overflow = 'hidden';
-    
+
     // Use ERP helper
     await populateERPFilters({
         classSelectId: 'hw-class',
@@ -3801,7 +3809,7 @@ window.openEditHomeworkModal = async function (id) {
     // Populate form with homework data
     document.getElementById('hw-edit-id').value = hw.id;
     document.getElementById('hw-title').value = hw.title || '';
-    
+
     // Note: class and section are handled by defaultClass/defaultSection in populateERPFilters
     // We might need a small delay or a way to ensure subject is set after it's loaded
     if (hw.subject_id || hw.subject) {
@@ -3809,7 +3817,7 @@ window.openEditHomeworkModal = async function (id) {
         const subSel = document.getElementById('hw-subject');
         if (subSel) subSel.value = hw.subject_id || hw.subject || '';
     }
-    
+
     document.getElementById('hw-due-date').value = hw.dueDate ? hw.dueDate.split('T')[0] : '';
     document.getElementById('hw-description').value = hw.description || '';
 
@@ -3868,9 +3876,9 @@ function populateDropdowns(ids, items, labelPrefix = '', defaultText = 'All') {
         const currentValue = el.value;
         const isFilter = id.includes('filter') || id.includes('select');
         const firstOptionText = isFilter ? `${defaultText} ${labelPrefix}s` : `Select ${labelPrefix}`;
-        
+
         el.innerHTML = `<option value="">${firstOptionText}</option>`;
-        
+
         items.forEach(item => {
             const opt = document.createElement('option');
             opt.value = item;
@@ -3892,7 +3900,7 @@ function setupCascadingListeners() {
         { classId: 'summary-class-select', sectionIds: ['summary-section-select'] },
         { classId: 'subject-class-filter', sectionIds: ['subject-section-filter'] },
         { classId: 'tt-class', sectionIds: ['tt-section'], teacherIds: ['tt-teacher'] },
-        { classId: 'material-class-filter', sectionIds: [] }, 
+        { classId: 'material-class-filter', sectionIds: [] },
         { classId: 'assign-subject-class', sectionIds: ['assign-subject-section'], teacherIds: ['assign-subject-teacher'] },
         { classId: 'hw-class', sectionIds: ['hw-section'] },
         { classId: 'hw-edit-class', sectionIds: ['hw-edit-section'] },
@@ -3904,12 +3912,12 @@ function setupCascadingListeners() {
 
         classEl.addEventListener('change', async () => {
             const classLevel = classEl.value;
-            
+
             // 1. Update Sections
             if (map.sectionIds && map.sectionIds.length > 0) {
                 const sections = classLevel ? await fetchSections(classLevel) : [];
                 populateDropdowns(map.sectionIds, sections, 'Section');
-                
+
                 // Reset sections if class cleared
                 if (!classLevel) {
                     map.sectionIds.forEach(id => {
@@ -3923,7 +3931,7 @@ function setupCascadingListeners() {
             if (map.teacherIds && map.teacherIds.length > 0) {
                 const sectionEl = map.sectionIds && map.sectionIds.length > 0 ? document.getElementById(map.sectionIds[0]) : null;
                 const section = sectionEl ? sectionEl.value : 'ALL';
-                
+
                 if (classLevel) {
                     const teachers = await fetchTeachersByClass(classLevel, section);
                     if (teachers) {
@@ -3947,7 +3955,7 @@ function setupCascadingListeners() {
                     });
                 }
             }
-            
+
             // 3. Special case for Timetable: Load subjects too
             if (map.classId === 'tt-class') {
                 const sectionEl = document.getElementById('tt-section');
@@ -4122,7 +4130,7 @@ function setupForms() {
             const res = await adminAPI.addStudent(payload);
             if (res.success) {
                 hideInfoAlert();
-                showSuccessAlert(`âœ… Student added successfully! Roll Number: ${res.student.rollNumber}`);
+                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`);
                 closeAddStudentModal();
                 e.target.reset();
                 await loadStudents();
@@ -4183,9 +4191,19 @@ function showAlert(id, textId, msg) {
 }
 function showSuccessAlert(m) { showAlert('success-alert', 'success-text', m); }
 function showErrorAlert(m) { showAlert('error-alert', 'error-text', m); }
-function showInfoAlert(m) {
+function showInfoAlert(m, duration = 3500) {
     const el = document.getElementById('info-alert');
-    if (el) { document.getElementById('info-text').textContent = m || ''; el.style.display = 'flex'; }
+    if (el) {
+        document.getElementById('info-text').textContent = m || '';
+        el.style.display = 'flex';
+        if (duration > 0) {
+            setTimeout(() => {
+                if (el.style.display === 'flex' && document.getElementById('info-text').textContent === m) {
+                    el.style.display = 'none';
+                }
+            }, duration);
+        }
+    }
 }
 function hideInfoAlert() {
     const el = document.getElementById('info-alert');
@@ -4215,7 +4233,7 @@ async function loadNotifications() {
         tbody.innerHTML = items.map(n => {
             const date = new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
             const recipient = n.classLevel
-                ? `Class ${n.classLevel}${n.recipientRole ? ' Â· ' + n.recipientRole : ''}`
+                ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
                 : (n.recipientRole || 'All Users');
             const fileHtml = n.attachmentUrl
                 ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>`
@@ -4265,7 +4283,7 @@ window.closeNoticeModal = function () {
 window.deleteNotification = async function (id) {
     if (!confirm('Delete this notification?')) return;
     try {
-        // The notifications controller doesn't have a DELETE â€” call the API directly
+        // The notifications controller doesn't have a DELETE — call the API directly
         await notificationsAPI.delete(id);
         showSuccessAlert('Notification deleted');
         await loadNotifications();
@@ -4607,33 +4625,33 @@ async function updateAdminProfileUI() {
         const response = await adminAPI.getProfile();
         if (response.success && response.data) {
             const data = response.data;
-            
+
             // Update names
             document.querySelectorAll('#admin-name, #dropdown-admin-name').forEach(el => el.textContent = data.name);
-            
+
             // Update emails
             document.querySelectorAll('#dropdown-admin-email').forEach(el => el.textContent = data.email || data.phone);
-            
+
             // Update designation
             const designationEl = document.getElementById('dropdown-admin-designation');
             if (designationEl) {
                 designationEl.textContent = data.designation || (data.organization_name ? `Admin • ${data.organization_name}` : 'Super Admin');
             }
-            
+
             // Update avatars
             const initialLarge = document.getElementById('dropdown-admin-avatar-initial-large');
             const initialSmall = document.getElementById('admin-avatar-initial');
             const initial = data.name ? data.name.charAt(0).toUpperCase() : 'A';
             if (initialLarge) initialLarge.textContent = initial;
             if (initialSmall) initialSmall.textContent = initial;
-            
+
             const avatarImg = document.getElementById('dropdown-admin-avatar-img');
             if (avatarImg && data.avatar_url) {
                 avatarImg.src = data.avatar_url;
                 avatarImg.style.display = 'block';
                 if (initialLarge) initialLarge.style.display = 'none';
             }
-            
+
             // Update last login
             const lastLoginEl = document.getElementById('dropdown-admin-last-login');
             if (lastLoginEl && data.last_login_at) {
@@ -4649,23 +4667,287 @@ async function updateAdminProfileUI() {
 }
 
 /**
- * Loads and displays audit logs in a modal or dedicated section
+ * Loads and displays audit logs in a modal
  */
-async function loadAuditLogs() {
-    if (typeof showInfoAlert === 'function') showInfoAlert('Fetching audit logs...');
+window.loadAuditLogs = async function () {
+    const modal = document.getElementById('audit-logs-modal');
+    const tbody = document.getElementById('audit-logs-tbody');
+    if (modal) modal.style.display = 'flex';
+
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Fetching logs...</td></tr>';
+
     try {
         const response = await adminAPI.getAuditLogs();
         if (response.success && response.data) {
-            console.table(response.data);
-            if (typeof showInfoAlert === 'function') {
-                showInfoAlert(`Loaded ${response.data.length} audit logs. (Check console)`);
-                setTimeout(hideInfoAlert, 2000);
+            if (response.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No audit logs found.</td></tr>';
+                return;
             }
-        } else {
-            if (typeof showErrorAlert === 'function') showErrorAlert('Failed to load audit logs');
+
+            tbody.innerHTML = response.data.map(log => `
+                <tr>
+                    <td>${new Date(log.created_at).toLocaleString()}</td>
+                    <td>${log.admin_name || 'System'}</td>
+                    <td><span class="badge ${log.action.includes('DELETE') ? 'badge-danger' : 'badge-primary'}">${log.action}</span></td>
+                    <td>${log.entity} (${log.entity_id})</td>
+                    <td>${log.details || '-'}</td>
+                </tr>
+            `).join('');
         }
     } catch (err) {
-        if (typeof showErrorAlert === 'function') showErrorAlert('Error fetching audit logs');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state text-danger">Failed to load logs.</td></tr>';
     }
+};
+
+window.closeAuditLogsModal = () => document.getElementById('audit-logs-modal').style.display = 'none';
+
+// Profile Actions
+window.openEditProfileModal = async function () {
+    try {
+        const res = await adminAPI.getProfile();
+        if (res.success && res.data) {
+            document.getElementById('edit-profile-name').value = res.data.name || '';
+            document.getElementById('edit-profile-email').value = res.data.email || '';
+            document.getElementById('edit-profile-designation').value = res.data.designation || '';
+            document.getElementById('edit-profile-avatar').value = res.data.avatar_url || '';
+            document.getElementById('edit-profile-modal').style.display = 'flex';
+        }
+    } catch (err) {
+        showErrorAlert('Failed to fetch profile details');
+    }
+};
+
+
+// =============================================
+// DYNAMIC CONTENT PAGES (Help & Documentation)
+// =============================================
+
+window.openDocsModal = async () => cm_previewContent('documentation');
+window.closeDocsModal = () => cm_closePreview();
+window.openHelpModal = async () => cm_previewContent('help');
+window.closeHelpModal = () => cm_closePreview();
+
+// Dropdown Action Router
+document.querySelectorAll('.profile-dropdown .dropdown-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        const action = item.getAttribute('data-action');
+        if (!action) return;
+        e.preventDefault();
+
+        // Close dropdown
+        const profileBtn = document.getElementById('admin-profile-btn');
+        const profileMenu = document.getElementById('admin-profile-dropdown');
+        if (profileBtn && profileMenu) {
+            profileBtn.setAttribute('aria-expanded', 'false');
+            profileMenu.classList.remove('open');
+        }
+
+        switch (action) {
+            case 'edit-profile': openEditProfileModal(); break;
+            case 'change-password': openChangePasswordModal(); break;
+            case 'audit-logs': loadAuditLogs(); break;
+            case 'view-profile': openEditProfileModal(); break;
+            case 'docs': cm_previewContent('documentation'); break;
+            case 'help': cm_previewContent('help'); break;
+            case 'content-editor': cm_openEditor('documentation'); break;
+            default: showInfoAlert("Feature " + action + " coming soon!");
+        }
+    });
+});
+
+// =============================================
+// CONTENT MANAGEMENT MODULE (v2)
+// =============================================
+
+const CM_PAGE_LABELS = {
+  'help': { label: 'Help & Support', icon: 'fa-question-circle', color: '#3b82f6' },
+  'documentation': { label: 'Documentation', icon: 'fa-book', color: '#8b5cf6' },
+  'programs': { label: 'Programs', icon: 'fa-graduation-cap', color: '#10b981' },
+  'resources': { label: 'Resources', icon: 'fa-folder-open', color: '#f59e0b' },
+  'contact': { label: 'Contact Us', icon: 'fa-phone', color: '#06b6d4' },
+  'privacy': { label: 'Privacy Policy', icon: 'fa-shield-alt', color: '#6b7280' },
+  'learn-more': { label: 'Learn More (Hero)', icon: 'fa-info-circle', color: '#ec4899' },
+  'terms': { label: 'Terms of Service', icon: 'fa-file-contract', color: '#f97316' }
+};
+
+let cmEditorQuill = null;
+let cmCurrentKey = null;
+let cmPages = [];
+
+async function loadContentManagement() {
+  const grid = document.getElementById('cm-pages-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;grid-column:1/-1;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.75rem;">Loading...</p></div>';
+  try {
+    const res = await adminAPI.getAllContent();
+    if (res.success) {
+      cmPages = res.data;
+      cm_renderPagesGrid(cmPages);
+    } else {
+      grid.innerHTML = '<p style="color:var(--text-muted);">Failed to load content pages.</p>';
+    }
+  } catch (e) {
+    grid.innerHTML = '<p style="color:var(--text-muted);">Error loading content pages.</p>';
+  }
 }
- 
+
+function cm_renderPagesGrid(pages) {
+  const grid = document.getElementById('cm-pages-grid');
+  if (!grid) return;
+  
+  const pagesByKey = {};
+  pages.forEach(p => pagesByKey[p.key] = p);
+  
+  grid.innerHTML = Object.entries(CM_PAGE_LABELS).map(([key, meta]) => {
+    const page = pagesByKey[key];
+    const hasContent = page && page.content && page.content.trim().length > 10;
+    const lastUpdated = page ? new Date(page.updated_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'Never';
+    const wordCount = page ? page.content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length : 0;
+    
+    return "<div class='content-page-card' style='background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;'>" +
+      "<div style='display:flex;align-items:center;gap:0.75rem;'>" +
+        "<div style='width:40px;height:40px;border-radius:10px;background:" + meta.color + "22;display:flex;align-items:center;justify-content:center;flex-shrink:0;'>" +
+          "<i class='fas " + meta.icon + "' style='color:" + meta.color + ";'></i>" +
+        "</div>" +
+        "<div>" +
+          "<h4 style='margin:0;font-size:0.9rem;'>" + meta.label + "</h4>" +
+          "<span style='font-size:0.72rem;color:var(--text-muted);'>Key: <code>" + key + "</code></span>" +
+        "</div>" +
+        "<span style='margin-left:auto;font-size:0.7rem;padding:0.2rem 0.5rem;border-radius:20px;background:" + (hasContent ? '#d1fae5' : '#fef3c7') + ";color:" + (hasContent ? '#065f46' : '#92400e') + ";'>" + (hasContent ? '✓ Has content' : '⚠ Empty') + "</span>" +
+      "</div>" +
+      "<div style='font-size:0.78rem;color:var(--text-muted);display:flex;gap:1rem;'>" +
+        "<span><i class='fas fa-clock'></i> " + lastUpdated + "</span>" +
+        "<span><i class='fas fa-align-left'></i> ~" + wordCount + " words</span>" +
+      "</div>" +
+      "<div style='display:flex;gap:0.5rem;margin-top:0.25rem;'>" +
+        "<button onclick=\"cm_openEditor('" + key + "')\" class='btn btn-primary' style='flex:1;font-size:0.8rem;padding:0.4rem;'><i class='fas fa-edit'></i> Edit</button>" +
+        "<button onclick=\"cm_previewContent('" + key + "')\" class='btn btn-secondary' style='font-size:0.8rem;padding:0.4rem 0.75rem;'><i class='fas fa-eye'></i></button>" +
+        "<button onclick=\"cm_clearContent('" + key + "')\" class='btn' style='font-size:0.8rem;padding:0.4rem 0.75rem;background:#fee2e2;color:#b91c1c;border:none;cursor:pointer;border-radius:8px;'><i class='fas fa-trash'></i></button>" +
+      "</div>" +
+    "</div>";
+  }).join('');
+}
+
+window.cm_openEditor = async function(key) {
+  cmCurrentKey = key;
+  const meta = CM_PAGE_LABELS[key] || { label: key, icon: 'fa-file', color: '#6b7280' };
+  const modal = document.getElementById('cm-editor-modal');
+  if (!modal) return;
+  
+  document.getElementById('cm-editor-title').textContent = 'Edit: ' + meta.label;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  if (!cmEditorQuill) {
+    cmEditorQuill = new Quill('#cm-quill-container', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ color: [] }, { background: [] }],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link', 'blockquote', 'code-block'],
+          ['clean']
+        ]
+      }
+    });
+  }
+  
+  document.getElementById('cm-editor-status').textContent = 'Loading content...';
+  document.getElementById('cm-save-btn').disabled = true;
+  try {
+    const res = await adminAPI.getContent(key);
+    if (res.success && res.data) {
+      cmEditorQuill.root.innerHTML = res.data.content;
+      document.getElementById('cm-editor-status').textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
+    } else {
+      cmEditorQuill.root.innerHTML = '';
+      document.getElementById('cm-editor-status').textContent = 'No content yet. Start writing!';
+    }
+  } catch (e) {
+    document.getElementById('cm-editor-status').textContent = 'Failed to load.';
+  }
+  document.getElementById('cm-save-btn').disabled = false;
+};
+
+window.cm_closeEditor = function() {
+  const modal = document.getElementById('cm-editor-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+window.cm_saveContent = async function() {
+  if (!cmEditorQuill || !cmCurrentKey) return;
+  const content = cmEditorQuill.root.innerHTML;
+  const saveBtn = document.getElementById('cm-save-btn');
+  const statusEl = document.getElementById('cm-editor-status');
+  saveBtn.disabled = true;
+  const originalText = saveBtn.innerHTML;
+  saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+  try {
+    const res = await adminAPI.updateContent(cmCurrentKey, content);
+    if (res.success) {
+      showSuccessAlert('Content saved successfully!');
+      if (statusEl) statusEl.textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
+      const updatedPage = cmPages.find(p => p.key === cmCurrentKey);
+      if (updatedPage) { updatedPage.content = content; updatedPage.updated_at = res.data.updated_at; }
+      else { cmPages.push(res.data); }
+      cm_renderPagesGrid(cmPages);
+    } else {
+      showErrorAlert('Failed to save: ' + (res.error || 'Unknown error'));
+    }
+  } catch (e) {
+    showErrorAlert('Save error.');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = originalText;
+  }
+};
+
+window.cm_clearContent = async function(key) {
+  const label = CM_PAGE_LABELS[key]?.label || key;
+  if (!confirm("Clear all content for \"" + label + "\"? This cannot be undone.")) return;
+  try {
+    const res = await adminAPI.deleteContent(key);
+    if (res.success) {
+      showSuccessAlert('Content cleared.');
+      loadContentManagement();
+    } else {
+      showErrorAlert('Failed to clear: ' + (res.error || 'Unknown'));
+    }
+  } catch (e) {
+    showErrorAlert('Error clearing content.');
+  }
+};
+
+window.cm_previewContent = async function(key) {
+  const meta = CM_PAGE_LABELS[key] || { label: key };
+  try {
+    const res = await adminAPI.getContent(key);
+    if (res.success && res.data && res.data.content.trim()) {
+      const modal = document.getElementById('cm-preview-modal');
+      document.getElementById('cm-preview-title').textContent = 'Preview: ' + meta.label;
+      document.getElementById('cm-preview-body').innerHTML = res.data.content;
+      document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    } else {
+      showInfoAlert('This page has no content yet.', 3000);
+    }
+  } catch(e) {
+    showErrorAlert('Could not load preview.');
+  }
+};
+
+window.cm_closePreview = function() {
+  const m = document.getElementById('cm-preview-modal');
+  if (m) m.style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+window.cm_openNewContentModal = function() {
+  showInfoAlert('All content pages are pre-created. Use Edit to modify any page.', 4000);
+};
+
+// Tab switch listener is handled by the central loadTabContent router.

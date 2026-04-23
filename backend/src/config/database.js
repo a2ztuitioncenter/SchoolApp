@@ -12,6 +12,7 @@ import { timetableModel } from '../features/student/Timetable.js';
 import { syllabusModel } from '../features/teacher/syllabusModel.js';
 import { examResultModel } from '../features/teacher/examResultModel.js';
 import { resultsModel } from '../features/results/resultsModel.js';
+import { contentPageModel } from '../features/admin/ContentPage.js';
 
 import pool from './pool.js';
 
@@ -29,11 +30,31 @@ export async function initializeDatabase() {
         await pool.query(syllabusModel.schema);
         await pool.query(examResultModel.schema);
         await pool.query(resultsModel.schema);
+        await pool.query(contentPageModel.schema);
         console.log('Tables checked/created.');
 
+        await seedContentPages();
         await createDefaultAdmin();
     } catch (err) {
         console.error('Database Initialization Error:', err.message);
+    }
+}
+
+async function seedContentPages() {
+    try {
+        const count = await pool.query('SELECT COUNT(*) FROM content_pages');
+        if (parseInt(count.rows[0].count) === 0) {
+            console.log('🌱 Seeding baseline content pages...');
+            for (const item of contentPageModel.baselineData) {
+                await pool.query(
+                    'INSERT INTO content_pages (key, content) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
+                    [item.key, item.content]
+                );
+            }
+            console.log('✅ Baseline content pages seeded.');
+        }
+    } catch (err) {
+        console.error('Error seeding content pages:', err.message);
     }
 }
 

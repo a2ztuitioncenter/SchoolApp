@@ -210,6 +210,7 @@ export const authAPI = {
   teacherLogin: (identifier, password) => apiCall('/auth/teacher-login', { method: 'POST', body: JSON.stringify({ identifier, password }) }),
   verify: () => apiCall('/auth/verify', { method: 'POST' }),
   checkUsername: (username) => apiCall(`/auth/check-username?username=${encodeURIComponent(username)}`, { method: 'GET' }),
+  changePassword: (data) => apiCall('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 /**
@@ -257,6 +258,26 @@ export const adminAPI = {
   updateProfile: (data) => apiCall('/admin/profile', { method: 'PUT', body: JSON.stringify(data) }),
   getOrganization: () => apiCall('/admin/organization', { method: 'GET' }),
   getAuditLogs: () => apiCall('/admin/audit-logs', { method: 'GET' }),
+
+  // Content Pages (dynamic editable content)
+  getContent: (key) => apiCall(`/admin/content/${key}`, { method: 'GET' }),
+  getAllContent: () => apiCall('/admin/content', { method: 'GET' }),
+  updateContent: (key, content) => apiCall(`/admin/content/${key}`, { method: 'PUT', body: JSON.stringify({ content }) }),
+  deleteContent: (key) => apiCall(`/admin/content/${key}`, { method: 'DELETE' }),
+};
+
+/**
+ * Public content fetcher — no auth required (for landing page)
+ */
+export const fetchPublicContent = async (key) => {
+  const url = base_api_url ? `${base_api_url}/api/public/content/${key}` : `/api/public/content/${key}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 };
 
 export {

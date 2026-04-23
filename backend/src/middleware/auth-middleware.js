@@ -5,10 +5,14 @@
 
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is required');
-}
+// Lazy-load JWT_SECRET to ensure environment variables are loaded
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is required but not found in process.env');
+  }
+  return secret;
+};
 
 /**
  * Authentication Middleware - Verify JWT token
@@ -28,7 +32,7 @@ export const authenticate = (req, res, next) => {
     const token = authHeader.slice(7); // Remove "Bearer " prefix
 
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     
     // Attach user info to request
     req.user = {

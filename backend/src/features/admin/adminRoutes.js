@@ -7,6 +7,20 @@ import crypto from 'crypto';
 
 const router = express.Router();
 
+/**
+ * Audit Log Helper
+ */
+const logAudit = async (db, userId, action, entity, entityId, details) => {
+    try {
+        await db.query(
+            'INSERT INTO audit_logs (user_id, action, entity, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
+            [userId, action, entity, entityId, details]
+        );
+    } catch (err) {
+        console.error('Audit Log Error:', err);
+    }
+};
+
 // ============================================================
 // USERS MODULE
 // ============================================================
@@ -71,6 +85,9 @@ router.post('/users/create', async (req, res) => {
         }
 
         const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001', username, status: 'active', teacherId });
+        
+        await logAudit(req.db, req.user.userId, 'CREATE_USER', 'users', user.id, `Created ${role}: ${name}`);
+        
         res.status(201).json({ success: true, data: user });
     } catch (err) {
         console.error('Create user error:', err);
@@ -87,6 +104,9 @@ router.put('/users/:id', async (req, res) => {
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
             await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId || 'school-001');
         }
+        
+        await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`);
+        
         res.json({ success: true, data: user });
     } catch (err) {
         console.error('Update user error:', err);
@@ -108,6 +128,9 @@ router.delete('/users/:id', async (req, res) => {
     try {
         const deleted = await deleteUser(req.db, req.params.id);
         if (!deleted) return res.status(404).json({ success: false, error: 'User not found' });
+        
+        await logAudit(req.db, req.user.userId, 'DELETE_USER', 'users', req.params.id, `Deleted user ID ${req.params.id}`);
+        
         res.json({ success: true, message: 'User deleted' });
     } catch (err) {
         console.error('Delete user error:', err);
@@ -227,6 +250,8 @@ router.post('/students/create', async (req, res) => {
                 status: status || 'active',
                 rollNumber
             });
+
+            await logAudit(client, req.user.userId, 'CREATE_STUDENT', 'students', student.id, `Enrolled student: ${fullName}`);
 
             await client.query('COMMIT');
             res.status(201).json({ success: true, data: student });
@@ -543,6 +568,9 @@ router.put('/profile', async (req, res) => {
              WHERE id = $1 RETURNING *`,
             [req.user.userId, name, email, avatar_url, designation]
         );
+        
+        await logAudit(req.db, req.user.userId, 'UPDATE_PROFILE', 'users', req.user.userId, 'Updated personal profile details');
+        
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update profile error:', err);
@@ -572,6 +600,91 @@ router.get('/audit-logs', async (req, res) => {
     } catch (err) {
         console.error('Fetch audit logs error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch audit logs' });
+    }
+});
+
+// ============================================================
+// CONTENT PAGES MODULE
+// ============================================================
+
+const VALID_CONTENT_KEYS = ['help', 'documentation', 'programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms'];
+
+// GET all content pages (list)
+router.get('/content', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            'SELECT id, key, content, updated_at FROM content_pages ORDER BY key ASC'
+        );
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Fetch all content error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch content pages' });
+    }
+});
+
+// GET single content page by key
+router.get('/content/:key', async (req, res) => {
+    const { key } = req.params;
+    if (!VALID_CONTENT_KEYS.includes(key)) {
+        return res.status(400).json({ success: false, error: 'Invalid content key' });
+    }
+    try {
+        const result = await req.db.query(
+            'SELECT key, content, updated_at FROM content_pages WHERE key = $1',
+            [key]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Content not found' });
+        }
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Fetch content error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch content' });
+    }
+});
+
+// CREATE or UPDATE content page
+router.put('/content/:key', async (req, res) => {
+    const { key } = req.params;
+    const { content, title } = req.body;
+    if (!VALID_CONTENT_KEYS.includes(key)) {
+        return res.status(400).json({ success: false, error: 'Invalid content key' });
+    }
+    if (typeof content !== 'string') {
+        return res.status(400).json({ success: false, error: 'Content must be a string' });
+    }
+    try {
+        const result = await req.db.query(
+            `INSERT INTO content_pages (key, content, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (key) DO UPDATE SET content = $2, updated_at = NOW()
+             RETURNING id, key, content, updated_at`,
+            [key, content]
+        );
+        await logAudit(req.db, req.user.userId, 'UPDATE_CONTENT', 'content_pages', key, `Updated "${key}" page content`);
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Update content error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update content' });
+    }
+});
+
+// DELETE content page (reset to empty)
+router.delete('/content/:key', async (req, res) => {
+    const { key } = req.params;
+    if (!VALID_CONTENT_KEYS.includes(key)) {
+        return res.status(400).json({ success: false, error: 'Invalid content key' });
+    }
+    try {
+        await req.db.query(
+            `UPDATE content_pages SET content = '', updated_at = NOW() WHERE key = $1`,
+            [key]
+        );
+        await logAudit(req.db, req.user.userId, 'DELETE_CONTENT', 'content_pages', key, `Cleared "${key}" page content`);
+        res.json({ success: true, message: `Content for "${key}" cleared.` });
+    } catch (err) {
+        console.error('Delete content error:', err);
+        res.status(500).json({ success: false, error: 'Failed to clear content' });
     }
 });
 
