@@ -2,6 +2,7 @@
 # ⚠️ ENVIRONMENT FILES - CRITICAL FOR SECURITY
 # ============================================================================
 # Never commit environment files with credentials
+.
 .env
 .env.local
 .env.*.local
@@ -100,6 +101,8 @@ init-db.js.old
 .planning/graphs/
 .planning/STATE.md
 .planning/config.json
+.agents/
+
 
 # ============================================================================
 # SECURITY & DEFAULT HIDDEN
