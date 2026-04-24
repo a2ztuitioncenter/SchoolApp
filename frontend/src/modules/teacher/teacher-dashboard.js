@@ -2,6 +2,12 @@ import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissi
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 import { escapeHtml, escapeAttr } from '../../core/sanitize.js';
 import { formatDate } from '../../core/utils.js';
+import { getCache, setCache, clearCache, CACHE_TTL } from '../../core/cache.js';
+
+// ===========================
+// Request Control
+// ===========================
+let teacherDashboardAbortController = null;
 
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first
@@ -340,13 +346,49 @@ document.addEventListener('DOMContentLoaded', init);
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 async function loadDashboard() {
+  if (teacherDashboardAbortController) {
+    teacherDashboardAbortController.abort();
+  }
+  teacherDashboardAbortController = new AbortController();
+
+  const userId = getUserId();
+
   try {
+    // 1. Check Cache (Stale-While-Revalidate)
+    const cachedDash = getCache(userId, 'teacher_dashboard');
+    const cachedMat = getCache(userId, 'teacher_materials');
+    
+    if (cachedDash && cachedMat) {
+        console.log('⚡ Using cached teacher dashboard data');
+        updateDashboardUI(cachedDash.data, cachedMat.data);
+        if (!cachedDash.isStale && !cachedMat.isStale) return;
+    }
+
     showInfo('Loading dashboard...');
     const [dashRes, matRes] = await Promise.all([
-      teacherAPI.getDashboard(teacherId),
-      teacherAPI.getMaterials(teacherId),
+      teacherAPI.getDashboard(teacherId, { signal: teacherDashboardAbortController.signal }),
+      teacherAPI.getMaterials(teacherId, { signal: teacherDashboardAbortController.signal }),
     ]);
     hideInfo();
+
+    if (dashRes.success && matRes.success) {
+      setCache(userId, 'teacher_dashboard', dashRes, CACHE_TTL.DASHBOARD);
+      setCache(userId, 'teacher_materials', matRes, CACHE_TTL.DASHBOARD);
+      updateDashboardUI(dashRes, matRes);
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    hideInfo();
+    console.error('Dashboard load error:', err);
+    const cachedDash = getCache(userId, 'teacher_dashboard');
+    const cachedMat = getCache(userId, 'teacher_materials');
+    if (cachedDash && cachedMat) {
+        updateDashboardUI(cachedDash.data, cachedMat.data);
+    }
+  }
+}
+
+function updateDashboardUI(dashRes, matRes) {
 
     if (dashRes.success) {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
@@ -374,20 +416,20 @@ async function loadDashboard() {
 
         // Update Profile Image
         const profileImg = document.querySelector('#teacher-profile-btn img') || document.querySelector('#teacher-profile-btn .avatar-circle');
-        if (teacher.avatar_url) {
+        if (teacher.avatar_url && profileImg) {
           const avatarUrl = teacher.avatar_url;
           if (profileImg.tagName === 'IMG') {
             profileImg.src = avatarUrl;
           } else {
-            // Replace circle with img
             const btn = document.getElementById('teacher-profile-btn');
             const caret = btn.querySelector('.fa-caret-down');
-            btn.innerHTML = `
-              <img src="${avatarUrl}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
-              ${caret.outerHTML}
-            `;
+            if (btn && caret) {
+                btn.innerHTML = `
+                  <img src="${avatarUrl}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
+                  ${caret.outerHTML}
+                `;
+            }
           }
-          // Also update modal preview
           const modalPreview = document.getElementById('profile-preview');
           if (modalPreview) modalPreview.src = avatarUrl;
         }
@@ -412,11 +454,6 @@ async function loadDashboard() {
     }
 
     renderTodayTimetable();
-  } catch (err) {
-    hideInfo();
-    console.error('Dashboard load error:', err);
-    showError('Failed to load dashboard: ' + err.message);
-  }
 }
 
 function renderTodayTimetable() {
@@ -932,6 +969,7 @@ function setupFormListeners() {
       hideInfo();
       showSuccess(id ? 'Homework updated!' : 'Homework added!');
       closeHwModal();
+      clearCache(getUserId(), 'teacher_dashboard');
       await loadHomework();
     } catch (err) { hideInfo(); showError(err.message); }
   });
@@ -999,6 +1037,7 @@ function setupFormListeners() {
       hideInfo();
       showSuccess(id ? 'Material updated successfully!' : 'Material added successfully!');
       closeMaterialModal();
+      clearCache(getUserId(), 'teacher_materials');
       await loadMaterials();
     } catch (err) { 
       hideInfo(); 
@@ -1161,6 +1200,7 @@ window.deleteMaterial = async function (id) {
     await teacherAPI.deleteMaterial(id, teacherId);
     hideInfo();
     showSuccess('Material deleted successfully.');
+    clearCache(getUserId(), 'teacher_materials');
     await loadMaterials();
   } catch (err) {
     hideInfo();
@@ -1867,6 +1907,7 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
             showSuccess('Profile updated successfully!');
             closeEditProfileModal();
             // Refresh dashboard to show changes
+            clearCache(getUserId(), 'teacher_dashboard');
             loadDashboard();
         } else {
             showError(res.message || 'Failed to update profile');
@@ -2106,6 +2147,7 @@ document.getElementById('review-submission-form')?.addEventListener('submit', as
         if (res.success) {
             showSuccess('Review submitted successfully!');
             closeReviewModal();
+            clearCache(getUserId(), 'teacher_dashboard');
             // Refresh submissions lists
             if (typeof loadTeacherSubmissions === 'function') {
                 loadTeacherSubmissions(); // Update global submissions list

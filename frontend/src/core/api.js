@@ -55,13 +55,14 @@ export const apiCall = async (endpoint, options = {}) => {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const signal = options.signal || controller.signal;
+  const timeoutId = !options.signal ? setTimeout(() => controller.abort(), 15000) : null;
 
   try {
     const response = await fetch(url, {
       ...options,
       headers,
-      signal: controller.signal
+      signal
     });
 
     clearTimeout(timeoutId);
@@ -105,7 +106,7 @@ export const apiCall = async (endpoint, options = {}) => {
   } catch (error) {
     return { error: error.message, success: false };
   } finally {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
   }
 };
 
@@ -217,12 +218,12 @@ export const authAPI = {
  * Student APIs
  */
 export const studentAPI = {
-  getDashboard: (userId) => apiCall(`/student/${userId}/dashboard`, { method: 'GET' }),
-  getAttendance: (userId) => apiCall(`/student/${userId}/attendance`, { method: 'GET' }),
-  getFees: (userId) => apiCall(`/student/${userId}/fees`, { method: 'GET' }),
-  getSyllabus: (userId) => apiCall(`/student/${userId}/syllabus`, { method: 'GET' }),
-  getResults: (userId) => apiCall(`/student/${userId}/results`, { method: 'GET' }),
-  getSubmissions: (userId) => apiCall(`/submissions/student/${userId}`, { method: 'GET' }),
+  getDashboard: (userId, options = {}) => apiCall(`/student/${userId}/dashboard`, { method: 'GET', ...options }),
+  getAttendance: (userId, options = {}) => apiCall(`/student/${userId}/attendance`, { method: 'GET', ...options }),
+  getFees: (userId, options = {}) => apiCall(`/student/${userId}/fees`, { method: 'GET', ...options }),
+  getSyllabus: (userId, options = {}) => apiCall(`/student/${userId}/syllabus`, { method: 'GET', ...options }),
+  getResults: (userId, options = {}) => apiCall(`/student/${userId}/results`, { method: 'GET', ...options }),
+  getSubmissions: (userId, options = {}) => apiCall(`/submissions/student/${userId}`, { method: 'GET', ...options }),
 };
 
 /**
@@ -309,14 +310,14 @@ export {
  * Submissions API
  */
 export const submissionsAPI = {
-  submit: (formData) => apiCall('/submissions', { method: 'POST', body: formData }),
-  getForHomework: (homeworkId) => apiCall(`/submissions/homework/${homeworkId}`, { method: 'GET' }),
-  getTeacherSubmissions: () => apiCall('/submissions/teacher', { method: 'GET' }),
-  review: (submissionId, data) => apiCall(`/submissions/${submissionId}/review`, { method: 'PUT', body: JSON.stringify(data) }),
+  submit: (formData, options = {}) => apiCall('/submissions', { method: 'POST', body: formData, ...options }),
+  getForHomework: (homeworkId, options = {}) => apiCall(`/submissions/homework/${homeworkId}`, { method: 'GET', ...options }),
+  getTeacherSubmissions: (options = {}) => apiCall('/submissions/teacher', { method: 'GET', ...options }),
+  review: (submissionId, data, options = {}) => apiCall(`/submissions/${submissionId}/review`, { method: 'PUT', body: JSON.stringify(data), ...options }),
 };
 
 export const assignmentsAPI = {
-  getActive: () => apiCall('/assignments/active', { method: 'GET' }),
+  getActive: (options = {}) => apiCall('/assignments/active', { method: 'GET', ...options }),
 };
 
 /**
@@ -326,27 +327,27 @@ export const assignmentsAPI = {
  * Teacher APIs - Fixed to use correct authentication and parameter passing
  */
 export const teacherAPI = {
-  getDashboard: (teacherId) => apiCall(`/teacher/dashboard/${teacherId || 'me'}`, { method: 'GET' }),
-  getTimetable: (teacherId) => apiCall(`/teacher/timetable/${teacherId || 'me'}`, { method: 'GET' }),
-  getAttendanceClasses: (teacherId) => apiCall(`/teacher/attendance/classes${teacherId ? '?teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET' }),
-  getSectionsByClass: (classLevel, teacherId) => apiCall(`/teacher/attendance/sections?classLevel=${encodeURIComponent(classLevel)}${teacherId ? '&teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET' }),
-  getAttendanceSheet: (_teacherId, classLevel, date, section = 'A') => apiCall(`/teacher/attendance/sheet?classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
-  markBulkAttendance: (teacherId, records) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }) }),
-  getAttendanceSummary: (_teacherId, classLevel, month, section = 'A') => apiCall(`/teacher/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
-  getHomework: () => apiCall('/teacher/homework', { method: 'GET' }),
-  createHomework: (formData) => apiCall('/teacher/homework', { method: 'POST', body: formData }),
-  updateHomework: (id, formData) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData }),
-  deleteHomework: (id, teacherId) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
-  getMaterials: (_teacherId) => apiCall('/materials', { method: 'GET' }),
-  createMaterial: (formData) => apiCall('/materials/upload', { method: 'POST', body: formData }),
-  updateMaterial: (id, formData) => apiCall(`/materials/${id}`, { method: 'PUT', body: formData }),
-  deleteMaterial: (id, _teacherId) => apiCall(`/materials/${id}`, { method: 'DELETE' }),
-  getSyllabus: () => apiCall('/teacher/syllabus', { method: 'GET' }),
-  createSyllabus: (data) => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data) }),
-  updateSyllabus: (id, data) => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteSyllabus: (id, teacherId) => apiCall(`/teacher/syllabus/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }) }),
-  createExamResult: (data) => apiCall('/teacher/exam-results', { method: 'POST', body: JSON.stringify(data) }),
-  getExamResults: () => apiCall('/teacher/exam-results', { method: 'GET' }),
+  getDashboard: (teacherId, options = {}) => apiCall(`/teacher/dashboard/${teacherId || 'me'}`, { method: 'GET', ...options }),
+  getTimetable: (teacherId, options = {}) => apiCall(`/teacher/timetable/${teacherId || 'me'}`, { method: 'GET', ...options }),
+  getAttendanceClasses: (teacherId, options = {}) => apiCall(`/teacher/attendance/classes${teacherId ? '?teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET', ...options }),
+  getSectionsByClass: (classLevel, teacherId, options = {}) => apiCall(`/teacher/attendance/sections?classLevel=${encodeURIComponent(classLevel)}${teacherId ? '&teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET', ...options }),
+  getAttendanceSheet: (_teacherId, classLevel, date, section = 'A', options = {}) => apiCall(`/teacher/attendance/sheet?classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET', ...options }),
+  markBulkAttendance: (teacherId, records, options = {}) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }), ...options }),
+  getAttendanceSummary: (_teacherId, classLevel, month, section = 'A', options = {}) => apiCall(`/teacher/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET', ...options }),
+  getHomework: (options = {}) => apiCall('/teacher/homework', { method: 'GET', ...options }),
+  createHomework: (formData, options = {}) => apiCall('/teacher/homework', { method: 'POST', body: formData, ...options }),
+  updateHomework: (id, formData, options = {}) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData, ...options }),
+  deleteHomework: (id, teacherId, options = {}) => apiCall(`/teacher/homework/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }), ...options }),
+  getMaterials: (_teacherId, options = {}) => apiCall('/materials', { method: 'GET', ...options }),
+  createMaterial: (formData, options = {}) => apiCall('/materials/upload', { method: 'POST', body: formData, ...options }),
+  updateMaterial: (id, formData, options = {}) => apiCall(`/materials/${id}`, { method: 'PUT', body: formData, ...options }),
+  deleteMaterial: (id, _teacherId, options = {}) => apiCall(`/materials/${id}`, { method: 'DELETE', ...options }),
+  getSyllabus: (options = {}) => apiCall('/teacher/syllabus', { method: 'GET', ...options }),
+  createSyllabus: (data, options = {}) => apiCall('/teacher/syllabus', { method: 'POST', body: JSON.stringify(data), ...options }),
+  updateSyllabus: (id, data, options = {}) => apiCall(`/teacher/syllabus/${id}`, { method: 'PUT', body: JSON.stringify(data), ...options }),
+  deleteSyllabus: (id, teacherId, options = {}) => apiCall(`/teacher/syllabus/${id}`, { method: 'DELETE', body: JSON.stringify({ teacherId }), ...options }),
+  createExamResult: (data, options = {}) => apiCall('/teacher/exam-results', { method: 'POST', body: JSON.stringify(data), ...options }),
+  getExamResults: (options = {}) => apiCall('/teacher/exam-results', { method: 'GET', ...options }),
 };
 
 export const downloadFile = async (filePath, fileName = 'download') => {

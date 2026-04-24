@@ -6,7 +6,13 @@
 import { studentAPI, downloadFile, materialsAPI, waitForBackend, profileAPI, contentAPI, submissionsAPI, assignmentsAPI } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 import { escapeAttr, escapeHtml, safeFileName } from '../../core/sanitize.js';
+import { getCache, setCache, clearCache, CACHE_TTL } from '../../core/cache.js';
 import './student-results.js';
+
+// ===========================
+// Request Control
+// ===========================
+let dashboardAbortController = null;
 
 // ===========================
 // Global Logout Handler
@@ -236,28 +242,9 @@ function setupTabSwitching() {
 }
 
 /**
- * Main function to fetch and populate all dashboard data
+ * Populate all dashboard UI components with provided data
  */
-async function loadDashboardData(userId) {
-  try {
-    // Fetching dashboard data
-
-    // Fetch data from backend
-    const dashboardResponse = await studentAPI.getDashboard(userId);
-
-    if (!dashboardResponse || !dashboardResponse.success) {
-      const errTxt = dashboardResponse?.error || dashboardResponse?.message || '';
-      if (errTxt === 'Student record not found' || errTxt === 'Student not found') {
-        showErrorMessage('Your student profile is being set up. Please try again in a moment.');
-        setTimeout(() => { window.location.href = '/'; }, 3000);
-        return null;
-      }
-      throw new Error(errTxt || 'Failed to fetch dashboard data');
-    }
-
-    const { data } = dashboardResponse;
-    if (!data) throw new Error('No data received from server');
-
+function populateDashboard(data) {
     if (data.profile) populateProfile(data.profile);
     if (data.attendance) populateAttendance(data.attendance);
     if (data.fees) populateFees(data.fees);
@@ -272,11 +259,70 @@ async function loadDashboardData(userId) {
     if (data.courseProgress) populateCourseProgress(data.courseProgress);
     if (data.timetable) populateTimetable(data.timetable);
     if (data.notifications) populateNotifications(data.notifications);
+}
 
-    // Dashboard loaded successfully
+/**
+ * Main function to fetch and populate all dashboard data
+ */
+async function loadDashboardData(userId) {
+  // Cancel previous dashboard fetch if it exists
+  if (dashboardAbortController) {
+    dashboardAbortController.abort();
+  }
+  dashboardAbortController = new AbortController();
+
+  try {
+    // 1. Check Cache (Stale-While-Revalidate)
+    const cached = getCache(userId, 'dashboard');
+    if (cached) {
+      console.log('⚡ Using cached dashboard data');
+      populateDashboard(cached.data);
+      
+      // If cache is fresh (not stale), we can stop here
+      if (!cached.isStale) {
+        return cached.data;
+      }
+      // If stale, continue to fetch in background
+    }
+
+    // 2. Fetch Fresh Data
+    const dashboardResponse = await studentAPI.getDashboard(userId, { 
+      signal: dashboardAbortController.signal 
+    });
+
+    if (!dashboardResponse || !dashboardResponse.success) {
+      const errTxt = dashboardResponse?.error || dashboardResponse?.message || '';
+      if (errTxt === 'Student record not found' || errTxt === 'Student not found') {
+        showErrorMessage('Your student profile is being set up. Please try again in a moment.');
+        setTimeout(() => { window.location.href = '/'; }, 3000);
+        return null;
+      }
+      
+      // If we have cached data, don't show error, just use what we have
+      if (cached) return cached.data;
+      
+      throw new Error(errTxt || 'Failed to fetch dashboard data');
+    }
+
+    const { data } = dashboardResponse;
+    if (!data) throw new Error('No data received from server');
+
+    // 3. Update Cache & UI
+    setCache(userId, 'dashboard', data, CACHE_TTL.DASHBOARD);
+    populateDashboard(data);
+
     return data;
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('📡 Dashboard fetch aborted');
+      return null;
+    }
     console.error('❌ Error loading dashboard:', error);
+    
+    // Fallback to cache if error occurs
+    const cached = getCache(userId, 'dashboard');
+    if (cached) return cached.data;
+    
     showErrorMessage('Unable to load dashboard data: ' + error.message);
     return null;
   }
@@ -1090,6 +1136,7 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
             alert('Profile updated successfully!');
             closeEditProfileModal();
             const userId = sessionStorage.getItem('studentUserId');
+            clearCache(userId, 'student_dashboard');
             loadDashboardData(userId);
         } else {
             alert(res.message || 'Failed to update profile');
@@ -1336,8 +1383,10 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
         if (res.success) {
             alert('Homework submitted successfully!');
             subModal.style.display = 'none';
-            // Reload submissions tab if active
+            // Clear cache to reflect submission in dashboard stats/list
             const userId = sessionStorage.getItem('studentUserId');
+            clearCache(userId, 'student_dashboard');
+            // Reload submissions tab if active
             loadSubmissions(userId);
         } else {
             alert(res.error || 'Failed to submit homework');
