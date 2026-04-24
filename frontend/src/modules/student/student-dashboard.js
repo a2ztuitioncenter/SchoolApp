@@ -1547,8 +1547,27 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const container = document.getElementById('assignments-dropdown-container');
         const menu = document.getElementById('custom-dropdown-menu');
-        if (container) container.classList.toggle('open');
-        if (menu) menu.classList.toggle('open');
+        const trigger = e.currentTarget;
+        
+        if (menu && container) {
+            const isOpen = menu.classList.contains('open');
+            
+            if (!isOpen) {
+                // Calculate space
+                const rect = trigger.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const menuHeight = 250; // Match max-height in CSS
+                
+                if (spaceBelow < menuHeight && rect.top > menuHeight) {
+                    menu.classList.add('opens-upward');
+                } else {
+                    menu.classList.remove('opens-upward');
+                }
+            }
+            
+            container.classList.toggle('open');
+            menu.classList.toggle('open');
+        }
     });
 
     document.addEventListener('click', (e) => {

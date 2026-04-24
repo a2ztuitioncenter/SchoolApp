@@ -1312,19 +1312,28 @@ body {
     top: 100%;
     left: 0;
     width: 100%;
-    max-height: 200px;
+    max-height: 250px;
     overflow-y: auto;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    z-index: 999;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
     display: none;
-    margin-top: 4px;
+    margin-top: 6px;
+    opacity: 1 !important;
 }
 
 .custom-dropdown-menu.open {
     display: block;
+}
+
+.custom-dropdown-menu.opens-upward {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 6px;
+    box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.1), 0 -8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 .custom-dropdown-group-label {
@@ -1342,14 +1351,19 @@ body {
 }
 
 .custom-dropdown-option {
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
     cursor: pointer;
     color: var(--text-main);
-    transition: background 0.2s;
-    font-size: 0.95rem;
+    transition: all 0.2s;
+    font-size: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.custom-dropdown-option:last-child {
+    border-bottom: none;
 }
 
 .custom-dropdown-option:hover {
