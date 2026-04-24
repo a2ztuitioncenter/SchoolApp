@@ -84,7 +84,7 @@ router.post('/users/create', async (req, res) => {
             teacherId = await generateTeacherId(req.db, role);
         }
 
-        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: 'school-001', username, status: 'active', teacherId });
+        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: req.user.schoolId || 'school-001', username, status: 'active', teacherId });
         
         await logAudit(req.db, req.user.userId, 'CREATE_USER', 'users', user.id, `Created ${role}: ${name}`);
         
@@ -102,7 +102,7 @@ router.put('/users/:id', async (req, res) => {
         const user = await updateUser(req.db, id, { name, phone, email, role });
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
-            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId || 'school-001');
+            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId || req.user.schoolId || 'school-001');
         }
         
         await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`);
@@ -201,7 +201,8 @@ router.post('/students/create', async (req, res) => {
         const parts = dateOfBirth.split('/');
         if (parts.length === 3) {
             const [dd, mm, yy] = parts;
-            const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+            const pivotYear = (new Date().getFullYear() % 100) + 10;
+            const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
             dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
         } else {
             return res.status(400).json({ success: false, error: 'Invalid date format. Use DD/MM/YY' });
@@ -212,7 +213,8 @@ router.post('/students/create', async (req, res) => {
 
         try {
             await client.query('BEGIN');
-            await client.query('LOCK TABLE students IN ACCESS EXCLUSIVE MODE');
+            const lockKey = parseInt(`${classLevel}${section.toUpperCase().charCodeAt(0)}`, 10);
+            await client.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
 
             let user = await getUserByPhone(client, phone);
             if (!user) {
@@ -230,11 +232,14 @@ router.post('/students/create', async (req, res) => {
             const classPart = classLevel.toString().padStart(2, '0');
             const sectionPart = section.toUpperCase();
             const prefix = `${classPart}${sectionPart}`;
-            const countResult = await client.query(
-                `SELECT COUNT(*) FROM students WHERE roll_number LIKE $1`,
-                [`${prefix}%`]
+            const maxResult = await client.query(
+                `SELECT MAX(CAST(SUBSTRING(roll_number, $2) AS INTEGER)) AS max_num
+                 FROM students
+                 WHERE roll_number ~ ('^' || $1 || '[0-9]{3}$')`,
+                [prefix, (prefix.length + 1).toString()]
             );
-            const rollNumber = `${prefix}${(parseInt(countResult.rows[0].count) + 1).toString().padStart(3, '0')}`;
+            const nextNum = (maxResult.rows[0].max_num || 0) + 1;
+            const rollNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;
 
             const student = await createStudent(client, {
                 userId: user.id,
@@ -539,7 +544,7 @@ router.get('/profile', async (req, res) => {
             `SELECT u.id, u.name, u.email, u.phone, u.role, u.avatar_url, u.last_login_at, u.designation,
                     o.name as organization_name, o.logo_url as organization_logo
              FROM users u
-             CROSS JOIN organizations o
+             LEFT JOIN organizations o ON u.school_id = o.id
              WHERE u.id = $1
              LIMIT 1`,
             [req.user.userId]

@@ -63,7 +63,8 @@ router.post('/login', async (req, res) => {
     const parts = dateOfBirth.split('/');
     if (parts.length === 3) {
       const [dd, mm, yy] = parts;
-      const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+      const pivotYear = (new Date().getFullYear() % 100) + 10;
+      const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
       dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
     } else {
       return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
@@ -202,7 +203,11 @@ router.post('/register', async (req, res) => {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        await client.query('LOCK TABLE students IN ACCESS EXCLUSIVE MODE');
+        // Use a deterministic advisory lock key based on class+section to avoid
+        // table-wide locks while still serializing roll-number generation per class.
+        const lockKey = parseInt(classLevel.toString().replace(/\D/g, '') || '0') * 1000 +
+          section.toUpperCase().charCodeAt(0);
+        await client.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
 
         const user = await createUser(client, {
           name: fullName,
@@ -222,17 +227,22 @@ router.post('/register', async (req, res) => {
         const sectionPart = section.toUpperCase();
         const prefix = `${classPart}${sectionPart}`;
 
-        const countResult = await client.query(
-          `SELECT COUNT(*) FROM students WHERE roll_number LIKE $1`,
-          [`${prefix}%`]
+        const maxResult = await client.query(
+          `SELECT MAX(CAST(SUBSTRING(roll_number, $2) AS INTEGER)) AS max_num
+           FROM students
+           WHERE roll_number ~ ('^' || $1 || '[0-9]{3}$')`,
+          [prefix, (prefix.length + 1).toString()]
         );
-        const rollNumber = `${prefix}${(parseInt(countResult.rows[0].count) + 1).toString().padStart(3, '0')}`;
+        const nextNum = (maxResult.rows[0].max_num || 0) + 1;
+        const rollNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;
 
         let dobISO = null;
         if (dateOfBirth) {
           const parts = dateOfBirth.split('/');
           const [dd, mm, yy] = parts;
-          const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+          // Dynamic pivot: 2-digit years > (currentYear - 2000 + 10) are treated as 19xx
+          const pivotYear = (new Date().getFullYear() % 100) + 10;
+          const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
           dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
         }
 

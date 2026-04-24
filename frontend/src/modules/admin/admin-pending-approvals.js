@@ -1,5 +1,6 @@
 import { authAPI, adminAPI } from '../../core/api.js';
 import { getAuth } from '../../core/auth-manager.js';
+import { escapeHtml, escapeAttr as escapeAttrValue } from '../../core/sanitize.js';
 
 // Add styles for approval cards
 const styleSheet = document.createElement('style');
@@ -181,32 +182,32 @@ function renderPendingUsers() {
         const roleColor = roleLower === 'teacher' ? 'var(--accent-blue)' : 'var(--success)';
 
         return `
-            <tr>
+            <tr data-user-id="${user.id}">
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div style="width: 32px; height: 32px; border-radius: 50%; background: ${roleColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
-                            ${(user.name || '?').charAt(0).toUpperCase()}
+                            ${escapeHtml((user.name || '?').charAt(0).toUpperCase())}
                         </div>
-                        <div style="font-weight: 600;">${user.name || 'N/A'}</div>
+                        <div style="font-weight: 600;">${escapeHtml(user.name || 'N/A')}</div>
                     </div>
                 </td>
                 <td>
                     <div style="font-size: 0.85rem;">
-                        <div><i class="fas fa-envelope" style="width: 14px; opacity: 0.6;"></i> ${user.email || '-'}</div>
-                        <div><i class="fas fa-phone" style="width: 14px; opacity: 0.6;"></i> ${user.phone || '-'}</div>
+                        <div><i class="fas fa-envelope" style="width: 14px; opacity: 0.6;"></i> ${escapeHtml(user.email || '-')}</div>
+                        <div><i class="fas fa-phone" style="width: 14px; opacity: 0.6;"></i> ${escapeHtml(user.phone || '-')}</div>
                     </div>
                 </td>
                 <td>
                     ${user.classLevel ? `
                         <div class="badge-green" style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
-                            Class ${user.classLevel}${user.section ? ` - ${user.section}` : ''}
+                            Class ${escapeHtml(user.classLevel)}${user.section ? ` - ${escapeHtml(user.section)}` : ''}
                         </div>
                     ` : '<span style="color: var(--text-muted); font-size: 0.8rem;">-</span>'}
                 </td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500;">
                         <i class="${roleIcon}" style="color: ${roleColor};"></i>
-                        ${user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
+                        ${user.role ? escapeHtml(user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'User'}
                     </div>
                 </td>
                 <td style="font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
@@ -238,15 +239,15 @@ function renderPendingUsers() {
         const roleIcon = roleLower === 'teacher' ? '👨‍🏫' : '👤';
 
         return `
-            <div class="card" style="padding: 1.25rem;">
+            <div class="card" data-user-id="${user.id}" style="padding: 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                             ${roleIcon}
                         </div>
                         <div>
-                            <div style="font-weight: 700; font-size: 1rem;">${user.name || 'N/A'}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">${user.role?.toUpperCase()}</div>
+                            <div style="font-weight: 700; font-size: 1rem;">${escapeHtml(user.name || 'N/A')}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(user.role?.toUpperCase() || '')}</div>
                         </div>
                     </div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">${createdDate}</div>
@@ -255,16 +256,16 @@ function renderPendingUsers() {
                 <div style="display: grid; gap: 8px; margin-bottom: 1.25rem; font-size: 0.9rem;">
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <i class="fas fa-envelope" style="width: 16px; color: var(--accent-blue);"></i>
-                        <span>${user.email || 'No email provided'}</span>
+                        <span>${escapeHtml(user.email || 'No email provided')}</span>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <i class="fas fa-phone" style="width: 16px; color: var(--success);"></i>
-                        <span>${user.phone || 'No phone provided'}</span>
+                        <span>${escapeHtml(user.phone || 'No phone provided')}</span>
                     </div>
                     ${user.classLevel ? `
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <i class="fas fa-graduation-cap" style="width: 16px; color: var(--accent-blue);"></i>
-                        <span>Class ${user.classLevel} ${user.section ? `- ${user.section}` : ''}</span>
+                        <span>Class ${escapeHtml(user.classLevel)} ${user.section ? `- ${escapeHtml(user.section)}` : ''}</span>
                     </div>
                     ` : ''}
                 </div>

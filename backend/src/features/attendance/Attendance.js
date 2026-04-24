@@ -118,8 +118,8 @@ export const getAttendancePercentage = async (pool, studentId, days = 30) => {
          COUNT(*) AS total_days,
          ROUND(COUNT(CASE WHEN is_present = true THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS percentage
         FROM attendance
-        WHERE student_id = $1 AND date >= NOW() - INTERVAL '${days} days'`,
-      [studentId]
+        WHERE student_id = $1 AND date >= NOW() - make_interval(days => $2)`,
+      [studentId, parseInt(days, 10) || 30]
     );
     const row = result.rows[0];
     return row ? { 

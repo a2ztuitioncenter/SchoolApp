@@ -378,6 +378,14 @@ router.post('/attendance/mark-bulk', async (req, res) => {
     if (!Array.isArray(records) || records.length === 0)
       return res.status(400).json({ success: false, error: 'records array required' });
 
+    // Security check: Verify teacher has permission for the class in the first record
+    // (UI pattern ensures all records in a batch belong to the same class/section)
+    const firstRecord = records[0];
+    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, firstRecord.classLevel, firstRecord.section);
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission for this class/section' });
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -412,6 +420,11 @@ router.get('/attendance/summary', async (req, res) => {
     const pool = req.db;
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
+
+    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission for this class/section' });
+    }
 
     let query = `SELECT s.name, s.id AS student_id,
           COUNT(CASE WHEN a.is_present = true THEN 1 END) AS present_count,

@@ -336,8 +336,8 @@ export async function populateERPFilters({
                 if (sections.length === 0) {
                     sectionSel.innerHTML = '<option value="">No Sections</option>';
                 } else {
-                    sectionSel.innerHTML = `<option value="">${allSectionsLabel}</option>` +
-                        sections.map(s => `<option value="${s}">${s}</option>`).join('');
+                    sectionSel.innerHTML = `<option value="">${escapeHtml(allSectionsLabel)}</option>` +
+                        sections.map(s => `<option value="${escapeAttrValue(s)}">${escapeHtml(s)}</option>`).join('');
 
                     if (targetSection && sections.includes(targetSection)) {
                         sectionSel.value = targetSection;
@@ -1658,14 +1658,14 @@ function renderUsersTable(users) {
     }
 
     tbody.innerHTML = toShow.map((u, index) => `
-        <tr>
+        <tr data-user-id="${u.id}">
             <td>${index + 1}</td>
-            <td><code>${u.teacherId || '-'}</code></td>
-            <td><strong>${u.name || '-'}</strong></td>
-            <td>${u.phone || '-'}</td>
-            <td>${u.email || '-'}</td>
-            <td>${u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : '-'}</td>
-            <td><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${u.status || (u.isActive ? 'active' : 'inactive')}</span></td>
+            <td><code>${escapeHtml(u.teacherId || '-')}</code></td>
+            <td><strong>${escapeHtml(u.name || '-')}</strong></td>
+            <td>${escapeHtml(u.phone || '-')}</td>
+            <td>${escapeHtml(u.email || '-')}</td>
+            <td>${u.role ? escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1)) : '-'}</td>
+            <td><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${escapeHtml(u.status || (u.isActive ? 'active' : 'inactive'))}</span></td>
             <td>
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleUserMenu(event);">⋮</button>
@@ -1677,7 +1677,7 @@ function renderUsersTable(users) {
                             <i class="fas fa-${u.isActive ? 'ban' : 'check'}" style="width: 16px;"></i> ${u.isActive ? 'Disable' : 'Enable'}
                         </button>
                         <div class="action-menu-divider"></div>
-                        <button class="action-menu-item danger" onclick="deleteUserById(${u.id}, '${u.name}')">
+                        <button class="action-menu-item danger" data-user-id="${u.id}" data-user-name="${escapeAttrValue(u.name || '')}" onclick="deleteUserById(this.dataset.userId, this.dataset.userName)">
                             <i class="fas fa-trash-alt" style="width: 16px;"></i> Delete User
                         </button>
                     </div>
@@ -1727,19 +1727,19 @@ function renderUsersCards(list) {
         }
 
         return `
-        <div class="material-card">
+        <div class="material-card" data-user-id="${u.id}">
             <div class="material-card-header" style="display:flex; align-items:center; gap:12px;">
-                <div class="user-avatar" style="flex-shrink:0;">${initials}</div>
+                <div class="user-avatar" style="flex-shrink:0;">${escapeHtml(initials)}</div>
                 <div class="user-info">
-                    <h3 class="material-card-title" style="margin:0;">${u.name || 'User'}</h3>
-                    <p class="user-email-text" style="font-size: 0.8rem;">${u.email || u.phone}</p>
+                    <h3 class="material-card-title" style="margin:0;">${escapeHtml(u.name || 'User')}</h3>
+                    <p class="user-email-text" style="font-size: 0.8rem;">${escapeHtml(u.email || u.phone)}</p>
                 </div>
             </div>
             <div class="material-card-content" style="margin: 1rem 0;">
                 <div class="material-card-meta">
                     <div class="material-card-meta-item">
                         <i class="fas fa-user-tag" style="color: var(--accent-blue);"></i>
-                        <span>Role: <strong>${u.role}</strong></span>
+                        <span>Role: <strong>${escapeHtml(u.role)}</strong></span>
                     </div>
                     <div class="material-card-meta-item">
                         <i class="fas fa-circle" style="color: ${u.isActive ? 'var(--success)' : 'var(--warning)'}; font-size:8px;"></i>
@@ -1754,7 +1754,7 @@ function renderUsersCards(list) {
                 <button class="btn-table ${u.isActive ? 'btn-warning' : 'btn-success'}" onclick="toggleUserStatusById(${u.id}, ${!u.isActive})">
                     <i class="fas fa-${u.isActive ? 'ban' : 'check'}"></i> ${u.isActive ? 'Disable' : 'Enable'}
                 </button>
-                <button class="btn-table btn-delete" onclick="deleteUserById(${u.id})">
+                <button class="btn-table btn-delete" data-user-id="${u.id}" data-user-name="${escapeAttrValue(u.name || '')}" onclick="deleteUserById(this.dataset.userId, this.dataset.userName)">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -1978,14 +1978,14 @@ function renderStudentsTable(students) {
     }
 
     tbody.innerHTML = toShow.map(s => `
-        <tr>
-            <td><strong>${s.name}</strong></td>
-            <td><code>${s.rollNumber || '-'}</code></td>
-            <td>${s.fatherName || '-'}${s.motherName ? ' · ' + s.motherName : ''}</td>
-            <td>${s.phone || '-'}</td>
-            <td>${s.classLevel || '-'}</td>
-            <td>${s.section || '-'}</td>
-            <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${s.status}</span></td>
+        <tr data-student-id="${s.id}">
+            <td><strong>${escapeHtml(s.name)}</strong></td>
+            <td><code>${escapeHtml(s.rollNumber || '-')}</code></td>
+            <td>${escapeHtml(s.fatherName || '-')}${s.motherName ? ' · ' + escapeHtml(s.motherName) : ''}</td>
+            <td>${escapeHtml(s.phone || '-')}</td>
+            <td>${escapeHtml(s.classLevel || '-')}</td>
+            <td>${escapeHtml(s.section || '-')}</td>
+            <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${escapeHtml(s.status)}</span></td>
             <td>
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleStudentMenu(event);">⋮</button>
@@ -1997,7 +1997,7 @@ function renderStudentsTable(students) {
                             <i class="fas fa-${s.status === 'active' ? 'ban' : 'check'}" style="width: 16px;"></i> ${s.status === 'active' ? 'Disable' : 'Enable'}
                         </button>
                         <div class="action-menu-divider"></div>
-                        <button class="action-menu-item danger" onclick="deleteStudentById(${s.id}, '${s.name}')">
+                        <button class="action-menu-item danger" data-student-id="${s.id}" data-student-name="${escapeAttrValue(s.name || '')}" onclick="deleteStudentById(this.dataset.studentId, this.dataset.studentName)">
                             <i class="fas fa-trash-alt" style="width: 16px;"></i> Delete Student
                         </button>
                     </div>
@@ -2238,8 +2238,8 @@ window.loadAttendanceSheet = async function () {
             card.innerHTML = `
                 <div class="att-student-info">
                     <div>
-                        <div class="att-student-name">${s.name}</div>
-                        <div class="att-student-roll">Roll No: ${s.rollNumber || 'N/A'}</div>
+                        <div class="att-student-name">${escapeHtml(s.name)}</div>
+                        <div class="att-student-roll">Roll No: ${escapeHtml(s.rollNumber || 'N/A')}</div>
                     </div>
                 </div>
                 <div class="att-toggles">
@@ -2337,8 +2337,8 @@ window.loadAttendanceSummary = async function () {
             const pct = r.attendancePercent || 0;
             const color = pct >= 75 ? '#27ae60' : pct >= 50 ? '#f39c12' : '#e74c3c';
             return `<tr>
-                        <td>${r.name}</td><td>${r.totalDays}</td>
-                        <td>${r.presentCount}</td><td>${r.absentCount}</td><td>${r.lateCount}</td>
+                        <td>${escapeHtml(r.name)}</td><td>${escapeHtml(String(r.totalDays))}</td>
+                        <td>${escapeHtml(String(r.presentCount))}</td><td>${escapeHtml(String(r.absentCount))}</td><td>${escapeHtml(String(r.lateCount || 0))}</td>
                         <td><strong style="color:${color}">${pct}%</strong></td>
                     </tr>`;
         }).join('')}</tbody>
@@ -2386,12 +2386,12 @@ function renderHomeworkTable(list) {
         const section = hw.section || '-';
         const assignedByName = hw.assignedByName || 'Admin';
         return `<tr>
-            <td><strong>${hw.title}</strong></td>
-            <td><span class="status-badge status-active">${classLevel}</span></td>
-            <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${section}</span></td>
-            <td>${hw.subject}</td>
-            <td>${due}</td>
-            <td><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${assignedByName}</span></td>
+            <td><strong>${escapeHtml(hw.title)}</strong></td>
+            <td><span class="status-badge status-active">${escapeHtml(classLevel)}</span></td>
+            <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${escapeHtml(section)}</span></td>
+            <td>${escapeHtml(hw.subject || '-')}</td>
+            <td>${escapeHtml(due)}</td>
+            <td><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${escapeHtml(assignedByName)}</span></td>
             <td>
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
@@ -2593,12 +2593,12 @@ function setupFeeStudentAutocomplete() {
             }
 
             dropdown.innerHTML = filtered.map(s => `
-                <div class="autocomplete-item" onclick="selectFeeStudent(${s.id}, '${escapeHtml(s.name || '')}')">
+                <div class="autocomplete-item" data-student-id="${s.id}" data-student-name="${escapeAttrValue(s.name || '')}" onclick="selectFeeStudent(this.dataset.studentId, this.dataset.studentName)">
                     <div class="autocomplete-item-content">
                         <div>
                             <div class="autocomplete-item-name">${escapeHtml(s.name || 'N/A')}</div>
                             <div class="autocomplete-item-meta">
-                                Roll: ${s.rollNumber || 'N/A'} | Class ${s.classLevel}${s.section ? '-' + s.section : ''}
+                                Roll: ${escapeHtml(s.rollNumber || 'N/A')} | Class ${escapeHtml(s.classLevel)}${s.section ? '-' + escapeHtml(s.section) : ''}
                             </div>
                         </div>
                         <div style="font-size:0.75rem; color:var(--text-muted);">ID: ${s.id}</div>
@@ -4529,11 +4529,11 @@ function renderTimetableByClass(items) {
 
             html += `
                         <tr>
-                            <td data-label="Time">${displayTime}</td>
-                            <td data-label="Subject">${entry.subject}</td>
+                            <td data-label="Time">${escapeHtml(displayTime)}</td>
+                            <td data-label="Subject">${escapeHtml(entry.subject)}</td>
                             <td data-label="Teacher">
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span>${teacherName}</span>
+                                    <span>${escapeHtml(teacherName)}</span>
                                     <div class="timetable-entry-menu">
                                         <button class="timetable-entry-menu-btn" onclick="toggleTimetableMenu(event, ${entry.id})" title="More options">
                                             <i class="fas fa-ellipsis-v"></i>
@@ -4684,15 +4684,18 @@ window.loadAuditLogs = async function () {
                 return;
             }
 
-            tbody.innerHTML = response.data.map(log => `
+            tbody.innerHTML = response.data.map(log => {
+                const action = log.action || '-';
+                const badgeClass = action.includes('DELETE') ? 'badge-danger' : 'badge-primary';
+                return `
                 <tr>
-                    <td>${new Date(log.created_at).toLocaleString()}</td>
-                    <td>${log.admin_name || 'System'}</td>
-                    <td><span class="badge ${log.action.includes('DELETE') ? 'badge-danger' : 'badge-primary'}">${log.action}</span></td>
-                    <td>${log.entity} (${log.entity_id})</td>
-                    <td>${log.details || '-'}</td>
-                </tr>
-            `).join('');
+                    <td>${escapeHtml(new Date(log.created_at).toLocaleString())}</td>
+                    <td>${escapeHtml(log.admin_name || 'System')}</td>
+                    <td><span class="badge ${badgeClass}">${escapeHtml(action)}</span></td>
+                    <td>${escapeHtml(log.entity || '')} (${escapeHtml(String(log.entity_id || ''))})</td>
+                    <td>${escapeHtml(log.details || '-')}</td>
+                </tr>`;
+            }).join('');
         }
     } catch (err) {
         if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state text-danger">Failed to load logs.</td></tr>';
@@ -4702,6 +4705,11 @@ window.loadAuditLogs = async function () {
 window.closeAuditLogsModal = () => document.getElementById('audit-logs-modal').style.display = 'none';
 
 // Profile Actions
+window.openChangePasswordModal = function () {
+    // TODO: Implement full password change modal
+    showInfoAlert('Password change feature coming soon! Please contact your administrator.', 4000);
+};
+
 window.openEditProfileModal = async function () {
     try {
         const res = await adminAPI.getProfile();
@@ -4928,7 +4936,14 @@ window.cm_previewContent = async function(key) {
     if (res.success && res.data && res.data.content.trim()) {
       const modal = document.getElementById('cm-preview-modal');
       document.getElementById('cm-preview-title').textContent = 'Preview: ' + meta.label;
-      document.getElementById('cm-preview-body').innerHTML = res.data.content;
+      // Render in sandboxed iframe to prevent stored XSS from admin-authored content
+      const previewBody = document.getElementById('cm-preview-body');
+      previewBody.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'width:100%;border:none;min-height:300px;';
+      iframe.setAttribute('sandbox', 'allow-same-origin');
+      iframe.setAttribute('srcdoc', res.data.content);
+      previewBody.appendChild(iframe);
       document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
