@@ -3,7 +3,8 @@ import multer from 'multer';
 import path from 'path';
 import {
   createHomework, getAllHomework,
-  getHomeworkById, updateHomework, deleteHomework
+  getHomeworkById, updateHomework, deleteHomework,
+  getActiveAssignments
 } from './homeworkController.js';
 
 // Multer Config
@@ -32,6 +33,7 @@ const upload = multer({
 
 const router = express.Router();
 
+router.get('/active', getActiveAssignments);
 router.get('/',      getAllHomework);
 router.get('/:id',   getHomeworkById);
 router.post('/',     upload.single('attachment'), createHomework);

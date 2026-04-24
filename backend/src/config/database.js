@@ -13,6 +13,7 @@ import { syllabusModel } from '../features/teacher/syllabusModel.js';
 import { examResultModel } from '../features/teacher/examResultModel.js';
 import { resultsModel } from '../features/results/resultsModel.js';
 import { contentPageModel } from '../features/admin/ContentPage.js';
+import { storageModel } from '../features/storage/Storage.js';
 
 import pool from './pool.js';
 
@@ -31,6 +32,7 @@ export async function initializeDatabase() {
         await pool.query(examResultModel.schema);
         await pool.query(resultsModel.schema);
         await pool.query(contentPageModel.schema);
+        await pool.query(storageModel.schema);
         console.log('Tables checked/created.');
 
         await seedContentPages();

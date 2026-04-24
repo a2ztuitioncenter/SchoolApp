@@ -141,11 +141,31 @@
             }
 
             .card {
-                padding: 15px !important;
+                padding: 12px !important;
                 margin-bottom: 1rem !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 overflow-x: hidden !important;
+            }
+
+            /* Fix Header Stacking */
+            .section-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px !important;
+                margin-bottom: 1rem !important;
+            }
+
+            .header-actions {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+                gap: 8px !important;
+            }
+
+            .header-actions .btn {
+                width: 100% !important;
+                margin: 0 !important;
             }
 
             /* Fix Attendance Filter Bar Stacking */
@@ -163,8 +183,11 @@
             }
 
             .filter-group select, 
-            .filter-group input {
+            .filter-group input,
+            .search-box,
+            .search-box input {
                 width: 100% !important;
+                max-width: 100% !important;
                 font-size: 16px !important; /* Prevents auto-zoom on iOS */
             }
 
@@ -187,16 +210,15 @@
                 width: 100% !important;
                 overflow-x: auto !important;
                 -webkit-overflow-scrolling: touch;
+                margin: 0 -12px; /* Pull table to edges of card */
+                width: calc(100% + 24px) !important;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
             }
 
-            .section-header {
-                flex-direction: column !important;
-                align-items: flex-start !important;
-                gap: 10px !important;
-            }
-
-            .section-header .btn {
-                width: 100% !important;
+            .table-container table {
+                min-width: 600px; /* Force scroll for complex tables */
             }
 
             /* KPI Cards */
@@ -204,10 +226,21 @@
                 grid-template-columns: 1fr !important;
             }
 
-            /* Fix table nowrap from admin-dashboard.css */
-            table, tr, td, th {
+            /* Fix table headers and scrolling */
+            .table-container table {
+                min-width: 700px !important; /* Force a minimum width for scrolling */
+                width: 100% !important;
+            }
+
+            table th, table td {
+                white-space: nowrap !important; /* Prevent text from wrapping and squishing */
+                padding: 10px 12px !important;
+            }
+
+            /* Exception for long text columns like assignment titles */
+            .wrap-text {
                 white-space: normal !important;
-                word-break: break-word !important;
+                min-width: 150px !important;
             }
 
             /* Absolute containment for main structures */
@@ -349,6 +382,9 @@
                                 <span class="status-badge" style="font-size: 0.7rem; padding: 2px 6px;">Loading...</span>
                             </div>
                         </div>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" onclick="openEditProfileModal()"><i class="fas fa-user-edit"></i> Edit Profile</button>
+                        <button class="dropdown-item" onclick="openCMSModal('help_support')"><i class="fas fa-question-circle"></i> Help & Support</button>
                         <div class="dropdown-divider"></div>
                         <button id="dropdown-logout-btn-teacher" class="dropdown-item text-danger">
                             <i class="fas fa-sign-out-alt"></i> Logout
@@ -591,10 +627,18 @@
                         <h2><i class="fas fa-book-open"></i> Homework Manager</h2>
                         <p class="section-subtitle">Track and assign homework to your students</p>
                     </div>
-                    <button class="btn btn-primary btn-lg" onclick="openHwModal('homework')">
-                        <i class="fas fa-plus"></i> New Homework
-                    </button>
+                    <div class="header-actions">
+                        <button id="toggle-submissions-btn" class="btn btn-secondary btn-lg" onclick="toggleHomeworkSubmissionsView()">
+                            <i class="fas fa-list"></i> View Submissions
+                        </button>
+                        <button class="btn btn-primary btn-lg" onclick="openHwModal('homework')">
+                            <i class="fas fa-plus"></i> New Homework
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Main Homework List View -->
+                <div id="homework-main-view">
 
                 <div class="card">
                     <div class="filter-bar">
@@ -623,6 +667,46 @@
                         </table>
                     </div>
                 </div>
+                </div> <!-- End Main Homework List View -->
+
+                <!-- Homework Submissions List View -->
+                <div id="homework-submissions-view" style="display:none;">
+                    <div class="card">
+                        <div class="filter-bar">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" placeholder="Search by student name..." id="submission-search" onkeyup="filterSubmissions()">
+                            </div>
+                            <div class="filter-group">
+                                <select id="submission-status-filter" onchange="filterSubmissions()">
+                                    <option value="">All Statuses</option>
+                                    <option value="submitted">Submitted</option>
+                                    <option value="reviewed">Reviewed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Class</th>
+                                        <th>Section</th>
+                                        <th>Roll</th>
+                                        <th>Assignment</th>
+                                        <th>Status</th>
+                                        <th style="text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teacher-all-submissions-body">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">Loading submissions...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div> <!-- End Submissions View -->
             </div>
 
             <!-- =================== DAILY PRACTICE TAB =================== -->
@@ -1022,6 +1106,128 @@
                 <div class="modal-footer" style="padding:0; background:none; border:none; margin-top:2rem;">
                     <button type="button" class="btn btn-secondary" onclick="closeSyllabusModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Add Chapter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =================== MODALS =================== -->
+    
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-edit"></i> Edit Profile</h3>
+                <button class="close-modal" onclick="closeEditProfileModal()">&times;</button>
+            </div>
+            <form id="edit-profile-form">
+                <div class="modal-body">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <div style="position: relative; display: inline-block;">
+                            <img id="profile-preview" src="./src/assets/images/default-avatar.png" alt="Profile" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); box-shadow: var(--shadow-md);">
+                            <label for="profile-upload" style="position: absolute; bottom: 0; right: 0; background: var(--accent-blue); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white;">
+                                <i class="fas fa-camera"></i>
+                            </label>
+                            <input type="file" id="profile-upload" accept=".jpg,.jpeg,.png" style="display: none;" onchange="previewProfileImage(this)">
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Max size: 200KB (.jpg, .jpeg, .png)</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="edit-profile-name" class="form-control" required placeholder="Your full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="edit-profile-email" class="form-control" readonly style="background: var(--bg-hover); cursor: not-allowed;" title="Email cannot be changed">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CMS Content Modal -->
+    <div id="cms-modal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="cms-modal-title">Content</h3>
+                <button class="close-modal" onclick="closeCMSModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="cms-modal-body" style="line-height: 1.6; max-height: 70vh; overflow-y: auto;">
+                <p class="loading-text">Loading...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCMSModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Homework Submissions Modal -->
+    <div id="homework-submissions-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px; width: 95%;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="sub-modal-title">Homework Submissions</h3>
+                    <p id="sub-modal-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"></p>
+                </div>
+                <button class="close-modal" onclick="closeSubmissionsModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="table-container" style="max-height: 60vh; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Submitted At</th>
+                                <th>Status</th>
+                                <th>Marks</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissions-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeSubmissionsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Submission Modal -->
+    <div id="review-submission-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Review Submission</h3>
+                <button class="close-modal" onclick="closeReviewModal()">&times;</button>
+            </div>
+            <form id="review-submission-form">
+                <input type="hidden" id="review-submission-id">
+                <div class="modal-body">
+                    <div id="review-student-info" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-hover); border-radius: 8px;">
+                        <p style="margin: 0; font-weight: 600; color: var(--text-main);" id="review-student-name"></p>
+                        <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted);" id="review-submitted-at"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Marks / Score (Optional)</label>
+                        <input type="text" id="review-marks" class="form-control" placeholder="e.g. 85 or A+">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Remarks / Feedback *</label>
+                        <textarea id="review-remarks" class="form-control" rows="4" placeholder="Enter your feedback for the student..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+                    <button type="submit" id="submit-review-btn" class="btn btn-primary">Submit Review</button>
                 </div>
             </form>
         </div>

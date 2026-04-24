@@ -25,6 +25,11 @@ import notificationsRoutes from './features/notifications/notificationsRoutes.js
 import resultsRoutes    from './features/results/resultsRoutes.js';
 import downloadRoutes   from './features/download/downloadRoutes.js';
 import subjectsRoutes   from './features/subjects/subjectsRoutes.js';
+import storageRoutes    from './features/storage/storageRoutes.js';
+import profileRoutes    from './features/profile/profileRoutes.js';
+import contentRoutes    from './features/content/contentRoutes.js';
+import submissionRoutes from './features/submissions/submissionRoutes.js';
+import assignmentRoutes from './features/homework/assignmentRoutes.js';
 import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securityLogger } from './middleware/auth-middleware.js';
 
 import { initializeDatabase } from './config/database.js';
@@ -84,6 +89,7 @@ app.get('/', (req, res) => {
 
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../../frontend')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Handle favicon requests
 app.get('/favicon.ico', (req, res) => {
@@ -107,6 +113,11 @@ app.use('/api/admin/notifications', authenticate, authorize('admin'), notificati
 app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
 app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users
 app.use('/api/subjects', authenticate, subjectsRoutes); // Combined RBAC internally
+app.use('/api/storage', authenticate, storageRoutes); // Storage routes (upload, files, download)
+app.use('/api/profile', authenticate, profileRoutes);
+app.use('/api/content', authenticate, contentRoutes);
+app.use('/api/submissions', authenticate, submissionRoutes);
+app.use('/api/assignments', authenticate, assignmentRoutes);
 
 // PUBLIC content route (no auth required — for landing page)
 const PUBLIC_CONTENT_KEYS = ['programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms', 'help', 'documentation'];

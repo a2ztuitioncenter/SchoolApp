@@ -69,9 +69,9 @@
 
 <body>
     <!-- Protection screen shows while auth is being verified -->
-    <div id="auth-protection-screen">
-        <div style="text-align: center;">
-            <p style="font-size: 1.2rem; color: #666;">Loading...</p>
+    <div id="auth-protection-screen" class="protection-screen">
+        <div class="loading-container-centered">
+            <p class="loading-text-lg">Loading...</p>
         </div>
     </div>
 
@@ -89,6 +89,7 @@
                 <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-alt"></i> <span>Syllabus</span></a>
                 <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> <span>Timetable</span></a>
                 <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> <span>Alerts</span></a>
+                <a href="#" class="nav-link" data-tab="submissions"><i class="fas fa-file-upload"></i> <span>Submissions</span></a>
                 <a href="#" class="nav-link" data-tab="results"><i class="fas fa-chart-bar"></i> <span>Results</span></a>
             </nav>
         </aside>
@@ -125,6 +126,11 @@
                                 </div>
                             </div>
                             <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" onclick="openEditProfileModal()"><i class="fas fa-user-edit"></i> Edit Profile</button>
+                            <button class="dropdown-item" onclick="openCMSModal('help_support')"><i class="fas fa-question-circle"></i> Help & Support</button>
+                            <button class="dropdown-item" onclick="openCMSModal('contact_us')"><i class="fas fa-headset"></i> Contact Us</button>
+                            <button class="dropdown-item" onclick="openCMSModal('about_us')"><i class="fas fa-info-circle"></i> About Us</button>
+                            <div class="dropdown-divider"></div>
                             <button id="dropdown-logout-btn" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
                         </div>
                     </div>
@@ -132,7 +138,7 @@
             </header>
 
             <!-- Syllabus Tab -->
-            <div id="tab-syllabus" class="tab-content" style="display:none;">
+            <div id="tab-syllabus" class="tab-content hidden-tab">
                 <div class="dashboard-card">
                     <div class="card-header">
                         <h2><i class="fas fa-list-alt"></i> Class Syllabus</h2>
@@ -144,31 +150,31 @@
             </div>
 
             <!-- Subjects Tab -->
-            <div id="tab-subjects" class="tab-content" style="display:none;">
+            <div id="tab-subjects" class="tab-content hidden-tab">
                 <div class="dashboard-card">
                     <div class="card-header">
                         <h2><i class="fas fa-book"></i> Enrolled Subjects</h2>
                     </div>
-                    <div id="subjects-container" class="subjects-list" style="margin-top:20px; padding: 0 20px;">
+                    <div id="subjects-container" class="subjects-list container-padded-mt">
                         <p class="loading-text">Loading subjects...</p>
                     </div>
                 </div>
             </div>
 
             <!-- Daily Practice (DPP) Tab -->
-            <div id="tab-dpp" class="tab-content" style="display:none;">
+            <div id="tab-dpp" class="tab-content hidden-tab">
                 <div class="dashboard-card">
                     <div class="card-header">
                         <h2><i class="fas fa-edit"></i> Daily Practice Problems</h2>
                     </div>
-                    <div id="daily-practice-container" style="margin-top:20px; padding: 0 20px;">
+                    <div id="daily-practice-container" class="container-padded-mt">
                         <p class="loading-text">Loading daily practice...</p>
                     </div>
                 </div>
             </div>
 
             <!-- Materials Tab -->
-            <div id="tab-materials" class="tab-content" style="display:none;">
+            <div id="tab-materials" class="tab-content hidden-tab">
                 <div class="dashboard-card">
                     <div class="card-header">
                         <h2><i class="fas fa-folder-open"></i> Study Materials</h2>
@@ -180,7 +186,7 @@
             </div>
 
             <!-- Timetable Tab -->
-            <div id="tab-timetable" class="tab-content" style="display:none;">
+            <div id="tab-timetable" class="tab-content hidden-tab">
                 <div class="section-container">
                     <div class="section-header">
                         <h3><i class="fas fa-calendar-alt"></i> Class Timetable</h3>
@@ -193,7 +199,7 @@
             </div>
 
             <!-- Notifications Tab -->
-            <div id="tab-notifications" class="tab-content" style="display:none;">
+            <div id="tab-notifications" class="tab-content hidden-tab">
                 <div class="section-container">
                     <div class="section-header">
                         <h3><i class="fas fa-bell"></i> Notifications & Announcements</h3>
@@ -205,10 +211,25 @@
             </div>
 
             <!-- Results Tab -->
-            <div id="tab-results" class="tab-content" style="display:none;">
+            <div id="tab-results" class="tab-content hidden-tab">
                 <div class="section-container">
                     <div id="student-results-container">
                         <!-- Student Results Module will render here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submissions Tab -->
+            <div id="tab-submissions" class="tab-content hidden-tab">
+                <div class="dashboard-card">
+                    <div class="submissions-header-center">
+                        <h2><i class="fas fa-file-upload"></i> Your Submissions</h2>
+                        <button id="open-assignment-selector-btn" class="btn-submit-assignment" onclick="openAssignmentSelector()">
+                            <i class="fas fa-plus"></i> Submit Assignment
+                        </button>
+                    </div>
+                    <div id="submissions-list-container" class="submissions-list">
+                        <p class="loading-text">Loading submissions...</p>
                     </div>
                 </div>
             </div>
@@ -219,24 +240,24 @@
 
                     <section class="left-col">
                         <div class="action-cards">
-                            <div class="card card-clickable card-detailed" id="latest-homework-card" style="cursor: pointer; transition: all 0.3s ease;">
-                                <div class="card-header-section">
-                                    <h3 style="margin: 0; font-size: 0.95rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Homework</h3>
+                            <div class="card card-clickable card-detailed card-clickable-legacy" id="latest-homework-card">
+                                <div class="card-header-section home-card-header">
+                                    <h3>Homework</h3>
                                 </div>
                                 <div class="card-body-section">
-                                    <h4 id="latest-homework-title" style="margin: 0.5rem 0 0.25rem 0; font-size: 1rem;">Assignment</h4>
-                                    <p id="latest-homework-desc" style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">No description</p>
-                                    <p id="latest-homework-due" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Due: --</p>
+                                    <h4 id="latest-homework-title" class="home-card-title">Assignment</h4>
+                                    <p id="latest-homework-desc" class="home-card-desc">No description</p>
+                                    <p id="latest-homework-due" class="home-card-meta">Due: --</p>
                                 </div>
                             </div>
-                            <div class="card card-clickable card-detailed" id="latest-dpp-card" style="cursor: pointer; transition: all 0.3s ease;">
-                                <div class="card-header-section">
-                                    <h3 style="margin: 0; font-size: 0.95rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">DPP</h3>
+                            <div class="card card-clickable card-detailed card-clickable-legacy" id="latest-dpp-card">
+                                <div class="card-header-section home-card-header">
+                                    <h3>DPP</h3>
                                 </div>
                                 <div class="card-body-section">
-                                    <h4 id="latest-dpp-title" style="margin: 0.5rem 0 0.25rem 0; font-size: 1rem;">Practice Problem</h4>
-                                    <p id="latest-dpp-desc" style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">No description</p>
-                                    <p id="latest-dpp-date" style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Posted: --</p>
+                                    <h4 id="latest-dpp-title" class="home-card-title">Practice Problem</h4>
+                                    <p id="latest-dpp-desc" class="home-card-desc">No description</p>
+                                    <p id="latest-dpp-date" class="home-card-meta">Posted: --</p>
                                 </div>
                             </div>
                         </div>
@@ -261,48 +282,186 @@
 
                         <div class="stats-card">
                             <h4><i class="fas fa-receipt"></i> Fee Status</h4>
-                            <div id="fees-summary" style="display:none;">
-                                <div style="margin-bottom:0.75rem;">
-                                    <span style="color:var(--success); font-weight:600;">Total Paid:</span>
-                                    <span style="float:right;">₹<span id="fees-total-paid">0</span></span>
+                            <div id="fees-summary" class="hidden-tab fee-summary-container">
+                                <div class="fee-row">
+                                    <span class="fee-label-paid">Total Paid:</span>
+                                    <span class="fee-value">₹<span id="fees-total-paid">0</span></span>
                                 </div>
-                                <div>
-                                    <span style="color:var(--danger); font-weight:600;">Total Pending:</span>
-                                    <span style="float:right;">₹<span id="fees-total-pending">0</span></span>
+                                <div class="fee-row">
+                                    <span class="fee-label-pending">Total Pending:</span>
+                                    <span class="fee-value">₹<span id="fees-total-pending">0</span></span>
                                 </div>
                             </div>
                             <p class="attendance-count" id="fees-display">Loading...</p>
                         </div>
 
                         <!-- Student Fee History -->
-                        <div class="stats-card" id="student-fees-card" style="display:none; padding:1.5rem;">
-                            <h4 style="margin-bottom:1rem;"><i class="fas fa-history"></i> Fee History</h4>
-                            <div class="table-container" style="margin-top:0.75rem; max-height:400px; overflow-y:auto;">
-                                <table style="width:100%; font-size:0.85rem;">
-                                    <thead style="position:sticky; top:0; background:var(--bg-hover);">
+                        <div class="stats-card hidden-tab p-15rem" id="student-fees-card">
+                            <h4 class="mb-1rem"><i class="fas fa-history"></i> Fee History</h4>
+                            <div class="fee-history-table-wrapper">
+                                <table class="fee-history-table">
+                                    <thead class="fee-history-thead">
                                         <tr>
-                                            <th style="padding:0.5rem; text-align:left; border-bottom:1px solid var(--border-subtle);">Description</th>
-                                            <th style="padding:0.5rem; text-align:right; border-bottom:1px solid var(--border-subtle);">Amount</th>
-                                            <th style="padding:0.5rem; text-align:left; border-bottom:1px solid var(--border-subtle);">Status</th>
+                                            <th class="fee-history-th">Description</th>
+                                            <th class="fee-history-th fee-history-th-right">Amount</th>
+                                            <th class="fee-history-th">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody id="student-fee-history-table">
-                                        <tr><td colspan="3" style="text-align:center; padding:1rem; color:var(--text-muted);">Loading...</td></tr>
+                                        <tr><td colspan="3" class="fee-history-empty">Loading...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
                         <!-- Notifications preview on home -->
-                        <div class="stats-card" style="text-align:left; padding: 1.5rem;">
-                            <h4 style="margin-bottom: 0.75rem;"><i class="fas fa-bell"
-                                    style="color: var(--accent-blue); margin-right: 6px;"></i> Recent Announcements</h4>
+                        <div class="stats-card stats-card-padded">
+                            <h4 class="mb-075"><i class="fas fa-bell"></i> Recent Announcements</h4>
                             <div id="notifications-preview"></div>
                         </div>
                     </section>
 
                 </div>
             </main>
+        </div>
+    </div>
+
+    <!-- =================== MODALS =================== -->
+    
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" class="modal">
+        <div class="modal-content modal-content-legacy">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-edit"></i> Edit Profile</h3>
+                <button class="close-modal" onclick="closeEditProfileModal()">&times;</button>
+            </div>
+            <form id="edit-profile-form">
+                <div class="modal-body">
+                    <div class="profile-edit-header">
+                        <div class="profile-avatar-wrapper">
+                            <img id="profile-preview" src="./src/assets/images/default-avatar.png" alt="Profile" class="profile-avatar-edit">
+                            <label for="profile-upload" class="profile-avatar-badge">
+                                <i class="fas fa-camera"></i>
+                            </label>
+                            <input type="file" id="profile-upload" accept=".jpg,.jpeg,.png" class="d-none" onchange="previewProfileImage(this)">
+                        </div>
+                        <p class="profile-edit-note">Max size: 200KB (.jpg, .jpeg, .png)</p>
+                    </div>
+                    
+                    <div class="form-group-mb">
+                        <label class="form-label-legacy">Full Name</label>
+                        <input type="text" id="edit-profile-name" class="form-input-legacy" required placeholder="Your full name">
+                    </div>
+                    <div class="form-group-mb">
+                        <label class="form-label-legacy">Email Address</label>
+                        <input type="email" id="edit-profile-email" class="form-input-legacy opacity-60 cursor-not-allowed" readonly title="Email cannot be changed">
+                    </div>
+                </div>
+                <div class="modal-footer flex-end-gap p-15rem">
+                    <button type="button" class="modal-btn modal-btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                    <button type="submit" class="modal-btn modal-btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Homework Submission Modal -->
+    <div id="homework-submission-modal" class="modal">
+        <div class="modal-content modal-content-legacy">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-upload"></i> Submit Homework</h3>
+                <button class="close-modal" id="close-submission-modal">&times;</button>
+            </div>
+            <form id="homework-submission-form">
+                <input type="hidden" id="submit-homework-id">
+                <div class="modal-body">
+                    <div class="info-box-legacy">
+                        <h4 id="submit-hw-title" class="info-box-title">Homework Title</h4>
+                        <p id="submit-hw-subject" class="info-box-meta">Subject: --</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label-legacy font-weight-600">Upload File (PDF or Image)</label>
+                        <div class="file-upload-zone" id="submission-drop-zone">
+                            <i class="fas fa-cloud-upload-alt file-zone-icon"></i>
+                            <p class="file-zone-text">Click or Drag & Drop</p>
+                            <p class="file-zone-subtext">Max size: 10MB (PDF, JPG, PNG)</p>
+                            <input type="file" id="homework-file-input" accept=".pdf,.jpg,.jpeg,.png" class="d-none">
+                        </div>
+                        <div id="selected-file-info" class="hidden-tab file-display-box">
+                            <div class="file-display-content">
+                                <div class="file-display-item">
+                                    <i class="fas fa-file-pdf file-display-icon-pdf" id="file-icon"></i>
+                                    <span id="file-name-display" class="file-display-name">file_name.pdf</span>
+                                </div>
+                                <button type="button" id="remove-file-btn" class="file-remove-btn"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer-flex">
+                    <button type="button" class="modal-btn modal-btn-secondary" id="cancel-submission-btn">Cancel</button>
+                    <button type="submit" class="modal-btn modal-btn-primary" id="submit-btn">Submit Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="select-assignment-modal" class="modal">
+        <div class="modal-content modal-content-sm">
+            <div class="modal-header">
+                <h3><i class="fas fa-tasks"></i> Select Assignment</h3>
+                <button class="close-modal" id="close-select-assignment-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="empty-state">Choose an assignment or DPP to submit your work.</p>
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label-bold">Active Assignments</label>
+                    <div class="custom-dropdown-container" id="assignments-dropdown-container">
+                        <div class="custom-dropdown-trigger" id="custom-dropdown-trigger">
+                            <span id="custom-dropdown-selected">-- Choose Assignment --</span>
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        </div>
+                        <div class="custom-dropdown-menu" id="custom-dropdown-menu">
+                            <div class="custom-dropdown-group-label" id="label-homework">Homework</div>
+                            <div id="optgroup-homework-custom"></div>
+                            <div class="custom-dropdown-group-label" id="label-dpp">DPP</div>
+                            <div id="optgroup-dpp-custom"></div>
+                        </div>
+                        <input type="hidden" id="active-assignments-dropdown">
+                    </div>
+                </div>
+                <div id="assignment-details-preview" class="assignment-preview-box">
+                    <h4 id="preview-title" class="preview-title">Assignment Title</h4>
+                    <p id="preview-subject" class="preview-text">Subject: --</p>
+                    <p id="preview-due" class="preview-text">Due Date: --</p>
+                </div>
+                <div id="no-assignments-msg" class="no-assignments-container">
+                    <i class="fas fa-check-circle no-assignments-icon"></i>
+                    <p class="no-assignments-title">All caught up!</p>
+                    <p class="no-assignments-text">No active assignments found for your class.</p>
+                </div>
+            </div>
+            <div class="modal-footer-flex">
+                <button type="button" class="modal-btn modal-btn-secondary" id="cancel-select-assignment-btn">Cancel</button>
+                <button type="button" class="modal-btn modal-btn-primary" id="proceed-to-submit-btn" disabled>Proceed to Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CMS Content Modal -->
+    <div id="cms-modal" class="modal">
+        <div class="modal-content modal-content-lg">
+            <div class="modal-header">
+                <h3 id="cms-modal-title">Content</h3>
+                <button class="close-modal" onclick="closeCMSModal()">&times;</button>
+            </div>
+            <div class="modal-body cms-modal-body-custom" id="cms-modal-body">
+                <p class="loading-text">Loading...</p>
+            </div>
+            <div class="modal-footer-flex p-1-15rem">
+                <button type="button" class="modal-btn modal-btn-secondary" onclick="closeCMSModal()">Close</button>
+            </div>
         </div>
     </div>
 

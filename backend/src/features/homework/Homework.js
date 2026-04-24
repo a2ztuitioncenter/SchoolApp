@@ -97,9 +97,26 @@ export const homeworkModel = {
     return this.formatRow(result.rows[0]);
   },
 
-  async delete(id) {
+    async delete(id) {
     const result = await db.query('DELETE FROM homework WHERE id=$1 RETURNING id', [id]);
     return result.rows[0] || null;
+  },
+
+  async getActiveAssignmentsForStudent(classLevel, section, studentId) {
+    const query = `
+      SELECT h.*, s.name AS subject_name, sub.status AS submission_status
+      FROM homework h
+      LEFT JOIN subjects s ON h.subject_id = s.id
+      LEFT JOIN submissions sub ON h.id = sub.homework_id AND sub.student_id = $3
+      WHERE h.class_level = $1 
+      AND (h.section = $2 OR h.section = 'ALL' OR h.section IS NULL)
+      ORDER BY h.type DESC, h.created_at DESC
+    `;
+    const result = await db.query(query, [classLevel, section, studentId]);
+    return result.rows.map(row => ({
+      ...this.formatRow(row),
+      submissionStatus: row.submission_status
+    }));
   }
 };
 

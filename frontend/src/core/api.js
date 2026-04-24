@@ -222,6 +222,7 @@ export const studentAPI = {
   getFees: (userId) => apiCall(`/student/${userId}/fees`, { method: 'GET' }),
   getSyllabus: (userId) => apiCall(`/student/${userId}/syllabus`, { method: 'GET' }),
   getResults: (userId) => apiCall(`/student/${userId}/results`, { method: 'GET' }),
+  getSubmissions: (userId) => apiCall(`/submissions/student/${userId}`, { method: 'GET' }),
 };
 
 /**
@@ -267,6 +268,20 @@ export const adminAPI = {
 };
 
 /**
+ * Profile APIs
+ */
+export const profileAPI = {
+  update: (formData) => apiCall('/profile/update', { method: 'PUT', body: formData }),
+};
+
+/**
+ * Content APIs (Authenticated)
+ */
+export const contentAPI = {
+  get: (type) => apiCall(`/content?type=${encodeURIComponent(type)}`, { method: 'GET' }),
+};
+
+/**
  * Public content fetcher — no auth required (for landing page)
  */
 export const fetchPublicContent = async (key) => {
@@ -288,6 +303,20 @@ export {
   notificationsAPI,
   resultsAPI,
   subjectsAPI
+};
+
+/**
+ * Submissions API
+ */
+export const submissionsAPI = {
+  submit: (formData) => apiCall('/submissions', { method: 'POST', body: formData }),
+  getForHomework: (homeworkId) => apiCall(`/submissions/homework/${homeworkId}`, { method: 'GET' }),
+  getTeacherSubmissions: () => apiCall('/submissions/teacher', { method: 'GET' }),
+  review: (submissionId, data) => apiCall(`/submissions/${submissionId}/review`, { method: 'PUT', body: JSON.stringify(data) }),
+};
+
+export const assignmentsAPI = {
+  getActive: () => apiCall('/assignments/active', { method: 'GET' }),
 };
 
 /**

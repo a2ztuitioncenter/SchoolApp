@@ -1,4 +1,27 @@
 import { homeworkModel } from './Homework.js';
+import { getStudentByUserId } from '../student/Student.js';
+
+export const getActiveAssignments = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const student = await getStudentByUserId(req.db, userId);
+    
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student profile not found' });
+    }
+
+    const assignments = await homeworkModel.getActiveAssignmentsForStudent(
+      student.classLevel, 
+      student.section, 
+      student.id
+    );
+
+    res.json({ success: true, data: assignments });
+  } catch (err) {
+    console.error('getActiveAssignments:', err);
+    res.status(500).json({ success: false, error: 'Server error', detail: err.message });
+  }
+};
 
 export const createHomework = async (req, res) => {
   try {

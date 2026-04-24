@@ -1,6 +1,6 @@
-import { teacherAPI, subjectsAPI, downloadFile } from '../../core/api.js';
+import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
-import { escapeHtml } from '../../core/sanitize.js';
+import { escapeHtml, escapeAttr } from '../../core/sanitize.js';
 import { formatDate } from '../../core/utils.js';
 
 // ═══════════════════════════════════════════
@@ -371,6 +371,26 @@ async function loadDashboard() {
 
         const initialEl = document.getElementById('teacher-avatar-initial');
         if (initialEl && teacher.name) initialEl.textContent = teacher.name.charAt(0).toUpperCase();
+
+        // Update Profile Image
+        const profileImg = document.querySelector('#teacher-profile-btn img') || document.querySelector('#teacher-profile-btn .avatar-circle');
+        if (teacher.avatar_url) {
+          const avatarUrl = teacher.avatar_url;
+          if (profileImg.tagName === 'IMG') {
+            profileImg.src = avatarUrl;
+          } else {
+            // Replace circle with img
+            const btn = document.getElementById('teacher-profile-btn');
+            const caret = btn.querySelector('.fa-caret-down');
+            btn.innerHTML = `
+              <img src="${avatarUrl}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
+              ${caret.outerHTML}
+            `;
+          }
+          // Also update modal preview
+          const modalPreview = document.getElementById('profile-preview');
+          if (modalPreview) modalPreview.src = avatarUrl;
+        }
       }
 
       // Update Assigned Classes in Dropdown
@@ -774,6 +794,7 @@ function renderHomeworkTable() {
           <button class="action-menu-btn" onclick="toggleActionMenu(this)">⋮</button>
           <div class="action-menu-dropdown" onclick="event.stopPropagation()">
             <button class="action-menu-item" onclick="editHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
+            <button class="action-menu-item" onclick="viewSubmissions(${hw.id}, '${escapeAttr(hw.title)}'); event.stopPropagation();"><i class="fas fa-file-invoice" style="width:16px;"></i> Submissions</button>
             <div class="action-menu-divider"></div>
             <button class="action-menu-item danger" onclick="deleteHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
@@ -808,6 +829,7 @@ function renderDppTable() {
           <button class="action-menu-btn" onclick="toggleActionMenu(this)">⋮</button>
           <div class="action-menu-dropdown" onclick="event.stopPropagation()">
             <button class="action-menu-item" onclick="editHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
+            <button class="action-menu-item" onclick="viewSubmissions(${hw.id}, '${escapeAttr(hw.title)}'); event.stopPropagation();"><i class="fas fa-file-invoice" style="width:16px;"></i> Submissions</button>
             <div class="action-menu-divider"></div>
             <button class="action-menu-item danger" onclick="deleteHomework(${hw.id}); event.stopPropagation();"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
           </div>
@@ -1755,3 +1777,349 @@ function renderExamResults(results) {
 }
 
 export { loadDashboard, loadHomework, loadMaterials, loadSyllabus, initExamTab };
+// ═══════════════════════════════════════════
+// PROFILE & CMS LOGIC
+// ═══════════════════════════════════════════
+
+window.openEditProfileModal = async function() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (!modal) return;
+    
+    try {
+        showInfo('Loading profile...');
+        const res = await teacherAPI.getDashboard(teacherId);
+        hideInfo();
+        
+        if (res.success && res.teacher) {
+            const t = res.teacher;
+            document.getElementById('edit-profile-name').value = t.name || '';
+            document.getElementById('edit-profile-email').value = t.email || '';
+            
+            if (t.avatar_url) {
+                document.getElementById('profile-preview').src = t.avatar_url;
+            } else {
+                document.getElementById('profile-preview').src = './src/assets/images/default-avatar.png';
+            }
+            
+            modal.style.display = 'flex';
+        }
+    } catch (err) {
+        hideInfo();
+        showError('Failed to load profile details');
+    }
+};
+
+window.closeEditProfileModal = function() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) modal.style.display = 'none';
+    // Clear file input
+    const fileInput = document.getElementById('profile-upload');
+    if (fileInput) fileInput.value = '';
+};
+
+window.previewProfileImage = function(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validation: Size (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showError('Image size exceeds 2MB limit.');
+            input.value = '';
+            return;
+        }
+        
+        // Validation: Type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            showError('Only JPG, JPEG, and PNG files are allowed.');
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+// Handle Profile Form Submission
+document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('edit-profile-name').value;
+    const fileInput = document.getElementById('profile-upload');
+    const file = fileInput.files[0];
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    if (file) {
+        formData.append('avatar', file);
+    }
+    
+    try {
+        showInfo('Updating profile...');
+        const res = await profileAPI.update(formData);
+        hideInfo();
+        
+        if (res.success) {
+            showSuccess('Profile updated successfully!');
+            closeEditProfileModal();
+            // Refresh dashboard to show changes
+            loadDashboard();
+        } else {
+            showError(res.message || 'Failed to update profile');
+        }
+    } catch (err) {
+        hideInfo();
+        console.error('Profile update error:', err);
+        showError('An error occurred while updating profile');
+    }
+});
+
+// CMS Logic
+window.openCMSModal = async function(type) {
+    const modal = document.getElementById('cms-modal');
+    const titleEl = document.getElementById('cms-modal-title');
+    const bodyEl = document.getElementById('cms-modal-body');
+    if (!modal || !bodyEl) return;
+    
+    const titles = {
+        'help_support': 'Help & Support',
+        'contact_us': 'Contact Us',
+        'about_us': 'About Us'
+    };
+    
+    titleEl.textContent = titles[type] || 'Information';
+    bodyEl.innerHTML = '<p class="loading-text">Loading content...</p>';
+    modal.style.display = 'flex';
+    
+    try {
+        const res = await contentAPI.get(type);
+        if (res.success && res.data) {
+            // Basic markdown-ish conversion for simplicity or just raw HTML
+            // Assuming the CMS content might contain HTML from a rich text editor
+            bodyEl.innerHTML = res.data.content || '<p class="empty-state">No content available.</p>';
+        } else {
+            bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
+        }
+    } catch (err) {
+        console.error('CMS load error:', err);
+        bodyEl.innerHTML = '<p class="empty-state text-danger">Failed to load content. Please try again later.</p>';
+    }
+};
+
+window.closeCMSModal = function() {
+    const modal = document.getElementById('cms-modal');
+    if (modal) modal.style.display = 'none';
+};
+// ===========================
+// Submissions & Reviews Logic
+// ===========================
+
+let allTeacherSubmissions = [];
+
+window.toggleHomeworkSubmissionsView = function() {
+    const mainView = document.getElementById('homework-main-view');
+    const subView = document.getElementById('homework-submissions-view');
+    const btn = document.getElementById('toggle-submissions-btn');
+    
+    if (subView.style.display === 'none') {
+        mainView.style.display = 'none';
+        subView.style.display = 'block';
+        if (btn) btn.innerHTML = '<i class="fas fa-arrow-left"></i> Back to Homework';
+        loadTeacherSubmissions();
+    } else {
+        subView.style.display = 'none';
+        mainView.style.display = 'block';
+        if (btn) btn.innerHTML = '<i class="fas fa-list"></i> View Submissions';
+    }
+};
+
+window.loadTeacherSubmissions = async function() {
+    const tbody = document.getElementById('teacher-all-submissions-body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading submissions...</td></tr>';
+    
+    try {
+        const res = await submissionsAPI.getTeacherSubmissions();
+        if (!res.success) throw new Error(res.error || 'Failed to load');
+        
+        allTeacherSubmissions = res.data || [];
+        renderTeacherSubmissions(allTeacherSubmissions);
+    } catch (err) {
+        console.error('Failed to load teacher submissions:', err);
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state text-danger">Error: ${err.message}</td></tr>`;
+    }
+};
+
+window.filterSubmissions = function() {
+    const search = document.getElementById('submission-search')?.value.toLowerCase() || '';
+    const status = document.getElementById('submission-status-filter')?.value || '';
+    
+    const filtered = allTeacherSubmissions.filter(s => {
+        const matchSearch = s.student_name?.toLowerCase().includes(search) || 
+                            s.homework_title?.toLowerCase().includes(search) ||
+                            s.student_id?.toString().includes(search);
+        const matchStatus = status ? s.status === status : true;
+        return matchSearch && matchStatus;
+    });
+    
+    renderTeacherSubmissions(filtered);
+};
+
+function renderTeacherSubmissions(subs) {
+    const tbody = document.getElementById('teacher-all-submissions-body');
+    if (!tbody) return;
+    
+    if (subs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No submissions found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = subs.map(s => `
+        <tr>
+            <td>
+                <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(s.student_name)}</div>
+            </td>
+            <td>${escapeHtml(s.class_level || '-')}</td>
+            <td>${escapeHtml(s.section || '-')}</td>
+            <td>${escapeHtml(s.roll_number || s.student_id || '-')}</td>
+            <td class="wrap-text">
+                <div style="font-size: 0.9rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${escapeAttr(s.homework_title || s.title || '')}">
+                    ${escapeHtml(s.homework_title || s.title || '-')}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${formatDate(s.submitted_at)}</div>
+            </td>
+            <td>
+                <span class="status-badge ${s.status === 'reviewed' ? 'status-active' : 'status-pending'}">
+                    ${s.status}
+                </span>
+            </td>
+            <td style="text-align: right;">
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="background: #ebf4ff; color: #2b6cb0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;" title="View File">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button onclick="openReviewModal(${s.id}, '${escapeAttr(s.student_name)}', '${formatDate(s.submitted_at)}', '${escapeAttr(s.marks || '')}', '${escapeAttr(s.remark_text || '')}')" class="btn-sm" style="background: #e6fffa; color: #2c7a7b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-check-circle"></i> ${s.status === 'reviewed' ? 'Update' : 'Review'}
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+
+window.viewSubmissions = async function(homeworkId, title) {
+    const modal = document.getElementById('homework-submissions-modal');
+    const tbody = document.getElementById('submissions-table-body');
+    const subtitle = document.getElementById('sub-modal-subtitle');
+    
+    if (!modal || !tbody) return;
+    
+    subtitle.textContent = `Reviewing submissions for: ${title}`;
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading submissions...</td></tr>';
+    modal.style.display = 'flex';
+    
+    try {
+        const res = await submissionsAPI.getForHomework(homeworkId);
+        if (!res.success) throw new Error(res.error);
+        
+        const subs = res.data || [];
+        if (subs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No student has submitted this homework yet.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = subs.map(s => `
+            <tr>
+                <td>
+                    <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(s.student_name)}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Roll ID: #${s.student_id}</div>
+                </td>
+                <td>${formatDate(s.submitted_at)}</td>
+                <td>
+                    <span class="status-badge ${s.status === 'reviewed' ? 'status-active' : 'status-pending'}">
+                        ${s.status}
+                    </span>
+                </td>
+                <td>${s.marks || '--'}</td>
+                <td style="text-align: right;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="background: #ebf4ff; color: #2b6cb0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button onclick="openReviewModal(${s.id}, '${escapeAttr(s.student_name)}', '${formatDate(s.submitted_at)}', '${escapeAttr(s.marks || '')}', '${escapeAttr(s.remark_text || '')}')" class="btn-sm" style="background: #e6fffa; color: #2c7a7b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-check-circle"></i> ${s.status === 'reviewed' ? 'Update' : 'Review'}
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load submissions:', err);
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state text-danger">Error: ${err.message}</td></tr>`;
+    }
+};
+
+window.closeSubmissionsModal = function() {
+    const modal = document.getElementById('homework-submissions-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.openReviewModal = function(id, name, date, marks, remarks) {
+    const modal = document.getElementById('review-submission-modal');
+    if (!modal) return;
+    
+    document.getElementById('review-submission-id').value = id;
+    document.getElementById('review-student-name').textContent = name;
+    document.getElementById('review-submitted-at').textContent = `Submitted: ${date}`;
+    document.getElementById('review-marks').value = marks === 'null' ? '' : marks;
+    document.getElementById('review-remarks').value = remarks === 'null' ? '' : remarks;
+    
+    modal.style.display = 'flex';
+};
+
+window.closeReviewModal = function() {
+    const modal = document.getElementById('review-submission-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+// Review Form Submission
+document.getElementById('review-submission-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const id = document.getElementById('review-submission-id').value;
+    const marks = document.getElementById('review-marks').value;
+    const remarks = document.getElementById('review-remarks').value;
+    const btn = document.getElementById('submit-review-btn');
+    
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        const res = await submissionsAPI.review(id, { marks, remarks });
+        
+        if (res.success) {
+            showSuccess('Review submitted successfully!');
+            closeReviewModal();
+            // Refresh submissions lists
+            if (typeof loadTeacherSubmissions === 'function') {
+                loadTeacherSubmissions(); // Update global submissions list
+            }
+            // For modal list, if the modal is open we might want to refresh it.
+            // But since we just added the global list, loadTeacherSubmissions covers it.
+        } else {
+            showError(res.error || 'Failed to submit review');
+        }
+    } catch (err) {
+        console.error('Review error:', err);
+        showError('An error occurred. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Review';
+    }
+});

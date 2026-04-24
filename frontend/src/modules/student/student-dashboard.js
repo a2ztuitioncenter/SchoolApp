@@ -3,7 +3,7 @@
  * Fetches data on page load and populates DOM elements
  */
 
-import { studentAPI, downloadFile, materialsAPI, waitForBackend } from '../../core/api.js';
+import { studentAPI, downloadFile, materialsAPI, waitForBackend, profileAPI, contentAPI, submissionsAPI, assignmentsAPI } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 import { escapeAttr, escapeHtml, safeFileName } from '../../core/sanitize.js';
 import './student-results.js';
@@ -185,10 +185,14 @@ function setupTabSwitching() {
       link.classList.add('active');
 
       // Update Visibility
-      document.querySelectorAll('.tab-content, .content').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.tab-content, .content').forEach(el => {
+          el.classList.add('hidden-tab');
+          el.classList.remove('active-tab');
+      });
       const target = document.getElementById(`tab-${tabId}`) || document.getElementById(tabId);
       if (target) {
-          target.style.display = 'block';
+          target.classList.remove('hidden-tab');
+          target.classList.add('active-tab');
           // Tab switched
       }
 
@@ -221,6 +225,11 @@ function setupTabSwitching() {
         const studentSection = sectionText !== 'N/A' ? sectionText : '';
         
         loadSubjects(studentClass, studentSection);
+      }
+
+      if (tabId === 'submissions') {
+        const userId = sessionStorage.getItem('studentUserId');
+        if (userId) loadSubmissions(userId);
       }
     });
   });
@@ -439,6 +448,26 @@ function populateProfile(profile) {
   if (sectionElement && profile.section) {
     sectionElement.textContent = profile.section;
   }
+
+  // Update Profile Image
+  const profileImg = document.querySelector('#student-profile-btn img') || document.querySelector('#student-profile-btn .avatar-circle');
+  if (profile.avatar_url) {
+    const avatarUrl = profile.avatar_url;
+    if (profileImg && profileImg.tagName === 'IMG') {
+      profileImg.src = avatarUrl;
+    } else if (profileImg) {
+      // Replace circle with img
+      const btn = document.getElementById('student-profile-btn');
+      const caret = btn.querySelector('.fa-caret-down');
+      btn.innerHTML = `
+        <img src="${avatarUrl}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+        ${caret.outerHTML}
+      `;
+    }
+    // Also update modal preview
+    const modalPreview = document.getElementById('profile-preview');
+    if (modalPreview) modalPreview.src = avatarUrl;
+  }
 }
 
 function populateAttendance(attendance) {
@@ -518,11 +547,16 @@ function populateHomework(homework) {
       <div class="details" style="flex: 1;">
         <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Homework')} - ${escapeHtml(hw.title || 'Assignment')}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
-        ${hw.attachmentUrl ? `
-          <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'homework') + '.pdf')}')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
-            <i class="fas fa-download"></i> Download Attachment
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px;">
+          ${hw.attachmentUrl ? `
+            <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'homework') + '.pdf')}')" class="download-btn" style="padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
+              <i class="fas fa-download"></i> Download
+            </button>
+          ` : ''}
+          <button onclick="openSubmissionModal(${hw.id}, '${escapeAttr(hw.title)}', '${escapeAttr(hw.subject)}')" class="submit-btn" style="padding:4px 10px; background:var(--student-accent); color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
+            <i class="fas fa-file-upload"></i> Submit Work
           </button>
-        ` : ''}
+        </div>
       </div>
     </div>
   `).join('');
@@ -541,11 +575,16 @@ function populateDailyPractice(practiceList) {
       <div class="details" style="flex: 1;">
         <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Practice')} - ${escapeHtml(hw.title || 'Assignment')}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Posted: ${new Date(hw.createdAt).toLocaleDateString()}</p>
-        ${hw.attachmentUrl ? `
-          <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'practice') + '.pdf')}')" class="download-btn" style="display:inline-block; margin-top:8px; padding:4px 10px; background:#48bb78; color:white; border-radius:4px; font-size:0.8rem; text-decoration:none; border:none; cursor:pointer;">
-            <i class="fas fa-download"></i> Download Attachment
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px;">
+          ${hw.attachmentUrl ? `
+            <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'practice') + '.pdf')}')" class="download-btn" style="padding:4px 10px; background:#48bb78; color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
+              <i class="fas fa-download"></i> Download
+            </button>
+          ` : ''}
+          <button onclick="openSubmissionModal(${hw.id}, '${escapeAttr(hw.title)}', '${escapeAttr(hw.subject)}')" class="submit-btn" style="padding:4px 10px; background:var(--student-accent); color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
+            <i class="fas fa-file-upload"></i> Submit Work
           </button>
-        ` : ''}
+        </div>
       </div>
     </div>
   `).join('');
@@ -970,3 +1009,535 @@ function showErrorMessage(message) {
     content.prepend(errorDiv);
   }
 }
+// ═══════════════════════════════════════════
+// PROFILE & CMS LOGIC
+// ═══════════════════════════════════════════
+
+window.openEditProfileModal = async function() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (!modal) return;
+    
+    try {
+        const userId = sessionStorage.getItem('studentUserId');
+        const res = await studentAPI.getDashboard(userId);
+        
+        if (res.success && res.data && res.data.profile) {
+            const p = res.data.profile;
+            document.getElementById('edit-profile-name').value = p.name || '';
+            document.getElementById('edit-profile-email').value = p.email || '';
+            
+            if (p.avatar_url) {
+                document.getElementById('profile-preview').src = p.avatar_url;
+            } else {
+                document.getElementById('profile-preview').src = './src/assets/images/default-avatar.png';
+            }
+            
+            modal.style.display = 'flex';
+        }
+    } catch (err) {
+        console.error('Failed to load profile details:', err);
+    }
+};
+
+window.closeEditProfileModal = function() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) modal.style.display = 'none';
+    const fileInput = document.getElementById('profile-upload');
+    if (fileInput) fileInput.value = '';
+};
+
+window.previewProfileImage = function(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        if (file.size > 200 * 1024) {
+            alert('Image size exceeds 200KB limit.');
+            input.value = '';
+            return;
+        }
+        
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Only JPG, JPEG, and PNG files are allowed.');
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('edit-profile-name').value;
+    const fileInput = document.getElementById('profile-upload');
+    const file = fileInput.files[0];
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    if (file) {
+        formData.append('avatar', file);
+    }
+    
+    try {
+        const res = await profileAPI.update(formData);
+        if (res.success) {
+            alert('Profile updated successfully!');
+            closeEditProfileModal();
+            const userId = sessionStorage.getItem('studentUserId');
+            loadDashboardData(userId);
+        } else {
+            alert(res.message || 'Failed to update profile');
+        }
+    } catch (err) {
+        console.error('Profile update error:', err);
+        alert('An error occurred while updating profile');
+    }
+});
+
+window.openCMSModal = async function(type) {
+    const modal = document.getElementById('cms-modal');
+    const titleEl = document.getElementById('cms-modal-title');
+    const bodyEl = document.getElementById('cms-modal-body');
+    if (!modal || !bodyEl) return;
+    
+    const titles = {
+        'help_support': 'Help & Support',
+        'contact_us': 'Contact Us',
+        'about_us': 'About Us'
+    };
+    
+    titleEl.textContent = titles[type] || 'Information';
+    bodyEl.innerHTML = '<p class="loading-text">Loading content...</p>';
+    modal.style.display = 'flex';
+    
+    try {
+        const res = await contentAPI.get(type);
+        if (res.success && res.data) {
+            bodyEl.innerHTML = res.data.content || '<p class="empty-state">No content available.</p>';
+        } else {
+            bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
+        }
+    } catch (err) {
+        console.error('CMS load error:', err);
+        bodyEl.innerHTML = '<p class="empty-state">Failed to load content.</p>';
+    }
+};
+
+window.closeCMSModal = function() {
+    const modal = document.getElementById('cms-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+// ===========================
+// Submissions Logic
+// ===========================
+
+async function loadSubmissions(userId) {
+    const container = document.getElementById('submissions-list-container');
+    if (!container) return;
+
+    try {
+        container.innerHTML = '<p class="loading-text">Loading your submissions...</p>';
+        const response = await studentAPI.getSubmissions(userId);
+        
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to fetch submissions');
+        }
+
+        const submissions = response.data || [];
+        
+        if (submissions.length === 0) {
+            container.innerHTML = `
+                <div class="no-assignments-container d-block">
+                    <i class="fas fa-history no-assignments-icon opacity-1"></i>
+                    <p class="no-assignments-title">No submissions yet</p>
+                    <p class="no-assignments-text">You haven't submitted any homework or DPP yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                ${submissions.map(s => `
+                    <div class="dashboard-card" style="background: white; padding: 1.5rem; border-radius: 12px; border-left: 4px solid ${s.status === 'reviewed' ? '#48bb78' : '#667eea'}; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0; color: #2d3748; font-size: 1.1rem;">${escapeHtml(s.homework_title)}</h4>
+                                <p style="margin: 4px 0; color: #718096; font-size: 0.85rem;">
+                                    <span style="font-weight: 600;">${escapeHtml(s.subject)}</span> • Submitted on ${formatDate(s.submitted_at)}
+                                </p>
+                                
+                                ${s.status === 'reviewed' ? `
+                                    <div style="margin-top: 1rem; padding: 1rem; background: #f0fff4; border-radius: 8px; border: 1px solid #c6f6d5;">
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                            <span style="font-weight: 600; color: #22543d;">Teacher Review</span>
+                                            <span style="font-weight: 700; color: #2f855a;">Score: ${s.marks || '--'}</span>
+                                        </div>
+                                        <p style="margin: 0; color: #276749; font-size: 0.9rem;">"${escapeHtml(s.remark_text || 'No remarks provided.')}"</p>
+                                        <p style="margin-top: 0.5rem; margin-bottom: 0; font-size: 0.75rem; color: #48bb78; text-align: right;">Reviewed by ${escapeHtml(s.reviewer_name)}</p>
+                                    </div>
+                                ` : `
+                                    <div style="margin-top: 1rem; padding: 0.75rem; background: #ebf4ff; border-radius: 8px; color: #2b6cb0; font-size: 0.9rem;">
+                                        <i class="fas fa-clock"></i> Waiting for teacher review...
+                                    </div>
+                                `}
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                                <span class="badge" style="background: ${s.status === 'reviewed' ? '#c6f6d5' : '#e2e8f0'}; color: ${s.status === 'reviewed' ? '#22543d' : '#4a5568'}; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">
+                                    ${s.status}
+                                </span>
+                                <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="margin-top: 0.5rem; background: #edf2f7; color: #4a5568; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">
+                                    <i class="fas fa-eye"></i> View File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (err) {
+        console.error('❌ Error loading submissions:', err);
+        container.innerHTML = `<p class="error" style="color: #e53e3e; text-align: center; padding: 1rem;">Failed to load submissions: ${err.message || 'Unknown error'}</p>`;
+    }
+}
+
+// Submission Modal Logic
+window.openSubmissionModal = function(hwId, title, subject) {
+    const modal = document.getElementById('homework-submission-modal');
+    if (!modal) return;
+    
+    document.getElementById('submit-homework-id').value = hwId;
+    document.getElementById('submit-hw-title').textContent = title;
+    document.getElementById('submit-hw-subject').textContent = `Subject: ${subject}`;
+    
+    // Reset form
+    document.getElementById('homework-submission-form').reset();
+    resetFileInfo();
+    
+    modal.style.display = 'flex';
+};
+
+function resetFileInfo() {
+    const infoZone = document.getElementById('selected-file-info');
+    const dropZone = document.getElementById('submission-drop-zone');
+    if (infoZone) infoZone.style.display = 'none';
+    if (dropZone) dropZone.style.display = 'block';
+}
+
+// Modal closing helpers
+const closeBtn = document.getElementById('close-submission-modal');
+const cancelBtn = document.getElementById('cancel-submission-btn');
+const subModal = document.getElementById('homework-submission-modal');
+
+if (closeBtn) closeBtn.onclick = () => subModal.style.display = 'none';
+if (cancelBtn) cancelBtn.onclick = () => subModal.style.display = 'none';
+
+// File Upload Handlers
+const fileInput = document.getElementById('homework-file-input');
+const dropZone = document.getElementById('submission-drop-zone');
+const removeFileBtn = document.getElementById('remove-file-btn');
+
+if (dropZone) {
+    dropZone.onclick = () => fileInput.click();
+    
+    dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drop-zone-active');
+    };
+    
+    dropZone.ondragleave = () => {
+        dropZone.classList.remove('drop-zone-active');
+    };
+    
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drop-zone-active');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect(e.dataTransfer.files[0]);
+        }
+    };
+}
+
+if (fileInput) {
+    fileInput.onchange = (e) => {
+        if (e.target.files.length) handleFileSelect(e.target.files[0]);
+    };
+}
+
+if (removeFileBtn) {
+    removeFileBtn.onclick = (e) => {
+        e.stopPropagation();
+        fileInput.value = '';
+        resetFileInfo();
+    };
+}
+
+function handleFileSelect(file) {
+    const infoZone = document.getElementById('selected-file-info');
+    const dropZone = document.getElementById('submission-drop-zone');
+    const nameDisplay = document.getElementById('file-name-display');
+    const icon = document.getElementById('file-icon');
+    
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File size exceeds 10MB limit.');
+        fileInput.value = '';
+        return;
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+        alert('Only JPG, PNG and PDF files are allowed.');
+        fileInput.value = '';
+        return;
+    }
+    
+    nameDisplay.textContent = file.name;
+    if (file.type.includes('image')) {
+        icon.className = 'fas fa-file-image file-icon-img';
+    } else {
+        icon.className = 'fas fa-file-pdf file-icon-pdf';
+    }
+    
+    dropZone.classList.add('d-none');
+    infoZone.classList.add('d-block');
+}
+
+// Submission Form Handler
+document.getElementById('homework-submission-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const hwId = document.getElementById('submit-homework-id').value;
+    const file = fileInput.files[0];
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (!file) {
+        alert('Please select a file to submit');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('homeworkId', hwId);
+    formData.append('submission', file);
+    
+    try {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        
+        const res = await submissionsAPI.submit(formData);
+        
+        if (res.success) {
+            alert('Homework submitted successfully!');
+            subModal.style.display = 'none';
+            // Reload submissions tab if active
+            const userId = sessionStorage.getItem('studentUserId');
+            loadSubmissions(userId);
+        } else {
+            alert(res.error || 'Failed to submit homework');
+        }
+    } catch (err) {
+        console.error('Submission error:', err);
+        alert('An error occurred during submission. Please try again.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Now';
+    }
+});
+
+// ===========================
+// Assignment Selector Logic
+// ===========================
+
+let activeAssignments = [];
+
+window.openAssignmentSelector = async function() {
+    console.log('🚀 Opening assignment selector...');
+    const modal = document.getElementById('select-assignment-modal');
+    const homeworkGroup = document.getElementById('optgroup-homework-custom');
+    const dppGroup = document.getElementById('optgroup-dpp-custom');
+    const labelHomework = document.getElementById('label-homework');
+    const labelDpp = document.getElementById('label-dpp');
+    const dropdown = document.getElementById('active-assignments-dropdown');
+    const noAssignmentsMsg = document.getElementById('no-assignments-msg');
+    const dropdownGroup = document.getElementById('assignments-dropdown-container')?.closest('.form-group');
+    const proceedBtn = document.getElementById('proceed-to-submit-btn');
+
+    if (!modal) {
+        console.error('❌ select-assignment-modal not found!');
+        return;
+    }
+
+    try {
+        // Reset state
+        if (dropdown) dropdown.value = '';
+        document.getElementById('custom-dropdown-selected').textContent = '-- Choose Assignment --';
+        document.getElementById('assignments-dropdown-container')?.classList.remove('open');
+        document.getElementById('custom-dropdown-menu')?.classList.remove('open');
+        document.getElementById('assignment-details-preview').classList.add('d-none');
+        document.getElementById('assignment-details-preview').classList.remove('d-block');
+        proceedBtn.disabled = true;
+        proceedBtn.classList.add('opacity-60', 'cursor-not-allowed');
+        proceedBtn.classList.remove('opacity-100', 'cursor-pointer');
+        
+        modal.classList.add('d-flex');
+        modal.classList.remove('d-none');
+        
+        if (homeworkGroup) homeworkGroup.innerHTML = '';
+        if (dppGroup) dppGroup.innerHTML = '';
+        if (dropdownGroup) {
+            dropdownGroup.classList.add('d-none');
+            dropdownGroup.classList.remove('d-block');
+        }
+        noAssignmentsMsg.classList.add('d-none');
+        noAssignmentsMsg.classList.remove('d-block');
+        
+        console.log('📡 Fetching active assignments...');
+        const res = await assignmentsAPI.getActive();
+        console.log('✅ Assignments response:', res);
+        
+        if (res.success && res.data) {
+            activeAssignments = res.data;
+            
+            const homework = activeAssignments.filter(a => a.type === 'homework');
+            const dpp = activeAssignments.filter(a => a.type === 'dpp');
+            
+            if (homework.length === 0 && dpp.length === 0) {
+                noAssignmentsMsg.classList.add('d-block');
+                noAssignmentsMsg.classList.remove('d-none');
+            } else {
+                if (dropdownGroup) {
+                    dropdownGroup.classList.add('d-block');
+                    dropdownGroup.classList.remove('d-none');
+                }
+                
+                if (labelHomework) labelHomework.style.display = homework.length === 0 ? 'none' : 'block';
+                if (labelDpp) labelDpp.style.display = dpp.length === 0 ? 'none' : 'block';
+                
+                homework.forEach(hw => {
+                    const option = document.createElement('div');
+                    option.className = 'custom-dropdown-option';
+                    option.dataset.value = hw.id;
+                    option.textContent = hw.title;
+                    option.onclick = () => window.handleAssignmentSelection(hw.id);
+                    homeworkGroup.appendChild(option);
+                });
+                
+                dpp.forEach(item => {
+                    const option = document.createElement('div');
+                    option.className = 'custom-dropdown-option';
+                    option.dataset.value = item.id;
+                    option.textContent = item.title;
+                    option.onclick = () => window.handleAssignmentSelection(item.id);
+                    dppGroup.appendChild(option);
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load active assignments:', err);
+        alert('Could not load assignments. Please try again.');
+    }
+};
+
+window.handleAssignmentSelection = function(id) {
+    const hiddenInput = document.getElementById('active-assignments-dropdown');
+    const selectedText = document.getElementById('custom-dropdown-selected');
+    const preview = document.getElementById('assignment-details-preview');
+    const proceedBtn = document.getElementById('proceed-to-submit-btn');
+    
+    // Update hidden input
+    if (hiddenInput) hiddenInput.value = id;
+    
+    // Close dropdown
+    document.getElementById('assignments-dropdown-container')?.classList.remove('open');
+    document.getElementById('custom-dropdown-menu')?.classList.remove('open');
+    
+    if (!id) {
+        if (selectedText) selectedText.textContent = '-- Choose Assignment --';
+        preview.classList.add('d-none');
+        preview.classList.remove('d-block');
+        proceedBtn.disabled = true;
+        proceedBtn.classList.add('opacity-60', 'cursor-not-allowed');
+        proceedBtn.classList.remove('opacity-100', 'cursor-pointer');
+        return;
+    }
+    
+    const assignment = activeAssignments.find(a => a.id == id);
+    if (assignment) {
+        if (selectedText) selectedText.textContent = assignment.title;
+        document.getElementById('preview-title').textContent = assignment.title;
+        document.getElementById('preview-subject').textContent = `Subject: ${assignment.subject || assignment.subjectName || '--'}`;
+        document.getElementById('preview-due').textContent = assignment.dueDate ? `Due Date: ${formatDate(assignment.dueDate)}` : 'Due Date: --';
+        
+        preview.classList.add('d-block');
+        preview.classList.remove('d-none');
+        proceedBtn.disabled = false;
+        proceedBtn.classList.add('opacity-100', 'cursor-pointer');
+        proceedBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        
+        // Update selected state visually
+        document.querySelectorAll('.custom-dropdown-option').forEach(el => {
+            if (el.dataset.value == id) {
+                el.classList.add('selected');
+            } else {
+                el.classList.remove('selected');
+            }
+        });
+    }
+};
+
+// Custom Dropdown Open/Close Logic
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('custom-dropdown-trigger')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const container = document.getElementById('assignments-dropdown-container');
+        const menu = document.getElementById('custom-dropdown-menu');
+        if (container) container.classList.toggle('open');
+        if (menu) menu.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('assignments-dropdown-container');
+        const menu = document.getElementById('custom-dropdown-menu');
+        if (container && menu && !container.contains(e.target)) {
+            container.classList.remove('open');
+            menu.classList.remove('open');
+        }
+    });
+});
+
+
+document.getElementById('open-assignment-selector-btn')?.addEventListener('click', () => {
+    window.openAssignmentSelector();
+});
+
+// Old native select event listener removed, logic moved to window.handleAssignmentSelection
+
+document.getElementById('proceed-to-submit-btn')?.addEventListener('click', () => {
+    const dropdown = document.getElementById('active-assignments-dropdown');
+    const id = dropdown.value;
+    if (!id) return;
+    
+    const assignment = activeAssignments.find(a => a.id == id);
+    if (assignment) {
+        document.getElementById('select-assignment-modal').classList.add('d-none');
+        document.getElementById('select-assignment-modal').classList.remove('d-flex');
+        window.openSubmissionModal(assignment.id, assignment.title, assignment.subject || assignment.subjectName || '--');
+    }
+});
+
+// Modal close handlers for the selector
+document.getElementById('close-select-assignment-modal')?.addEventListener('click', () => {
+    document.getElementById('select-assignment-modal').classList.add('d-none');
+    document.getElementById('select-assignment-modal').classList.remove('d-flex');
+});
+document.getElementById('cancel-select-assignment-btn')?.addEventListener('click', () => {
+    document.getElementById('select-assignment-modal').classList.add('d-none');
+    document.getElementById('select-assignment-modal').classList.remove('d-flex');
+});

@@ -18,7 +18,9 @@ export const userModel = {
       approved_by INTEGER,
       rejection_reason TEXT,
       username VARCHAR(50),
-      status_updated_at TIMESTAMP
+      status_updated_at TIMESTAMP,
+      avatar_url TEXT,
+      avatar_drive_id VARCHAR(100)
     );
   `,
 };
@@ -41,6 +43,7 @@ const MAP_USER = (u) => {
         username: u.username,
         statusUpdatedAt: u.status_updated_at,
         avatarUrl: u.avatar_url,
+        avatarDriveId: u.avatar_drive_id,
         lastLoginAt: u.last_login_at,
         designation: u.designation
     };

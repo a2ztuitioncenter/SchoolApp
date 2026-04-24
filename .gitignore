@@ -2,8 +2,9 @@
 # ⚠️ ENVIRONMENT FILES - CRITICAL FOR SECURITY
 # ============================================================================
 # Never commit environment files with credentials
-.
 .env
+.agents
+.agent
 .env.local
 .env.*.local
 .env.development.local
@@ -14,6 +15,7 @@
 .myenv.*.local
 drive key.json
 *.json.bak
+supabase/
 *.json.old
 
 # ============================================================================
