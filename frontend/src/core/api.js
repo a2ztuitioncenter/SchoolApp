@@ -247,7 +247,7 @@ export const adminAPI = {
   addTimetable: (data) => apiCall('/admin/timetable', { method: 'POST', body: JSON.stringify(data) }),
   deleteTimetable: (id) => apiCall(`/admin/timetable/${id}`, { method: 'DELETE' }),
   getPendingUsers: () => apiCall('/auth/admin/pending-users', { method: 'GET' }),
-  approveUser: (userId) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST' }),
+  approveUser: (userId, data = {}) => apiCall(`/auth/admin/approve-user/${userId}`, { method: 'POST', body: JSON.stringify(data) }),
   rejectUser: (userId, reason) => apiCall(`/auth/admin/reject-user/${userId}`, { method: 'POST', body: JSON.stringify({ reason }) }),
   getTrendData: () => apiCall('/admin/financials/trends', { method: 'GET' }),
   // ERP Dynamic Dropdowns

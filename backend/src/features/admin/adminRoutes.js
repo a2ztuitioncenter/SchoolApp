@@ -84,7 +84,7 @@ router.post('/users/create', async (req, res) => {
             teacherId = await generateTeacherId(req.db, role);
         }
 
-        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: req.user.schoolId || 'school-001', username, status: 'active', teacherId });
+        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: req.user.schoolId, username, status: 'active', teacherId });
         
         await logAudit(req.db, req.user.userId, 'CREATE_USER', 'users', user.id, `Created ${role}: ${name}`);
         
@@ -204,6 +204,12 @@ router.post('/students/create', async (req, res) => {
             const pivotYear = (new Date().getFullYear() % 100) + 10;
             const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
             dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+            
+            // Semantic validation
+            const parsedDate = new Date(dobISO);
+            if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO) {
+                return res.status(400).json({ success: false, error: 'Invalid date of birth' });
+            }
         } else {
             return res.status(400).json({ success: false, error: 'Invalid date format. Use DD/MM/YY' });
         }
@@ -312,11 +318,27 @@ router.patch('/students/:id/status', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
     try {
-        const studentResult = await req.db.query('SELECT user_id FROM students WHERE id = $1', [req.params.id]);
+        const studentId = req.params.id;
+        const studentResult = await req.db.query('SELECT user_id FROM students WHERE id = $1', [studentId]);
         if (studentResult.rows.length === 0) return res.status(404).json({ success: false, error: 'Student not found' });
-        const deleted = await deleteUser(req.db, studentResult.rows[0].user_id);
-        if (!deleted) return res.status(404).json({ success: false, error: 'Associated user not found' });
-        res.json({ success: true, message: 'Student deleted' });
+        
+        const userId = studentResult.rows[0].user_id;
+        
+        // 1. Delete the specific student record
+        await req.db.query('DELETE FROM students WHERE id = $1', [studentId]);
+        
+        // 2. Check if other students share this user_id
+        const sharedResult = await req.db.query('SELECT COUNT(*) as count FROM students WHERE user_id = $1', [userId]);
+        const otherStudentsCount = parseInt(sharedResult.rows[0].count, 10);
+        
+        if (otherStudentsCount === 0) {
+            // 3. No other students, safe to delete the user account
+            await deleteUser(req.db, userId);
+            res.json({ success: true, message: 'Student and associated user account deleted' });
+        } else {
+            // 4. Other students exist, only the student record was deleted
+            res.json({ success: true, message: 'Student record deleted (user account preserved for other students)' });
+        }
     } catch (err) {
         console.error('Delete student error:', err);
         res.status(500).json({ success: false, error: err.message });
@@ -439,10 +461,26 @@ router.get('/timetable', async (req, res) => {
 router.post('/timetable', async (req, res) => {
     const { dayOfWeek, startTime, endTime, subjectId, classLevel, section, teacherId } = req.body;
     try {
+        // Check for overlaps
+        const overlapResult = await req.db.query(
+            `SELECT id FROM timetable 
+             WHERE school_id = $1 AND class_level = $2 AND section = $3 AND day_of_week = $4 
+             AND (
+                (start_time <= $5 AND end_time > $5) OR 
+                (start_time < $6 AND end_time >= $6) OR
+                (start_time >= $5 AND end_time <= $6)
+             )`,
+            [req.user.schoolId, classLevel, section || 'A', dayOfWeek, startTime, endTime]
+        );
+
+        if (overlapResult.rows.length > 0) {
+            return res.status(409).json({ success: false, error: 'Timetable entry overlaps with an existing one' });
+        }
+
         const result = await req.db.query(
-            `INSERT INTO timetable (day_of_week, start_time, end_time, subject_id, class_level, section, teacher_id, school_id)
+            `INSERT INTO timetable (school_id, class_level, section, subject_id, teacher_id, day_of_week, start_time, end_time)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [dayOfWeek, startTime, endTime, subjectId, classLevel, section, teacherId, 'school-001']
+            [req.user.schoolId, classLevel, section || 'A', subjectId, teacherId, dayOfWeek, startTime, endTime]
         );
         res.status(201).json({ success: true, data: result.rows[0] });
     } catch (err) {
@@ -585,7 +623,7 @@ router.put('/profile', async (req, res) => {
 
 router.get('/organization', async (req, res) => {
     try {
-        const result = await req.db.query('SELECT * FROM organizations LIMIT 1');
+        const result = await req.db.query('SELECT * FROM organizations WHERE id = $1', [req.user.schoolId]);
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Fetch organization error:', err);

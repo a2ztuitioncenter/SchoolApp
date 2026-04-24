@@ -133,7 +133,7 @@ async function fetchPendingUsers() {
             const errorMsg = response.error || 'Failed to fetch pending users';
             showMessage(errorMsg, 'error');
             console.error('❌ ' + errorMsg);
-            listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${errorMsg}</p></div>`;
+            listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${escapeHtml(errorMsg)}</p></div>`;
         } else {
             showMessage('Invalid response from server', 'error');
             listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>Invalid response from server</p></div>';
@@ -142,7 +142,7 @@ async function fetchPendingUsers() {
         console.error('❌ Error fetching pending users:', error);
         const errorMsg = 'Error loading pending users: ' + error.message;
         showMessage(errorMsg, 'error');
-        listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${errorMsg}</p><p style="font-size: 0.9em; margin-top: 10px;">Make sure the backend server is running.</p></div>`;
+        listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${escapeHtml(errorMsg)}</p><p style="font-size: 0.9em; margin-top: 10px;">Make sure the backend server is running.</p></div>`;
     }
 }
 
@@ -338,7 +338,8 @@ window.approveUserHandler = async function(userId) {
     }
 
     // For teacher/staff, show class assignment modal
-    if (user.role === 'teacher' || user.role === 'staff') {
+    const roleLower = (user.role || '').toLowerCase();
+    if (roleLower === 'teacher' || roleLower === 'staff') {
         await showClassAssignmentModal(userId);
     } else {
         // For student, simple approval
@@ -453,24 +454,7 @@ async function approveUser(userId) {
 async function approveUserWithClasses(userId, classesAssigned) {
     try {
         window.closeClassAssignmentModal();
-
-        const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
-        const auth = authStr ? JSON.parse(authStr) : {};
-        const token = auth.token;
-
-        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
-
-        // Make API call with class assignments
-        const response = await fetch(`${baseUrl}/api/auth/admin/approve-user/${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ classesAssigned })
-        });
-
-        const data = await response.json();
+        const data = await adminAPI.approveUser(userId, { classesAssigned });
 
         if (data.success) {
             showMessage(`✅ ${pendingUsers.find(u => u.id === userId)?.role || 'User'} approved with class assignments!`, 'success');

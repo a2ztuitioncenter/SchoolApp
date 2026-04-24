@@ -641,6 +641,29 @@ textarea:focus {
   z-index: 2100 !important; /* Above modal */
 }
 
+@media (min-width: 769px) {
+  .admin-container {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: none;
+    position: fixed;
+    bottom: auto;
+    top: 0;
+    left: 0;
+    right: auto;
+    padding: 1.5rem 1rem;
+    flex-direction: column;
+    box-shadow: none;
+    justify-content: flex-start;
+  }
+}
+
 @keyframes slideUp {
   from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -1571,29 +1594,6 @@ textarea:focus {
     bottom: auto;
     top: 0;
     left: 0;
-    padding: 1.5rem 1rem;
-    flex-direction: column;
-    box-shadow: none;
-  }
-
-  .sidebar .logo {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 2rem;
-    padding: 0 0.5rem 1rem;
-    color: var(--text-main);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .sidebar .logo i {
-    color: var(--text-muted);
-  }
-
-@media (min-width: 769px) {
-  .admin-container {
     flex-direction: row;
   }
 

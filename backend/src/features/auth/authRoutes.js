@@ -66,6 +66,12 @@ router.post('/login', async (req, res) => {
       const pivotYear = (new Date().getFullYear() % 100) + 10;
       const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
       dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+      
+      // Semantic validation: Ensure the date actually exists (e.g. Feb 31st is invalid)
+      const parsedDate = new Date(dobISO);
+      if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO) {
+        return res.status(400).json({ error: 'Invalid date of birth' });
+      }
     } else {
       return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
     }
@@ -192,8 +198,17 @@ router.post('/register', async (req, res) => {
         const dparts = dateOfBirth.split('/');
         if (dparts.length === 3) {
           const [dd, mm, yy] = dparts;
-          const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+          const pivotYear = (new Date().getFullYear() % 100) + 10;
+          const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
           dobISO_check = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+          
+          // Semantic validation
+          const parsedDate = new Date(dobISO_check);
+          if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO_check) {
+            return res.status(400).json({ error: 'Invalid date of birth' });
+          }
+        } else {
+          return res.status(400).json({ error: 'Invalid date format for DOB. Use DD/MM/YY' });
         }
         if (dobISO_check && await isDuplicateStudent(pool, sanitizedPhone, fullName, classLevel.toString(), dobISO_check, fatherName, motherName)) {
           return res.status(409).json({ error: 'A student with the same details is already registered' });
@@ -236,15 +251,7 @@ router.post('/register', async (req, res) => {
         const nextNum = (maxResult.rows[0].max_num || 0) + 1;
         const rollNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;
 
-        let dobISO = null;
-        if (dateOfBirth) {
-          const parts = dateOfBirth.split('/');
-          const [dd, mm, yy] = parts;
-          // Dynamic pivot: 2-digit years > (currentYear - 2000 + 10) are treated as 19xx
-          const pivotYear = (new Date().getFullYear() % 100) + 10;
-          const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
-          dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-        }
+        let dobISO = dobISO_check; // Reuse validated DOB from above
 
         const student = await createStudent(client, {
           userId: user.id,
@@ -439,6 +446,10 @@ router.post('/change-password', authenticate, async (req, res) => {
     try {
         if (!currentPassword || !newPassword) {
             return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long' });
         }
 
         // Fetch user with password

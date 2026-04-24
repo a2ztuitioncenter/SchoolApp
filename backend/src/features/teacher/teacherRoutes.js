@@ -63,7 +63,7 @@ async function checkTeacherClassPermission(pool, teacherId, classLevel, section)
     // Check new subject_assignments table first
     const subjectRes = await pool.query(
       `SELECT COUNT(*) as count FROM subject_assignments 
-       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`,
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR $3 = 'ALL')`,
       [teacherId, classLevel, section || 'A']
     );
     if (subjectRes.rows[0].count > 0) return true;
@@ -71,7 +71,7 @@ async function checkTeacherClassPermission(pool, teacherId, classLevel, section)
     // Fallback to legacy teacher_class_assignment (now migrated to snake_case)
     const result = await pool.query(
       `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`,
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR $3 = 'ALL')`,
       [teacherId, classLevel, section || 'A']
     );
     return result.rows[0].count > 0;
@@ -303,31 +303,9 @@ router.get('/attendance/sheet', async (req, res) => {
     if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
     if (!classLevel || !date) return res.status(400).json({ success: false, error: 'classLevel and date required' });
 
-    // Verify teacher assignment
-    let assignmentCheck;
-    if (section) {
-      assignmentCheck = await pool.query(
-        `SELECT id FROM teacher_class_assignment 
-             WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR section IS NULL)`,
-        [teacher.id, classLevel, section]
-      );
-    } else {
-      assignmentCheck = await pool.query(
-        `SELECT id FROM teacher_class_assignment 
-             WHERE teacher_id = $1 AND class_level = $2`,
-        [teacher.id, classLevel]
-      );
-    }
-
-    if (assignmentCheck.rows.length === 0) {
-      const timetableCheck = await pool.query(
-        `SELECT id FROM timetable 
-         WHERE teacher_id = $1 AND class_level = $2`,
-        [teacher.id, classLevel]
-      );
-      if (timetableCheck.rows.length === 0) {
-        return res.status(403).json({ success: false, error: 'You are not assigned to this class' });
-      }
+    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
+    if (!hasPermission) {
+      return res.status(403).json({ success: false, error: 'You are not assigned to this class' });
     }
 
     let studentsQuery = `SELECT id, name, roll_number FROM students WHERE class_level = $1`;
@@ -378,10 +356,14 @@ router.post('/attendance/mark-bulk', async (req, res) => {
     if (!Array.isArray(records) || records.length === 0)
       return res.status(400).json({ success: false, error: 'records array required' });
 
-    // Security check: Verify teacher has permission for the class in the first record
-    // (UI pattern ensures all records in a batch belong to the same class/section)
-    const firstRecord = records[0];
-    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, firstRecord.classLevel, firstRecord.section);
+    // Security check: Verify teacher has permission for all classes/sections in the batch
+    const uniqueClassSections = new Set(records.map(r => `${r.classLevel}-${r.section || 'A'}`));
+    if (uniqueClassSections.size > 1) {
+      return res.status(400).json({ success: false, error: 'Bulk attendance must belong to a single class and section' });
+    }
+
+    const [classLevel, section] = Array.from(uniqueClassSections)[0].split('-');
+    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
     if (!hasPermission) {
       return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission for this class/section' });
     }
@@ -605,22 +587,8 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
     if (!title || !classLevel || !subject) return res.status(400).json({ success: false, error: 'All fields required' });
     if (!req.file) return res.status(400).json({ success: false, error: 'File is required' });
 
-    // Validate permission
-    let permissionQuery;
-    let permissionParams;
-
-    if (section) {
-      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL')`;
-      permissionParams = [teacher.id, classLevel, section];
-    } else {
-      permissionQuery = `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE teacher_id = $1 AND class_level = $2`;
-      permissionParams = [teacher.id, classLevel];
-    }
-
-    const permissionCheck = await pool.query(permissionQuery, permissionParams);
-    if (permissionCheck.rows[0].count === 0) {
+    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
+    if (!hasPermission) {
       return res.status(403).json({ success: false, error: 'Permission denied for this class' });
     }
 
