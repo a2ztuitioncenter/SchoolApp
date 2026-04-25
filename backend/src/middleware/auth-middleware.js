@@ -20,16 +20,23 @@ const getJwtSecret = () => {
  */
 export const authenticate = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 1. Try HttpOnly cookie first (preferred)
+    let token = req.cookies?.token;
+
+    // 2. Fall back to Authorization header (backward compat / mobile clients)
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      }
+    }
+
+    if (!token) {
       return res.status(401).json({ 
         error: 'Unauthorized: No token provided',
         code: 'NO_TOKEN'
       });
     }
-
-    const token = authHeader.slice(7); // Remove "Bearer " prefix
 
     // Verify token
     const decoded = jwt.verify(token, getJwtSecret());
@@ -277,7 +284,7 @@ export const corsSecure = () => {
     if (origin) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token');
       res.header('Access-Control-Allow-Credentials', 'true');
       
       // Specifically allow access to the local loopback (localhost) from a public origin
@@ -313,6 +320,33 @@ export const securityLogger = (req, res, next) => {
   next();
 };
 
+/**
+ * CSRF Protection Middleware — Double-submit cookie pattern.
+ * On login, backend sets a non-HttpOnly 'csrf' cookie.
+ * Frontend reads it and sends it as X-CSRF-Token header on mutating requests.
+ * This middleware compares the two.
+ */
+export const csrfProtection = (req, res, next) => {
+  // Only enforce on state-changing methods
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+
+  // Skip CSRF check for login/register/public routes (no cookie set yet)
+  const csrfExemptPaths = ['/api/auth/login', '/api/auth/admin-login', '/api/auth/teacher-login', '/api/auth/register', '/api/auth/check-username', '/api/public/'];
+  if (csrfExemptPaths.some(p => req.path.startsWith(p))) return next();
+
+  const cookieToken = req.cookies?.csrf;
+  const headerToken = req.headers['x-csrf-token'];
+
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    return res.status(403).json({
+      error: 'CSRF token mismatch',
+      code: 'CSRF_FAILED'
+    });
+  }
+
+  next();
+};
+
 export default {
   authenticate,
   authorize,
@@ -321,5 +355,6 @@ export default {
   rateLimiter,
   validateInput,
   corsSecure,
-  securityLogger
+  securityLogger,
+  csrfProtection
 };

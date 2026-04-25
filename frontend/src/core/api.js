@@ -27,10 +27,9 @@ const getBaseApiUrl = () => {
                  hostname.endsWith('.local');
                   
   if (isLocal) {
-    // If we are already on port 3000, we can use relative paths
-    if (port === '3000') return '';
-    // Otherwise, explicitly point to the backend port
-    return 'http://localhost:3000';
+    // Use relative paths to take advantage of the frontend server's proxy (on port 8000)
+    // or direct access (if on port 3000).
+    return '';
   }
   
   // Fallback for production
@@ -39,16 +38,12 @@ const getBaseApiUrl = () => {
 
 export const base_api_url = getBaseApiUrl();
 
-export const getAuthToken = () => {
-  try {
-    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
-    if (!authStr) return null;
-    const auth = JSON.parse(authStr);
-    return auth?.token || null;
-  } catch (error) {
-    console.error('Error reading auth token from localStorage:', error);
-    return null;
-  }
+/**
+ * Read the CSRF token from the csrf cookie (set by backend, readable by JS)
+ */
+const getCsrfToken = () => {
+  const match = document.cookie.match(/(?:^|;\s*)csrf=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
 };
 
 export const checkBackendHealth = async () => true;
@@ -66,9 +61,11 @@ export const apiCall = async (endpoint, options = {}) => {
   }
   headers['Accept-Encoding'] = 'identity';
 
-  const token = getAuthToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  // Add CSRF token for mutating requests
+  const method = (options.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    const csrf = getCsrfToken();
+    if (csrf) headers['X-CSRF-Token'] = csrf;
   }
 
   const controller = new AbortController();
@@ -79,7 +76,8 @@ export const apiCall = async (endpoint, options = {}) => {
     const response = await fetch(url, {
       ...options,
       headers,
-      signal
+      signal,
+      credentials: 'include' // Send cookies with every request
     });
 
     clearTimeout(timeoutId);
@@ -87,9 +85,24 @@ export const apiCall = async (endpoint, options = {}) => {
     if (response.status === 401) {
       const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/teacher-login') || url.includes('/auth/admin-login') || url.includes('/auth/register');
       if (!isAuthRequest) {
+        // Try to refresh the token silently
+        const refreshed = await tryRefreshToken();
+        if (refreshed) {
+          // Retry the original request once
+          const retryResp = await fetch(url, { ...options, headers, signal, credentials: 'include' });
+          if (retryResp.ok) {
+            if (options.responseType === 'blob') return await retryResp.blob();
+            const ct = retryResp.headers.get('content-type');
+            if (ct?.includes('application/json')) {
+              const text = await retryResp.text();
+              return text ? JSON.parse(text) : {};
+            }
+            return await retryResp.text();
+          }
+        }
+        // Refresh failed or retry failed — redirect to login
         setTimeout(() => {
           if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
-            localStorage.removeItem('auth');
             sessionStorage.removeItem('auth');
             window.location.href = '/';
           }
@@ -126,6 +139,25 @@ export const apiCall = async (endpoint, options = {}) => {
     if (timeoutId) clearTimeout(timeoutId);
   }
 };
+
+/** Silent token refresh — called when a 401 is received */
+let _refreshPromise = null;
+async function tryRefreshToken() {
+  // Deduplicate concurrent refresh attempts
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const url = base_api_url ? `${base_api_url}/api/auth/refresh` : '/api/auth/refresh';
+      const resp = await fetch(url, { method: 'POST', credentials: 'include' });
+      return resp.ok;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
+}
 
 /**
  * Attendance API - Standardized on classLevel and section
@@ -307,7 +339,7 @@ export const contentAPI = {
 export const fetchPublicContent = async (key) => {
   const url = base_api_url ? `${base_api_url}/api/public/content/${key}` : `/api/public/content/${key}`;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { credentials: 'include' });
     const data = await res.json();
     return data;
   } catch (e) {

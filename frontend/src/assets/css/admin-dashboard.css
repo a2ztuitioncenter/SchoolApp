@@ -1436,7 +1436,33 @@ textarea:focus {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
+  /* Fix mobile dropdown containment */
+  .filter-group {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    align-items: stretch;
+    margin-bottom: 0.5rem;
+  }
   
+  /* Fix input/dropdown width */
+  select,
+  select.form-control,
+  .filter-group select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  select.form-control option,
+  .filter-group select option {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
   .form-section-title {
     margin: 0.75rem 0 0.5rem 0;
     padding-top: 0.75rem;

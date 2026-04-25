@@ -4,6 +4,12 @@ import { getStudentByUserId } from '../student/Student.js';
 export const getActiveAssignments = async (req, res) => {
   try {
     const userId = req.user.userId;
+    
+    // Graceful fallback for admins/teachers previewing the student dashboard
+    if (req.user.role !== 'student') {
+      return res.json({ success: true, data: [] });
+    }
+
     const student = await getStudentByUserId(req.db, userId);
     
     if (!student) {

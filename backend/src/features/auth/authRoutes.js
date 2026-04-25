@@ -6,10 +6,14 @@ import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTa
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
+import { validateBody, loginSchema, adminLoginSchema, teacherLoginSchema, registerSchema, changePasswordSchema } from '../../utils/validate.js';
 
 const router = express.Router();
 
-const JWT_EXPIRY = '24h';
+const JWT_EXPIRY = '2h';
+const REFRESH_EXPIRY = '7d';
+
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 const generateToken = (userId, role, phone) => {
   if (!process.env.JWT_SECRET) {
@@ -20,6 +24,54 @@ const generateToken = (userId, role, phone) => {
     process.env.JWT_SECRET,
     { expiresIn: JWT_EXPIRY }
   );
+};
+
+const generateRefreshToken = (userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is required but not found in process.env');
+  }
+  return jwt.sign(
+    { userId, type: 'refresh', iat: Math.floor(Date.now() / 1000) },
+    process.env.JWT_SECRET,
+    { expiresIn: REFRESH_EXPIRY }
+  );
+};
+
+/** Set auth cookies on response */
+const setAuthCookies = (res, accessToken, refreshToken) => {
+  const csrfToken = crypto.randomBytes(24).toString('hex');
+
+  res.cookie('token', accessToken, {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: IS_PROD ? 'Strict' : 'Lax',
+    maxAge: 2 * 60 * 60 * 1000, // 2 hours
+    path: '/'
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: IS_PROD ? 'Strict' : 'Lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/api/auth' // only sent to auth routes
+  });
+
+  // CSRF token — readable by JS (NOT httpOnly) for double-submit pattern
+  res.cookie('csrf', csrfToken, {
+    httpOnly: false,
+    secure: IS_PROD,
+    sameSite: IS_PROD ? 'Strict' : 'Lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/'
+  });
+};
+
+/** Clear all auth cookies */
+const clearAuthCookies = (res) => {
+  res.clearCookie('token', { path: '/' });
+  res.clearCookie('refreshToken', { path: '/api/auth' });
+  res.clearCookie('csrf', { path: '/' });
 };
 
 const validateUsername = (username) => {
@@ -49,7 +101,7 @@ router.get('/check-username', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', validateBody(loginSchema), async (req, res) => {
   const { phone, identifier, dateOfBirth } = req.body;
   const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
@@ -127,11 +179,13 @@ router.post('/login', async (req, res) => {
 
     studentData = await getStudentByUserId(pool, user.id);
     await updateLastLogin(pool, user.id);
-    const token = generateToken(user.id, user.role, user.phone);
+    const accessToken = generateToken(user.id, user.role, user.phone);
+    const refreshToken = generateRefreshToken(user.id);
+
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.json({
       success: true,
-      token,
       user: { id: user.id, role: user.role, phone: user.phone },
       student: studentData ? {
         id: studentData.id,
@@ -280,11 +334,13 @@ router.post('/register', async (req, res) => {
 
         await updateLastLogin(client, user.id);
         await client.query('COMMIT');
-        const token = generateToken(user.id, user.role, sanitizedPhone);
+        const accessToken = generateToken(user.id, user.role, sanitizedPhone);
+        const refreshToken = generateRefreshToken(user.id);
+
+        setAuthCookies(res, accessToken, refreshToken);
 
         return res.json({
           success: true,
-          token,
           user: { id: user.id, phone: user.phone, role: user.role, username: username || `user_${user.id}` },
           student: { id: student.id, name: student.name, rollNumber: student.roll_number, classLevel: student.class_level },
         });
@@ -322,12 +378,14 @@ router.post('/register', async (req, res) => {
         await updateLastLogin(client, user.id);
         await client.query('COMMIT');
 
-        const token = generateToken(user.id, user.role, sanitizedPhone);
+        const accessToken = generateToken(user.id, user.role, sanitizedPhone);
+        const refreshToken = generateRefreshToken(user.id);
+
+        setAuthCookies(res, accessToken, refreshToken);
 
         return res.json({
           success: true,
           message: 'Registration successful. Awaiting admin approval.',
-          token,
           user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
         });
       } catch (err) {
@@ -343,7 +401,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/admin-login', async (req, res) => {
+router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => {
   const { phone, identifier, password } = req.body;
   const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
@@ -355,15 +413,17 @@ router.post('/admin-login', async (req, res) => {
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
     
     await updateLastLogin(pool, user.id);
-    const token = generateToken(user.id, user.role, user.phone);
-    res.json({ success: true, token, user: { id: user.id, phone: user.phone, role: user.role } });
+    const accessToken = generateToken(user.id, user.role, user.phone);
+    const refreshToken = generateRefreshToken(user.id);
+    setAuthCookies(res, accessToken, refreshToken);
+    res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ error: 'Server error during login' });
   }
 });
 
-router.post('/teacher-login', async (req, res) => {
+router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res) => {
   const { phone, identifier, password } = req.body;
   const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
@@ -376,8 +436,10 @@ router.post('/teacher-login', async (req, res) => {
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     
     await updateLastLogin(pool, user.id);
-    const token = generateToken(user.id, user.role, user.phone);
-    res.json({ success: true, token, user: { id: user.id, phone: user.phone, role: user.role } });
+    const accessToken = generateToken(user.id, user.role, user.phone);
+    const refreshToken = generateRefreshToken(user.id);
+    setAuthCookies(res, accessToken, refreshToken);
+    res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {
     console.error('Teacher login error:', error);
     res.status(500).json({ error: 'Server error during login' });
@@ -527,7 +589,7 @@ router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, 
   }
 });
 
-router.post('/change-password', authenticate, async (req, res) => {
+router.post('/change-password', authenticate, validateBody(changePasswordSchema), async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     const pool = req.db;
     try {
@@ -566,6 +628,58 @@ router.post('/change-password', authenticate, async (req, res) => {
         console.error('Change password error:', error);
         res.status(500).json({ success: false, error: 'Server error changing password' });
     }
+});
+
+// ── Logout ─────────────────────────────────────────────────────
+router.post('/logout', (req, res) => {
+  clearAuthCookies(res);
+  res.json({ success: true, message: 'Logged out' });
+});
+
+// ── Verify (validate current session) ──────────────────────────
+router.post('/verify', authenticate, async (req, res) => {
+  try {
+    const user = await getUserById(req.db, req.user.userId);
+    if (!user || user.isActive === false) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: 'Invalid session' });
+    }
+    res.json({ success: true, user: { id: user.id, role: user.role, phone: user.phone } });
+  } catch (error) {
+    console.error('Verify error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── Refresh Token ──────────────────────────────────────────────
+router.post('/refresh', async (req, res) => {
+  try {
+    const rToken = req.cookies?.refreshToken;
+    if (!rToken) return res.status(401).json({ error: 'No refresh token', code: 'NO_REFRESH' });
+
+    const decoded = jwt.verify(rToken, process.env.JWT_SECRET);
+    if (decoded.type !== 'refresh') return res.status(401).json({ error: 'Invalid token type' });
+
+    const user = await getUserById(req.db, decoded.userId);
+    if (!user || user.isActive === false) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: 'User inactive or not found' });
+    }
+
+    // Rotate: issue new access + refresh tokens
+    const newAccess = generateToken(user.id, user.role, user.phone);
+    const newRefresh = generateRefreshToken(user.id);
+    setAuthCookies(res, newAccess, newRefresh);
+
+    res.json({ success: true, user: { id: user.id, role: user.role, phone: user.phone } });
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: 'Refresh token expired', code: 'REFRESH_EXPIRED' });
+    }
+    console.error('Refresh error:', error);
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
 });
 
 export default router;

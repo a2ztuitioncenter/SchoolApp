@@ -11,6 +11,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import cors from 'cors';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 
 
 import authRoutes from './features/auth/authRoutes.js';
@@ -30,7 +31,7 @@ import profileRoutes    from './features/profile/profileRoutes.js';
 import contentRoutes    from './features/content/contentRoutes.js';
 import submissionRoutes from './features/submissions/submissionRoutes.js';
 import assignmentRoutes from './features/homework/assignmentRoutes.js';
-import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securityLogger } from './middleware/auth-middleware.js';
+import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securityLogger, csrfProtection } from './middleware/auth-middleware.js';
 
 import { initializeDatabase } from './config/database.js';
 
@@ -65,8 +66,10 @@ const PORT = process.env.PORT || 3000;
 app.use(corsSecure());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(validateInput);
 app.use(rateLimiter(100, 60000));
+app.use(csrfProtection);
 app.use(securityLogger);
 
 // Attach Database Pool to Request
@@ -191,6 +194,11 @@ const startServer = async () => {
       console.log('Initializing database tables and creating default admin...');
       await initializeDatabase(pool);
     }
+
+    // Start background jobs
+    import('./utils/cleanupJob.js').then(({ startCleanupJob }) => {
+      startCleanupJob(pool);
+    }).catch(err => console.error('Failed to load cleanup job:', err));
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log('\n╔═══════════════════════════════════════════════════════════╗');

@@ -241,8 +241,7 @@ async function handleStudentLoginModal(e) {
                 role: 'student',
                 userId: response.userId || response.user?.id,
                 name: response.student?.name || '',
-                phone: response.user?.phone || identifier,
-                token: response.token
+                phone: response.user?.phone || identifier
             });
 
             const successDiv = modal.querySelector('#studentLoginSuccess');
@@ -292,8 +291,7 @@ async function handleTeacherLoginModal(e) {
                 role: 'teacher',
                 userId: response.user?.id || response.userId,
                 name: response.user?.name || '',
-                phone: response.user?.phone || identifier,
-                token: response.token
+                phone: response.user?.phone || identifier
             });
             
             const successDiv = modal.querySelector('#teacherLoginSuccess');
@@ -343,8 +341,7 @@ async function handleAdminLoginModal(e) {
                 role: 'admin',
                 userId: response.user?.id || response.userId,
                 name: response.user?.name || '',
-                phone: response.user?.phone || identifier,
-                token: response.token
+                phone: response.user?.phone || identifier
             });
             
             const successDiv = modal.querySelector('#adminLoginSuccess');

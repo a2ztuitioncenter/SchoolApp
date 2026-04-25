@@ -21,13 +21,13 @@ const AUTH_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 const readStoredAuth = () => sessionStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(AUTH_STORAGE_KEY);
 
 /**
- * Store authentication data in localStorage
+ * Store authentication data in sessionStorage
+ * Note: JWT token is now managed via HttpOnly cookie — NOT stored in JS
  * @param {Object} authData - Auth data to store
  * @param {string} authData.role - User role (student/teacher/admin)
  * @param {string} authData.userId - User ID
  * @param {string} [authData.name] - User name
  * @param {string} [authData.phone] - User phone
- * @param {string} [authData.token] - Auth token from backend
  */
 export const setAuth = (authData) => {
   const auth = {
@@ -36,7 +36,6 @@ export const setAuth = (authData) => {
     userId: authData.userId,
     name: authData.name || null,
     phone: authData.phone || null,
-    token: authData.token || null,
     timestamp: Date.now()
   };
   const serializedAuth = JSON.stringify(auth);
@@ -72,11 +71,17 @@ export const getAuth = () => {
 
 /**
  * Clear authentication data (logout)
+ * Also clears the server-side HttpOnly cookie via API call.
  */
 export const clearAuth = () => {
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.clear();
+  // Fire-and-forget: clear server-side cookies
+  try {
+    const base = window.__BASE_API_URL || '';
+    fetch(`${base}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+  } catch (_) { /* ignore */ }
   console.log('✅ Auth state cleared (logged out)');
 };
 
@@ -222,6 +227,7 @@ export const hideProtectionScreen = () => {
 
 /**
  * Export auth data to sessionStorage for backward compatibility
+ * Note: token is no longer synced — it lives in HttpOnly cookie only
  * @param {string} role - User role
  */
 export const syncToSessionStorage = (role) => {
@@ -231,18 +237,15 @@ export const syncToSessionStorage = (role) => {
   if (role === 'student') {
     sessionStorage.setItem('studentUserId', auth.userId);
     sessionStorage.setItem('studentRole', 'student');
-    if (auth.token) sessionStorage.setItem('studentToken', auth.token);
     if (auth.phone) sessionStorage.setItem('studentPhone', auth.phone);
     if (auth.name) sessionStorage.setItem('studentName', auth.name);
   } else if (role === 'teacher') {
     sessionStorage.setItem('teacherId', auth.userId);
     sessionStorage.setItem('teacherRole', 'teacher');
-    if (auth.token) sessionStorage.setItem('teacherToken', auth.token);
     if (auth.phone) sessionStorage.setItem('teacherPhone', auth.phone);
   } else if (role === 'admin') {
     sessionStorage.setItem('adminUserId', auth.userId);
     sessionStorage.setItem('adminRole', 'admin');
-    if (auth.token) sessionStorage.setItem('adminToken', auth.token);
     if (auth.phone) sessionStorage.setItem('adminPhone', auth.phone);
   }
 

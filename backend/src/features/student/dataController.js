@@ -40,9 +40,12 @@ export const getStudentDashboard = async (req, res) => {
         [classLevel, section]
       ),
       safeQuery(
-        `SELECT * FROM timetable 
-         WHERE class_level = $1 AND (section = $2 OR section = 'ALL') 
-         ORDER BY day_of_week, start_time ASC`, 
+        `SELECT t.*, u.name as teacher_name, s.name as subject_name
+         FROM timetable t
+         LEFT JOIN users u ON t.teacher_id = u.id
+         LEFT JOIN subjects s ON t.subject_id = s.id
+         WHERE t.class_level = $1 AND (t.section = $2 OR t.section = 'ALL') 
+         ORDER BY t.day_of_week, t.start_time ASC`, 
         [classLevel, section]
       ),
       safeQuery(
@@ -105,6 +108,8 @@ export const getStudentDashboard = async (req, res) => {
           endTime: t.end_time,
           subjectId: t.subject_id,
           teacherId: t.teacher_id,
+          subject: t.subject_name || t.subject,
+          teacher: t.teacher_name,
           dayOfWeek: t.day_of_week
         })),
         notifications: (notificationsResult.rows || []).map(n => ({

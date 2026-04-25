@@ -13,6 +13,7 @@ import './student-results.js';
 // Request Control
 // ===========================
 let dashboardAbortController = null;
+window.studentSubmissionsMap = new Map();
 
 // ===========================
 // Global Logout Handler
@@ -837,6 +838,7 @@ function populateTimetable(timetable) {
           <th>Day</th>
           <th>Time</th>
           <th>Subject</th>
+          <th>Teacher</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -852,6 +854,7 @@ function populateTimetable(timetable) {
               <td class="day-col">${entry.dayOfWeek || '—'}</td>
               <td class="time-col">${formatTime(entry.startTime)} – ${formatTime(entry.endTime)}</td>
               <td class="subject-col">${entry.subject || 'N/A'}</td>
+              <td class="teacher-col">${entry.teacher || 'N/A'}</td>
               <td class="status-col">
                 <span class="status-badge status-${status}">
                   ${statusIcon} ${statusLabel}
@@ -884,27 +887,16 @@ function populateTimetablePreview(timetable) {
     preview.innerHTML = `
       <div class="timetable-empty">
         <i class="fas fa-calendar-times"></i>
-        <p>No classes scheduled for today</p>
+        <p>No classes scheduled</p>
       </div>
     `;
     return;
   }
 
-  // Filter only today's classes and sort by time
+  // Find ongoing and upcoming classes for TODAY
   const todayClasses = timetable.filter(entry => isDayToday(entry.dayOfWeek))
     .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
 
-  if (todayClasses.length === 0) {
-    preview.innerHTML = `
-      <div class="timetable-empty">
-        <i class="fas fa-check-circle"></i>
-        <p>No classes scheduled for today</p>
-      </div>
-    `;
-    return;
-  }
-
-  // Find ongoing and next upcoming class
   let ongoingClass = null;
   let upcomingClass = null;
 
@@ -917,36 +909,52 @@ function populateTimetablePreview(timetable) {
     }
   }
 
-  // If no ongoing, use first upcoming as ongoing display
+  // If no ongoing today, but there's an upcoming today, treat the upcoming as the primary "Next" class
   if (!ongoingClass && upcomingClass) {
     ongoingClass = upcomingClass;
     upcomingClass = todayClasses.find(
-      cls => getClassStatus(cls) === 'upcoming' && cls !== ongoingClass
+      cls => parseTimeToMinutes(cls.startTime) > parseTimeToMinutes(ongoingClass.startTime)
     );
+  } 
+  // If still nothing for today, find the very next class in the weekly cycle
+  else if (!ongoingClass && !upcomingClass) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayIdx = new Date().getDay();
+    
+    const sortedTimetable = [...timetable].sort((a, b) => {
+      const dayA = (days.indexOf(a.dayOfWeek) - todayIdx + 7) % 7;
+      const dayB = (days.indexOf(b.dayOfWeek) - todayIdx + 7) % 7;
+      if (dayA !== dayB) return dayA - dayB;
+      return parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime);
+    });
+    
+    ongoingClass = sortedTimetable[0];
+    upcomingClass = sortedTimetable[1];
   }
 
-  // Generate minimal two-section layout
+  // Generate layout
   let html = '<div class="timetable-preview-container">';
 
-  // Ongoing/Current Class Section
   if (ongoingClass) {
     const status = getClassStatus(ongoingClass);
-    const statusLabel = getStatusLabel(status);
+    const isActuallyOngoing = status === 'ongoing';
     html += `
       <div class="class-card class-card-ongoing">
         <div class="class-card-label">
-          <i class="fas fa-dot-circle"></i>
-          <span>${status === 'ongoing' ? 'Ongoing' : 'Current'}</span>
+          <i class="fas ${isActuallyOngoing ? 'fa-dot-circle' : 'fa-clock'}"></i>
+          <span>${isActuallyOngoing ? 'Ongoing' : 'Next Class'}</span>
         </div>
         <div class="class-card-content">
-          <div class="class-time">${formatTime(ongoingClass.startTime)} – ${formatTime(ongoingClass.endTime)}</div>
+          <div class="class-time">${formatTime(ongoingClass.startTime)} – ${formatTime(ongoingClass.endTime)}${!isDayToday(ongoingClass.dayOfWeek) ? ` (${ongoingClass.dayOfWeek})` : ''}</div>
           <div class="class-subject">${ongoingClass.subject || 'N/A'}</div>
+          <div class="class-teacher" style="font-size: 0.85rem; color: #718096; margin-top: 4px;">
+            <i class="fas fa-user-tie" style="margin-right: 5px;"></i>${ongoingClass.teacher || 'No teacher assigned'}
+          </div>
         </div>
       </div>
     `;
   }
 
-  // Upcoming Class Section
   if (upcomingClass) {
     html += `
       <div class="class-card class-card-upcoming">
@@ -955,9 +963,21 @@ function populateTimetablePreview(timetable) {
           <span>Upcoming</span>
         </div>
         <div class="class-card-content">
-          <div class="class-time">${formatTime(upcomingClass.startTime)} – ${formatTime(upcomingClass.endTime)}</div>
+          <div class="class-time">${formatTime(upcomingClass.startTime)} – ${formatTime(upcomingClass.endTime)}${!isDayToday(upcomingClass.dayOfWeek) ? ` (${upcomingClass.dayOfWeek})` : ''}</div>
           <div class="class-subject">${upcomingClass.subject || 'N/A'}</div>
+          <div class="class-teacher" style="font-size: 0.85rem; color: #718096; margin-top: 4px;">
+            <i class="fas fa-user-tie" style="margin-right: 5px;"></i>${upcomingClass.teacher || 'No teacher assigned'}
+          </div>
         </div>
+      </div>
+    `;
+  }
+
+  if (!ongoingClass && !upcomingClass) {
+    html += `
+      <div class="timetable-empty">
+        <i class="fas fa-check-circle"></i>
+        <p>No classes scheduled</p>
       </div>
     `;
   }
@@ -1466,9 +1486,8 @@ window.openAssignmentSelector = async function() {
         
         if (res.success && res.data) {
             activeAssignments = res.data;
-            
-            const homework = activeAssignments.filter(a => a.type === 'homework');
-            const dpp = activeAssignments.filter(a => a.type === 'dpp');
+            const homework = activeAssignments.filter(a => a.type === 'homework' || !a.type);
+            const dpp = activeAssignments.filter(a => a.type === 'daily_practice' || a.type === 'dpp');
             
             if (homework.length === 0 && dpp.length === 0) {
                 noAssignmentsMsg.classList.add('d-block');

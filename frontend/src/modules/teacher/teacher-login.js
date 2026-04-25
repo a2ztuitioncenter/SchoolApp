@@ -42,8 +42,7 @@ export async function handleTeacherLogin() {
         role: 'teacher',
         userId: response.user.id,
         name: response.user.name,
-        phone: phone,
-        token: response.token  // Store the JWT token from backend
+        phone: phone
       });
 
       // Sync to sessionStorage for backward compatibility

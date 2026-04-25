@@ -103,6 +103,7 @@ function setupTabs() {
       if (tab === 'dashboard') loadDashboard();
       if (tab === 'subjects') loadTeacherSubjects();
       if (tab === 'homework') { loadHomework(); populateSharedDropdowns('hw'); }
+      if (tab === 'dpp') { loadHomework(); populateSharedDropdowns('dpp'); }
       if (tab === 'materials') { loadMaterials(); populateSharedDropdowns('mat'); }
       if (tab === 'timetable') renderWeeklyTimetable();
       if (tab === 'syllabus') { loadSyllabus(); setupSyllabusDropdowns(); }
