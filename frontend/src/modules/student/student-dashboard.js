@@ -263,6 +263,24 @@ function populateDashboard(data) {
 }
 
 /**
+ * Fetches student submissions and populates global map
+ */
+async function fetchSubmissionsMap(userId) {
+  try {
+    const res = await studentAPI.getSubmissions(userId || 'me');
+    if (res.success && res.data) {
+      window.studentSubmissionsMap.clear();
+      res.data.forEach(sub => {
+        window.studentSubmissionsMap.set(sub.homework_id, sub);
+      });
+      console.log('✅ Submissions map populated:', window.studentSubmissionsMap);
+    }
+  } catch (err) {
+    console.warn('⚠️ Could not fetch submissions map:', err);
+  }
+}
+
+/**
  * Main function to fetch and populate all dashboard data
  */
 async function loadDashboardData(userId) {
@@ -277,6 +295,10 @@ async function loadDashboardData(userId) {
     const cached = getCache(userId, 'dashboard');
     if (cached) {
       console.log('⚡ Using cached dashboard data');
+      
+      // Fetch submissions map
+      await fetchSubmissionsMap(userId);
+      
       populateDashboard(cached.data);
       
       // If cache is fresh (not stale), we can stop here
@@ -310,6 +332,10 @@ async function loadDashboardData(userId) {
 
     // 3. Update Cache & UI
     setCache(userId, 'dashboard', data, CACHE_TTL.DASHBOARD);
+    
+    // Fetch global submissions map
+    await fetchSubmissionsMap(userId);
+
     populateDashboard(data);
 
     return data;
@@ -588,25 +614,56 @@ function populateHomework(homework) {
     container.innerHTML = '<p class="no-data">No homework assigned</p>';
     return;
   }
-  container.innerHTML = homework.map((hw, idx) => `
-    <div class="homework-item" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+  container.innerHTML = homework.map((hw, idx) => {
+    const submission = window.studentSubmissionsMap.get(hw.id);
+    const isSubmitted = !!submission;
+    const isReviewed = submission && submission.status === 'reviewed';
+    
+    let statusBadge = '';
+    let accentColor = '#667eea';
+    let submitBtnHtml = `
+      <button onclick="openSubmissionModal(${hw.id}, '${escapeAttr(hw.title)}', '${escapeAttr(hw.subject)}')" class="submit-btn" style="padding:4px 10px; background:var(--student-accent); color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
+        <i class="fas fa-file-upload"></i> Submit Work
+      </button>
+    `;
+    
+    if (isReviewed) {
+      statusBadge = `<span style="background:#48bb78; color:white; padding: 2px 8px; border-radius:12px; font-size:0.7rem; font-weight:600; margin-left: 8px;">Reviewed</span>`;
+      accentColor = '#48bb78';
+      submitBtnHtml = `<span style="font-size:0.8rem; color:#48bb78; font-weight:600;"><i class="fas fa-check-circle"></i> Completed</span>`;
+    } else if (isSubmitted) {
+      statusBadge = `<span style="background:#ecc94b; color:#744210; padding: 2px 8px; border-radius:12px; font-size:0.7rem; font-weight:600; margin-left: 8px;">Submitted</span>`;
+      accentColor = '#ecc94b';
+      submitBtnHtml = `<span style="font-size:0.8rem; color:#d69e2e; font-weight:600;"><i class="fas fa-clock"></i> Pending Review</span>`;
+    }
+    
+    let remarkHtml = '';
+    if (isReviewed && submission.remark) {
+      remarkHtml = `
+        <div style="margin-top: 8px; padding: 8px; background: #f0fff4; border-radius: 4px; border-left: 3px solid #48bb78; font-size: 0.85rem; color: #2f855a;">
+          <strong>Teacher Remark:</strong> ${escapeHtml(submission.remark)}
+        </div>
+      `;
+    }
+
+    return `
+    <div class="homework-item" id="hw-card-${hw.id}" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${accentColor};">
       <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
       <div class="details" style="flex: 1;">
-        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Homework')} - ${escapeHtml(hw.title || 'Assignment')}</p>
+        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Homework')} - ${escapeHtml(hw.title || 'Assignment')}${statusBadge}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px;">
+        ${remarkHtml}
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px; align-items: center;">
           ${hw.attachmentUrl ? `
             <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'homework') + '.pdf')}')" class="download-btn" style="padding:4px 10px; background:#667eea; color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
               <i class="fas fa-download"></i> Download
             </button>
           ` : ''}
-          <button onclick="openSubmissionModal(${hw.id}, '${escapeAttr(hw.title)}', '${escapeAttr(hw.subject)}')" class="submit-btn" style="padding:4px 10px; background:var(--student-accent); color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
-            <i class="fas fa-file-upload"></i> Submit Work
-          </button>
+          ${submitBtnHtml}
         </div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 function populateDailyPractice(practiceList) {
@@ -616,25 +673,55 @@ function populateDailyPractice(practiceList) {
     container.innerHTML = '<p class="no-data">No daily practice assigned for today</p>';
     return;
   }
-  container.innerHTML = practiceList.map((hw, idx) => `
-    <div class="homework-item" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+  container.innerHTML = practiceList.map((hw, idx) => {
+    const submission = window.studentSubmissionsMap.get(hw.id);
+    const isSubmitted = !!submission;
+    const isReviewed = submission && submission.status === 'reviewed';
+    
+    let statusBadge = '';
+    let accentColor = '#48bb78'; // DPP default accent
+    let submitBtnHtml = `
+      <button onclick="openSubmissionModal(${hw.id}, '${escapeAttr(hw.title)}', '${escapeAttr(hw.subject)}')" class="submit-btn" style="padding:4px 10px; background:var(--student-accent); color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
+        <i class="fas fa-file-upload"></i> Submit Work
+      </button>
+    `;
+    
+    if (isReviewed) {
+      statusBadge = `<span style="background:#48bb78; color:white; padding: 2px 8px; border-radius:12px; font-size:0.7rem; font-weight:600; margin-left: 8px;">Reviewed</span>`;
+      submitBtnHtml = `<span style="font-size:0.8rem; color:#48bb78; font-weight:600;"><i class="fas fa-check-circle"></i> Completed</span>`;
+    } else if (isSubmitted) {
+      statusBadge = `<span style="background:#ecc94b; color:#744210; padding: 2px 8px; border-radius:12px; font-size:0.7rem; font-weight:600; margin-left: 8px;">Submitted</span>`;
+      accentColor = '#ecc94b';
+      submitBtnHtml = `<span style="font-size:0.8rem; color:#d69e2e; font-weight:600;"><i class="fas fa-clock"></i> Pending Review</span>`;
+    }
+    
+    let remarkHtml = '';
+    if (isReviewed && submission.remark) {
+      remarkHtml = `
+        <div style="margin-top: 8px; padding: 8px; background: #f0fff4; border-radius: 4px; border-left: 3px solid #48bb78; font-size: 0.85rem; color: #2f855a;">
+          <strong>Teacher Remark:</strong> ${escapeHtml(submission.remark)}
+        </div>
+      `;
+    }
+
+    return `
+    <div class="homework-item" id="hw-card-${hw.id}" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${accentColor};">
       <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
       <div class="details" style="flex: 1;">
-        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Practice')} - ${escapeHtml(hw.title || 'Assignment')}</p>
+        <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Practice')} - ${escapeHtml(hw.title || 'Assignment')}${statusBadge}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Posted: ${new Date(hw.createdAt).toLocaleDateString()}</p>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px;">
+        ${remarkHtml}
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px; align-items: center;">
           ${hw.attachmentUrl ? `
             <button onclick="downloadFile('${escapeAttr(hw.attachmentUrl)}', '${escapeAttr(safeFileName(hw.title || 'practice') + '.pdf')}')" class="download-btn" style="padding:4px 10px; background:#48bb78; color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
               <i class="fas fa-download"></i> Download
             </button>
           ` : ''}
-          <button onclick="openSubmissionModal(${hw.id}, '${escapeAttr(hw.title)}', '${escapeAttr(hw.subject)}')" class="submit-btn" style="padding:4px 10px; background:var(--student-accent); color:white; border-radius:4px; font-size:0.8rem; border:none; cursor:pointer;">
-            <i class="fas fa-file-upload"></i> Submit Work
-          </button>
+          ${submitBtnHtml}
         </div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 function populateLatestHomeworkCard(homework) {
@@ -1419,6 +1506,19 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
             // Clear cache to reflect submission in dashboard stats/list
             const userId = sessionStorage.getItem('studentUserId');
             clearCache(userId, 'student_dashboard');
+            
+            // Dynamically update map to avoid immediate refetch
+            window.studentSubmissionsMap.set(parseInt(hwId), { 
+                homework_id: parseInt(hwId), 
+                status: 'submitted', 
+                student_id: userId,
+                submitted_at: new Date().toISOString()
+            });
+            
+            // Re-render dashboard using existing functions if data is available
+            // This is an AJAX soft-refresh
+            loadDashboardData(userId);
+            
             // Reload submissions tab if active
             loadSubmissions(userId);
         } else {
@@ -1485,7 +1585,8 @@ window.openAssignmentSelector = async function() {
         console.log('✅ Assignments response:', res);
         
         if (res.success && res.data) {
-            activeAssignments = res.data;
+            // Filter out assignments that the student has already submitted
+            activeAssignments = res.data.filter(a => !window.studentSubmissionsMap.has(a.id));
             const homework = activeAssignments.filter(a => a.type === 'homework' || !a.type);
             const dpp = activeAssignments.filter(a => a.type === 'daily_practice' || a.type === 'dpp');
             
