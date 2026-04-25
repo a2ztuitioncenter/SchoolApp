@@ -1939,9 +1939,20 @@ window.openCMSModal = async function(type) {
     try {
         const res = await contentAPI.get(type);
         if (res.success && res.data) {
-            // Basic markdown-ish conversion for simplicity or just raw HTML
-            // Assuming the CMS content might contain HTML from a rich text editor
-            bodyEl.innerHTML = res.data.content || '<p class="empty-state">No content available.</p>';
+            const rawContent = res.data.content || '';
+            const m = window.marked;
+            if (m) {
+                try {
+                    const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
+                    const clean = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(parsed) : parsed;
+                    bodyEl.innerHTML = `<div class="markdown-content">${clean}</div>`;
+                } catch (e) {
+                    console.error('Markdown error:', e);
+                    bodyEl.innerHTML = rawContent;
+                }
+            } else {
+                bodyEl.innerHTML = rawContent || '<p class="empty-state">No content available.</p>';
+            }
         } else {
             bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
         }

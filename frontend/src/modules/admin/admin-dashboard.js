@@ -3,7 +3,7 @@
  * Full-featured admin dashboard with all CRUD operations restored.
  */
 
-import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend } from '../../core/api.js';
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend, base_api_url } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
 import { escapeAttr as escapeAttrValue, escapeHtml, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
 import './admin-pending-approvals.js';
@@ -23,8 +23,17 @@ window.handleLogout = function () {
 };
 
 syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
-window.adminAPI = adminAPI; // Expose for debugging
-window.resultsAPI = resultsAPI;
+
+// Expose APIs for debugging in development only
+const isDevelopment = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' || 
+                     window.location.hostname.endsWith('.local') ||
+                     window.location.hostname.endsWith('.trycloudflare.com');
+
+if (isDevelopment) {
+    window.adminAPI = adminAPI;
+    window.resultsAPI = resultsAPI;
+}
 
 // Remove full-screen "Loading..." overlay as soon as this module runs (deferred modules execute
 // after the document is parsed, so #auth-protection-screen already exists). Relying only on
@@ -169,12 +178,7 @@ async function initDashboard() {
     // Header Logout
     const logoutBtn = document.getElementById('header-logout-btn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('adminUserId');
-            sessionStorage.removeItem('adminRole');
-            sessionStorage.removeItem('adminPhone');
-            window.location.href = '/admin-login.html';
-        });
+        logoutBtn.addEventListener('click', window.handleLogout);
     }
 
     // Close profile dropdown when clicking outside
@@ -1808,23 +1812,15 @@ async function populateEditUserAssignments(userId) {
     container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Loading classes...</p>';
 
     try {
-        // 1. Fetch available class levels
-        const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
-        const auth = authStr ? JSON.parse(authStr) : {};
-        const token = auth.token;
-        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://schoolapp-d9y5.onrender.com';
-
-        const [classesRes, currentRes] = await Promise.all([
-            fetch(`${baseUrl}/api/auth/admin/class-levels`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${baseUrl}/api/admin/users/${userId}/assignments`, { headers: { 'Authorization': `Bearer ${token}` } })
+        // 1. Fetch available class levels and current user assignments using centralized API
+        const [classesData, currentData] = await Promise.all([
+            adminAPI.getClassLevels(),
+            adminAPI.getUserAssignments(userId)
         ]);
 
-        const classesData = await classesRes.json();
-        const currentData = await currentRes.json();
-
-        if (classesData.success) {
+        if (classesData && classesData.success) {
             const availableClasses = classesData.classLevels || [];
-            const currentAssignments = currentData.success ? (currentData.assignments || []) : [];
+            const currentAssignments = currentData && currentData.success ? (currentData.data || []) : [];
 
             if (availableClasses.length === 0) {
                 container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; font-size: 0.8rem;">No classes found in system.</p>';
@@ -2950,16 +2946,19 @@ function renderFeesTable(fees) {
         countText.textContent = `Showing ${toShow.length} of ${fees.length} record(s)`;
     }
 
-    tbody.innerHTML = toShow.map((f, i) => {
-        const dueDate = f.dueDate ? new Date(f.dueDate).toLocaleDateString('en-IN') : 'Invalid Date';
-        const studentName = f.studentName && f.studentName !== 'undefined' ? f.studentName : `Student #${f.studentId}`;
+    tbody.innerHTML = toShow
+        .filter(f => {
+            if (!f.id && f.id !== 0) {
+                console.warn('[WARN] Skipping fee record missing id:', f);
+                return false;
+            }
+            return true;
+        })
+        .map((f, i) => {
+            const dueDate = f.dueDate ? new Date(f.dueDate).toLocaleDateString('en-IN') : 'Invalid Date';
+            const studentName = f.studentName && f.studentName !== 'undefined' ? f.studentName : `Student #${f.studentId}`;
 
-        // Validate ID exists
-        if (!f.id && f.id !== 0) {
-            console.warn('[WARN] Fee record missing id:', f);
-        }
-
-        return `
+            return `
             <tr>
                 <td>${i + 1}</td>
                 <td><strong>${studentName}</strong></td>
@@ -3257,6 +3256,51 @@ let allMaterialsData = [];
 let showAllMaterials = false;
 let materialsFilterTimeout;
 
+// Delegated listener for materials table actions
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#materials-tbody .action-menu-item');
+    if (!btn) return;
+    
+    const dropdown = btn.closest('.action-menu-dropdown');
+    if (!dropdown) return;
+    
+    const materialIdStr = dropdown.getAttribute('data-material-id');
+    const materialId = parseInt(materialIdStr);
+    if (isNaN(materialId)) return;
+    
+    const action = btn.getAttribute('data-action');
+    if (!action) return;
+    
+    // Resolve full material object from state
+    const material = allMaterialsData.find(m => m.id === materialId);
+    if (!material) {
+        console.error('Material not found for ID:', materialId);
+        return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Close the dropdown menu
+    dropdown.classList.remove('active');
+
+    if (action === 'download') {
+        const title = material.title || 'material';
+        const fileUrl = material.file_url || material.fileUrl;
+        if (typeof window.downloadFile === 'function') {
+            window.downloadFile(fileUrl, `${title}.pdf`);
+        }
+    } else if (action === 'edit') {
+        if (typeof window.openMaterialModal === 'function') {
+            window.openMaterialModal(material);
+        }
+    } else if (action === 'delete') {
+        if (typeof window.deleteMaterial === 'function') {
+            window.deleteMaterial(materialId);
+        }
+    }
+});
+
 async function loadMaterials() {
     try {
         showAllMaterials = false; // Reset pagination when loading fresh data
@@ -3326,14 +3370,14 @@ function renderMaterialsTable() {
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-material-id="${m.id}">
-                        <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${escapeHtml(m.title)}.pdf')">
+                        <button class="action-menu-item" type="button" data-action="download">
                             <i class="fas fa-download" style="width: 16px;"></i> Download
                         </button>
-                        <button class="action-menu-item" onclick="openMaterialModal({id:${m.id},title:'${m.title.replace(/'/g, "\\'")}',description:'${(m.description || '').replace(/'/g, "\\'")}',subjectId:'${m.subject_id}',classLevel:'${m.class_level || m.classLevel}',section:'${m.section || ''}',fileUrl:'${m.file_url || m.fileUrl}'})">
+                        <button class="action-menu-item" type="button" data-action="edit">
                             <i class="fas fa-pen" style="width: 16px;"></i> Edit
                         </button>
                         <div class="action-menu-divider"></div>
-                        <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})">
+                        <button class="action-menu-item danger" type="button" data-action="delete">
                             <i class="fas fa-trash" style="width: 16px;"></i> Delete
                         </button>
                     </div>
@@ -4781,6 +4825,7 @@ const CM_PAGE_LABELS = {
 let cmEditorQuill = null;
 let cmCurrentKey = null;
 let cmPages = [];
+let cmEditorMode = 'quill'; // 'quill' or 'markdown'
 
 async function loadContentManagement() {
   const grid = document.getElementById('cm-pages-grid');
@@ -4836,6 +4881,44 @@ function cm_renderPagesGrid(pages) {
   }).join('');
 }
 
+window.cm_switchEditor = function(mode) {
+  if (mode === cmEditorMode) return;
+  cmEditorMode = mode;
+  
+  const quillWrapper = document.getElementById('cm-quill-editor-wrapper');
+  const mdWrapper = document.getElementById('cm-markdown-editor-wrapper');
+  const toggleQuill = document.getElementById('toggle-quill');
+  const toggleMd = document.getElementById('toggle-markdown');
+  
+  if (mode === 'markdown') {
+    const html = cmEditorQuill.root.innerHTML;
+    // Simple HTML to MD (very basic, mostly for transitions)
+    document.getElementById('cm-markdown-textarea').value = html
+      .replace(/<h3>(.*?)<\/h3>/g, '### $1\n')
+      .replace(/<h4>(.*?)<\/h4>/g, '#### $1\n')
+      .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+      .replace(/<ul>(.*?)<\/ul>/gs, (m, p1) => p1.replace(/<li>(.*?)<\/li>/g, '* $1\n'))
+      .replace(/<ol>(.*?)<\/ol>/gs, (m, p1) => p1.replace(/<li>(.*?)<\/li>/g, '1. $1\n'))
+      .replace(/<br\s*\/?>/g, '\n')
+      .replace(/<[^>]+>/g, '');
+      
+    quillWrapper.style.display = 'none';
+    mdWrapper.style.display = 'block';
+    toggleQuill.classList.remove('active');
+    toggleMd.classList.add('active');
+  } else {
+    // Markdown to HTML using marked
+    const md = document.getElementById('cm-markdown-textarea').value;
+    const html = typeof marked !== 'undefined' ? marked.parse(md) : md;
+    cmEditorQuill.root.innerHTML = html;
+    
+    mdWrapper.style.display = 'none';
+    quillWrapper.style.display = 'block';
+    toggleMd.classList.remove('active');
+    toggleQuill.classList.add('active');
+  }
+};
+
 window.cm_openEditor = async function(key) {
   cmCurrentKey = key;
   const meta = CM_PAGE_LABELS[key] || { label: key, icon: 'fa-file', color: '#6b7280' };
@@ -4846,6 +4929,13 @@ window.cm_openEditor = async function(key) {
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
   
+  // Default to Quill for legacy support
+  cmEditorMode = 'quill';
+  document.getElementById('cm-quill-editor-wrapper').style.display = 'block';
+  document.getElementById('cm-markdown-editor-wrapper').style.display = 'none';
+  document.getElementById('toggle-quill').classList.add('active');
+  document.getElementById('toggle-markdown').classList.remove('active');
+
   if (!cmEditorQuill) {
     cmEditorQuill = new Quill('#cm-quill-container', {
       theme: 'snow',
@@ -4867,10 +4957,20 @@ window.cm_openEditor = async function(key) {
   try {
     const res = await adminAPI.getContent(key);
     if (res.success && res.data) {
-      cmEditorQuill.root.innerHTML = res.data.content;
+      const content = res.data.content || '';
+      cmEditorQuill.root.innerHTML = content;
+      document.getElementById('cm-markdown-textarea').value = content;
+      
+      // Auto-detect if it's markdown (starts with # or has typical MD patterns but no HTML tags)
+      const isMd = (content.includes('# ') || content.includes('**')) && !content.includes('<h');
+      if (isMd) {
+        cm_switchEditor('markdown');
+      }
+      
       document.getElementById('cm-editor-status').textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
     } else {
       cmEditorQuill.root.innerHTML = '';
+      document.getElementById('cm-markdown-textarea').value = '';
       document.getElementById('cm-editor-status').textContent = 'No content yet. Start writing!';
     }
   } catch (e) {
@@ -4886,8 +4986,10 @@ window.cm_closeEditor = function() {
 };
 
 window.cm_saveContent = async function() {
-  if (!cmEditorQuill || !cmCurrentKey) return;
-  const content = cmEditorQuill.root.innerHTML;
+  if (!cmCurrentKey) return;
+  const content = cmEditorMode === 'markdown' 
+    ? document.getElementById('cm-markdown-textarea').value 
+    : cmEditorQuill.root.innerHTML;
   const saveBtn = document.getElementById('cm-save-btn');
   const statusEl = document.getElementById('cm-editor-status');
   saveBtn.disabled = true;
@@ -4936,14 +5038,23 @@ window.cm_previewContent = async function(key) {
     if (res.success && res.data && res.data.content.trim()) {
       const modal = document.getElementById('cm-preview-modal');
       document.getElementById('cm-preview-title').textContent = 'Preview: ' + meta.label;
-      // Render in sandboxed iframe to prevent stored XSS from admin-authored content
+      
       const previewBody = document.getElementById('cm-preview-body');
-      previewBody.innerHTML = '';
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'width:100%;border:none;min-height:300px;';
-      iframe.setAttribute('sandbox', 'allow-same-origin');
-      iframe.setAttribute('srcdoc', res.data.content);
-      previewBody.appendChild(iframe);
+      let htmlContent = res.data.content;
+      
+      // Determine if it's Markdown or HTML
+      const isMarkdown = (htmlContent.includes('# ') || htmlContent.includes('**')) && !htmlContent.includes('<h');
+      
+      if (isMarkdown && typeof marked !== 'undefined') {
+        // Parse Markdown and wrap in premium styling class
+        const parsed = marked.parse(htmlContent);
+        const clean = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(parsed) : parsed;
+        previewBody.innerHTML = `<div class="markdown-body">${clean}</div>`;
+      } else {
+        // Legacy HTML content
+        previewBody.innerHTML = htmlContent;
+      }
+      
       document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';

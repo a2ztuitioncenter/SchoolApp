@@ -5,22 +5,39 @@
 
 // Backend Connection Configuration
 const getBaseApiUrl = () => {
-  const isLocal = typeof window !== 'undefined' && 
-                 (window.location.hostname === 'localhost' || 
-                  window.location.hostname === '127.0.0.1' || 
-                  window.location.hostname.endsWith('.trycloudflare.com'));
+  if (typeof window === 'undefined') return '';
+
+  const { hostname, origin, port } = window.location;
+  
+  // Check if we are on a Cloudflare tunnel
+  const isCloudflare = hostname.endsWith('.trycloudflare.com');
+  
+  // If on Cloudflare, use relative paths (return empty string)
+  // This ensures /api calls go to the same origin as the frontend
+  if (isCloudflare) {
+    return '';
+  }
+
+  // Inclusive check for localhost variations
+  const isLocal = hostname === 'localhost' || 
+                 hostname === '127.0.0.1' ||
+                 hostname === 'www.localhost' ||
+                 hostname.startsWith('192.168.') ||
+                 hostname.startsWith('10.') ||
+                 hostname.endsWith('.local');
                   
   if (isLocal) {
+    // If we are already on port 3000, we can use relative paths
+    if (port === '3000') return '';
+    // Otherwise, explicitly point to the backend port
     return 'http://localhost:3000';
   }
   
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return 'https://schoolapp-d9y5.onrender.com';
-  }
-  return '';
+  // Fallback for production
+  return 'https://schoolapp-d9y5.onrender.com';
 };
 
-const base_api_url = getBaseApiUrl();
+export const base_api_url = getBaseApiUrl();
 
 export const getAuthToken = () => {
   try {
@@ -266,6 +283,8 @@ export const adminAPI = {
   getAllContent: () => apiCall('/admin/content', { method: 'GET' }),
   updateContent: (key, content) => apiCall(`/admin/content/${key}`, { method: 'PUT', body: JSON.stringify({ content }) }),
   deleteContent: (key) => apiCall(`/admin/content/${key}`, { method: 'DELETE' }),
+  getClassLevels: () => apiCall('/auth/admin/class-levels', { method: 'GET' }),
+  getUserAssignments: (id) => apiCall(`/admin/users/${id}/assignments`, { method: 'GET' }),
 };
 
 /**

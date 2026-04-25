@@ -101,8 +101,12 @@ router.put('/users/:id', async (req, res) => {
     try {
         const user = await updateUser(req.db, id, { name, phone, email, role });
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        const schoolId = user.schoolId || req.user.schoolId;
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
-            await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId || req.user.schoolId || 'school-001');
+            if (!schoolId) {
+                return res.status(400).json({ success: false, error: 'School ID is missing. Cannot assign classes.' });
+            }
+            await assignTeacherToClasses(req.db, id, classesAssigned, schoolId);
         }
         
         await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`);
@@ -317,31 +321,42 @@ router.patch('/students/:id/status', async (req, res) => {
 });
 
 router.delete('/students/:id', async (req, res) => {
+    const client = await req.db.connect();
     try {
         const studentId = req.params.id;
-        const studentResult = await req.db.query('SELECT user_id FROM students WHERE id = $1', [studentId]);
-        if (studentResult.rows.length === 0) return res.status(404).json({ success: false, error: 'Student not found' });
+        await client.query('BEGIN');
+
+        const studentResult = await client.query('SELECT user_id FROM students WHERE id = $1 FOR UPDATE', [studentId]);
+        if (studentResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ success: false, error: 'Student not found' });
+        }
         
         const userId = studentResult.rows[0].user_id;
         
         // 1. Delete the specific student record
-        await req.db.query('DELETE FROM students WHERE id = $1', [studentId]);
+        await client.query('DELETE FROM students WHERE id = $1', [studentId]);
         
-        // 2. Check if other students share this user_id
-        const sharedResult = await req.db.query('SELECT COUNT(*) as count FROM students WHERE user_id = $1', [userId]);
+        // 2. Check if other students share this user_id within the same transaction
+        const sharedResult = await client.query('SELECT COUNT(*) as count FROM students WHERE user_id = $1', [userId]);
         const otherStudentsCount = parseInt(sharedResult.rows[0].count, 10);
         
         if (otherStudentsCount === 0) {
             // 3. No other students, safe to delete the user account
-            await deleteUser(req.db, userId);
+            await client.query('DELETE FROM users WHERE id = $1', [userId]);
+            await client.query('COMMIT');
             res.json({ success: true, message: 'Student and associated user account deleted' });
         } else {
-            // 4. Other students exist, only the student record was deleted
+            // 4. Other students exist, commit student deletion but keep user
+            await client.query('COMMIT');
             res.json({ success: true, message: 'Student record deleted (user account preserved for other students)' });
         }
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Delete student error:', err);
         res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
     }
 });
 
@@ -460,9 +475,18 @@ router.get('/timetable', async (req, res) => {
 
 router.post('/timetable', async (req, res) => {
     const { dayOfWeek, startTime, endTime, subjectId, classLevel, section, teacherId } = req.body;
+    const normalizedSection = section || 'A';
+    const client = await req.db.connect();
+
     try {
-        // Check for overlaps
-        const overlapResult = await req.db.query(
+        await client.query('BEGIN');
+
+        // 1. Serialize access to this specific timetable scope (Class + Section + Day) using an advisory lock
+        const lockKey = `timetable_${req.user.schoolId}_${classLevel}_${normalizedSection}_${dayOfWeek}`;
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
+
+        // 2. Re-run overlap check inside the locked transaction
+        const overlapResult = await client.query(
             `SELECT id FROM timetable 
              WHERE school_id = $1 AND class_level = $2 AND section = $3 AND day_of_week = $4 
              AND (
@@ -470,22 +494,29 @@ router.post('/timetable', async (req, res) => {
                 (start_time < $6 AND end_time >= $6) OR
                 (start_time >= $5 AND end_time <= $6)
              )`,
-            [req.user.schoolId, classLevel, section || 'A', dayOfWeek, startTime, endTime]
+            [req.user.schoolId, classLevel, normalizedSection, dayOfWeek, startTime, endTime]
         );
 
         if (overlapResult.rows.length > 0) {
+            await client.query('ROLLBACK');
             return res.status(409).json({ success: false, error: 'Timetable entry overlaps with an existing one' });
         }
 
-        const result = await req.db.query(
+        // 3. Perform atomic insertion
+        const result = await client.query(
             `INSERT INTO timetable (school_id, class_level, section, subject_id, teacher_id, day_of_week, start_time, end_time)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-            [req.user.schoolId, classLevel, section || 'A', subjectId, teacherId, dayOfWeek, startTime, endTime]
+            [req.user.schoolId, classLevel, normalizedSection, subjectId, teacherId, dayOfWeek, startTime, endTime]
         );
+
+        await client.query('COMMIT');
         res.status(201).json({ success: true, data: result.rows[0] });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Create timetable error:', err);
         res.status(500).json({ success: false, error: 'Failed to create timetable entry', message: err.message });
+    } finally {
+        client.release();
     }
 });
 
@@ -582,7 +613,7 @@ router.get('/profile', async (req, res) => {
             `SELECT u.id, u.name, u.email, u.phone, u.role, u.avatar_url, u.last_login_at, u.designation,
                     o.name as organization_name, o.logo_url as organization_logo
              FROM users u
-             LEFT JOIN organizations o ON u.school_id = o.id
+             LEFT JOIN organizations o ON u.school_id = o.id::text
              WHERE u.id = $1
              LIMIT 1`,
             [req.user.userId]
@@ -624,6 +655,9 @@ router.put('/profile', async (req, res) => {
 router.get('/organization', async (req, res) => {
     try {
         const result = await req.db.query('SELECT * FROM organizations WHERE id = $1', [req.user.schoolId]);
+        if (!result.rows[0]) {
+            return res.status(404).json({ success: false, error: 'Organization not found' });
+        }
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Fetch organization error:', err);
@@ -633,11 +667,17 @@ router.get('/organization', async (req, res) => {
 
 router.get('/audit-logs', async (req, res) => {
     try {
+        const schoolId = req.user.schoolId;
+        if (!schoolId) {
+            return res.status(400).json({ success: false, error: 'School ID required for audit logs' });
+        }
         const result = await req.db.query(
             `SELECT a.*, u.name as admin_name 
              FROM audit_logs a
              JOIN users u ON a.user_id = u.id
-             ORDER BY a.created_at DESC LIMIT 50`
+             WHERE a.school_id = $1
+             ORDER BY a.created_at DESC LIMIT 50`,
+            [schoolId]
         );
         res.json({ success: true, data: result.rows });
     } catch (err) {
@@ -667,8 +707,11 @@ router.get('/content', async (req, res) => {
 
 // GET single content page by key
 router.get('/content/:key', async (req, res) => {
-    const { key } = req.params;
+    const { key: rawKey } = req.params;
+    const key = rawKey ? rawKey.trim() : '';
+    
     if (!VALID_CONTENT_KEYS.includes(key)) {
+        console.warn(`[AdminAPI] Invalid content key: "${key}" (raw: "${rawKey}")`);
         return res.status(400).json({ success: false, error: 'Invalid content key' });
     }
     try {

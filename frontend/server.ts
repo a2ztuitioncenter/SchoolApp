@@ -36,6 +36,22 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
+    // Proxy API calls to the backend on port 3000
+    if (pathname.startsWith("/api/")) {
+      const backendUrl = `http://localhost:3000${pathname}${url.search}`;
+      console.log(`[PROXY] ${req.method} ${pathname} -> ${backendUrl}`);
+      
+      try {
+        return await fetch(backendUrl, req);
+      } catch (error) {
+        console.error(`[PROXY ERROR] Failed to reach backend:`, error);
+        return new Response(JSON.stringify({ error: "Backend unreachable" }), {
+          status: 502,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
 
     //  FORCE ROOT → INDEX
     if (pathname === "/") {

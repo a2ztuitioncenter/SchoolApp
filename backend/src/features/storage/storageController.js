@@ -110,10 +110,13 @@ export const storageController = {
             const { fileId } = req.params;
             const metadata = await googleDriveService.getFileMetadata(fileId);
             
-            // FIX: Ensure binary integrity by setting correct headers and streaming directly
-            // No utf8/base64 conversions allowed.
+            // RFC 5987 encoding for Content-Disposition (Security & Character Support)
+            const filename = metadata.name || 'download';
+            const asciiName = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+            const utf8Name = encodeURIComponent(filename).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+            
             res.setHeader('Content-Type', metadata.mimeType);
-            res.setHeader('Content-Disposition', `attachment; filename="${metadata.name}"`);
+            res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`);
             
             if (metadata.size) {
                 res.setHeader('Content-Length', metadata.size);
@@ -141,26 +144,37 @@ export const storageController = {
     },
 
     async delete(req, res) {
+        let driveFileId = null;
+        const { id } = req.params;
+
         try {
-            const { id } = req.params;
-            const result = await pool.query('SELECT drive_file_id FROM app_files WHERE id = $1', [id]);
+            // 1. Delete from DB first to prevent dangling references if DB fails
+            const result = await pool.query(
+                'DELETE FROM app_files WHERE id = $1 RETURNING drive_file_id',
+                [id]
+            );
             
             if (result.rows.length === 0) {
                 return res.status(404).json({ success: false, error: 'File not found in database' });
             }
 
-            const driveFileId = result.rows[0].drive_file_id;
+            driveFileId = result.rows[0].drive_file_id;
+            console.log(`[Storage] DB record ${id} deleted successfully. Proceeding to Drive cleanup for: ${driveFileId}`);
 
-            // 1. Delete from Drive
-            await googleDriveService.deleteFile(driveFileId);
-
-            // 2. Delete from DB
-            await pool.query('DELETE FROM app_files WHERE id = $1', [id]);
+            // 2. Attempt to delete from Drive
+            try {
+                await googleDriveService.deleteFile(driveFileId);
+                console.log(`[Storage] Drive file ${driveFileId} deleted successfully.`);
+            } catch (driveError) {
+                // If Drive fails, we log it as a warning but don't fail the request 
+                // since the DB is already clean. The file is orphaned but recoverable/ignorable.
+                console.error(`[Storage] [WARNING] Orphaned Drive file detected: ${driveFileId}. Drive delete failed:`, driveError.message);
+            }
 
             res.json({ success: true, message: 'File deleted successfully' });
         } catch (error) {
-            console.error('Delete Error:', error);
-            res.status(500).json({ success: false, error: error.message });
+            console.error('[Storage] [CRITICAL] Delete Error (DB phase):', error);
+            res.status(500).json({ success: false, error: 'Database operation failed. File was not deleted.' });
         }
     }
 };

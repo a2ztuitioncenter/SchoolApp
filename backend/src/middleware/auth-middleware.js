@@ -234,8 +234,10 @@ export const validateInput = (req, res, next) => {
       const fullPath = path ? `${path}.${key}` : key;
       
       if (typeof value === 'string') {
-        // Check for SQL injection patterns
-        if (/(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|\/\*|\*\/)/gi.test(value)) {
+        const isContentField = ['content', 'description', 'message', 'remark', 'details'].some(f => 
+          fullPath.toLowerCase().endsWith(f.toLowerCase())
+        );
+        if (!isContentField && /(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|\/\*|\*\/)/gi.test(value)) {
           console.warn(`Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
           throw new Error(`Suspicious input in field: ${fullPath}`);
         }

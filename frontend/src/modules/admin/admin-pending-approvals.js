@@ -182,7 +182,7 @@ function renderPendingUsers() {
         const roleColor = roleLower === 'teacher' ? 'var(--accent-blue)' : 'var(--success)';
 
         return `
-            <tr data-user-id="${user.id}">
+            <tr data-user-id="${escapeAttrValue(String(user.id))}">
                 <td>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div style="width: 32px; height: 32px; border-radius: 50%; background: ${roleColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">
@@ -213,10 +213,10 @@ function renderPendingUsers() {
                 <td style="font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
                 <td>
                     <div style="display: flex; gap: 6px;">
-                        <button class="btn btn-primary btn-sm" title="Approve" onclick="approveUserHandler(${user.id})">
+                        <button class="btn btn-primary btn-sm" title="Approve" onclick="approveUserHandler(${escapeAttrValue(String(user.id))})">
                             <i class="fas fa-check"></i>
                         </button>
-                        <button class="btn btn-secondary btn-sm" title="Reject" onclick="showRejectModal(${user.id})" style="color: var(--danger);">
+                        <button class="btn btn-secondary btn-sm" title="Reject" onclick="showRejectModal(${escapeAttrValue(String(user.id))})" style="color: var(--danger);">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -239,7 +239,7 @@ function renderPendingUsers() {
         const roleIcon = roleLower === 'teacher' ? '👨‍🏫' : '👤';
 
         return `
-            <div class="card" data-user-id="${user.id}" style="padding: 1.25rem;">
+            <div class="card" data-user-id="${escapeAttrValue(String(user.id))}" style="padding: 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
@@ -271,10 +271,10 @@ function renderPendingUsers() {
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <button class="btn btn-primary" onclick="approveUserHandler(${user.id})">
+                    <button class="btn btn-primary" onclick="approveUserHandler(${escapeAttrValue(String(user.id))})">
                         <i class="fas fa-check"></i> Approve
                     </button>
-                    <button class="btn btn-secondary" onclick="showRejectModal(${user.id})" style="color: var(--danger);">
+                    <button class="btn btn-secondary" onclick="showRejectModal(${escapeAttrValue(String(user.id))})" style="color: var(--danger);">
                         <i class="fas fa-times"></i> Reject
                     </button>
                 </div>
@@ -330,7 +330,8 @@ function renderEmptyState() {
  * Approve user handler
  */
 window.approveUserHandler = async function(userId) {
-    const user = pendingUsers.find(u => u.id === userId);
+    const id = Number(userId);
+    const user = pendingUsers.find(u => u.id === id);
     
     if (!user) {
         showMessage('User not found', 'error');
@@ -346,7 +347,7 @@ window.approveUserHandler = async function(userId) {
         if (!confirm('Are you sure you want to approve this user?')) {
             return;
         }
-        await approveUser(userId);
+        await approveUser(id);
     }
 };
 
@@ -354,7 +355,7 @@ window.approveUserHandler = async function(userId) {
  * Show class assignment modal for teacher/staff approval
  */
 async function showClassAssignmentModal(userId) {
-    currentClassAssignmentUserId = userId;
+    currentClassAssignmentUserId = Number(userId);
 
     // Use static class levels (consistent with the rest of the app)
     if (availableClassLevels.length === 0) {
@@ -384,22 +385,12 @@ window.closeClassAssignmentModal = function() {
     currentClassAssignmentUserId = null;
 };
 
-/**
- * Import apiCall if not already available
- */
-let apiCall;
-try {
-    const apiModule = await import('../../core/api.js');
-    apiCall = apiModule.apiCall;
-} catch (e) {
-    // Fallback - will use the one from API if needed
-}
 
 /**
  * Show rejection modal
  */
 window.showRejectModal = function(userId) {
-    currentRejectingUserId = userId;
+    currentRejectingUserId = Number(userId);
     document.getElementById('rejection-reason').value = '';
     const modal = document.getElementById('reject-modal');
     if (modal) modal.style.display = 'flex';
@@ -422,7 +413,8 @@ async function approveUser(userId) {
         const response = await adminAPI.approveUser(userId);
 
         if (response.success) {
-            showMessage(`✅ User ${response.user.name} approved successfully!`, 'success');
+            const userName = response.user?.name || 'User';
+            showMessage(`✅ User ${userName} approved successfully!`, 'success');
             
             // Remove the card from UI
             const card = document.querySelector(`[data-user-id="${userId}"]`);
@@ -491,7 +483,8 @@ async function rejectUser(userId, reason) {
         const response = await adminAPI.rejectUser(userId, reason);
 
         if (response.success) {
-            showMessage(`❌ User ${response.user.name} rejected successfully!`, 'success');
+            const userName = response.user?.name || 'User';
+            showMessage(`❌ User ${userName} rejected successfully!`, 'success');
             
             // Close modal
             window.closeRejectModal();

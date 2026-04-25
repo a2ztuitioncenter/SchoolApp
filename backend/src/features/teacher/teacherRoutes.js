@@ -63,16 +63,16 @@ async function checkTeacherClassPermission(pool, teacherId, classLevel, section)
     // Check new subject_assignments table first
     const subjectRes = await pool.query(
       `SELECT COUNT(*) as count FROM subject_assignments 
-       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR $3 = 'ALL')`,
-      [teacherId, classLevel, section || 'A']
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR section IS NULL OR $3 IS NULL OR $3 = 'ALL')`,
+      [teacherId, classLevel, section]
     );
     if (subjectRes.rows[0].count > 0) return true;
 
     // Fallback to legacy teacher_class_assignment (now migrated to snake_case)
     const result = await pool.query(
       `SELECT COUNT(*) as count FROM teacher_class_assignment 
-       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR $3 = 'ALL')`,
-      [teacherId, classLevel, section || 'A']
+       WHERE teacher_id = $1 AND class_level = $2 AND (section = $3 OR section = 'ALL' OR section IS NULL OR $3 IS NULL OR $3 = 'ALL')`,
+      [teacherId, classLevel, section]
     );
     return result.rows[0].count > 0;
   } catch (err) {
@@ -357,12 +357,15 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       return res.status(400).json({ success: false, error: 'records array required' });
 
     // Security check: Verify teacher has permission for all classes/sections in the batch
-    const uniqueClassSections = new Set(records.map(r => `${r.classLevel}-${r.section || 'A'}`));
-    if (uniqueClassSections.size > 1) {
+    const first = records[0];
+    const classLevel = first.classLevel;
+    const section = first.section || 'A';
+
+    const allMatch = records.every(r => r.classLevel === classLevel && (r.section || 'A') === section);
+    if (!allMatch) {
       return res.status(400).json({ success: false, error: 'Bulk attendance must belong to a single class and section' });
     }
 
-    const [classLevel, section] = Array.from(uniqueClassSections)[0].split('-');
     const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
     if (!hasPermission) {
       return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission for this class/section' });

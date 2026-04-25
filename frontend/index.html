@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./src/assets/css/index.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <style>.markdown-content h1 { font-size: 1.8rem; margin-bottom: 1rem; color: #111827; } .markdown-content h2 { font-size: 1.4rem; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1f2937; } .markdown-content p { margin-bottom: 1rem; } .markdown-content ul { margin-bottom: 1rem; padding-left: 1.5rem; } </style>
 </head>
 
 <body>
@@ -72,7 +75,7 @@
                 
                 <div class="erp-grid">
                     <div class="erp-card erp-card-featured">
-                        <div class="erp-card-icon" style="background-color: var(--primary-light); color: var(--primary);">
+                        <div class="erp-card-icon portal-icon">
                             <i class="fa fa-user-graduate"></i>
                         </div>
                         <div class="erp-card-content">
@@ -83,7 +86,7 @@
                     </div>
 
                     <div class="erp-card">
-                        <div class="erp-card-icon" style="background-color: var(--secondary-light); color: var(--secondary);">
+                        <div class="erp-card-icon tutor-icon">
                             <i class="fa fa-chalkboard-teacher"></i>
                         </div>
                         <div class="erp-card-content">
@@ -93,7 +96,7 @@
                     </div>
 
                     <div class="erp-card">
-                        <div class="erp-card-icon" style="background-color: #f1f5f9; color: #475569;">
+                        <div class="erp-card-icon management-icon">
                             <i class="fa fa-building"></i>
                         </div>
                         <div class="erp-card-content">
@@ -103,7 +106,7 @@
                     </div>
 
                     <div class="erp-card">
-                        <div class="erp-card-icon" style="background-color: #f0fdf4; color: #15803d;">
+                        <div class="erp-card-icon billing-icon">
                             <i class="fa fa-wallet"></i>
                         </div>
                         <div class="erp-card-content">
@@ -576,7 +579,6 @@
             </div>
         </div>
     </div>
-
     <script>
       const _lcBaseUrl = (function() {
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -590,21 +592,42 @@
         const titleEl = document.getElementById('lc-title');
         const ts = document.getElementById('lc-ts');
         if (!modal) return;
+        
         titleEl.textContent = title;
         body.innerHTML = '<div style="text-align:center;padding:2rem;color:#9ca3af;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><p style="margin-top:0.75rem;font-size:0.9rem;">Loading...</p></div>';
         ts.textContent = '';
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+
         try {
           const res = await fetch(`${_lcBaseUrl}/api/public/content/${key}`);
           const data = await res.json();
-          if (data.success && data.data && data.data.content.trim()) {
-            body.innerHTML = data.data.content;
-            ts.textContent = 'Last updated: ' + new Date(data.data.updated_at).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+          if (data.success && data.data && data.data.content) {
+            const rawContent = data.data.content;
+            
+            // Try to parse as markdown if marked is available
+            const m = window.marked;
+            if (m) {
+              try {
+                const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
+                const clean = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(parsed) : parsed;
+                body.innerHTML = `<div class="markdown-content">${clean}</div>`;
+              } catch (e) {
+                console.error('Markdown error:', e);
+                body.innerHTML = rawContent;
+              }
+            } else {
+              body.innerHTML = rawContent;
+            }
+            
+            if (data.data.updated_at) {
+              ts.textContent = 'Last updated: ' + new Date(data.data.updated_at).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+            }
           } else {
             body.innerHTML = '<p style="color:#9ca3af;text-align:center;">No content available for this page yet.</p>';
           }
         } catch(e) {
+          console.error('Fetch error:', e);
           body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load content. Please try again.</p>';
         }
       };
@@ -614,9 +637,11 @@
         if (modal) modal.style.display = 'none';
         document.body.style.overflow = '';
       };
+      
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') window.closeLandingContent?.();
       });
-    </script></body>
+    </script>
+</body>
 
 </html>

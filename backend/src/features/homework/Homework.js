@@ -97,7 +97,7 @@ export const homeworkModel = {
     return this.formatRow(result.rows[0]);
   },
 
-    async delete(id) {
+  async delete(id) {
     const result = await db.query('DELETE FROM homework WHERE id=$1 RETURNING id', [id]);
     return result.rows[0] || null;
   },

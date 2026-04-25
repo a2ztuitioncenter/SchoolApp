@@ -152,7 +152,16 @@ router.post('/register', async (req, res) => {
   const pool = req.db;
 
   try {
-    const normalizedRole = role || ((req.body.firstName || req.body.lastName || req.body.dateOfBirth) ? 'student' : 'teacher');
+    if (!role) {
+      return res.status(400).json({ error: 'Role is required (student, teacher, or staff)' });
+    }
+
+    const normalizedRole = role.toLowerCase();
+    const allowedRoles = ['student', 'teacher', 'staff'];
+    
+    if (!allowedRoles.includes(normalizedRole)) {
+      return res.status(400).json({ error: 'Invalid role. Must be student, teacher, or staff' });
+    }
     const username = sanitizeIdentifier(req.body.username, 50);
     const sanitizedPhone = sanitizeIdentifier(phone, 15);
     const sanitizedEmail = sanitizeNullableText(req.body.email, 255);
@@ -288,28 +297,45 @@ router.post('/register', async (req, res) => {
     }
 
     if (normalizedRole === 'teacher' || normalizedRole === 'staff') {
-      const teacherId = await generateTeacherId(pool, normalizedRole);
-      const user = await createUser(pool, {
-        name: sanitizeText(req.body.name, 100),
-        phone: sanitizedPhone,
-        email: sanitizedEmail,
-        password,
-        role: normalizedRole,
-        schoolId: 'school-001',
-        teacherId,
-        username: username || null,
-      });
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        // Serializing teacher ID generation using a dedicated advisory lock
+        await client.query('SELECT pg_advisory_xact_lock(1001)');
 
-      if (!username) await pool.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
-      await updateLastLogin(pool, user.id);
-      const token = generateToken(user.id, user.role, sanitizedPhone);
+        const teacherId = await generateTeacherId(client, normalizedRole);
+        const user = await createUser(client, {
+          name: sanitizeText(req.body.name, 100),
+          phone: sanitizedPhone,
+          email: sanitizedEmail,
+          password,
+          role: normalizedRole,
+          schoolId: 'school-001',
+          teacherId,
+          username: username || null,
+        });
 
-      return res.json({
-        success: true,
-        message: 'Registration successful. Awaiting admin approval.',
-        token,
-        user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
-      });
+        if (!username) {
+          await client.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+        }
+        
+        await updateLastLogin(client, user.id);
+        await client.query('COMMIT');
+
+        const token = generateToken(user.id, user.role, sanitizedPhone);
+
+        return res.json({
+          success: true,
+          message: 'Registration successful. Awaiting admin approval.',
+          token,
+          user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
+        });
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
     }
   } catch (error) {
     console.error('Registration error:', error);
@@ -324,7 +350,7 @@ router.post('/admin-login', async (req, res) => {
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
     const user = await getUserByPhoneOrUsername(pool, loginId, true);
-    if (!user || user.role.toLowerCase() !== 'admin') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
+    if (!user || (user.role || '').toLowerCase() !== 'admin') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
     
@@ -344,7 +370,8 @@ router.post('/teacher-login', async (req, res) => {
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
     const user = await getUserByPhoneOrUsername(pool, loginId, true);
-    if (!user || (user.role.toLowerCase() !== 'teacher' && user.role.toLowerCase() !== 'staff')) return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
+    const userRole = (user.role || '').toLowerCase();
+    if (!user || (userRole !== 'teacher' && userRole !== 'staff')) return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (user.status !== 'active' || !user.isActive) return res.status(403).json({ error: 'Account not active' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     
@@ -395,7 +422,45 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
       if (!Array.isArray(classesAssigned)) {
         return res.status(400).json({ success: false, error: 'classesAssigned must be an array' });
       }
-      await assignTeacherToClasses(req.db, id, classesAssigned, user.schoolId);
+
+      // Sanitize: trim strings, handle numeric IDs, remove duplicates/empty, limit length
+      const sanitizedClasses = [];
+      const seen = new Set();
+      
+      for (const entry of classesAssigned) {
+        if (entry === null || entry === undefined) continue;
+        
+        let val = entry;
+        if (typeof val === 'string') {
+          val = val.trim();
+          if (val === '') continue;
+          
+          // If it looks like a number, parse it to ensure it's a valid ID/Level
+          if (/^\d+$/.test(val)) {
+            const num = parseInt(val, 10);
+            if (isNaN(num)) continue;
+            val = String(num);
+          }
+        } else if (typeof val === 'number') {
+          if (isNaN(val)) continue;
+          val = String(val);
+        } else {
+          continue; // Reject other types
+        }
+
+        if (val && !seen.has(val) && val.length <= 20) {
+          sanitizedClasses.push(val);
+          seen.add(val);
+        }
+        
+        if (sanitizedClasses.length >= 20) break; // Enforce max length
+      }
+
+      if (sanitizedClasses.length === 0 && classesAssigned.length > 0) {
+        return res.status(400).json({ success: false, error: 'Invalid entries in classesAssigned' });
+      }
+
+      await assignTeacherToClasses(req.db, id, sanitizedClasses, user.schoolId);
     }
 
     const updatedUser = await updateUserStatus(req.db, id, 'active', req.user.userId);
@@ -421,12 +486,34 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
 router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
   const { reason } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'User ID is required' });
+  }
+
   try {
-    const updatedUser = await updateUserStatus(req.db, parseInt(userId), 'rejected', null, reason || 'Admin rejection');
+    const id = parseInt(userId);
+    if (isNaN(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid User ID format' });
+    }
+
+    const user = await getUserById(req.db, id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const updatedUser = await updateUserStatus(req.db, id, 'rejected', null, reason || 'Admin rejection');
+    
+    console.log(`[AUTH] Admin ${req.user.userId} rejected user ${id}`);
+    
     res.json({ success: true, message: 'User rejected', user: updatedUser, data: updatedUser });
   } catch (error) {
     console.error('Reject user error:', error);
-    res.status(500).json({ success: false, error: 'Server error rejecting user' });
+    res.status(500).json({ 
+      success: false, 
+      error: 'Server error rejecting user',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
