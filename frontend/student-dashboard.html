@@ -131,6 +131,7 @@
                             <button class="dropdown-item" onclick="openEditProfileModal()"><i class="fas fa-user-edit"></i> Edit Profile</button>
                             <button class="dropdown-item" onclick="openCMSModal('help_support')"><i class="fas fa-question-circle"></i> Help & Support</button>
                             <button class="dropdown-item" onclick="openCMSModal('contact_us')"><i class="fas fa-headset"></i> Contact Us</button>
+                            <button class="dropdown-item" onclick="openCMSModal('documentation')"><i class="fas fa-book"></i> Documentation</button>
                             <button class="dropdown-item" onclick="openCMSModal('about_us')"><i class="fas fa-info-circle"></i> About Us</button>
                             <div class="dropdown-divider"></div>
                             <button id="dropdown-logout-btn" class="dropdown-item text-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
@@ -349,6 +350,17 @@
                         </div>
                         <p class="profile-edit-note">Max size: 200KB (.jpg, .jpeg, .png)</p>
                     </div>
+
+                    <!-- Profile Upload Progress -->
+                    <div id="profile-upload-progress" style="display:none; margin: 15px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                            <span id="profile-upload-status" style="font-weight: 600; color: var(--text-main);">Uploading...</span>
+                            <span id="profile-upload-percent" style="color: var(--student-accent);">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                            <div id="profile-upload-bar" style="width: 0%; height: 100%; background: var(--student-accent); transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
                     
                     <div class="form-group-mb">
                         <label class="form-label-legacy">Full Name</label>
@@ -389,6 +401,17 @@
                             <p class="file-zone-text">Click or Drag & Drop</p>
                             <p class="file-zone-subtext">Max size: 10MB (PDF, JPG, PNG)</p>
                             <input type="file" id="homework-file-input" accept=".pdf,.jpg,.jpeg,.png" class="d-none">
+                        </div>
+
+                        <!-- Homework Upload Progress -->
+                        <div id="student-hw-upload-progress" style="display:none; margin: 15px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                                <span id="student-hw-upload-status" style="font-weight: 600; color: var(--text-main);">Uploading...</span>
+                                <span id="student-hw-upload-percent" style="color: var(--student-accent);">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                                <div id="student-hw-upload-bar" style="width: 0%; height: 100%; background: var(--student-accent); transition: width 0.3s ease;"></div>
+                            </div>
                         </div>
                         <div id="selected-file-info" class="hidden-tab file-display-box">
                             <div class="file-display-content">

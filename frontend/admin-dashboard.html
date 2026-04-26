@@ -1174,6 +1174,17 @@
                                 <div id="hw-current-attachment"
                                     style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: none;">
                                 </div>
+
+                                <!-- Progress Bar -->
+                                <div id="hw-upload-progress" style="display:none; margin-top: 10px; background: var(--bg-primary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:6px;">
+                                        <span id="hw-upload-status" style="color: var(--text-main); font-weight: 500;">Uploading...</span>
+                                        <span id="hw-upload-percent" style="color: var(--accent-blue); font-weight: 600;">0%</span>
+                                    </div>
+                                    <div style="width:100%; height:6px; background: var(--border-subtle); border-radius:10px; overflow:hidden;">
+                                        <div id="hw-upload-bar" style="width:0%; height:100%; background: linear-gradient(90deg, var(--accent-blue), #764ba2); transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="modal-footer">
@@ -2185,6 +2196,17 @@
                 <div class="form-group">
                     <label>Attachment <small style="color:var(--text-muted)">(Optional: PDF/JPG/PNG)</small></label>
                     <input type="file" id="notice-attachment" accept=".pdf,.jpg,.jpeg,.png">
+
+                    <!-- Progress Bar -->
+                    <div id="notice-upload-progress" style="display:none; margin-top: 10px; background: var(--bg-primary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:6px;">
+                            <span id="notice-upload-status" style="color: var(--text-main); font-weight: 500;">Uploading...</span>
+                            <span id="notice-upload-percent" style="color: var(--accent-blue); font-weight: 600;">0%</span>
+                        </div>
+                        <div style="width:100%; height:6px; background: var(--border-subtle); border-radius:10px; overflow:hidden;">
+                            <div id="notice-upload-bar" style="width:0%; height:100%; background: linear-gradient(90deg, var(--accent-blue), #764ba2); transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeNoticeModal()">Cancel</button>
@@ -2237,6 +2259,17 @@
                         <small id="material-file-hint"
                             style="display:none; color: var(--text-muted); margin-top: 4px;">Leave empty to keep current
                             file</small>
+                        
+                        <!-- Progress Bar -->
+                        <div id="material-upload-progress" style="display:none; margin-top: 10px; background: var(--bg-primary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-subtle);">
+                            <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:6px;">
+                                <span id="material-upload-status" style="color: var(--text-main); font-weight: 500;">Uploading...</span>
+                                <span id="material-upload-percent" style="color: var(--accent-blue); font-weight: 600;">0%</span>
+                            </div>
+                            <div style="width:100%; height:6px; background: var(--border-subtle); border-radius:10px; overflow:hidden;">
+                                <div id="material-upload-bar" style="width:0%; height:100%; background: linear-gradient(90deg, var(--accent-blue), #764ba2); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -2414,7 +2447,6 @@
     <script>
         document.documentElement.setAttribute('data-theme', 'light');
     </script>
-    <script type="module" src="./src/modules/admin/admin-dashboard.js"></script>
 
             <!-- Content Management Editor Modal -->
     <div id="cm-editor-modal" class="modal">

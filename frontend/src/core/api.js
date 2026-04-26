@@ -140,6 +140,53 @@ export const apiCall = async (endpoint, options = {}) => {
   }
 };
 
+/**
+ * Upload file with progress tracking using XMLHttpRequest
+ */
+export const uploadFileWithProgress = (endpoint, formData, onProgress) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let url = base_api_url ? `${base_api_url}/api${endpoint}` : `/api${endpoint}`;
+
+    xhr.open('POST', url, true);
+    xhr.withCredentials = true; // Essential for auth cookies
+
+    // Add CSRF token
+    const csrf = getCsrfToken();
+    if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
+
+    // Track progress
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent, event.loaded, event.total);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      let response;
+      try {
+        response = JSON.parse(xhr.responseText);
+      } catch (e) {
+        response = xhr.responseText;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(response);
+      } else {
+        reject(response || new Error(`Upload failed with status ${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.onabort = () => reject(new Error('Upload aborted'));
+
+    xhr.send(formData);
+  });
+};
+
 /** Silent token refresh — called when a 401 is received */
 let _refreshPromise = null;
 async function tryRefreshToken() {

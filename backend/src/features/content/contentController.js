@@ -10,7 +10,9 @@ export const getContent = async (req, res) => {
     const typeMap = {
         'help_support': 'help',
         'contact': 'contact',
-        'about': 'learn-more'
+        'contact_us': 'contact',
+        'about': 'learn-more',
+        'about_us': 'learn-more'
     };
 
     const key = typeMap[type] || type;

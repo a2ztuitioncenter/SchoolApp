@@ -3,7 +3,7 @@
  * Fetches data on page load and populates DOM elements
  */
 
-import { studentAPI, downloadFile, materialsAPI, waitForBackend, profileAPI, contentAPI, submissionsAPI, assignmentsAPI } from '../../core/api.js';
+import { studentAPI, downloadFile, materialsAPI, waitForBackend, profileAPI, contentAPI, submissionsAPI, assignmentsAPI, uploadFileWithProgress } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 import { escapeAttr, escapeHtml, safeFileName } from '../../core/sanitize.js';
 import { getCache, setCache, clearCache, CACHE_TTL } from '../../core/cache.js';
@@ -14,6 +14,10 @@ import './student-results.js';
 // ===========================
 let dashboardAbortController = null;
 window.studentSubmissionsMap = new Map();
+
+// Pending uploads for student dashboard
+let pendingSubmissionUpload = null;
+let pendingProfileUpload = null;
 
 // ===========================
 // Global Logout Handler
@@ -1170,6 +1174,7 @@ window.openEditProfileModal = async function() {
     const modal = document.getElementById('edit-profile-modal');
     if (!modal) return;
     
+    resetStudentUploadProgress('profile');
     try {
         const userId = sessionStorage.getItem('studentUserId');
         const res = await studentAPI.getDashboard(userId);
@@ -1233,8 +1238,9 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
     
     const formData = new FormData();
     formData.append('name', name);
-    if (file) {
-        formData.append('avatar', file);
+    if (pendingProfileUpload) {
+        formData.append('avatarUrl', pendingProfileUpload.url);
+        formData.append('attachmentId', pendingProfileUpload.id);
     }
     
     try {
@@ -1263,6 +1269,7 @@ window.openCMSModal = async function(type) {
     const titles = {
         'help_support': 'Help & Support',
         'contact_us': 'Contact Us',
+        'documentation': 'Documentation Guide',
         'about_us': 'About Us'
     };
     
@@ -1380,6 +1387,7 @@ window.openSubmissionModal = function(hwId, title, subject) {
     const modal = document.getElementById('homework-submission-modal');
     if (!modal) return;
     
+    resetStudentUploadProgress('student-hw');
     document.getElementById('submit-homework-id').value = hwId;
     document.getElementById('submit-hw-title').textContent = title;
     document.getElementById('submit-hw-subject').textContent = `Subject: ${subject}`;
@@ -1434,8 +1442,29 @@ if (dropZone) {
 }
 
 if (fileInput) {
-    fileInput.onchange = (e) => {
-        if (e.target.files.length) handleFileSelect(e.target.files[0]);
+    fileInput.onchange = async (e) => {
+        if (e.target.files.length) {
+            const file = e.target.files[0];
+            handleFileSelect(file);
+            
+            // Immediate upload
+            const result = await handleStudentFileUpload(file, 'student-hw', 'submit-btn');
+            if (result) pendingSubmissionUpload = result;
+        }
+    };
+}
+
+const profileUpload = document.getElementById('profile-upload');
+if (profileUpload) {
+    profileUpload.onchange = async (e) => {
+        if (e.target.files.length) {
+            const file = e.target.files[0];
+            window.previewProfileImage(profileUpload);
+            
+            // Immediate upload
+            const result = await handleStudentFileUpload(file, 'profile', null);
+            if (result) pendingProfileUpload = result;
+        }
     };
 }
 
@@ -1492,7 +1521,13 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
     
     const formData = new FormData();
     formData.append('homeworkId', hwId);
-    formData.append('submission', file);
+    if (pendingSubmissionUpload) {
+        formData.append('attachmentId', pendingSubmissionUpload.id);
+        formData.append('fileUrl', pendingSubmissionUpload.url);
+    } else if (file) {
+        // Fallback for safety, though UI should prevent this
+        formData.append('submission', file);
+    }
     
     try {
         submitBtn.disabled = true;
@@ -1585,8 +1620,16 @@ window.openAssignmentSelector = async function() {
         console.log('✅ Assignments response:', res);
         
         if (res.success && res.data) {
-            // Filter out assignments that the student has already submitted
-            activeAssignments = res.data.filter(a => !window.studentSubmissionsMap.has(a.id));
+            console.log(`📊 Found ${res.data.length} total active assignments`);
+            // Only filter out assignments that are already SUBMITTED AND REVIEWED
+            // "Submitted but Not Reviewed" stays in the list so students can update/replace if needed
+            activeAssignments = res.data.filter(a => {
+                const sub = window.studentSubmissionsMap.get(a.id);
+                if (!sub) return true; // Not submitted yet
+                return sub.status !== 'reviewed'; // Hide only if reviewed
+            });
+            console.log(`🎯 After filtering (hide reviewed), ${activeAssignments.length} assignments remain`);
+
             const homework = activeAssignments.filter(a => a.type === 'homework' || !a.type);
             const dpp = activeAssignments.filter(a => a.type === 'daily_practice' || a.type === 'dpp');
             
@@ -1742,3 +1785,61 @@ document.getElementById('cancel-select-assignment-btn')?.addEventListener('click
     document.getElementById('select-assignment-modal').classList.add('d-none');
     document.getElementById('select-assignment-modal').classList.remove('d-flex');
 });
+document.getElementById('cancel-select-assignment-btn')?.addEventListener('click', () => {
+    document.getElementById('select-assignment-modal').classList.add('d-none');
+    document.getElementById('select-assignment-modal').classList.remove('d-flex');
+});
+
+/**
+ * Handle student file uploads with progress
+ */
+async function handleStudentFileUpload(file, prefix, submitBtnId) {
+    const container = document.getElementById(`${prefix}-upload-progress`);
+    const statusText = document.getElementById(`${prefix}-upload-status`);
+    const percentText = document.getElementById(`${prefix}-upload-percent`);
+    const progressBar = document.getElementById(`${prefix}-upload-bar`);
+    const submitBtn = submitBtnId ? document.getElementById(submitBtnId) : null;
+
+    if (container) container.style.display = 'block';
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const result = await uploadFileWithProgress(file, (percent) => {
+            if (percentText) percentText.textContent = `${percent}%`;
+            if (progressBar) progressBar.style.width = `${percent}%`;
+        }, 'submission'); // Use generic upload type
+
+        if (statusText) statusText.textContent = 'Upload Complete';
+        if (submitBtn) submitBtn.disabled = false;
+        return result;
+    } catch (err) {
+        if (statusText) statusText.textContent = 'Upload Failed';
+        if (progressBar) progressBar.style.background = 'var(--danger)';
+        if (submitBtn) submitBtn.disabled = false;
+        console.error('Upload error:', err);
+        alert('Upload failed: ' + (err.error || err.message));
+        return null;
+    }
+}
+
+/**
+ * Reset upload progress UI and pending state
+ */
+function resetStudentUploadProgress(prefix) {
+    const container = document.getElementById(`${prefix}-upload-progress`);
+    const statusText = document.getElementById(`${prefix}-upload-status`);
+    const percentText = document.getElementById(`${prefix}-upload-percent`);
+    const progressBar = document.getElementById(`${prefix}-upload-bar`);
+    
+    if (container) container.style.display = 'none';
+    if (statusText) statusText.textContent = 'Uploading...';
+    if (percentText) percentText.textContent = '0%';
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.style.background = 'var(--student-accent)';
+    }
+    
+    // Clear pending state
+    if (prefix === 'student-hw') pendingSubmissionUpload = null;
+    if (prefix === 'profile') pendingProfileUpload = null;
+}

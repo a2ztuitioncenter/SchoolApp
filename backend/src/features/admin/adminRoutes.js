@@ -12,9 +12,19 @@ const router = express.Router();
  */
 const logAudit = async (db, userId, action, entity, entityId, details) => {
     try {
+        let detailsJson = details;
+        if (typeof details === 'string') {
+            try {
+                JSON.parse(details);
+            } catch (e) {
+                detailsJson = JSON.stringify({ message: details });
+            }
+        } else {
+            detailsJson = JSON.stringify(details);
+        }
         await db.query(
             'INSERT INTO audit_logs (user_id, action, entity, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-            [userId, action, entity, entityId, details]
+            [userId, action, entity, entityId, detailsJson]
         );
     } catch (err) {
         console.error('Audit Log Error:', err);

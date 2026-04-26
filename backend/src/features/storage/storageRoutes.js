@@ -8,7 +8,7 @@ const router = express.Router();
 // 1. Upload API: POST /api/upload
 // Requirement: Admin and Teachers only can upload
 // handleFileUpload handles multer + strict validation (type/size)
-router.post('/upload', authenticate, authorize(['admin', 'teacher', 'staff']), handleFileUpload, storageController.upload);
+router.post('/upload', authenticate, authorize(['admin', 'teacher', 'staff', 'student']), handleFileUpload, storageController.upload);
 
 // 2. Fetch API: GET /api/files
 // Requirement: Accessible to authorized users (based on class/section logic in controller)

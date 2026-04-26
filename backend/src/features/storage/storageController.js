@@ -4,13 +4,19 @@ import pool from '../../config/pool.js';
 export const storageController = {
     async upload(req, res) {
         try {
-            const { classLevel, section, type } = req.body;
+            let { classLevel, section, type } = req.body;
             const file = req.file;
 
             if (!file) return res.status(400).json({ success: false, error: 'No file uploaded' });
-            if (!classLevel || !section || !type) {
-                return res.status(400).json({ success: false, error: 'Missing metadata (classLevel, section, type)' });
+            
+            // Type is required to organize the storage
+            if (!type) {
+                return res.status(400).json({ success: false, error: 'Missing file type (e.g., material, homework, submission)' });
             }
+
+            // Fallback for missing metadata during "upload-first" phase
+            if (!classLevel) classLevel = 'General';
+            if (!section) section = 'All';
 
             // 1. Get/Create Folder Path (Class > Section > Type)
             const folderId = await googleDriveService.getFolderPath(classLevel, section, type);

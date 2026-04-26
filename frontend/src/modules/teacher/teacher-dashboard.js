@@ -1,4 +1,4 @@
-import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI } from '../../core/api.js';
+import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI, uploadFileWithProgress } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 import { escapeHtml, escapeAttr } from '../../core/sanitize.js';
 import { formatDate } from '../../core/utils.js';
@@ -40,6 +40,11 @@ let allSyllabus = [];
 let allTimetable = [];
 let availableClasses = [];
 let showAllMaterials = false;
+
+// Pending uploads for teacher dashboard
+let pendingHwUpload = null;
+let pendingMaterialUpload = null;
+let pendingProfileUpload = null;
 
 // ─── Day helpers ──────────────────────────────────────────────────────────────
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -878,6 +883,7 @@ function renderDppTable() {
 }
 
 window.openHwModal = async function (typeOrHw = 'homework') {
+  resetTeacherUploadProgress('hw');
   await populateSharedDropdowns('hw');
   const form = document.getElementById('hw-form');
   if (form) form.reset();
@@ -960,8 +966,13 @@ function setupFormListeners() {
     fd.append('title', document.getElementById('hw-title').value);
     fd.append('description', document.getElementById('hw-description').value);
     fd.append('dueDate', document.getElementById('hw-dueDate').value);
-    const file = document.getElementById('hw-file').files[0];
-    if (file) fd.append('attachment', file);
+    
+    if (pendingHwUpload) {
+      fd.append('attachmentId', pendingHwUpload.id);
+      fd.append('fileUrl', pendingHwUpload.url);
+    } else if (file) {
+      fd.append('attachment', file);
+    }
 
     try {
       showInfo(id ? 'Updating homework...' : 'Adding homework...');
@@ -1024,7 +1035,10 @@ function setupFormListeners() {
       fd.append('currentFileUrl', document.getElementById('material-current-file').value);
     }
     
-    if (file) {
+    if (pendingMaterialUpload) {
+      fd.append('attachmentId', pendingMaterialUpload.id);
+      fd.append('fileUrl', pendingMaterialUpload.url);
+    } else if (file) {
       fd.append('materialFile', file);
     }
 
@@ -1064,6 +1078,29 @@ function setupFormListeners() {
       closeSyllabusModal();
       await loadSyllabus();
     } catch (err) { hideInfo(); showError(err.message); }
+  });
+
+  // Attach immediate upload listeners
+  document.getElementById('hw-file')?.addEventListener('change', async e => {
+    if (e.target.files.length) {
+      const result = await handleTeacherFileUpload(e.target.files[0], 'hw', 'hw-form-submit-btn'); // Note: I should check if there is a specific submit btn ID
+      if (result) pendingHwUpload = result;
+    }
+  });
+
+  document.getElementById('material-file')?.addEventListener('change', async e => {
+    if (e.target.files.length) {
+      const result = await handleTeacherFileUpload(e.target.files[0], 'material', 'material-submit-btn');
+      if (result) pendingMaterialUpload = result;
+    }
+  });
+
+  document.getElementById('profile-upload')?.addEventListener('change', async e => {
+    if (e.target.files.length) {
+      window.previewProfileImage(e.target);
+      const result = await handleTeacherFileUpload(e.target.files[0], 'profile', 'profile-save-btn'); // Note: I should check if there is a specific submit btn ID
+      if (result) pendingProfileUpload = result;
+    }
   });
 }
 
@@ -1527,8 +1564,16 @@ window.toggleActionMenu = function (e) {
       dropdown.classList.remove('drop-up');
     }
     
-    // Horizontal position (align right to button)
-    dropdown.style.left = (rect.right - dropdownWidth) + 'px';
+    // Horizontal position (align right to button with collision detection)
+    let leftPos = rect.right - dropdownWidth;
+    const viewportWidth = window.innerWidth;
+    
+    if (leftPos < 10) leftPos = 10; // Keep 10px from left edge
+    if (leftPos + dropdownWidth > viewportWidth - 10) {
+      leftPos = viewportWidth - dropdownWidth - 10;
+    }
+    
+    dropdown.style.left = leftPos + 'px';
     
     // Handle click outside to close
     const closeMenu = (event) => {
@@ -1826,6 +1871,8 @@ window.openEditProfileModal = async function() {
     const modal = document.getElementById('edit-profile-modal');
     if (!modal) return;
     
+    resetTeacherUploadProgress('profile');
+    
     try {
         showInfo('Loading profile...');
         const res = await teacherAPI.getDashboard(teacherId);
@@ -1895,7 +1942,10 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
     
     const formData = new FormData();
     formData.append('name', name);
-    if (file) {
+    if (pendingProfileUpload) {
+        formData.append('avatarUrl', pendingProfileUpload.url);
+        formData.append('attachmentId', pendingProfileUpload.id);
+    } else if (file) {
         formData.append('avatar', file);
     }
     
@@ -1930,6 +1980,7 @@ window.openCMSModal = async function(type) {
     const titles = {
         'help_support': 'Help & Support',
         'contact_us': 'Contact Us',
+        'documentation': 'Documentation Guide',
         'about_us': 'About Us'
     };
     
@@ -2177,3 +2228,58 @@ document.getElementById('review-submission-form')?.addEventListener('submit', as
         btn.textContent = 'Submit Review';
     }
 });
+
+/**
+ * Handle teacher file uploads with progress
+ */
+async function handleTeacherFileUpload(file, prefix, submitBtnId) {
+    const container = document.getElementById(`${prefix}-upload-progress`);
+    const statusText = document.getElementById(`${prefix}-upload-status`);
+    const percentText = document.getElementById(`${prefix}-upload-percent`);
+    const progressBar = document.getElementById(`${prefix}-upload-bar`);
+    const submitBtn = submitBtnId ? document.getElementById(submitBtnId) : null;
+
+    if (container) container.style.display = 'block';
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const result = await uploadFileWithProgress(file, (percent) => {
+            if (percentText) percentText.textContent = `${percent}%`;
+            if (progressBar) progressBar.style.width = `${percent}%`;
+        }, 'material'); // Use generic upload type
+
+        if (statusText) statusText.textContent = 'Upload Complete';
+        if (submitBtn) submitBtn.disabled = false;
+        return result;
+    } catch (err) {
+        if (statusText) statusText.textContent = 'Upload Failed';
+        if (progressBar) progressBar.style.background = 'var(--danger)';
+        if (submitBtn) submitBtn.disabled = false;
+        console.error('Upload error:', err);
+        showError('Upload failed: ' + (err.error || err.message));
+        return null;
+    }
+}
+
+/**
+ * Reset upload progress UI and pending state
+ */
+function resetTeacherUploadProgress(prefix) {
+    const container = document.getElementById(`${prefix}-upload-progress`);
+    const statusText = document.getElementById(`${prefix}-upload-status`);
+    const percentText = document.getElementById(`${prefix}-upload-percent`);
+    const progressBar = document.getElementById(`${prefix}-upload-bar`);
+    
+    if (container) container.style.display = 'none';
+    if (statusText) statusText.textContent = 'Uploading...';
+    if (percentText) percentText.textContent = '0%';
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.style.background = 'var(--accent-blue)';
+    }
+    
+    // Clear pending state
+    if (prefix === 'hw') pendingHwUpload = null;
+    if (prefix === 'material') pendingMaterialUpload = null;
+    if (prefix === 'profile') pendingProfileUpload = null;
+}

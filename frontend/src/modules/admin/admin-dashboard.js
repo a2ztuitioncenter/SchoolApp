@@ -3,7 +3,7 @@
  * Full-featured admin dashboard with all CRUD operations restored.
  */
 
-import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend, base_api_url } from '../../core/api.js';
+import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend, base_api_url, uploadFileWithProgress } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
 import { escapeAttr as escapeAttrValue, escapeHtml, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
 import './admin-pending-approvals.js';
@@ -25,10 +25,10 @@ window.handleLogout = function () {
 syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
 
 // Expose APIs for debugging in development only
-const isDevelopment = window.location.hostname === 'localhost' || 
-                     window.location.hostname === '127.0.0.1' || 
-                     window.location.hostname.endsWith('.local') ||
-                     window.location.hostname.endsWith('.trycloudflare.com');
+const isDevelopment = window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.endsWith('.local') ||
+    window.location.hostname.endsWith('.trycloudflare.com');
 
 if (isDevelopment) {
     window.adminAPI = adminAPI;
@@ -49,6 +49,11 @@ let currentTab = 'dashboard';
 let allHomeworkData = [];
 let allFeesData = [];
 let currentEditHwId = null;
+
+// Upload-First State
+let pendingMaterialUpload = null;
+let pendingHomeworkUpload = null;
+let pendingNoticeUpload = null;
 console.log('ðŸš€ admin-dashboard.js loaded. Global state exposed.');
 
 // =============================================
@@ -234,7 +239,14 @@ async function initDashboard() {
         formData.append('message', message);
         formData.append('classLevel', classLevel);
         formData.append('recipientRole', recipientRole);
-        if (attachment) formData.append('attachment', attachment);
+
+        // Upload-first check
+        if (pendingNoticeUpload) {
+            formData.append('attachmentId', pendingNoticeUpload.dbId);
+            formData.append('attachmentUrl', pendingNoticeUpload.webViewLink);
+        } else if (attachment) {
+            formData.append('attachment', attachment);
+        }
 
         const adminId = sessionStorage.getItem('adminUserId');
         if (adminId) formData.append('createdBy', adminId);
@@ -244,7 +256,8 @@ async function initDashboard() {
             await notificationsAPI.create(formData);
             hideInfoAlert();
             closeNoticeModal();
-            showSuccessAlert('✅ Notice sent with attachment!');
+            showSuccessAlert('✅ Notice sent!');
+            pendingNoticeUpload = null; // Reset
             await loadNotifications();
         } catch (err) {
             hideInfoAlert();
@@ -297,7 +310,7 @@ async function populateSubjectDropdown(classLevel, section = '', selectIds) {
 }
 
 
-export async function populateERPFilters({
+async function populateERPFilters({
     classSelectId,
     sectionSelectId,
     subjectSelectId,
@@ -1975,14 +1988,14 @@ function renderStudentsTable(students) {
 
     tbody.innerHTML = toShow.map(s => `
         <tr data-student-id="${s.id}">
-            <td><strong>${escapeHtml(s.name)}</strong></td>
-            <td><code>${escapeHtml(s.rollNumber || '-')}</code></td>
-            <td>${escapeHtml(s.fatherName || '-')}${s.motherName ? ' · ' + escapeHtml(s.motherName) : ''}</td>
-            <td>${escapeHtml(s.phone || '-')}</td>
-            <td>${escapeHtml(s.classLevel || '-')}</td>
-            <td>${escapeHtml(s.section || '-')}</td>
-            <td><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${escapeHtml(s.status)}</span></td>
-            <td>
+            <td data-label="Name"><strong>${escapeHtml(s.name)}</strong></td>
+            <td data-label="Roll No."><code>${escapeHtml(s.rollNumber || '-')}</code></td>
+            <td data-label="Parents">${escapeHtml(s.fatherName || '-')}${s.motherName ? ' · ' + escapeHtml(s.motherName) : ''}</td>
+            <td data-label="Phone">${escapeHtml(s.phone || '-')}</td>
+            <td data-label="Class">${escapeHtml(s.classLevel || '-')}</td>
+            <td data-label="Section">${escapeHtml(s.section || '-')}</td>
+            <td data-label="Status"><span class="status-badge ${s.status === 'active' ? 'status-active' : 'status-pending'}">${escapeHtml(s.status)}</span></td>
+            <td data-label="Actions">
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleStudentMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-student-id="${s.id}">
@@ -2382,13 +2395,13 @@ function renderHomeworkTable(list) {
         const section = hw.section || '-';
         const assignedByName = hw.assignedByName || 'Admin';
         return `<tr>
-            <td><strong>${escapeHtml(hw.title)}</strong></td>
-            <td><span class="status-badge status-active">${escapeHtml(classLevel)}</span></td>
-            <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${escapeHtml(section)}</span></td>
-            <td>${escapeHtml(hw.subject || '-')}</td>
-            <td>${escapeHtml(due)}</td>
-            <td><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${escapeHtml(assignedByName)}</span></td>
-            <td>
+            <td data-label="Title"><strong>${escapeHtml(hw.title)}</strong></td>
+            <td data-label="Class"><span class="status-badge status-active">${escapeHtml(classLevel)}</span></td>
+            <td data-label="Section"><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${escapeHtml(section)}</span></td>
+            <td data-label="Subject">${escapeHtml(hw.subject || '-')}</td>
+            <td data-label="Due Date">${escapeHtml(due)}</td>
+            <td data-label="Assigned By"><span style="background: #f0f4ff; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${escapeHtml(assignedByName)}</span></td>
+            <td data-label="Actions">
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleHomeworkMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-hw-id="${hw.id}">
@@ -2482,9 +2495,15 @@ window.saveHomework = async function (e) {
     formData.append('description', description);
     formData.append('assignedBy', sessionStorage.getItem('adminUserId') || '');
 
-    const fileInput = document.getElementById('hw-attachment');
-    if (fileInput && fileInput.files[0]) {
-        formData.append('attachment', fileInput.files[0]);
+    // Upload-first check
+    if (pendingHomeworkUpload) {
+        formData.append('attachmentId', pendingHomeworkUpload.dbId);
+        formData.append('attachmentUrl', pendingHomeworkUpload.webViewLink);
+    } else {
+        const fileInput = document.getElementById('hw-attachment');
+        if (fileInput && fileInput.files[0]) {
+            formData.append('attachment', fileInput.files[0]);
+        }
     }
 
     try {
@@ -2497,6 +2516,7 @@ window.saveHomework = async function (e) {
             showSuccessAlert(id ? 'Homework updated successfully!' : 'Homework added successfully!');
             closeAddHomeworkModal();
             document.getElementById('homework-form').reset();
+            pendingHomeworkUpload = null; // Reset
             await loadAllHomework();
         } else {
             hideInfoAlert();
@@ -2960,14 +2980,14 @@ function renderFeesTable(fees) {
 
             return `
             <tr>
-                <td>${i + 1}</td>
-                <td><strong>${studentName}</strong></td>
-                <td>${f.classLevel || '-'}</td>
-                <td>${f.section || '-'}</td>
-                <td>${formatCurrency(f.amount, { showDecimals: true })}</td>
-                <td>${dueDate}</td>
-                <td><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
-                <td>
+                <td data-label="#">${i + 1}</td>
+                <td data-label="Student"><strong>${studentName}</strong></td>
+                <td data-label="Class">${f.classLevel || '-'}</td>
+                <td data-label="Section">${f.section || '-'}</td>
+                <td data-label="Amount">${formatCurrency(f.amount, { showDecimals: true })}</td>
+                <td data-label="Due Date">${dueDate}</td>
+                <td data-label="Status"><span class="badge ${f.paid ? 'badge-green' : 'badge-red'}">${f.paid ? 'Paid' : 'Unpaid'}</span></td>
+                <td data-label="Actions">
                     <div class="action-menu">
                         <button class="action-menu-btn" onclick="toggleFeeMenu(event);">⋮</button>
                         <div class="action-menu-dropdown" data-fee-id="${f.id}">
@@ -2983,7 +3003,7 @@ function renderFeesTable(fees) {
                 </td>
             </tr>
         `;
-    }).join('');
+        }).join('');
 }
 
 window.toggleFeeMenu = function (event) {
@@ -3006,43 +3026,51 @@ window.toggleFeeMenu = function (event) {
  * Handles overflow detection to flip menu direction if needed
  */
 window.positionDropdown = function (btn, dropdown) {
-    // Temporarily show to get height
+    // Temporarily show to get dimensions accurately
     const originalDisplay = dropdown.style.display;
+    const originalVisibility = dropdown.style.visibility;
+
     dropdown.style.display = 'block';
     dropdown.style.visibility = 'hidden';
 
     const btnRect = btn.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
     const dropdownHeight = dropdown.offsetHeight || 160;
+    const dropdownWidth = dropdown.offsetWidth || 180;
 
     // Restore display
     dropdown.style.display = originalDisplay;
-    dropdown.style.visibility = '';
+    dropdown.style.visibility = originalVisibility;
 
     const spaceBelow = viewportHeight - btnRect.bottom;
     const spaceAbove = btnRect.top;
 
     // Position below by default
     let top = btnRect.bottom + 5;
-    let left = btnRect.right - 160; // Align to right
+    // Align right edge of dropdown to right edge of button by default
+    let left = btnRect.right - dropdownWidth;
 
     // If not enough space below, flip to above
     if (spaceBelow < dropdownHeight + 20 && spaceAbove > dropdownHeight) {
         top = btnRect.top - dropdownHeight - 5;
     }
 
-    // Prevent going off-screen horizontally
+    // Prevent going off-screen horizontally (Collision Detection)
     if (left < 10) {
-        left = 10;
+        left = 10; // Margin from left
     }
-    if (left + 160 > window.innerWidth) {
-        left = window.innerWidth - 170;
+    if (left + dropdownWidth > viewportWidth - 10) {
+        left = viewportWidth - dropdownWidth - 10; // Margin from right
     }
 
     dropdown.style.position = 'fixed';
     dropdown.style.top = top + 'px';
     dropdown.style.left = left + 'px';
-    dropdown.style.right = 'auto'; // Reset right if any
+    dropdown.style.right = 'auto';
+    dropdown.style.width = 'auto'; // Allow CSS max-width to take over
+    dropdown.style.maxHeight = '90vh';
+    dropdown.style.overflowY = 'auto';
 };
 
 window.closeAllFeeMenus = function () {
@@ -3260,17 +3288,17 @@ let materialsFilterTimeout;
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('#materials-tbody .action-menu-item');
     if (!btn) return;
-    
+
     const dropdown = btn.closest('.action-menu-dropdown');
     if (!dropdown) return;
-    
+
     const materialIdStr = dropdown.getAttribute('data-material-id');
     const materialId = parseInt(materialIdStr);
     if (isNaN(materialId)) return;
-    
+
     const action = btn.getAttribute('data-action');
     if (!action) return;
-    
+
     // Resolve full material object from state
     const material = allMaterialsData.find(m => m.id === materialId);
     if (!material) {
@@ -3280,7 +3308,7 @@ document.addEventListener('click', (e) => {
 
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Close the dropdown menu
     dropdown.classList.remove('active');
 
@@ -3357,16 +3385,16 @@ function renderMaterialsTable() {
 
     tbody.innerHTML = toShow.map(m => `
         <tr>
-            <td>
+            <td data-label="Title">
                 <strong>${escapeHtml(m.title)}</strong>
                 ${m.description ? `<br><small style="color: var(--text-muted);">${escapeHtml(m.description.substring(0, 50))}</small>` : ''}
             </td>
-            <td>${escapeHtml(m.subject_name || m.subject || '-')}</td>
-            <td><span class="badge">Class ${escapeHtml(m.class_level || m.classLevel)}</span></td>
-            <td><span class="badge secondary">${escapeHtml(m.section || 'All')}</span></td>
-            <td>${escapeHtml(m.uploaded_by || m.uploadedBy || '-')}</td>
-            <td><small style="color: var(--text-muted);">${formatDate(m.created_at || m.createdAt)}</small></td>
-            <td>
+            <td data-label="Subject">${escapeHtml(m.subject_name || m.subject || '-')}</td>
+            <td data-label="Class"><span class="badge">Class ${escapeHtml(m.class_level || m.classLevel)}</span></td>
+            <td data-label="Section"><span class="badge secondary">${escapeHtml(m.section || 'All')}</span></td>
+            <td data-label="Uploaded By">${escapeHtml(m.uploaded_by || m.uploadedBy || '-')}</td>
+            <td data-label="Date"><small style="color: var(--text-muted);">${formatDate(m.created_at || m.createdAt)}</small></td>
+            <td data-label="Actions">
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleMaterialMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-material-id="${m.id}">
@@ -3477,7 +3505,11 @@ window.saveMaterial = async function (e) {
     formData.append('section', section);
     formData.append('uploadedBy', sessionStorage.getItem('adminName') || 'Admin');
 
-    if (fileInput.files[0]) {
+    // Upload-first check
+    if (pendingMaterialUpload) {
+        formData.append('materialFileId', pendingMaterialUpload.dbId);
+        formData.append('materialFileUrl', pendingMaterialUpload.webViewLink);
+    } else if (fileInput.files[0]) {
         formData.append('materialFile', fileInput.files[0]);
     } else if (!id) {
         showErrorAlert('Please select a file to upload');
@@ -3497,6 +3529,7 @@ window.saveMaterial = async function (e) {
             showSuccessAlert('Material uploaded successfully');
         }
         closeMaterialModal();
+        pendingMaterialUpload = null; // Reset
         await loadMaterials();
     } catch (err) {
         hideInfoAlert();
@@ -3530,6 +3563,7 @@ window.openMaterialModal = async function (material = null) {
 
     if (!modal || !form) return;
 
+    resetUploadProgress('material');
     form.reset();
     if (fileHint) fileHint.style.display = 'none';
     if (fileInput) fileInput.required = true;
@@ -3605,9 +3639,9 @@ async function loadMasterSubjects() {
 
         tbody.innerHTML = masterSubjectsData.map(s => `
             <tr>
-                <td><strong>${escapeHtml(s.name)}</strong></td>
-                <td><span class="badge secondary">${escapeHtml(s.code || '-')}</span></td>
-                <td style="text-align:right;">
+                <td data-label="Subject Name"><strong>${escapeHtml(s.name)}</strong></td>
+                <td data-label="Code"><span class="badge secondary">${escapeHtml(s.code || '-')}</span></td>
+                <td data-label="Actions" style="text-align:right;">
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteMasterSubject('${s.id}')">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -3637,11 +3671,11 @@ window.loadSubjectAssignments = async function () {
 
         tbody.innerHTML = subjectAssignmentsData.map(a => `
             <tr>
-                <td><strong>${escapeHtml(a.master_name || a.name)}</strong></td>
-                <td><span class="badge">Class ${escapeHtml(a.class_level || a.classLevel)}</span></td>
-                <td><span class="badge secondary">${escapeHtml(a.section || 'All Sections')}</span></td>
-                <td><span style="color:var(--text-main); font-weight:500;">${escapeHtml(a.teacher_name || 'Not Assigned')}</span></td>
-                <td style="text-align:right;">
+                <td data-label="Subject"><strong>${escapeHtml(a.master_name || a.name)}</strong></td>
+                <td data-label="Class Level"><span class="badge">Class ${escapeHtml(a.class_level || a.classLevel)}</span></td>
+                <td data-label="Section"><span class="badge secondary">${escapeHtml(a.section || 'All Sections')}</span></td>
+                <td data-label="Teacher"><span style="color:var(--text-main); font-weight:500;">${escapeHtml(a.teacher_name || 'Not Assigned')}</span></td>
+                <td data-label="Actions" style="text-align:right;">
                     <button class="btn btn-sm btn-outline-danger" onclick="deleteAssignment('${a.id}')">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -3814,6 +3848,7 @@ window.openAddHomeworkModal = async function () {
     const modal = document.getElementById('add-homework-modal');
     if (!modal) return;
 
+    resetUploadProgress('hw');
     modal.style.display = 'block';
     document.getElementById('homework-form').reset();
     document.getElementById('hw-edit-id').value = '';
@@ -3838,6 +3873,7 @@ window.openEditHomeworkModal = async function (id) {
     const hw = allHomeworkData.find(h => h.id === id);
     if (!hw) return;
 
+    resetUploadProgress('hw');
     document.getElementById('add-homework-modal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 
@@ -4044,245 +4080,343 @@ function setupCascadingListeners() {
     });
 }
 
-function setupForms() {
-    const hwForm = document.getElementById('homework-form');
-    if (hwForm) hwForm.addEventListener('submit', saveHomework);
+        /**
+         * Shared helper for immediate file uploads with progress tracking
+         */
+        async function handleDashboardFileUpload(fileInput, type, prefix) {
+            const file = fileInput.files[0];
+            if (!file) return null;
 
-    // Event listeners for dynamic subjects in homework
-    document.getElementById('hw-class')?.addEventListener('change', (e) => {
-        populateSubjectDropdown(e.target.value, document.getElementById('hw-section').value, 'hw-subject');
-    });
-    document.getElementById('hw-section')?.addEventListener('change', (e) => {
-        populateSubjectDropdown(document.getElementById('hw-class').value, e.target.value, 'hw-subject');
-    });
+            const progressContainer = document.getElementById(`${prefix}-upload-progress`);
+            const statusText = document.getElementById(`${prefix}-upload-status`);
+            const percentText = document.getElementById(`${prefix}-upload-percent`);
+            const progressBar = document.getElementById(`${prefix}-upload-bar`);
 
-    const matForm = document.getElementById('material-form');
-    if (matForm) matForm.addEventListener('submit', saveMaterial);
+            // Find the submit button in the same modal/form to disable it
+            const form = fileInput.closest('form');
+            const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
 
-    // Event listeners for dynamic subjects in materials
-    document.getElementById('material-class')?.addEventListener('change', (e) => {
-        populateSubjectDropdown(e.target.value, document.getElementById('material-section').value, 'material-subject');
-    });
-    document.getElementById('material-section')?.addEventListener('change', (e) => {
-        populateSubjectDropdown(document.getElementById('material-class').value, e.target.value, 'material-subject');
-    });
-
-    const subjectForm = document.getElementById('add-subject-form');
-    if (subjectForm) subjectForm.addEventListener('submit', saveMasterSubject);
-
-    const assignForm = document.getElementById('assign-subject-form');
-    if (assignForm) assignForm.addEventListener('submit', saveAssignment);
-
-    document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const payload = {
-            name: document.getElementById('user-name')?.value.trim(),
-            username: document.getElementById('user-username')?.value.trim() || undefined,
-            phone: document.getElementById('user-phone')?.value.trim(),
-            email: document.getElementById('user-email')?.value.trim(),
-            role: document.getElementById('user-role')?.value,
-            password: document.getElementById('user-password')?.value
-        };
-        if (!payload.name || !payload.phone || !payload.role || !payload.password) {
-            showErrorAlert('All required fields (*) must be filled');
-            return;
-        }
-        try {
-            showInfoAlert('Adding user...');
-            const res = await adminAPI.addUser(payload);
-            hideInfoAlert();
-            if (res.success) {
-                showSuccessAlert('User added successfully!');
-                document.getElementById('add-user-form').reset();
-                closeAddUserModal();
-                await loadUsers();
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                progressContainer.style.background = 'var(--bg-primary)';
             }
-            else showErrorAlert(res.error || 'Failed to add user');
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message || 'Failed to add user');
-        }
-    });
-
-    document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('edit-user-id')?.value;
-        const role = document.getElementById('edit-user-role')?.value;
-
-        // Collect checked classes if it's a teacher/staff
-        let classesAssigned = null;
-        if (role === 'teacher' || role === 'staff') {
-            classesAssigned = Array.from(
-                document.querySelectorAll('#edit-user-class-checkboxes input[type="checkbox"]:checked')
-            ).map(cb => cb.value);
-        }
-
-        const payload = {
-            phone: document.getElementById('edit-user-phone')?.value,
-            email: document.getElementById('edit-user-email')?.value,
-            role: role,
-            classesAssigned: classesAssigned
-        };
-        try {
-            showInfoAlert('Updating user...');
-            const res = await adminAPI.updateUser(id, payload);
-            if (res.success) {
-                showSuccessAlert('User updated successfully!');
-                closeEditUserModal();
-                e.target.reset();
-                await loadUsers();
-            } else {
-                showErrorAlert(res.error || 'Failed to update user');
+            if (statusText) statusText.textContent = 'Uploading...';
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.style.background = 'linear-gradient(90deg, var(--accent-blue), #764ba2)';
             }
-        } catch (err) { showErrorAlert(err.message); }
-    });
+            if (submitBtn) submitBtn.disabled = true;
 
-    document.getElementById('add-student-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
+            const formData = new FormData();
+            formData.append('materialFile', file); // Generic name used by backend storageController
+            formData.append('type', type);
 
-        const firstName = document.getElementById('student-firstName')?.value.trim();
-        const lastName = document.getElementById('student-lastName')?.value.trim();
-        const email = document.getElementById('student-email')?.value.trim();
-        const dobRaw = document.getElementById('student-dob')?.value; // YYYY-MM-DD
+            // Optional metadata if available
+            const classLevel = document.getElementById(`${prefix}-class`)?.value ||
+                document.getElementById(`${prefix}-edit-class`)?.value;
+            const section = document.getElementById(`${prefix}-section`)?.value ||
+                document.getElementById(`${prefix}-edit-section`)?.value;
 
-        if (!dobRaw) {
-            showErrorAlert('Date of Birth is required!');
-            return;
+            if (classLevel) formData.append('classLevel', classLevel);
+            if (section) formData.append('section', section);
+
+            try {
+                const res = await uploadFileWithProgress('/storage/upload', formData, (percent) => {
+                    if (percentText) percentText.textContent = `${percent}%`;
+                    if (progressBar) progressBar.style.width = `${percent}%`;
+                });
+
+                if (statusText) statusText.textContent = 'Upload Complete';
+                if (progressBar) progressBar.style.background = 'var(--success)';
+                if (submitBtn) submitBtn.disabled = false;
+
+                return res; // res.dbId, res.fileId, res.webViewLink
+            } catch (err) {
+                if (statusText) statusText.textContent = 'Upload Failed';
+                if (progressBar) progressBar.style.background = 'var(--danger)';
+                if (submitBtn) submitBtn.disabled = false;
+                console.error('Upload error:', err);
+                showErrorAlert('Upload failed: ' + (err.error || err.message));
+                return null;
+            }
         }
 
-        // Format YYYY-MM-DD -> DD/MM/YY for the backend
-        const [yyyy, mm, dd] = dobRaw.split('-');
-        const yy = yyyy.slice(2);
-        const dateOfBirth = `${dd}/${mm}/${yy}`;
+        /**
+         * Reset upload progress UI and pending state
+         */
+        function resetUploadProgress(prefix) {
+            const container = document.getElementById(`${prefix}-upload-progress`);
+            const statusText = document.getElementById(`${prefix}-upload-status`);
+            const percentText = document.getElementById(`${prefix}-upload-percent`);
+            const progressBar = document.getElementById(`${prefix}-upload-bar`);
 
-        const payload = {
-            firstName,
-            lastName,
-            phone: document.getElementById('student-phone')?.value,
-            email: email || null,
-            classLevel: document.getElementById('student-classLevel')?.value,
-            section: document.getElementById('student-section')?.value,
-            fatherName: document.getElementById('student-fatherName')?.value,
-            motherName: document.getElementById('student-motherName')?.value,
-            dateOfBirth,
-            joiningDate: new Date().toISOString().split('T')[0],
-            status: 'active'
-        };
+            if (container) container.style.display = 'none';
+            if (statusText) statusText.textContent = 'Uploading...';
+            if (percentText) percentText.textContent = '0%';
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.style.background = 'linear-gradient(90deg, var(--accent-blue), #764ba2)';
+            }
 
-        try {
-            showInfoAlert('Adding student...');
-            const res = await adminAPI.addStudent(payload);
-            if (res.success) {
-                hideInfoAlert();
-                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`);
-                closeAddStudentModal();
-                e.target.reset();
-                await loadStudents();
-            }
-            else {
-                hideInfoAlert();
-                showErrorAlert(res.error || 'Failed to add student');
-            }
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message);
+            // Clear pending state
+            if (prefix === 'material') pendingMaterialUpload = null;
+            if (prefix === 'hw') pendingHomeworkUpload = null;
+            if (prefix === 'notice') pendingNoticeUpload = null;
         }
-    });
 
-    document.getElementById('edit-student-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('edit-student-id')?.value;
-        const payload = {
-            name: document.getElementById('edit-student-name')?.value,
-            classLevel: document.getElementById('edit-student-classLevel')?.value,
-            section: document.getElementById('edit-student-section')?.value,
-            phone: document.getElementById('edit-student-phone')?.value,
-            email: document.getElementById('edit-student-email')?.value,
-            fatherName: document.getElementById('edit-student-fatherName')?.value,
-            motherName: document.getElementById('edit-student-motherName')?.value,
-        };
-        try {
-            showInfoAlert('Updating student...');
-            const res = await adminAPI.updateStudent(id, payload);
-            if (res.success) {
-                hideInfoAlert();
-                showSuccessAlert('Student updated successfully!');
-                closeEditStudentModal();
-                e.target.reset();
-                await loadStudents();
-            } else {
-                hideInfoAlert();
-                showErrorAlert(res.error || 'Failed to update student');
-            }
-        } catch (err) {
-            hideInfoAlert();
-            showErrorAlert(err.message);
-        }
-    });
+        function setupForms() {
+            const hwForm = document.getElementById('homework-form');
+            if (hwForm) hwForm.addEventListener('submit', saveHomework);
 
-    document.getElementById('logout-btn')?.addEventListener('click', window.handleLogout);
-}
+            // Homework Attachment - Upload First
+            document.getElementById('hw-attachment')?.addEventListener('change', async (e) => {
+                pendingHomeworkUpload = await handleDashboardFileUpload(e.target, 'homework', 'hw');
+            });
 
-// =============================================
-// ALERTS
-// =============================================
-function showAlert(id, textId, msg) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    document.getElementById(textId).textContent = msg || '';
-    el.style.display = 'flex';
-    setTimeout(() => el.style.display = 'none', 3500);
-}
-function showSuccessAlert(m) { showAlert('success-alert', 'success-text', m); }
-function showErrorAlert(m) { showAlert('error-alert', 'error-text', m); }
-function showInfoAlert(m, duration = 3500) {
-    const el = document.getElementById('info-alert');
-    if (el) {
-        document.getElementById('info-text').textContent = m || '';
-        el.style.display = 'flex';
-        if (duration > 0) {
-            setTimeout(() => {
-                if (el.style.display === 'flex' && document.getElementById('info-text').textContent === m) {
-                    el.style.display = 'none';
+            // Event listeners for dynamic subjects in homework
+            document.getElementById('hw-class')?.addEventListener('change', (e) => {
+                populateSubjectDropdown(e.target.value, document.getElementById('hw-section').value, 'hw-subject');
+            });
+            document.getElementById('hw-section')?.addEventListener('change', (e) => {
+                populateSubjectDropdown(document.getElementById('hw-class').value, e.target.value, 'hw-subject');
+            });
+
+            const matForm = document.getElementById('material-form');
+            if (matForm) matForm.addEventListener('submit', saveMaterial);
+
+            // Material File - Upload First
+            document.getElementById('material-file')?.addEventListener('change', async (e) => {
+                pendingMaterialUpload = await handleDashboardFileUpload(e.target, 'material', 'material');
+            });
+
+            // Event listeners for dynamic subjects in materials
+            document.getElementById('material-class')?.addEventListener('change', (e) => {
+                populateSubjectDropdown(e.target.value, document.getElementById('material-section').value, 'material-subject');
+            });
+            document.getElementById('material-section')?.addEventListener('change', (e) => {
+                populateSubjectDropdown(document.getElementById('material-class').value, e.target.value, 'material-subject');
+            });
+
+            // Notice Attachment - Upload First
+            document.getElementById('notice-attachment')?.addEventListener('change', async (e) => {
+                pendingNoticeUpload = await handleDashboardFileUpload(e.target, 'notice', 'notice');
+            });
+
+            const subjectForm = document.getElementById('add-subject-form');
+            if (subjectForm) subjectForm.addEventListener('submit', saveMasterSubject);
+
+            const assignForm = document.getElementById('assign-subject-form');
+            if (assignForm) assignForm.addEventListener('submit', saveAssignment);
+
+            document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    name: document.getElementById('user-name')?.value.trim(),
+                    username: document.getElementById('user-username')?.value.trim() || undefined,
+                    phone: document.getElementById('user-phone')?.value.trim(),
+                    email: document.getElementById('user-email')?.value.trim(),
+                    role: document.getElementById('user-role')?.value,
+                    password: document.getElementById('user-password')?.value
+                };
+                if (!payload.name || !payload.phone || !payload.role || !payload.password) {
+                    showErrorAlert('All required fields (*) must be filled');
+                    return;
                 }
-            }, duration);
+                try {
+                    showInfoAlert('Adding user...');
+                    const res = await adminAPI.addUser(payload);
+                    hideInfoAlert();
+                    if (res.success) {
+                        showSuccessAlert('User added successfully!');
+                        document.getElementById('add-user-form').reset();
+                        closeAddUserModal();
+                        await loadUsers();
+                    }
+                    else showErrorAlert(res.error || 'Failed to add user');
+                } catch (err) {
+                    hideInfoAlert();
+                    showErrorAlert(err.message || 'Failed to add user');
+                }
+            });
+
+            document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('edit-user-id')?.value;
+                const role = document.getElementById('edit-user-role')?.value;
+
+                // Collect checked classes if it's a teacher/staff
+                let classesAssigned = null;
+                if (role === 'teacher' || role === 'staff') {
+                    classesAssigned = Array.from(
+                        document.querySelectorAll('#edit-user-class-checkboxes input[type="checkbox"]:checked')
+                    ).map(cb => cb.value);
+                }
+
+                const payload = {
+                    phone: document.getElementById('edit-user-phone')?.value,
+                    email: document.getElementById('edit-user-email')?.value,
+                    role: role,
+                    classesAssigned: classesAssigned
+                };
+                try {
+                    showInfoAlert('Updating user...');
+                    const res = await adminAPI.updateUser(id, payload);
+                    if (res.success) {
+                        showSuccessAlert('User updated successfully!');
+                        closeEditUserModal();
+                        e.target.reset();
+                        await loadUsers();
+                    } else {
+                        showErrorAlert(res.error || 'Failed to update user');
+                    }
+                } catch (err) { showErrorAlert(err.message); }
+            });
+
+            document.getElementById('add-student-form')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const firstName = document.getElementById('student-firstName')?.value.trim();
+                const lastName = document.getElementById('student-lastName')?.value.trim();
+                const email = document.getElementById('student-email')?.value.trim();
+                const dobRaw = document.getElementById('student-dob')?.value; // YYYY-MM-DD
+
+                if (!dobRaw) {
+                    showErrorAlert('Date of Birth is required!');
+                    return;
+                }
+
+                // Format YYYY-MM-DD -> DD/MM/YY for the backend
+                const [yyyy, mm, dd] = dobRaw.split('-');
+                const yy = yyyy.slice(2);
+                const dateOfBirth = `${dd}/${mm}/${yy}`;
+
+                const payload = {
+                    firstName,
+                    lastName,
+                    phone: document.getElementById('student-phone')?.value,
+                    email: email || null,
+                    classLevel: document.getElementById('student-classLevel')?.value,
+                    section: document.getElementById('student-section')?.value,
+                    fatherName: document.getElementById('student-fatherName')?.value,
+                    motherName: document.getElementById('student-motherName')?.value,
+                    dateOfBirth,
+                    joiningDate: new Date().toISOString().split('T')[0],
+                    status: 'active'
+                };
+
+                try {
+                    showInfoAlert('Adding student...');
+                    const res = await adminAPI.addStudent(payload);
+                    if (res.success) {
+                        hideInfoAlert();
+                        showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`);
+                        closeAddStudentModal();
+                        e.target.reset();
+                        await loadStudents();
+                    }
+                    else {
+                        hideInfoAlert();
+                        showErrorAlert(res.error || 'Failed to add student');
+                    }
+                } catch (err) {
+                    hideInfoAlert();
+                    showErrorAlert(err.message);
+                }
+            });
+
+            document.getElementById('edit-student-form')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('edit-student-id')?.value;
+                const payload = {
+                    name: document.getElementById('edit-student-name')?.value,
+                    classLevel: document.getElementById('edit-student-classLevel')?.value,
+                    section: document.getElementById('edit-student-section')?.value,
+                    phone: document.getElementById('edit-student-phone')?.value,
+                    email: document.getElementById('edit-student-email')?.value,
+                    fatherName: document.getElementById('edit-student-fatherName')?.value,
+                    motherName: document.getElementById('edit-student-motherName')?.value,
+                };
+                try {
+                    showInfoAlert('Updating student...');
+                    const res = await adminAPI.updateStudent(id, payload);
+                    if (res.success) {
+                        hideInfoAlert();
+                        showSuccessAlert('Student updated successfully!');
+                        closeEditStudentModal();
+                        e.target.reset();
+                        await loadStudents();
+                    } else {
+                        hideInfoAlert();
+                        showErrorAlert(res.error || 'Failed to update student');
+                    }
+                } catch (err) {
+                    hideInfoAlert();
+                    showErrorAlert(err.message);
+                }
+            });
+
+            document.getElementById('logout-btn')?.addEventListener('click', window.handleLogout);
         }
-    }
-}
-function hideInfoAlert() {
-    const el = document.getElementById('info-alert');
-    if (el) el.style.display = 'none';
-}
 
-export { loadDashboardData, loadUsers, loadStudents, loadMaterials, loadNotifications };
-
-// =============================================
-// NOTIFICATIONS
-// =============================================
-
-async function loadNotifications() {
-    const tbody = document.getElementById('notifications-list');
-    if (!tbody) return;
-
-    try {
-        showInfoAlert('Loading notifications...');
-        const res = await notificationsAPI.getAll();
-        const items = res.data || [];
-        hideInfoAlert();
-
-        if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No notifications sent yet. Click "Send Notice" to create one.</td></tr>';
-            return;
+        // =============================================
+        // ALERTS
+        // =============================================
+        function showAlert(id, textId, msg) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            document.getElementById(textId).textContent = msg || '';
+            el.style.display = 'flex';
+            setTimeout(() => el.style.display = 'none', 3500);
         }
-        tbody.innerHTML = items.map(n => {
-            const date = new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-            const recipient = n.classLevel
-                ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
-                : (n.recipientRole || 'All Users');
-            const fileHtml = n.attachmentUrl
-                ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>`
-                : '<span style="color:var(--text-muted)">-</span>';
-            return `
+        function showSuccessAlert(m) { showAlert('success-alert', 'success-text', m); }
+        function showErrorAlert(m) { showAlert('error-alert', 'error-text', m); }
+        function showInfoAlert(m, duration = 3500) {
+            const el = document.getElementById('info-alert');
+            if (el) {
+                document.getElementById('info-text').textContent = m || '';
+                el.style.display = 'flex';
+                if (duration > 0) {
+                    setTimeout(() => {
+                        if (el.style.display === 'flex' && document.getElementById('info-text').textContent === m) {
+                            el.style.display = 'none';
+                        }
+                    }, duration);
+                }
+            }
+        }
+        function hideInfoAlert() {
+            const el = document.getElementById('info-alert');
+            if (el) el.style.display = 'none';
+        }
+
+
+        // =============================================
+        // NOTIFICATIONS
+        // =============================================
+
+        async function loadNotifications() {
+            const tbody = document.getElementById('notifications-list');
+            if (!tbody) return;
+
+            try {
+                showInfoAlert('Loading notifications...');
+                const res = await notificationsAPI.getAll();
+                const items = res.data || [];
+                hideInfoAlert();
+
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No notifications sent yet. Click "Send Notice" to create one.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = items.map(n => {
+                    const date = new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                    const recipient = n.classLevel
+                        ? `Class ${n.classLevel}${n.recipientRole ? ' · ' + n.recipientRole : ''}`
+                        : (n.recipientRole || 'All Users');
+                    const fileHtml = n.attachmentUrl
+                        ? `<button onclick="downloadFile('${escapeAttrValue(n.attachmentUrl)}', '${escapeAttrValue(safeDownloadName(n.title || 'notification') + '.pdf')}')" class="btn btn-xs btn-info"><i class="fas fa-file"></i> View</button>`
+                        : '<span style="color:var(--text-muted)">-</span>';
+                    return `
                 <tr>
                     <td data-label="Date">${date}</td>
                     <td data-label="Title"><strong>${escapeMarkup(n.title)}</strong></td>
@@ -4296,254 +4430,255 @@ async function loadNotifications() {
                     </td>
                 </tr>
             `;
-        }).join('');
-    } catch (err) {
-        hideInfoAlert();
-        showErrorAlert('Failed to load notifications: ' + err.message);
-    }
-}
-
-window.showSendNoticeModal = function () {
-    const modal = document.getElementById('notice-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.getElementById('notice-form')?.reset();
-        document.body.style.overflow = 'hidden';
-
-        // Initialize dynamic class dropdown
-        populateERPFilters({
-            classSelectId: 'notice-class',
-            allClassesLabel: 'All Classes'
-        });
-    }
-};
-
-window.closeNoticeModal = function () {
-    const modal = document.getElementById('notice-modal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
-};
-
-window.deleteNotification = async function (id) {
-    if (!confirm('Delete this notification?')) return;
-    try {
-        // The notifications controller doesn't have a DELETE — call the API directly
-        await notificationsAPI.delete(id);
-        showSuccessAlert('Notification deleted');
-        await loadNotifications();
-    } catch (err) {
-        showErrorAlert('Failed to delete: ' + err.message);
-    }
-};
-
-
-
-
-// =============================================
-// TIMETABLE
-// =============================================
-
-// Modal functions
-window.openAddTimetableModal = function () {
-    const modal = document.getElementById('timetable-modal');
-    if (modal) {
-        document.getElementById('tt-id').value = '';
-        document.getElementById('timetable-form').reset();
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        loadTimetableDropdowns();
-    }
-};
-
-window.closeTimetableModal = function () {
-    const modal = document.getElementById('timetable-modal');
-    if (modal) modal.style.display = 'none';
-    document.getElementById('timetable-form').reset();
-    document.body.style.overflow = '';
-};
-
-window.toggleTimetableMenu = function (event, id) {
-    event.stopPropagation();
-    const menu = document.getElementById(`tt-menu-${id}`);
-
-    // Close other open menus
-    document.querySelectorAll('[id^="tt-menu-"]').forEach(m => {
-        if (m !== menu) m.classList.remove('open');
-    });
-
-    // Position the menu
-    const btn = event.currentTarget;
-    if (menu && btn) {
-        positionDropdown(btn, menu);
-    }
-    menu?.classList.add('open');
-};
-
-window.closeAllTimetableMenus = function () {
-    document.querySelectorAll('[id^="tt-menu-"]').forEach(m => m.classList.remove('open'));
-};
-
-let allTeachersForTimetable = [];
-
-async function loadTimetableDropdowns() {
-    try {
-        await populateERPFilters({
-            classSelectId: 'tt-class',
-            sectionSelectId: 'tt-section',
-            subjectSelectId: 'tt-subject',
-            teacherSelectId: 'tt-teacher'
-        });
-    } catch (err) {
-        console.error('Failed to load timetable dropdowns:', err);
-    }
-}
-
-window.saveTimetableEntry = async function () {
-    const ttId = document.getElementById('tt-id')?.value;
-    const payload = {
-        dayOfWeek: document.getElementById('tt-day')?.value,
-        startTime: document.getElementById('tt-start')?.value,
-        endTime: document.getElementById('tt-end')?.value,
-        subjectId: document.getElementById('tt-subject')?.value,
-        classLevel: document.getElementById('tt-class')?.value,
-        section: document.getElementById('tt-section')?.value,
-        teacherId: document.getElementById('tt-teacher')?.value,
-    };
-
-    if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subjectId || !payload.classLevel || !payload.section || !payload.teacherId) {
-        showErrorAlert('All fields including Section and Subject are required.');
-        return;
-    }
-
-    try {
-        showInfoAlert('Saving timetable entry...');
-        if (ttId) {
-            // Update existing (if implemented in API)
-            await adminAPI.updateTimetable(ttId, payload);
-        } else {
-            await adminAPI.addTimetable(payload);
+                }).join('');
+            } catch (err) {
+                hideInfoAlert();
+                showErrorAlert('Failed to load notifications: ' + err.message);
+            }
         }
-        hideInfoAlert();
-        showSuccessAlert('Timetable entry saved successfully!');
-        closeTimetableModal();
-        await loadTimetable();
-    } catch (err) {
-        hideInfoAlert();
-        showErrorAlert(err.message || 'Failed to save timetable entry');
-    }
-};
 
-async function loadTimetable() {
-    const container = document.getElementById('timetable-by-class');
-    if (!container) return;
+        window.showSendNoticeModal = function () {
+            const modal = document.getElementById('notice-modal');
+            if (modal) {
+                resetUploadProgress('notice');
+                modal.style.display = 'flex';
+                document.getElementById('notice-form')?.reset();
+                document.body.style.overflow = 'hidden';
 
-    try {
-        showInfoAlert('Loading timetable...');
-        const ttRes = await adminAPI.getTimetable();
-        allTimetableData = ttRes.timetable || [];
-        hideInfoAlert();
-        renderTimetableByClass(allTimetableData);
-    } catch (err) {
-        hideInfoAlert();
-        showErrorAlert('Failed to load timetable: ' + err.message);
-    }
-}
+                // Initialize dynamic class dropdown
+                populateERPFilters({
+                    classSelectId: 'notice-class',
+                    allClassesLabel: 'All Classes'
+                });
+            }
+        };
 
-let allTimetableData = [];
-let selectedTimetableDay = 'Monday'; // Default to Monday
-let showAllTimetable = false;
+        window.closeNoticeModal = function () {
+            const modal = document.getElementById('notice-modal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
 
-function formatTime(t) {
-    try {
-        return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-    } catch (e) {
-        return t;
-    }
-}
+        window.deleteNotification = async function (id) {
+            if (!confirm('Delete this notification?')) return;
+            try {
+                // The notifications controller doesn't have a DELETE — call the API directly
+                await notificationsAPI.delete(id);
+                showSuccessAlert('Notification deleted');
+                await loadNotifications();
+            } catch (err) {
+                showErrorAlert('Failed to delete: ' + err.message);
+            }
+        };
 
-// Select a day and render its timetable
-window.selectTimetableDay = function (day) {
-    selectedTimetableDay = day;
-    // Day selected
 
-    // Update active tab
-    document.querySelectorAll('.day-tab').forEach(tab => {
-        if (tab.getAttribute('data-day') === day) {
-            tab.classList.add('active');
-        } else {
-            tab.classList.remove('active');
+
+
+        // =============================================
+        // TIMETABLE
+        // =============================================
+
+        // Modal functions
+        window.openAddTimetableModal = function () {
+            const modal = document.getElementById('timetable-modal');
+            if (modal) {
+                document.getElementById('tt-id').value = '';
+                document.getElementById('timetable-form').reset();
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                loadTimetableDropdowns();
+            }
+        };
+
+        window.closeTimetableModal = function () {
+            const modal = document.getElementById('timetable-modal');
+            if (modal) modal.style.display = 'none';
+            document.getElementById('timetable-form').reset();
+            document.body.style.overflow = '';
+        };
+
+        window.toggleTimetableMenu = function (event, id) {
+            event.stopPropagation();
+            const menu = document.getElementById(`tt-menu-${id}`);
+
+            // Close other open menus
+            document.querySelectorAll('[id^="tt-menu-"]').forEach(m => {
+                if (m !== menu) m.classList.remove('open');
+            });
+
+            // Position the menu
+            const btn = event.currentTarget;
+            if (menu && btn) {
+                positionDropdown(btn, menu);
+            }
+            menu?.classList.add('open');
+        };
+
+        window.closeAllTimetableMenus = function () {
+            document.querySelectorAll('[id^="tt-menu-"]').forEach(m => m.classList.remove('open'));
+        };
+
+        let allTeachersForTimetable = [];
+
+        async function loadTimetableDropdowns() {
+            try {
+                await populateERPFilters({
+                    classSelectId: 'tt-class',
+                    sectionSelectId: 'tt-section',
+                    subjectSelectId: 'tt-subject',
+                    teacherSelectId: 'tt-teacher'
+                });
+            } catch (err) {
+                console.error('Failed to load timetable dropdowns:', err);
+            }
         }
-    });
 
-    // Render the selected day
-    renderTimetableByClass(allTimetableData);
-};
+        window.saveTimetableEntry = async function () {
+            const ttId = document.getElementById('tt-id')?.value;
+            const payload = {
+                dayOfWeek: document.getElementById('tt-day')?.value,
+                startTime: document.getElementById('tt-start')?.value,
+                endTime: document.getElementById('tt-end')?.value,
+                subjectId: document.getElementById('tt-subject')?.value,
+                classLevel: document.getElementById('tt-class')?.value,
+                section: document.getElementById('tt-section')?.value,
+                teacherId: document.getElementById('tt-teacher')?.value,
+            };
 
-// Generate time slots for calendar grid (7:00 AM to 6:00 PM in 1-hour slots)
-function generateTimeSlots() {
-    const slots = [];
-    for (let hour = 7; hour < 18; hour++) {
-        const time = `${hour.toString().padStart(2, '0')}:00`;
-        slots.push(time);
-    }
-    return slots;
-}
+            if (!payload.dayOfWeek || !payload.startTime || !payload.endTime || !payload.subjectId || !payload.classLevel || !payload.section || !payload.teacherId) {
+                showErrorAlert('All fields including Section and Subject are required.');
+                return;
+            }
 
-function renderTimetableByClass(items) {
-    const container = document.getElementById('timetable-by-class');
+            try {
+                showInfoAlert('Saving timetable entry...');
+                if (ttId) {
+                    // Update existing (if implemented in API)
+                    await adminAPI.updateTimetable(ttId, payload);
+                } else {
+                    await adminAPI.addTimetable(payload);
+                }
+                hideInfoAlert();
+                showSuccessAlert('Timetable entry saved successfully!');
+                closeTimetableModal();
+                await loadTimetable();
+            } catch (err) {
+                hideInfoAlert();
+                showErrorAlert(err.message || 'Failed to save timetable entry');
+            }
+        };
 
-    if (!container) return;
+        async function loadTimetable() {
+            const container = document.getElementById('timetable-by-class');
+            if (!container) return;
 
-    if (items.length === 0) {
-        container.innerHTML = '<div class="timetable-no-classes"><i class="fas fa-inbox"></i><p>No timetable entries found. Click "Add Entry" to create one.</p></div>';
-        return;
-    }
-
-    // Debug: Log data
-    // Rendering timetable
-
-    // Filter entries by selected day
-    const filteredEntries = items.filter(entry => {
-        const normalizedDay = entry.dayOfWeek
-            ? entry.dayOfWeek.charAt(0).toUpperCase() + entry.dayOfWeek.slice(1).toLowerCase()
-            : '';
-        return normalizedDay === selectedTimetableDay;
-    });
-
-    // Entries filtered
-
-    if (filteredEntries.length === 0) {
-        container.innerHTML = `<div class="timetable-no-classes"><i class="fas fa-calendar-day"></i><p>No classes scheduled for ${selectedTimetableDay}</p></div>`;
-        return;
-    }
-
-    // Group entries by class level and section
-    const classByLevel = {};
-    filteredEntries.forEach(entry => {
-        const classLevel = entry.classLevel || 'Unassigned';
-        const sectionKey = entry.section ? `${classLevel} (${entry.section})` : classLevel;
-        if (!classByLevel[sectionKey]) {
-            classByLevel[sectionKey] = [];
+            try {
+                showInfoAlert('Loading timetable...');
+                const ttRes = await adminAPI.getTimetable();
+                allTimetableData = ttRes.timetable || [];
+                hideInfoAlert();
+                renderTimetableByClass(allTimetableData);
+            } catch (err) {
+                hideInfoAlert();
+                showErrorAlert('Failed to load timetable: ' + err.message);
+            }
         }
-        classByLevel[sectionKey].push(entry);
-    });
 
-    // Sort each class's entries by start time
-    Object.values(classByLevel).forEach(classEntries => {
-        classEntries.sort((a, b) => {
-            const timeA = a.startTime || '';
-            const timeB = b.startTime || '';
-            return timeA.localeCompare(timeB);
-        });
-    });
+        let allTimetableData = [];
+        let selectedTimetableDay = 'Monday'; // Default to Monday
+        let showAllTimetable = false;
 
-    let html = '';
+        function formatTime(t) {
+            try {
+                return new Date('1970-01-01T' + t + 'Z').toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+            } catch (e) {
+                return t;
+            }
+        }
 
-    // Create cards for each class
-    Object.keys(classByLevel).sort().forEach(groupKey => {
-        const classEntries = classByLevel[groupKey];
+        // Select a day and render its timetable
+        window.selectTimetableDay = function (day) {
+            selectedTimetableDay = day;
+            // Day selected
 
-        html += `
+            // Update active tab
+            document.querySelectorAll('.day-tab').forEach(tab => {
+                if (tab.getAttribute('data-day') === day) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Render the selected day
+            renderTimetableByClass(allTimetableData);
+        };
+
+        // Generate time slots for calendar grid (7:00 AM to 6:00 PM in 1-hour slots)
+        function generateTimeSlots() {
+            const slots = [];
+            for (let hour = 7; hour < 18; hour++) {
+                const time = `${hour.toString().padStart(2, '0')}:00`;
+                slots.push(time);
+            }
+            return slots;
+        }
+
+        function renderTimetableByClass(items) {
+            const container = document.getElementById('timetable-by-class');
+
+            if (!container) return;
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="timetable-no-classes"><i class="fas fa-inbox"></i><p>No timetable entries found. Click "Add Entry" to create one.</p></div>';
+                return;
+            }
+
+            // Debug: Log data
+            // Rendering timetable
+
+            // Filter entries by selected day
+            const filteredEntries = items.filter(entry => {
+                const normalizedDay = entry.dayOfWeek
+                    ? entry.dayOfWeek.charAt(0).toUpperCase() + entry.dayOfWeek.slice(1).toLowerCase()
+                    : '';
+                return normalizedDay === selectedTimetableDay;
+            });
+
+            // Entries filtered
+
+            if (filteredEntries.length === 0) {
+                container.innerHTML = `<div class="timetable-no-classes"><i class="fas fa-calendar-day"></i><p>No classes scheduled for ${selectedTimetableDay}</p></div>`;
+                return;
+            }
+
+            // Group entries by class level and section
+            const classByLevel = {};
+            filteredEntries.forEach(entry => {
+                const classLevel = entry.classLevel || 'Unassigned';
+                const sectionKey = entry.section ? `${classLevel} (${entry.section})` : classLevel;
+                if (!classByLevel[sectionKey]) {
+                    classByLevel[sectionKey] = [];
+                }
+                classByLevel[sectionKey].push(entry);
+            });
+
+            // Sort each class's entries by start time
+            Object.values(classByLevel).forEach(classEntries => {
+                classEntries.sort((a, b) => {
+                    const timeA = a.startTime || '';
+                    const timeB = b.startTime || '';
+                    return timeA.localeCompare(timeB);
+                });
+            });
+
+            let html = '';
+
+            // Create cards for each class
+            Object.keys(classByLevel).sort().forEach(groupKey => {
+                const classEntries = classByLevel[groupKey];
+
+                html += `
             <div class="class-timetable-card">
                 <div class="class-timetable-header">
                     <i class="fas fa-chalkboard"></i>
@@ -4560,18 +4695,18 @@ function renderTimetableByClass(items) {
                     <tbody>
         `;
 
-        // Add rows for each entry
-        classEntries.forEach(entry => {
-            // Normalize time (remove seconds)
-            let displayTime = entry.startTime || '';
-            if (displayTime.includes(':')) {
-                const parts = displayTime.split(':');
-                displayTime = `${parts[0]}:${parts[1]}`;
-            }
+                // Add rows for each entry
+                classEntries.forEach(entry => {
+                    // Normalize time (remove seconds)
+                    let displayTime = entry.startTime || '';
+                    if (displayTime.includes(':')) {
+                        const parts = displayTime.split(':');
+                        displayTime = `${parts[0]}:${parts[1]}`;
+                    }
 
-            const teacherName = entry.teacherName || 'Unassigned';
+                    const teacherName = entry.teacherName || 'Unassigned';
 
-            html += `
+                    html += `
                         <tr>
                             <td data-label="Time">${escapeHtml(displayTime)}</td>
                             <td data-label="Subject">${escapeHtml(entry.subject)}</td>
@@ -4592,146 +4727,146 @@ function renderTimetableByClass(items) {
                             </td>
                         </tr>
             `;
-        });
+                });
 
-        html += `
+                html += `
                     </tbody>
                 </table>
             </div>
         `;
-    });
+            });
 
-    container.innerHTML = html;
-}
+            container.innerHTML = html;
+        }
 
-window.deleteTimetableRecord = async function (id) {
-    if (!confirm('Delete this timetable entry?')) return;
-    try {
-        await adminAPI.deleteTimetable(id);
-        showSuccessAlert('Timetable entry deleted!');
-        closeAllTimetableMenus();
-        await loadTimetable();
-    } catch (err) {
-        showErrorAlert('Failed to delete timetable: ' + err.message);
-    }
-};
-
-window.openAddUserModal = function () {
-    const modal = document.getElementById('addUserModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-};
-
-window.closeAddUserModal = function () {
-    const modal = document.getElementById('addUserModal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
-};
-
-window.openEditUserModal = function () {
-    const modal = document.getElementById('editUserModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-};
-
-window.closeEditUserModal = function () {
-    const modal = document.getElementById('editUserModal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
-};
-
-window.toggleUserActionMenu = function (event, id) {
-    event.stopPropagation();
-    const btn = event.currentTarget;
-    const dropdown = document.getElementById(`user-actions-${id}`);
-
-    // Close other open dropdowns
-    document.querySelectorAll('.action-dropdown.open').forEach(d => {
-        if (d !== dropdown) d.classList.remove('open');
-    });
-
-    // Position the menu
-    if (dropdown && btn) {
-        positionDropdown(btn, dropdown);
-    }
-    dropdown?.classList.add('open');
-};
-
-/**
- * Fetches and updates the admin profile UI in the header/dropdown
- */
-async function updateAdminProfileUI() {
-    try {
-        const response = await adminAPI.getProfile();
-        if (response.success && response.data) {
-            const data = response.data;
-
-            // Update names
-            document.querySelectorAll('#admin-name, #dropdown-admin-name').forEach(el => el.textContent = data.name);
-
-            // Update emails
-            document.querySelectorAll('#dropdown-admin-email').forEach(el => el.textContent = data.email || data.phone);
-
-            // Update designation
-            const designationEl = document.getElementById('dropdown-admin-designation');
-            if (designationEl) {
-                designationEl.textContent = data.designation || (data.organization_name ? `Admin • ${data.organization_name}` : 'Super Admin');
+        window.deleteTimetableRecord = async function (id) {
+            if (!confirm('Delete this timetable entry?')) return;
+            try {
+                await adminAPI.deleteTimetable(id);
+                showSuccessAlert('Timetable entry deleted!');
+                closeAllTimetableMenus();
+                await loadTimetable();
+            } catch (err) {
+                showErrorAlert('Failed to delete timetable: ' + err.message);
             }
+        };
 
-            // Update avatars
-            const initialLarge = document.getElementById('dropdown-admin-avatar-initial-large');
-            const initialSmall = document.getElementById('admin-avatar-initial');
-            const initial = data.name ? data.name.charAt(0).toUpperCase() : 'A';
-            if (initialLarge) initialLarge.textContent = initial;
-            if (initialSmall) initialSmall.textContent = initial;
-
-            const avatarImg = document.getElementById('dropdown-admin-avatar-img');
-            if (avatarImg && data.avatar_url) {
-                avatarImg.src = data.avatar_url;
-                avatarImg.style.display = 'block';
-                if (initialLarge) initialLarge.style.display = 'none';
+        window.openAddUserModal = function () {
+            const modal = document.getElementById('addUserModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
             }
+        };
 
-            // Update last login
-            const lastLoginEl = document.getElementById('dropdown-admin-last-login');
-            if (lastLoginEl && data.last_login_at) {
-                const date = new Date(data.last_login_at);
-                const options = { weekday: 'short', hour: '2-digit', minute: '2-digit' };
-                const formattedDate = date.toLocaleDateString(undefined, options);
-                lastLoginEl.textContent = `Last login: ${formattedDate}`;
+        window.closeAddUserModal = function () {
+            const modal = document.getElementById('addUserModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
+
+        window.openEditUserModal = function () {
+            const modal = document.getElementById('editUserModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        };
+
+        window.closeEditUserModal = function () {
+            const modal = document.getElementById('editUserModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
+
+        window.toggleUserActionMenu = function (event, id) {
+            event.stopPropagation();
+            const btn = event.currentTarget;
+            const dropdown = document.getElementById(`user-actions-${id}`);
+
+            // Close other open dropdowns
+            document.querySelectorAll('.action-dropdown.open').forEach(d => {
+                if (d !== dropdown) d.classList.remove('open');
+            });
+
+            // Position the menu
+            if (dropdown && btn) {
+                positionDropdown(btn, dropdown);
+            }
+            dropdown?.classList.add('open');
+        };
+
+        /**
+         * Fetches and updates the admin profile UI in the header/dropdown
+         */
+        async function updateAdminProfileUI() {
+            try {
+                const response = await adminAPI.getProfile();
+                if (response.success && response.data) {
+                    const data = response.data;
+
+                    // Update names
+                    document.querySelectorAll('#admin-name, #dropdown-admin-name').forEach(el => el.textContent = data.name);
+
+                    // Update emails
+                    document.querySelectorAll('#dropdown-admin-email').forEach(el => el.textContent = data.email || data.phone);
+
+                    // Update designation
+                    const designationEl = document.getElementById('dropdown-admin-designation');
+                    if (designationEl) {
+                        designationEl.textContent = data.designation || (data.organization_name ? `Admin • ${data.organization_name}` : 'Super Admin');
+                    }
+
+                    // Update avatars
+                    const initialLarge = document.getElementById('dropdown-admin-avatar-initial-large');
+                    const initialSmall = document.getElementById('admin-avatar-initial');
+                    const initial = data.name ? data.name.charAt(0).toUpperCase() : 'A';
+                    if (initialLarge) initialLarge.textContent = initial;
+                    if (initialSmall) initialSmall.textContent = initial;
+
+                    const avatarImg = document.getElementById('dropdown-admin-avatar-img');
+                    if (avatarImg && data.avatar_url) {
+                        avatarImg.src = data.avatar_url;
+                        avatarImg.style.display = 'block';
+                        if (initialLarge) initialLarge.style.display = 'none';
+                    }
+
+                    // Update last login
+                    const lastLoginEl = document.getElementById('dropdown-admin-last-login');
+                    if (lastLoginEl && data.last_login_at) {
+                        const date = new Date(data.last_login_at);
+                        const options = { weekday: 'short', hour: '2-digit', minute: '2-digit' };
+                        const formattedDate = date.toLocaleDateString(undefined, options);
+                        lastLoginEl.textContent = `Last login: ${formattedDate}`;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to update admin profile UI:', err);
             }
         }
-    } catch (err) {
-        console.error('Failed to update admin profile UI:', err);
-    }
-}
 
-/**
- * Loads and displays audit logs in a modal
- */
-window.loadAuditLogs = async function () {
-    const modal = document.getElementById('audit-logs-modal');
-    const tbody = document.getElementById('audit-logs-tbody');
-    if (modal) modal.style.display = 'flex';
+        /**
+         * Loads and displays audit logs in a modal
+         */
+        window.loadAuditLogs = async function () {
+            const modal = document.getElementById('audit-logs-modal');
+            const tbody = document.getElementById('audit-logs-tbody');
+            if (modal) modal.style.display = 'flex';
 
-    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Fetching logs...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Fetching logs...</td></tr>';
 
-    try {
-        const response = await adminAPI.getAuditLogs();
-        if (response.success && response.data) {
-            if (response.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No audit logs found.</td></tr>';
-                return;
-            }
+            try {
+                const response = await adminAPI.getAuditLogs();
+                if (response.success && response.data) {
+                    if (response.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No audit logs found.</td></tr>';
+                        return;
+                    }
 
-            tbody.innerHTML = response.data.map(log => {
-                const action = log.action || '-';
-                const badgeClass = action.includes('DELETE') ? 'badge-danger' : 'badge-primary';
-                return `
+                    tbody.innerHTML = response.data.map(log => {
+                        const action = log.action || '-';
+                        const badgeClass = action.includes('DELETE') ? 'badge-danger' : 'badge-primary';
+                        return `
                 <tr>
                     <td>${escapeHtml(new Date(log.created_at).toLocaleString())}</td>
                     <td>${escapeHtml(log.admin_name || 'System')}</td>
@@ -4739,341 +4874,350 @@ window.loadAuditLogs = async function () {
                     <td>${escapeHtml(log.entity || '')} (${escapeHtml(String(log.entity_id || ''))})</td>
                     <td>${escapeHtml(log.details || '-')}</td>
                 </tr>`;
+                    }).join('');
+                }
+            } catch (err) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state text-danger">Failed to load logs.</td></tr>';
+            }
+        };
+
+        window.closeAuditLogsModal = () => document.getElementById('audit-logs-modal').style.display = 'none';
+
+        // Profile Actions
+        window.openChangePasswordModal = function () {
+            // TODO: Implement full password change modal
+            showInfoAlert('Password change feature coming soon! Please contact your administrator.', 4000);
+        };
+
+        window.openEditProfileModal = async function () {
+            try {
+                const res = await adminAPI.getProfile();
+                if (res.success && res.data) {
+                    document.getElementById('edit-profile-name').value = res.data.name || '';
+                    document.getElementById('edit-profile-email').value = res.data.email || '';
+                    document.getElementById('edit-profile-designation').value = res.data.designation || '';
+                    document.getElementById('edit-profile-avatar').value = res.data.avatar_url || '';
+                    document.getElementById('edit-profile-modal').style.display = 'flex';
+                }
+            } catch (err) {
+                showErrorAlert('Failed to fetch profile details');
+            }
+        };
+
+
+        // =============================================
+        // DYNAMIC CONTENT PAGES (Help & Documentation)
+        // =============================================
+
+        window.openDocsModal = async () => cm_previewContent('documentation');
+        window.closeDocsModal = () => cm_closePreview();
+        window.openHelpModal = async () => cm_previewContent('help');
+        window.closeHelpModal = () => cm_closePreview();
+
+        // Dropdown Action Router
+        document.querySelectorAll('.profile-dropdown .dropdown-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const action = item.getAttribute('data-action');
+                if (!action) return;
+                e.preventDefault();
+
+                // Close dropdown
+                const profileBtn = document.getElementById('admin-profile-btn');
+                const profileMenu = document.getElementById('admin-profile-dropdown');
+                if (profileBtn && profileMenu) {
+                    profileBtn.setAttribute('aria-expanded', 'false');
+                    profileMenu.classList.remove('open');
+                }
+
+                switch (action) {
+                    case 'edit-profile': openEditProfileModal(); break;
+                    case 'change-password': openChangePasswordModal(); break;
+                    case 'audit-logs': loadAuditLogs(); break;
+                    case 'view-profile': openEditProfileModal(); break;
+                    case 'docs': cm_previewContent('documentation'); break;
+                    case 'help': cm_previewContent('help'); break;
+                    case 'content-editor': cm_openEditor('documentation'); break;
+                    default: showInfoAlert("Feature " + action + " coming soon!");
+                }
+            });
+        });
+
+        // =============================================
+        // CONTENT MANAGEMENT MODULE (v2)
+        // =============================================
+
+        const CM_PAGE_LABELS = {
+            'help': { label: 'Help & Support', icon: 'fa-question-circle', color: '#3b82f6' },
+            'documentation': { label: 'Documentation', icon: 'fa-book', color: '#8b5cf6' },
+            'programs': { label: 'Programs', icon: 'fa-graduation-cap', color: '#10b981' },
+            'resources': { label: 'Resources', icon: 'fa-folder-open', color: '#f59e0b' },
+            'contact': { label: 'Contact Us', icon: 'fa-phone', color: '#06b6d4' },
+            'privacy': { label: 'Privacy Policy', icon: 'fa-shield-alt', color: '#6b7280' },
+            'learn-more': { label: 'Learn More (Hero)', icon: 'fa-info-circle', color: '#ec4899' },
+            'terms': { label: 'Terms of Service', icon: 'fa-file-contract', color: '#f97316' }
+        };
+
+        let cmEditorQuill = null;
+        let cmCurrentKey = null;
+        let cmPages = [];
+        let cmEditorMode = 'quill'; // 'quill' or 'markdown'
+
+        async function loadContentManagement() {
+            const grid = document.getElementById('cm-pages-grid');
+            if (!grid) return;
+            grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;grid-column:1/-1;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.75rem;">Loading...</p></div>';
+            try {
+                const res = await adminAPI.getAllContent();
+                if (res.success) {
+                    cmPages = res.data;
+                    cm_renderPagesGrid(cmPages);
+                } else {
+                    grid.innerHTML = '<p style="color:var(--text-muted);">Failed to load content pages.</p>';
+                }
+            } catch (e) {
+                grid.innerHTML = '<p style="color:var(--text-muted);">Error loading content pages.</p>';
+            }
+        }
+
+        function cm_renderPagesGrid(pages) {
+            const grid = document.getElementById('cm-pages-grid');
+            if (!grid) return;
+
+            const pagesByKey = {};
+            pages.forEach(p => pagesByKey[p.key] = p);
+
+            grid.innerHTML = Object.entries(CM_PAGE_LABELS).map(([key, meta]) => {
+                const page = pagesByKey[key];
+                const hasContent = page && page.content && page.content.trim().length > 10;
+                const lastUpdated = page ? new Date(page.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Never';
+                const wordCount = page ? page.content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length : 0;
+
+                return "<div class='content-page-card' style='background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;'>" +
+                    "<div style='display:flex;align-items:center;gap:0.75rem;'>" +
+                    "<div style='width:40px;height:40px;border-radius:10px;background:" + meta.color + "22;display:flex;align-items:center;justify-content:center;flex-shrink:0;'>" +
+                    "<i class='fas " + meta.icon + "' style='color:" + meta.color + ";'></i>" +
+                    "</div>" +
+                    "<div>" +
+                    "<h4 style='margin:0;font-size:0.9rem;'>" + meta.label + "</h4>" +
+                    "<span style='font-size:0.72rem;color:var(--text-muted);'>Key: <code>" + key + "</code></span>" +
+                    "</div>" +
+                    "<span style='margin-left:auto;font-size:0.7rem;padding:0.2rem 0.5rem;border-radius:20px;background:" + (hasContent ? '#d1fae5' : '#fef3c7') + ";color:" + (hasContent ? '#065f46' : '#92400e') + ";'>" + (hasContent ? '✓ Has content' : '⚠ Empty') + "</span>" +
+                    "</div>" +
+                    "<div style='font-size:0.78rem;color:var(--text-muted);display:flex;gap:1rem;'>" +
+                    "<span><i class='fas fa-clock'></i> " + lastUpdated + "</span>" +
+                    "<span><i class='fas fa-align-left'></i> ~" + wordCount + " words</span>" +
+                    "</div>" +
+                    "<div style='display:flex;gap:0.5rem;margin-top:0.25rem;'>" +
+                    "<button onclick=\"cm_openEditor('" + key + "')\" class='btn btn-primary' style='flex:1;font-size:0.8rem;padding:0.4rem;'><i class='fas fa-edit'></i> Edit</button>" +
+                    "<button onclick=\"cm_previewContent('" + key + "')\" class='btn btn-secondary' style='font-size:0.8rem;padding:0.4rem 0.75rem;'><i class='fas fa-eye'></i></button>" +
+                    "<button onclick=\"cm_clearContent('" + key + "')\" class='btn' style='font-size:0.8rem;padding:0.4rem 0.75rem;background:#fee2e2;color:#b91c1c;border:none;cursor:pointer;border-radius:8px;'><i class='fas fa-trash'></i></button>" +
+                    "</div>" +
+                    "</div>";
             }).join('');
         }
-    } catch (err) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state text-danger">Failed to load logs.</td></tr>';
-    }
-};
 
-window.closeAuditLogsModal = () => document.getElementById('audit-logs-modal').style.display = 'none';
+        window.cm_switchEditor = function (mode) {
+            if (mode === cmEditorMode) return;
+            cmEditorMode = mode;
 
-// Profile Actions
-window.openChangePasswordModal = function () {
-    // TODO: Implement full password change modal
-    showInfoAlert('Password change feature coming soon! Please contact your administrator.', 4000);
-};
+            const quillWrapper = document.getElementById('cm-quill-editor-wrapper');
+            const mdWrapper = document.getElementById('cm-markdown-editor-wrapper');
+            const toggleQuill = document.getElementById('toggle-quill');
+            const toggleMd = document.getElementById('toggle-markdown');
 
-window.openEditProfileModal = async function () {
-    try {
-        const res = await adminAPI.getProfile();
-        if (res.success && res.data) {
-            document.getElementById('edit-profile-name').value = res.data.name || '';
-            document.getElementById('edit-profile-email').value = res.data.email || '';
-            document.getElementById('edit-profile-designation').value = res.data.designation || '';
-            document.getElementById('edit-profile-avatar').value = res.data.avatar_url || '';
-            document.getElementById('edit-profile-modal').style.display = 'flex';
-        }
-    } catch (err) {
-        showErrorAlert('Failed to fetch profile details');
-    }
-};
+            if (mode === 'markdown') {
+                const html = cmEditorQuill.root.innerHTML;
+                // Simple HTML to MD (very basic, mostly for transitions)
+                document.getElementById('cm-markdown-textarea').value = html
+                    .replace(/<h3>(.*?)<\/h3>/g, '### $1\n')
+                    .replace(/<h4>(.*?)<\/h4>/g, '#### $1\n')
+                    .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+                    .replace(/<ul>(.*?)<\/ul>/gs, (m, p1) => p1.replace(/<li>(.*?)<\/li>/g, '* $1\n'))
+                    .replace(/<ol>(.*?)<\/ol>/gs, (m, p1) => p1.replace(/<li>(.*?)<\/li>/g, '1. $1\n'))
+                    .replace(/<br\s*\/?>/g, '\n')
+                    .replace(/<[^>]+>/g, '');
 
+                quillWrapper.style.display = 'none';
+                mdWrapper.style.display = 'block';
+                toggleQuill.classList.remove('active');
+                toggleMd.classList.add('active');
+            } else {
+                // Markdown to HTML using marked
+                const md = document.getElementById('cm-markdown-textarea').value;
+                const html = typeof marked !== 'undefined' ? marked.parse(md) : md;
+                cmEditorQuill.root.innerHTML = html;
 
-// =============================================
-// DYNAMIC CONTENT PAGES (Help & Documentation)
-// =============================================
+                mdWrapper.style.display = 'none';
+                quillWrapper.style.display = 'block';
+                toggleMd.classList.remove('active');
+                toggleQuill.classList.add('active');
+            }
+        };
 
-window.openDocsModal = async () => cm_previewContent('documentation');
-window.closeDocsModal = () => cm_closePreview();
-window.openHelpModal = async () => cm_previewContent('help');
-window.closeHelpModal = () => cm_closePreview();
+        window.cm_openEditor = async function (key) {
+            cmCurrentKey = key;
+            const meta = CM_PAGE_LABELS[key] || { label: key, icon: 'fa-file', color: '#6b7280' };
+            const modal = document.getElementById('cm-editor-modal');
+            if (!modal) return;
 
-// Dropdown Action Router
-document.querySelectorAll('.profile-dropdown .dropdown-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-        const action = item.getAttribute('data-action');
-        if (!action) return;
-        e.preventDefault();
+            document.getElementById('cm-editor-title').textContent = 'Edit: ' + meta.label;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
 
-        // Close dropdown
-        const profileBtn = document.getElementById('admin-profile-btn');
-        const profileMenu = document.getElementById('admin-profile-dropdown');
-        if (profileBtn && profileMenu) {
-            profileBtn.setAttribute('aria-expanded', 'false');
-            profileMenu.classList.remove('open');
-        }
+            // Default to Quill for legacy support
+            cmEditorMode = 'quill';
+            document.getElementById('cm-quill-editor-wrapper').style.display = 'block';
+            document.getElementById('cm-markdown-editor-wrapper').style.display = 'none';
+            document.getElementById('toggle-quill').classList.add('active');
+            document.getElementById('toggle-markdown').classList.remove('active');
 
-        switch (action) {
-            case 'edit-profile': openEditProfileModal(); break;
-            case 'change-password': openChangePasswordModal(); break;
-            case 'audit-logs': loadAuditLogs(); break;
-            case 'view-profile': openEditProfileModal(); break;
-            case 'docs': cm_previewContent('documentation'); break;
-            case 'help': cm_previewContent('help'); break;
-            case 'content-editor': cm_openEditor('documentation'); break;
-            default: showInfoAlert("Feature " + action + " coming soon!");
-        }
-    });
-});
+            if (!cmEditorQuill) {
+                cmEditorQuill = new Quill('#cm-quill-container', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ header: [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ color: [] }, { background: [] }],
+                            [{ list: 'ordered' }, { list: 'bullet' }],
+                            ['link', 'blockquote', 'code-block'],
+                            ['clean']
+                        ]
+                    }
+                });
+            }
 
-// =============================================
-// CONTENT MANAGEMENT MODULE (v2)
-// =============================================
+            document.getElementById('cm-editor-status').textContent = 'Loading content...';
+            document.getElementById('cm-save-btn').disabled = true;
+            try {
+                const res = await adminAPI.getContent(key);
+                if (res.success && res.data) {
+                    const content = res.data.content || '';
+                    cmEditorQuill.root.innerHTML = content;
+                    document.getElementById('cm-markdown-textarea').value = content;
 
-const CM_PAGE_LABELS = {
-  'help': { label: 'Help & Support', icon: 'fa-question-circle', color: '#3b82f6' },
-  'documentation': { label: 'Documentation', icon: 'fa-book', color: '#8b5cf6' },
-  'programs': { label: 'Programs', icon: 'fa-graduation-cap', color: '#10b981' },
-  'resources': { label: 'Resources', icon: 'fa-folder-open', color: '#f59e0b' },
-  'contact': { label: 'Contact Us', icon: 'fa-phone', color: '#06b6d4' },
-  'privacy': { label: 'Privacy Policy', icon: 'fa-shield-alt', color: '#6b7280' },
-  'learn-more': { label: 'Learn More (Hero)', icon: 'fa-info-circle', color: '#ec4899' },
-  'terms': { label: 'Terms of Service', icon: 'fa-file-contract', color: '#f97316' }
-};
+                    // Auto-detect if it's markdown (starts with # or has typical MD patterns but no HTML tags)
+                    const isMd = (content.includes('# ') || content.includes('**')) && !content.includes('<h');
+                    if (isMd) {
+                        cm_switchEditor('markdown');
+                    }
 
-let cmEditorQuill = null;
-let cmCurrentKey = null;
-let cmPages = [];
-let cmEditorMode = 'quill'; // 'quill' or 'markdown'
+                    document.getElementById('cm-editor-status').textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
+                } else {
+                    cmEditorQuill.root.innerHTML = '';
+                    document.getElementById('cm-markdown-textarea').value = '';
+                    document.getElementById('cm-editor-status').textContent = 'No content yet. Start writing!';
+                }
+            } catch (e) {
+                document.getElementById('cm-editor-status').textContent = 'Failed to load.';
+            }
+            document.getElementById('cm-save-btn').disabled = false;
+        };
 
-async function loadContentManagement() {
-  const grid = document.getElementById('cm-pages-grid');
-  if (!grid) return;
-  grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;grid-column:1/-1;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:0.75rem;">Loading...</p></div>';
-  try {
-    const res = await adminAPI.getAllContent();
-    if (res.success) {
-      cmPages = res.data;
-      cm_renderPagesGrid(cmPages);
-    } else {
-      grid.innerHTML = '<p style="color:var(--text-muted);">Failed to load content pages.</p>';
-    }
-  } catch (e) {
-    grid.innerHTML = '<p style="color:var(--text-muted);">Error loading content pages.</p>';
-  }
-}
+        window.cm_closeEditor = function () {
+            const modal = document.getElementById('cm-editor-modal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
 
-function cm_renderPagesGrid(pages) {
-  const grid = document.getElementById('cm-pages-grid');
-  if (!grid) return;
-  
-  const pagesByKey = {};
-  pages.forEach(p => pagesByKey[p.key] = p);
-  
-  grid.innerHTML = Object.entries(CM_PAGE_LABELS).map(([key, meta]) => {
-    const page = pagesByKey[key];
-    const hasContent = page && page.content && page.content.trim().length > 10;
-    const lastUpdated = page ? new Date(page.updated_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'Never';
-    const wordCount = page ? page.content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length : 0;
-    
-    return "<div class='content-page-card' style='background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;'>" +
-      "<div style='display:flex;align-items:center;gap:0.75rem;'>" +
-        "<div style='width:40px;height:40px;border-radius:10px;background:" + meta.color + "22;display:flex;align-items:center;justify-content:center;flex-shrink:0;'>" +
-          "<i class='fas " + meta.icon + "' style='color:" + meta.color + ";'></i>" +
-        "</div>" +
-        "<div>" +
-          "<h4 style='margin:0;font-size:0.9rem;'>" + meta.label + "</h4>" +
-          "<span style='font-size:0.72rem;color:var(--text-muted);'>Key: <code>" + key + "</code></span>" +
-        "</div>" +
-        "<span style='margin-left:auto;font-size:0.7rem;padding:0.2rem 0.5rem;border-radius:20px;background:" + (hasContent ? '#d1fae5' : '#fef3c7') + ";color:" + (hasContent ? '#065f46' : '#92400e') + ";'>" + (hasContent ? '✓ Has content' : '⚠ Empty') + "</span>" +
-      "</div>" +
-      "<div style='font-size:0.78rem;color:var(--text-muted);display:flex;gap:1rem;'>" +
-        "<span><i class='fas fa-clock'></i> " + lastUpdated + "</span>" +
-        "<span><i class='fas fa-align-left'></i> ~" + wordCount + " words</span>" +
-      "</div>" +
-      "<div style='display:flex;gap:0.5rem;margin-top:0.25rem;'>" +
-        "<button onclick=\"cm_openEditor('" + key + "')\" class='btn btn-primary' style='flex:1;font-size:0.8rem;padding:0.4rem;'><i class='fas fa-edit'></i> Edit</button>" +
-        "<button onclick=\"cm_previewContent('" + key + "')\" class='btn btn-secondary' style='font-size:0.8rem;padding:0.4rem 0.75rem;'><i class='fas fa-eye'></i></button>" +
-        "<button onclick=\"cm_clearContent('" + key + "')\" class='btn' style='font-size:0.8rem;padding:0.4rem 0.75rem;background:#fee2e2;color:#b91c1c;border:none;cursor:pointer;border-radius:8px;'><i class='fas fa-trash'></i></button>" +
-      "</div>" +
-    "</div>";
-  }).join('');
-}
+        window.cm_saveContent = async function () {
+            if (!cmCurrentKey) return;
+            const content = cmEditorMode === 'markdown'
+                ? document.getElementById('cm-markdown-textarea').value
+                : cmEditorQuill.root.innerHTML;
+            const saveBtn = document.getElementById('cm-save-btn');
+            const statusEl = document.getElementById('cm-editor-status');
+            saveBtn.disabled = true;
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            try {
+                const res = await adminAPI.updateContent(cmCurrentKey, content);
+                if (res.success) {
+                    showSuccessAlert('Content saved successfully!');
+                    if (statusEl) statusEl.textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
+                    const updatedPage = cmPages.find(p => p.key === cmCurrentKey);
+                    if (updatedPage) { updatedPage.content = content; updatedPage.updated_at = res.data.updated_at; }
+                    else { cmPages.push(res.data); }
+                    cm_renderPagesGrid(cmPages);
+                } else {
+                    showErrorAlert('Failed to save: ' + (res.error || 'Unknown error'));
+                }
+            } catch (e) {
+                showErrorAlert('Save error.');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        };
 
-window.cm_switchEditor = function(mode) {
-  if (mode === cmEditorMode) return;
-  cmEditorMode = mode;
-  
-  const quillWrapper = document.getElementById('cm-quill-editor-wrapper');
-  const mdWrapper = document.getElementById('cm-markdown-editor-wrapper');
-  const toggleQuill = document.getElementById('toggle-quill');
-  const toggleMd = document.getElementById('toggle-markdown');
-  
-  if (mode === 'markdown') {
-    const html = cmEditorQuill.root.innerHTML;
-    // Simple HTML to MD (very basic, mostly for transitions)
-    document.getElementById('cm-markdown-textarea').value = html
-      .replace(/<h3>(.*?)<\/h3>/g, '### $1\n')
-      .replace(/<h4>(.*?)<\/h4>/g, '#### $1\n')
-      .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
-      .replace(/<ul>(.*?)<\/ul>/gs, (m, p1) => p1.replace(/<li>(.*?)<\/li>/g, '* $1\n'))
-      .replace(/<ol>(.*?)<\/ol>/gs, (m, p1) => p1.replace(/<li>(.*?)<\/li>/g, '1. $1\n'))
-      .replace(/<br\s*\/?>/g, '\n')
-      .replace(/<[^>]+>/g, '');
-      
-    quillWrapper.style.display = 'none';
-    mdWrapper.style.display = 'block';
-    toggleQuill.classList.remove('active');
-    toggleMd.classList.add('active');
-  } else {
-    // Markdown to HTML using marked
-    const md = document.getElementById('cm-markdown-textarea').value;
-    const html = typeof marked !== 'undefined' ? marked.parse(md) : md;
-    cmEditorQuill.root.innerHTML = html;
-    
-    mdWrapper.style.display = 'none';
-    quillWrapper.style.display = 'block';
-    toggleMd.classList.remove('active');
-    toggleQuill.classList.add('active');
-  }
-};
+        window.cm_clearContent = async function (key) {
+            const label = CM_PAGE_LABELS[key]?.label || key;
+            if (!confirm("Clear all content for \"" + label + "\"? This cannot be undone.")) return;
+            try {
+                const res = await adminAPI.deleteContent(key);
+                if (res.success) {
+                    showSuccessAlert('Content cleared.');
+                    loadContentManagement();
+                } else {
+                    showErrorAlert('Failed to clear: ' + (res.error || 'Unknown'));
+                }
+            } catch (e) {
+                showErrorAlert('Error clearing content.');
+            }
+        };
 
-window.cm_openEditor = async function(key) {
-  cmCurrentKey = key;
-  const meta = CM_PAGE_LABELS[key] || { label: key, icon: 'fa-file', color: '#6b7280' };
-  const modal = document.getElementById('cm-editor-modal');
-  if (!modal) return;
-  
-  document.getElementById('cm-editor-title').textContent = 'Edit: ' + meta.label;
-  modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  
-  // Default to Quill for legacy support
-  cmEditorMode = 'quill';
-  document.getElementById('cm-quill-editor-wrapper').style.display = 'block';
-  document.getElementById('cm-markdown-editor-wrapper').style.display = 'none';
-  document.getElementById('toggle-quill').classList.add('active');
-  document.getElementById('toggle-markdown').classList.remove('active');
+        window.cm_previewContent = async function (key) {
+            const meta = CM_PAGE_LABELS[key] || { label: key };
+            try {
+                const res = await adminAPI.getContent(key);
+                if (res.success && res.data && res.data.content.trim()) {
+                    const modal = document.getElementById('cm-preview-modal');
+                    document.getElementById('cm-preview-title').textContent = 'Preview: ' + meta.label;
 
-  if (!cmEditorQuill) {
-    cmEditorQuill = new Quill('#cm-quill-container', {
-      theme: 'snow',
-      modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ['bold', 'italic', 'underline', 'strike'],
-          [{ color: [] }, { background: [] }],
-          [{ list: 'ordered' }, { list: 'bullet' }],
-          ['link', 'blockquote', 'code-block'],
-          ['clean']
-        ]
-      }
-    });
-  }
-  
-  document.getElementById('cm-editor-status').textContent = 'Loading content...';
-  document.getElementById('cm-save-btn').disabled = true;
-  try {
-    const res = await adminAPI.getContent(key);
-    if (res.success && res.data) {
-      const content = res.data.content || '';
-      cmEditorQuill.root.innerHTML = content;
-      document.getElementById('cm-markdown-textarea').value = content;
-      
-      // Auto-detect if it's markdown (starts with # or has typical MD patterns but no HTML tags)
-      const isMd = (content.includes('# ') || content.includes('**')) && !content.includes('<h');
-      if (isMd) {
-        cm_switchEditor('markdown');
-      }
-      
-      document.getElementById('cm-editor-status').textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
-    } else {
-      cmEditorQuill.root.innerHTML = '';
-      document.getElementById('cm-markdown-textarea').value = '';
-      document.getElementById('cm-editor-status').textContent = 'No content yet. Start writing!';
-    }
-  } catch (e) {
-    document.getElementById('cm-editor-status').textContent = 'Failed to load.';
-  }
-  document.getElementById('cm-save-btn').disabled = false;
-};
+                    const previewBody = document.getElementById('cm-preview-body');
+                    let htmlContent = res.data.content;
 
-window.cm_closeEditor = function() {
-  const modal = document.getElementById('cm-editor-modal');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
-};
+                    // Determine if it's Markdown or HTML
+                    const isMarkdown = (htmlContent.includes('# ') || htmlContent.includes('**')) && !htmlContent.includes('<h');
 
-window.cm_saveContent = async function() {
-  if (!cmCurrentKey) return;
-  const content = cmEditorMode === 'markdown' 
-    ? document.getElementById('cm-markdown-textarea').value 
-    : cmEditorQuill.root.innerHTML;
-  const saveBtn = document.getElementById('cm-save-btn');
-  const statusEl = document.getElementById('cm-editor-status');
-  saveBtn.disabled = true;
-  const originalText = saveBtn.innerHTML;
-  saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-  try {
-    const res = await adminAPI.updateContent(cmCurrentKey, content);
-    if (res.success) {
-      showSuccessAlert('Content saved successfully!');
-      if (statusEl) statusEl.textContent = 'Last saved: ' + new Date(res.data.updated_at).toLocaleString();
-      const updatedPage = cmPages.find(p => p.key === cmCurrentKey);
-      if (updatedPage) { updatedPage.content = content; updatedPage.updated_at = res.data.updated_at; }
-      else { cmPages.push(res.data); }
-      cm_renderPagesGrid(cmPages);
-    } else {
-      showErrorAlert('Failed to save: ' + (res.error || 'Unknown error'));
-    }
-  } catch (e) {
-    showErrorAlert('Save error.');
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.innerHTML = originalText;
-  }
-};
+                    if (isMarkdown && typeof marked !== 'undefined') {
+                        // Parse Markdown and wrap in premium styling class
+                        const parsed = marked.parse(htmlContent);
+                        const clean = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(parsed) : parsed;
+                        previewBody.innerHTML = `<div class="markdown-body">${clean}</div>`;
+                    } else {
+                        // Legacy HTML content
+                        previewBody.innerHTML = htmlContent;
+                    }
 
-window.cm_clearContent = async function(key) {
-  const label = CM_PAGE_LABELS[key]?.label || key;
-  if (!confirm("Clear all content for \"" + label + "\"? This cannot be undone.")) return;
-  try {
-    const res = await adminAPI.deleteContent(key);
-    if (res.success) {
-      showSuccessAlert('Content cleared.');
-      loadContentManagement();
-    } else {
-      showErrorAlert('Failed to clear: ' + (res.error || 'Unknown'));
-    }
-  } catch (e) {
-    showErrorAlert('Error clearing content.');
-  }
-};
+                    document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    showInfoAlert('This page has no content yet.', 3000);
+                }
+            } catch (e) {
+                showErrorAlert('Could not load preview.');
+            }
+        };
 
-window.cm_previewContent = async function(key) {
-  const meta = CM_PAGE_LABELS[key] || { label: key };
-  try {
-    const res = await adminAPI.getContent(key);
-    if (res.success && res.data && res.data.content.trim()) {
-      const modal = document.getElementById('cm-preview-modal');
-      document.getElementById('cm-preview-title').textContent = 'Preview: ' + meta.label;
-      
-      const previewBody = document.getElementById('cm-preview-body');
-      let htmlContent = res.data.content;
-      
-      // Determine if it's Markdown or HTML
-      const isMarkdown = (htmlContent.includes('# ') || htmlContent.includes('**')) && !htmlContent.includes('<h');
-      
-      if (isMarkdown && typeof marked !== 'undefined') {
-        // Parse Markdown and wrap in premium styling class
-        const parsed = marked.parse(htmlContent);
-        const clean = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(parsed) : parsed;
-        previewBody.innerHTML = `<div class="markdown-body">${clean}</div>`;
-      } else {
-        // Legacy HTML content
-        previewBody.innerHTML = htmlContent;
-      }
-      
-      document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
-      modal.style.display = 'flex';
-      document.body.style.overflow = 'hidden';
-    } else {
-      showInfoAlert('This page has no content yet.', 3000);
-    }
-  } catch(e) {
-    showErrorAlert('Could not load preview.');
-  }
-};
+        window.cm_closePreview = function () {
+            const m = document.getElementById('cm-preview-modal');
+            if (m) m.style.display = 'none';
+            document.body.style.overflow = '';
+        };
 
-window.cm_closePreview = function() {
-  const m = document.getElementById('cm-preview-modal');
-  if (m) m.style.display = 'none';
-  document.body.style.overflow = '';
-};
+        window.cm_openNewContentModal = function () {
+            showInfoAlert('All content pages are pre-created. Use Edit to modify any page.', 4000);
+        };
 
-window.cm_openNewContentModal = function() {
-  showInfoAlert('All content pages are pre-created. Use Edit to modify any page.', 4000);
-};
+        // Tab switch listener is handled by the central loadTabContent router.
 
-// Tab switch listener is handled by the central loadTabContent router.
+        export {
+            populateERPFilters,
+            loadDashboardData,
+            loadUsers,
+            loadStudents,
+            loadMaterials,
+            loadNotifications
+        };

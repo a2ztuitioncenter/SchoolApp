@@ -48,13 +48,21 @@ async function requireTeacher(req, suppliedTeacherId = null) {
   }
 
 
+  const teacher = await getUserById(req.db, authenticatedTeacherId);
+  if (!teacher) return null;
+
+  // Admin bypass: Admins can access any teacher's data
+  if (teacher.role === 'admin') {
+    return (await getUserById(req.db, requestedTeacherId)) || teacher;
+  }
+
+  // Identity check: Non-admins can only access their own data
   if (authenticatedTeacherId !== requestedTeacherId) {
     return null;
   }
 
-  const teacher = await getUserById(req.db, authenticatedTeacherId);
-  // Allow both 'teacher' and 'staff' roles to access teacher dashboard if they have assignments
-  return (teacher && (teacher.role === 'teacher' || teacher.role === 'staff')) ? teacher : null;
+  // Role check: Must be teacher or staff
+  return (teacher.role === 'teacher' || teacher.role === 'staff') ? teacher : null;
 }
 
 // Check if teacher is assigned to teach a class
@@ -101,11 +109,11 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     const [subAssignRes, tcaAssignRes] = await Promise.all([
       pool.query(
         `SELECT DISTINCT class_level FROM subject_assignments WHERE teacher_id = $1`,
-        [parsedTeacherId]
+        [teacher.id]
       ),
       pool.query(
         `SELECT DISTINCT class_level FROM teacher_class_assignment WHERE teacher_id = $1`,
-        [parsedTeacherId]
+        [teacher.id]
       )
     ]);
 
@@ -117,7 +125,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     if (classes.length === 0) {
       const ttRes = await pool.query(
         'SELECT DISTINCT class_level FROM timetable WHERE teacher_id = $1 ORDER BY class_level',
-        [parsedTeacherId]
+        [teacher.id]
       );
       classes = ttRes.rows.map(r => r.class_level);
     }
@@ -125,14 +133,14 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     // 3. Get Timetable
     const ttRes = await pool.query(
       'SELECT * FROM timetable WHERE teacher_id = $1 ORDER BY day_of_week, start_time',
-      [parsedTeacherId]
+      [teacher.id]
     );
 
     // 4. Get Homework & Student Count
     const [hwRes, studRes] = await Promise.all([
       pool.query(
         'SELECT * FROM homework WHERE teacher_id = $1 ORDER BY created_at DESC',
-        [parsedTeacherId]
+        [teacher.id]
       ),
       pool.query(
           `SELECT COUNT(id) AS total_students FROM students 
@@ -146,7 +154,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
                UNION
                SELECT class_level FROM teacher_class_assignment WHERE teacher_id = $1 AND (section IS NULL OR section = 'ALL')
              )`,
-          [parsedTeacherId]
+          [teacher.id]
       )
     ]);
 
