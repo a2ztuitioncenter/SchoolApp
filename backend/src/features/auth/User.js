@@ -136,16 +136,16 @@ export const createUser = async (pool, { name, phone, email, password, role, sch
   return MAP_USER(result.rows[0]);
 };
 
-export const updateUser = async (pool, id, { name, phone, email, role }) => {
+export const updateUser = async (pool, id, { name, phone, email, role }, schoolId) => {
   const result = await pool.query(
     `UPDATE users SET name = COALESCE($2, name), phone = COALESCE($3, phone), email = COALESCE($4, email), role = COALESCE($5, role)
-     WHERE id = $1 RETURNING *`,
-    [id, name, phone, email, role]
+     WHERE id = $1 AND school_id = $6 RETURNING *`,
+    [id, name, phone, email, role, schoolId]
   );
   return MAP_USER(result.rows[0]);
 };
 
-export const deleteUser = async (pool, id) => {
+export const deleteUser = async (pool, id, schoolId) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -163,7 +163,7 @@ export const deleteUser = async (pool, id) => {
     await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [id]);
     await client.query('DELETE FROM students WHERE user_id = $1', [id]);
 
-    const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    const result = await client.query('DELETE FROM users WHERE id = $1 AND school_id = $2 RETURNING id', [id, schoolId]);
     
     await client.query('COMMIT');
     return result.rows[0] || null;
@@ -175,10 +175,10 @@ export const deleteUser = async (pool, id) => {
   }
 };
 
-export const toggleUserStatus = async (pool, id, isActive) => {
+export const toggleUserStatus = async (pool, id, isActive, schoolId) => {
   const result = await pool.query(
-    'UPDATE users SET is_active = $2 WHERE id = $1 RETURNING *',
-    [id, isActive]
+    'UPDATE users SET is_active = $2 WHERE id = $1 AND school_id = $3 RETURNING *',
+    [id, isActive, schoolId]
   );
   return MAP_USER(result.rows[0]);
 };
@@ -236,19 +236,25 @@ export const generateTeacherId = async (pool, role) => {
   }
 
   if (!isUnique) {
-    // Fallback to timestamp if random collisions are too high
-    teacherId = `${prefix}${Date.now().toString().slice(-6)}`;
+    // Fallback using timestamp + random suffix for better uniqueness
+    const suffix = `${Date.now().toString().slice(-4)}${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`;
+    teacherId = `${prefix}${suffix}`;
+    // Still verify uniqueness
+    const check = await pool.query('SELECT id FROM users WHERE teacher_id = $1', [teacherId]);
+    if (check.rows.length > 0) {
+      throw new Error('Unable to generate unique teacher ID');
+    }
   }
 
   return teacherId;
 };
 
-export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, schoolId = 'school-001') => {
+export const assignTeacherToClasses = async (pool, userId, classesAssigned, schoolId = 'school-001') => {
   if (!Array.isArray(classesAssigned)) throw new Error('classesAssigned must be an array');
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [teacherId]);
+    await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [userId]);
     for (const assignment of classesAssigned) {
       let classLevel, section = 'ALL';
       if (typeof assignment === 'object' && assignment !== null) {
@@ -262,7 +268,7 @@ export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, s
         await client.query(
           `INSERT INTO teacher_class_assignment (teacher_id, class_level, section, school_id)
            VALUES ($1, $2, $3, $4)`,
-          [teacherId, classLevel, section, schoolId]
+          [userId, classLevel, section, schoolId]
         );
       }
     }
@@ -276,10 +282,10 @@ export const assignTeacherToClasses = async (pool, teacherId, classesAssigned, s
   }
 };
 
-export const getTeacherAssignments = async (pool, teacherId) => {
+export const getTeacherAssignments = async (pool, userId) => {
   const result = await pool.query(
     'SELECT class_level FROM teacher_class_assignment WHERE teacher_id = $1',
-    [teacherId]
+    [userId]
   );
   return result.rows.map(row => row.class_level);
 };

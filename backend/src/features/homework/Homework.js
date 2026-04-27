@@ -40,7 +40,7 @@ export const homeworkModel = {
       createdAt: row.created_at,
       teacherPhone: row.teacher_phone,
       assignedBy: row.teacher_id,
-      assignedByName: row.assigned_by_name || (row.assigned_by_role === 'admin' ? 'Admin' : 'Teacher')
+      assignedByName: row.assigned_by_name || (row.assigned_by_role === 'admin' ? 'Admin' : row.assigned_by_role === 'teacher' ? 'Teacher' : 'Unknown')
     };
   },
 
@@ -84,7 +84,7 @@ export const homeworkModel = {
     const result = await db.query(
       `INSERT INTO homework (title, description, class_level, section, subject_id, subject, due_date, teacher_id, attachment_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [title, description || null, classLevel, section || 'A', subjectId || null, subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
+      [title, description || null, classLevel, section || null, subjectId || null, subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
     );
     return this.formatRow(result.rows[0]);
   },
@@ -93,7 +93,7 @@ export const homeworkModel = {
     const result = await db.query(
       `UPDATE homework SET title=$1, description=$2, class_level=$3, section=$4, subject_id=$5, subject=$6, due_date=$7, 
        attachment_url=COALESCE($8, attachment_url) WHERE id=$9 RETURNING *`,
-      [title, description || null, classLevel, section || 'A', subjectId || null, subject || null, dueDate || null, attachmentUrl || null, id]
+      [title, description || null, classLevel, section || null, subjectId || null, subject || null, dueDate || null, attachmentUrl || null, id]
     );
     return this.formatRow(result.rows[0]);
   },

@@ -531,19 +531,19 @@ function populateProfile(profile) {
   if (profile.avatar_url) {
     const avatarUrl = profile.avatar_url;
     if (profileImg && profileImg.tagName === 'IMG') {
-      profileImg.src = avatarUrl;
+      profileImg.src = avatarUrl; // Direct property assignment is safe
     } else if (profileImg) {
       // Replace circle with img
       const btn = document.getElementById('student-profile-btn');
       const caret = btn.querySelector('.fa-caret-down');
       btn.innerHTML = `
-        <img src="${avatarUrl}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+        <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
         ${caret.outerHTML}
       `;
     }
     // Also update modal preview
     const modalPreview = document.getElementById('profile-preview');
-    if (modalPreview) modalPreview.src = avatarUrl;
+    if (modalPreview) modalPreview.src = avatarUrl; // Direct property assignment is safe
   }
 }
 
@@ -601,7 +601,7 @@ function displayStudentFeeHistory(fees) {
     return `
       <tr style="border-bottom:1px solid var(--border-subtle);">
         <td style="padding:0.5rem; text-align:left;">
-          <div style="font-weight:500;">${f.description || 'Fee'}</div>
+          <div style="font-weight:500;">${escapeHtml(f.description || 'Fee')}</div>
           <div style="font-size:0.75rem; color:var(--text-muted);">Due: ${new Date(f.dueDate).toLocaleDateString('en-IN')}</div>
         </td>
         <td style="padding:0.5rem; text-align:right; font-weight:600;">₹${parseFloat(f.amount).toFixed(2)}</td>
@@ -1289,10 +1289,14 @@ window.openCMSModal = async function(type) {
                     bodyEl.innerHTML = `<div class="markdown-content">${clean}</div>`;
                 } catch (e) {
                     console.error('Markdown error:', e);
-                    bodyEl.innerHTML = rawContent;
+                    const sanitized = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(rawContent) : escapeHtml(rawContent);
+                    bodyEl.innerHTML = sanitized;
                 }
             } else {
-                bodyEl.innerHTML = rawContent || '<p class="empty-state">No content available.</p>';
+                const sanitized = rawContent 
+                    ? ((typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(rawContent) : escapeHtml(rawContent))
+                    : '<p class="empty-state">No content available.</p>';
+                bodyEl.innerHTML = sanitized;
             }
         } else {
             bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
@@ -1778,10 +1782,6 @@ document.getElementById('proceed-to-submit-btn')?.addEventListener('click', () =
 
 // Modal close handlers for the selector
 document.getElementById('close-select-assignment-modal')?.addEventListener('click', () => {
-    document.getElementById('select-assignment-modal').classList.add('d-none');
-    document.getElementById('select-assignment-modal').classList.remove('d-flex');
-});
-document.getElementById('cancel-select-assignment-btn')?.addEventListener('click', () => {
     document.getElementById('select-assignment-modal').classList.add('d-none');
     document.getElementById('select-assignment-modal').classList.remove('d-flex');
 });

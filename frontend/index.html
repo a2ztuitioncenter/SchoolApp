@@ -5,13 +5,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A2Z Tuition - Premier Online Learning</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./src/assets/css/index.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
-    <style>.markdown-content h1 { font-size: 1.8rem; margin-bottom: 1rem; color: #111827; } .markdown-content h2 { font-size: 1.4rem; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1f2937; } .markdown-content p { margin-bottom: 1rem; } .markdown-content ul { margin-bottom: 1rem; padding-left: 1.5rem; } </style>
+    <style>
+        .markdown-content h1 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #111827;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.4rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #1f2937;
+        }
+
+        .markdown-content p {
+            margin-bottom: 1rem;
+        }
+
+        .markdown-content ul {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+    </style>
 </head>
 
 <body>
@@ -22,31 +46,35 @@
                 <i class="fa fa-graduation-cap"></i>
                 <span>A2Z Tuition</span>
             </div>
-            <nav class="erp-nav-desktop">
+                <nav class="erp-nav-desktop">
+                    <ul>
+                        <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
+                        <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
+                        <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
+                        <li><a href="javascript:showLandingContent('privacy','Privacy Policy',event)">Privacy</a></li>
+                    </ul>
+                </nav>
+                <div class="erp-header-auth">
+                    <a class="erp-btn erp-btn-ghost" id="header-login" href="#"
+                        onclick="openAuthLoginSelector(event)">Log
+                        in</a>
+                    <a class="erp-btn erp-btn-primary" id="header-signup" href="#"
+                        onclick="openAuthSignupSelector(event)">Sign up</a>
+                </div>
+                <button class="erp-mobile-menu-btn" aria-label="Menu"
+                    onclick="document.body.classList.toggle('menu-open')">
+                    <i class="fa fa-bars"></i>
+                </button>
+            </div>
+            <div class="erp-mobile-nav">
                 <ul>
                     <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
                     <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
                     <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
-                    <li><a href="javascript:showLandingContent('privacy','Privacy Policy',event)">Privacy</a></li>
+                    <li><a href="#" onclick="openAuthLoginSelector(event)">Log in</a></li>
+                    <li><a href="#" onclick="openAuthSignupSelector(event)">Sign up</a></li>
                 </ul>
-            </nav>
-            <div class="erp-header-auth">
-                <a class="erp-btn erp-btn-ghost" id="header-login" href="#" onclick="openAuthLoginSelector(event)">Log in</a>
-                <a class="erp-btn erp-btn-primary" id="header-signup" href="#" onclick="openAuthSignupSelector(event)">Sign up</a>
             </div>
-            <button class="erp-mobile-menu-btn" aria-label="Menu" onclick="document.body.classList.toggle('menu-open')">
-                <i class="fa fa-bars"></i>
-            </button>
-        </div>
-        <div class="erp-mobile-nav">
-            <ul>
-                <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
-                <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
-                <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
-                <li><a href="#" onclick="openAuthLoginSelector(event)">Log in</a></li>
-                <li><a href="#" onclick="openAuthSignupSelector(event)">Sign up</a></li>
-            </ul>
-        </div>
     </header>
 
     <main>
@@ -55,12 +83,15 @@
             <div class="container erp-hero-container">
                 <div class="erp-badge">A2Z Tuition Center</div>
                 <h1 class="erp-title">Elevate Your <span>Learning.</span></h1>
-                <p class="erp-subtitle">A modern learning ecosystem designed for academic excellence. Empowering students with expert tutoring and personalized progress tracking.</p>
+                <p class="erp-subtitle">A modern learning ecosystem designed for academic excellence. Empowering
+                    students with expert tutoring and personalized progress tracking.</p>
                 <div class="erp-hero-cta">
-                    <button class="erp-btn erp-btn-primary erp-btn-large" id="btn-get-started-hero" onclick="openAuthLoginSelector(event)">
+                    <button class="erp-btn erp-btn-primary erp-btn-large" id="btn-get-started-hero"
+                        onclick="openAuthLoginSelector(event)">
                         Get Started <i class="fa fa-arrow-right"></i>
                     </button>
-                    <a href="#" class="erp-btn erp-btn-outline erp-btn-large" onclick="showLandingContent('learn-more','About A2Z Tuition',event)">Learn More</a>
+                    <a href="#" class="erp-btn erp-btn-outline erp-btn-large"
+                        onclick="showLandingContent('learn-more','About A2Z Tuition',event)">Learn More</a>
                 </div>
             </div>
         </section>
@@ -72,7 +103,7 @@
                     <h2>Our Academic Features</h2>
                     <p>Comprehensive tools designed to support every aspect of the tutoring experience.</p>
                 </div>
-                
+
                 <div class="erp-grid">
                     <div class="erp-card erp-card-featured">
                         <div class="erp-card-icon portal-icon">
@@ -80,8 +111,10 @@
                         </div>
                         <div class="erp-card-content">
                             <h3>Student Portal</h3>
-                            <p>Comprehensive management for student profiles, personalized learning paths, and progress tracking analytics.</p>
-                            <a href="#" class="erp-card-link" onclick="openAuthLoginSelector(event)">Explore Portal <i class="fa fa-arrow-right"></i></a>
+                            <p>Comprehensive management for student profiles, personalized learning paths, and progress
+                                tracking analytics.</p>
+                            <a href="#" class="erp-card-link" onclick="openAuthLoginSelector(event)">Explore Portal <i
+                                    class="fa fa-arrow-right"></i></a>
                         </div>
                     </div>
 
@@ -91,7 +124,8 @@
                         </div>
                         <div class="erp-card-content">
                             <h3>Expert Tutors</h3>
-                            <p>Centralized hub for tutor scheduling, study material sharing, and performance monitoring.</p>
+                            <p>Centralized hub for tutor scheduling, study material sharing, and performance monitoring.
+                            </p>
                         </div>
                     </div>
 
@@ -111,7 +145,8 @@
                         </div>
                         <div class="erp-card-content">
                             <h3>Fees & Billing</h3>
-                            <p>Automated billing cycles, secure payment records, and comprehensive financial reporting for your batches.</p>
+                            <p>Automated billing cycles, secure payment records, and comprehensive financial reporting
+                                for your batches.</p>
                         </div>
                     </div>
                 </div>
@@ -168,12 +203,10 @@
                         placeholder="Enter phone number or username" required>
                 </div>
                 <div class="form-group">
-                    <label for="student-login-dob">Password (Date of Birth)</label>
-                    <input type="password" id="student-login-dob" name="dateOfBirth" placeholder="Enter your password"
+                    <label for="student-login-dob">Password</label>
+                    <input type="password" id="student-login-dob" name="dateOfBirth" placeholder="Enter your date of birth (DDMMYYYY)"
                         required>
-                    <small style="color:#888;font-size:0.8rem">Enter your password
-
-                    </small>
+                    <small style="color:#888;font-size:0.8rem">Your date of birth serves as your password.</small>
                 </div>
                 <button type="submit" id="studentLoginBtn" class="btn-submit">Log In</button>
             </form>
@@ -260,8 +293,10 @@
 
                 <div class="form-group">
                     <label for="student-signup-username">Username</label>
-                    <input type="text" id="student-signup-username" placeholder="Choose a username (min 5 chars)" minlength="5" maxlength="50">
-                    <small id="student-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and underscores only. Optional but recommended.</small>
+                    <input type="text" id="student-signup-username" placeholder="Choose a username (min 5 chars)"
+                        minlength="5" maxlength="50">
+                    <small id="student-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and
+                        underscores only. Optional but recommended.</small>
                 </div>
 
                 <div class="form-group">
@@ -353,8 +388,10 @@
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-username">Username</label>
-                    <input type="text" id="teacher-signup-username" placeholder="Choose a username (min 5 chars)" minlength="5" maxlength="50">
-                    <small id="teacher-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and underscores only. Optional but recommended.</small>
+                    <input type="text" id="teacher-signup-username" placeholder="Choose a username (min 5 chars)"
+                        minlength="5" maxlength="50">
+                    <small id="teacher-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and
+                        underscores only. Optional but recommended.</small>
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-email">Email Address</label>
@@ -424,14 +461,14 @@
                 <div id="student-fields" style="display: none;">
                     <div class="form-group">
                         <label for="dob-input">Date of Birth *</label>
-                        <input type="date" id="dob-input" name="dateOfBirth">
-                        <small style="color:#888;font-size:0.8rem">Required for students. Format: MM/DD/YYYY</small>
+                        <input type="date" id="dob-input" name="dateOfBirth" required>
+                        <small style="color:#888;font-size:0.8rem">Required for students.</small>
                     </div>
                     <div class="form-section-title">Academic Information</div>
                     <div class="form-row" style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
                             <label for="class-level-select">Class Level *</label>
-                            <select id="class-level-select">
+                            <select id="class-level-select" required>
                                 <option value="">Select</option>
                                 <option value="9">9</option>
                                 <option value="10">10</option>
@@ -441,7 +478,7 @@
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label for="section-input">Section *</label>
-                            <input type="text" id="section-input" placeholder="A, B, C, etc." maxlength="1">
+                            <input type="text" id="section-input" placeholder="A, B, C, etc." maxlength="1" required>
                         </div>
                     </div>
 
@@ -449,11 +486,11 @@
                     <div class="form-row" style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
                             <label for="father-name-input">Father's Name *</label>
-                            <input type="text" id="father-name-input" placeholder="Father's full name">
+                            <input type="text" id="father-name-input" placeholder="Father's full name" required>
                         </div>
                         <div class="form-group" style="flex: 1;">
                             <label for="mother-name-input">Mother's Name *</label>
-                            <input type="text" id="mother-name-input" placeholder="Mother's full name">
+                            <input type="text" id="mother-name-input" placeholder="Mother's full name" required>
                         </div>
                     </div>
                 </div>
@@ -462,7 +499,7 @@
                 <div id="teacher-staff-fields" style="display: none;">
                     <div class="form-group">
                         <label for="email-input">Email Address *</label>
-                        <input type="email" id="email-input" placeholder="your.email@example.com">
+                        <input type="email" id="email-input" placeholder="your.email@example.com" required>
                     </div>
                 </div>
 
@@ -503,15 +540,18 @@
                 <div class="erp-footer-col">
                     <h4>Company</h4>
                     <ul>
-                        <li><a href="javascript:showLandingContent('learn-more','About A2Z Tuition',event)">About Us</a></li>
+                        <li><a href="javascript:showLandingContent('learn-more','About A2Z Tuition',event)">About Us</a>
+                        </li>
                         <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact</a></li>
                     </ul>
                 </div>
                 <div class="erp-footer-col">
                     <h4>Legal</h4>
                     <ul>
-                        <li><a href="javascript:showLandingContent('privacy','Privacy Policy',event)">Privacy Policy</a></li>
-                        <li><a href="javascript:showLandingContent('terms','Terms of Service',event)">Terms of Service</a></li>
+                        <li><a href="javascript:showLandingContent('privacy','Privacy Policy',event)">Privacy Policy</a>
+                        </li>
+                        <li><a href="javascript:showLandingContent('terms','Terms of Service',event)">Terms of
+                                Service</a></li>
                     </ul>
                 </div>
             </div>
@@ -566,81 +606,99 @@
     <script type="module" src="./src/core/index.js"></script>
 
     <!-- Landing Page Content Modal -->
-    <div id="landing-content-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeLandingContent()">
-        <div style="background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #e5e7eb;">
+    <div id="landing-content-modal"
+        style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:1rem;"
+        onclick="if(event.target===this)closeLandingContent()">
+        <div
+            style="background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+            <div
+                style="display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid #e5e7eb;">
                 <h2 id="lc-title" style="margin:0;font-size:1.1rem;font-weight:700;color:#111827;"></h2>
-                <button onclick="closeLandingContent()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+                <button onclick="closeLandingContent()"
+                    style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
             </div>
-            <div id="lc-body" style="overflow-y:auto;padding:1.5rem 2rem;flex:1;line-height:1.7;color:#374151;font-size:0.95rem;"></div>
-            <div style="padding:1rem 1.5rem;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+            <div id="lc-body"
+                style="overflow-y:auto;padding:1.5rem 2rem;flex:1;line-height:1.7;color:#374151;font-size:0.95rem;">
+            </div>
+            <div
+                style="padding:1rem 1.5rem;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
                 <small id="lc-ts" style="color:#9ca3af;font-size:0.75rem;"></small>
-                <button onclick="closeLandingContent()" style="padding:0.5rem 1.25rem;background:#f3f4f6;border:none;border-radius:8px;cursor:pointer;font-weight:500;color:#374151;">Close</button>
+                <button onclick="closeLandingContent()"
+                    style="padding:0.5rem 1.25rem;background:#f3f4f6;border:none;border-radius:8px;cursor:pointer;font-weight:500;color:#374151;">Close</button>
             </div>
         </div>
     </div>
     <script>
-      const _lcBaseUrl = (function() {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        return isLocal ? '' : 'https://schoolapp-d9y5.onrender.com';
-      })();
+        const _lcBaseUrl = (function () {
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            return isLocal ? '' : 'https://schoolapp-d9y5.onrender.com';
+        })();
 
-      window.showLandingContent = async function(key, title, event) {
-        if (event) { event.preventDefault(); }
-        const modal = document.getElementById('landing-content-modal');
-        const body = document.getElementById('lc-body');
-        const titleEl = document.getElementById('lc-title');
-        const ts = document.getElementById('lc-ts');
-        if (!modal) return;
-        
-        titleEl.textContent = title;
-        body.innerHTML = '<div style="text-align:center;padding:2rem;color:#9ca3af;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><p style="margin-top:0.75rem;font-size:0.9rem;">Loading...</p></div>';
-        ts.textContent = '';
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        window.showLandingContent = async function (key, title, event) {
+            if (event) { event.preventDefault(); }
+            const modal = document.getElementById('landing-content-modal');
+            const body = document.getElementById('lc-body');
+            const titleEl = document.getElementById('lc-title');
+            const ts = document.getElementById('lc-ts');
+            if (!modal) return;
 
-        try {
-          const res = await fetch(`${_lcBaseUrl}/api/public/content/${key}`);
-          const data = await res.json();
-          if (data.success && data.data && data.data.content) {
-            const rawContent = data.data.content;
-            
-            // Try to parse as markdown if marked is available
-            const m = window.marked;
-            if (m) {
-              try {
-                const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
-                const clean = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(parsed) : parsed;
-                body.innerHTML = `<div class="markdown-content">${clean}</div>`;
-              } catch (e) {
-                console.error('Markdown error:', e);
-                body.innerHTML = rawContent;
-              }
-            } else {
-              body.innerHTML = rawContent;
+            titleEl.textContent = title;
+            body.innerHTML = '<div style="text-align:center;padding:2rem;color:#9ca3af;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><p style="margin-top:0.75rem;font-size:0.9rem;">Loading...</p></div>';
+            ts.textContent = '';
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            try {
+                const res = await fetch(`${_lcBaseUrl}/api/public/content/${key}`);
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                const data = await res.json(); if (data.success && data.data && data.data.content) {
+                    const rawContent = data.data.content;
+
+                    // Robust sanitization helper
+                    const sanitize = (html) => {
+                        if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+                        const t = document.createElement('div');
+                        t.textContent = html;
+                        return t.innerHTML; // Escaped content
+                    };
+
+                    // Try to parse as markdown if marked is available
+                    const m = window.marked;
+                    if (m) {
+                        try {
+                            const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
+                            body.innerHTML = `<div class="markdown-content">${sanitize(parsed)}</div>`;
+                        } catch (e) {
+                            console.error('Markdown error:', e);
+                            body.innerHTML = sanitize(rawContent);
+                        }
+                    } else {
+                        body.innerHTML = sanitize(rawContent);
+                    }
+
+                    if (data.data.updated_at) {
+                        ts.textContent = 'Last updated: ' + new Date(data.data.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+                    }
+                } else {
+                    body.innerHTML = '<p style="color:#9ca3af;text-align:center;">No content available for this page yet.</p>';
+                }
+            } catch (e) {
+                console.error('Fetch error:', e);
+                body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load content. Please try again.</p>';
             }
-            
-            if (data.data.updated_at) {
-              ts.textContent = 'Last updated: ' + new Date(data.data.updated_at).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
-            }
-          } else {
-            body.innerHTML = '<p style="color:#9ca3af;text-align:center;">No content available for this page yet.</p>';
-          }
-        } catch(e) {
-          console.error('Fetch error:', e);
-          body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load content. Please try again.</p>';
-        }
-      };
+        };
 
-      window.closeLandingContent = function() {
-        const modal = document.getElementById('landing-content-modal');
-        if (modal) modal.style.display = 'none';
-        document.body.style.overflow = '';
-      };
-      
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') window.closeLandingContent?.();
-      });
+        window.closeLandingContent = function () {
+            const modal = document.getElementById('landing-content-modal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') window.closeLandingContent?.();
+        });
     </script>
 </body>
 

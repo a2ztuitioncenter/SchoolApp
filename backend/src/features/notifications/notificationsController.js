@@ -17,13 +17,19 @@ export const createNotification = async (req, res) => {
     const recipientRole = sanitizeNullableText(req.body.recipientRole || req.body.recipient_role, 50);
     const classLevel = sanitizeNullableText(req.body.classLevel || req.body.class_level, 20);
     const section = sanitizeNullableText(req.body.section, 10);
-    const createdBy = sanitizeIdentifier(req.user?.userId || req.body.createdBy || req.body.created_by, 20);
-    
+    const createdBy = sanitizeIdentifier(req.user?.userId, 20);
+    if (!createdBy) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     if (!title || !message)
       return res.status(400).json({ error: 'title and message required' });
 
     const attachmentUrl = req.file ? `/uploads/notifications/${req.file.filename}` : null;
     const createdByInt = createdBy ? parseInt(createdBy, 10) : null;
+    if (createdByInt !== null && Number.isNaN(createdByInt)) {
+      return res.status(400).json({ error: 'Invalid createdBy identifier' });
+    }
 
     const result = await req.db.query(
       `INSERT INTO notifications (title, message, attachment_url, recipient_role, class_level, section, created_by)

@@ -9,9 +9,14 @@ import { populateERPFilters } from './admin-dashboard.js';
 
 // 🛑 DOM GUARD
 const isAdminPage = !!document.getElementById('admin-dashboard-root');
-if (!isAdminPage && !document.getElementById('student-results-container')) {
-  console.debug('ℹ️ exam-results.js skipped');
+const isStudentPage = !!document.getElementById('student-results-container');
+const shouldInitialize = isAdminPage || isStudentPage;
+
+if (!shouldInitialize) {
+  console.debug('ℹ️ exam-results.js skipped — no relevant container found');
 }
+
+if (shouldInitialize) {
 // SCOPED STYLES - Prevents conflicts with dashboard CSS
 // ═══════════════════════════════════════════════════════════════════
 const examResultsStyles = document.createElement('style');
@@ -188,7 +193,9 @@ examResultsStyles.textContent = `
     }
   }
 `;
-document.head.appendChild(examResultsStyles);
+if (shouldInitialize) {
+  document.head.appendChild(examResultsStyles);
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // DATA FETCHING - Connect to backend exam_results table
@@ -229,8 +236,7 @@ async function fetchExamResultsFromAPI() {
             <i class="fas fa-exclamation-circle"></i>
             <p>Failed to load exam results. Please try again later.</p>
             <small>${error.message}</small>
-          </td>
-        </tr>
+            ${student.subjects.map(s => `<strong>${s.name}:</strong> ${Number(s.marks ?? s.obtained ?? 0)} marks`).join('<br>')}        </tr>
       `;
     }
   }
@@ -246,10 +252,9 @@ function transformAPIData(apiData) {
 
   return dataArray.map((item, index) => {
     // Correctly prioritize fields from API
-    const total = Number(item.total_marks || item.totalMarks || item.total || 300);
-    const obtained = Number(item.obtained_marks || item.obtainedMarks || item.marksObtained || item.obtained || 0);
+    const total = Number(item.total_marks ?? item.totalMarks ?? item.total ?? 300);
+    const obtained = Number(item.obtained_marks ?? item.obtainedMarks ?? item.marksObtained ?? item.obtained ?? 0);
     const percentage = item.percentage !== undefined ? Number(item.percentage) : (total > 0 ? (obtained / total * 100) : 0);
-    
     return {
       id: item.id || index + 1,
       roll: item.roll_number || item.roll_no || item.roll || item.rollNumber || 'N/A',
@@ -415,17 +420,19 @@ export function initExamResults() {
   console.log('✅ Exam Results Module initialized');
 }
 
-// Make functions globally available
-window.initExamResults = initExamResults;
+if (shouldInitialize) {
+  // Make functions globally available
+  window.initExamResults = initExamResults;
 
-// Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    // Both admin and student dashboards might use this script via circular imports, 
-    // but they must only initialize their respective parts.
-    const tbody = document.getElementById('exam-results-tbody');
-    if (tbody && isAdminPage) {
-      initExamResults();
-    }
-  }, 300);
-});
+  // Auto-initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      // Both admin and student dashboards might use this script via circular imports, 
+      // but they must only initialize their respective parts.
+      const tbody = document.getElementById('exam-results-tbody');
+      if (tbody && isAdminPage) {
+        initExamResults();
+      }
+    }, 300);
+  });
+}

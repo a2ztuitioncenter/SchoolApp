@@ -134,7 +134,8 @@ async function loadTeacherSubjects() {
 
         tbody.innerHTML = data.map(s => `
             <tr>
-                <td><strong>${escapeHtml(s.master_name || s.name)}</strong></td>
+
+            <td><strong>${escapeHtml(s.master_name || s.name)}</strong></td>
                 <td><span class="badge">Class ${escapeHtml(s.class_level || s.classLevel)}</span></td>
                 <td><span class="badge secondary">${escapeHtml(s.section || 'All Sections')}</span></td>
                 <td>${formatDate(s.created_at || s.createdAt)}</td>
@@ -431,7 +432,7 @@ function updateDashboardUI(dashRes, matRes) {
             const caret = btn.querySelector('.fa-caret-down');
             if (btn && caret) {
                 btn.innerHTML = `
-                  <img src="${avatarUrl}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
+                  <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
                   ${caret.outerHTML}
                 `;
             }
@@ -777,11 +778,11 @@ window.saveAttendance = async function () {
         return;
     }
 
-    const section = document.getElementById('att-section-select')?.value || 'A';
+    const section = document.getElementById('att-section-select')?.value || '';
     const records = Object.entries(attendanceData).map(([id, status]) => ({
         studentId: parseInt(id),
         classLevel,
-        section,
+        section: section || null,
         date,
         status
     }));
@@ -967,6 +968,7 @@ function setupFormListeners() {
     fd.append('description', document.getElementById('hw-description').value);
     fd.append('dueDate', document.getElementById('hw-dueDate').value);
     
+    const file = document.getElementById('hw-file')?.files[0];
     if (pendingHwUpload) {
       fd.append('attachmentId', pendingHwUpload.id);
       fd.append('fileUrl', pendingHwUpload.url);
@@ -1154,7 +1156,7 @@ function renderMaterialsTable() {
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
           <div class="action-menu-dropdown">
-            <button class="action-menu-item" onclick="downloadFile('${m.fileUrl}', '${(m.title || 'material').replace(/'/g, "\\'")}.pdf')"><i class="fas fa-download" style="width:16px;"></i> Download</button>
+            <button class="action-menu-item" onclick="downloadFile('${escapeAttr(m.fileUrl)}', '${escapeAttr(m.title || 'material')}.pdf')"><i class="fas fa-download" style="width:16px;"></i> Download</button>
             <button class="action-menu-item" onclick="editMaterial(${m.id})"><i class="fas fa-pen" style="width:16px;"></i> Edit</button>
             <div class="action-menu-divider"></div>
             <button class="action-menu-item danger" onclick="deleteMaterial(${m.id})"><i class="fas fa-trash" style="width:16px;"></i> Delete</button>
@@ -1538,6 +1540,24 @@ window.toggleActionMenu = function (e) {
 
   const isActive = dropdown.classList.contains('active');
 
+  // Store original parent for restoration
+  if (!dropdown._originalParent && dropdown.parentElement !== document.body) {
+      dropdown._originalParent = dropdown.parentElement;
+      dropdown._originalNextSibling = dropdown.nextElementSibling;
+  }
+
+  // Helper to return dropdown to original position
+  const restoreDropdown = () => {
+      dropdown.classList.remove('active');
+      if (dropdown._originalParent) {
+          if (dropdown._originalNextSibling) {
+              dropdown._originalParent.insertBefore(dropdown, dropdown._originalNextSibling);
+          } else {
+              dropdown._originalParent.appendChild(dropdown);
+          }
+      }
+  };
+
   if (!isActive) {
     // Teleport to body to escape transform/overflow constraints
     if (dropdown.parentElement !== document.body) {
@@ -1578,13 +1598,13 @@ window.toggleActionMenu = function (e) {
     // Handle click outside to close
     const closeMenu = (event) => {
         if (!dropdown.contains(event.target) && event.target !== btn) {
-            dropdown.classList.remove('active');
+            restoreDropdown();
             document.removeEventListener('click', closeMenu);
         }
     };
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
   } else {
-    dropdown.classList.remove('active');
+    restoreDropdown();
   }
 };
 
@@ -1988,6 +2008,15 @@ window.openCMSModal = async function(type) {
     bodyEl.innerHTML = '<p class="loading-text">Loading content...</p>';
     modal.style.display = 'flex';
     
+    // Helper to safely sanitize HTML
+    const sanitize = (html) => {
+        if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+        // Fallback: strip all tags if DOMPurify unavailable
+        const div = document.createElement('div');
+        div.textContent = html;
+        return div.innerHTML;
+    };
+
     try {
         const res = await contentAPI.get(type);
         if (res.success && res.data) {
@@ -1996,14 +2025,14 @@ window.openCMSModal = async function(type) {
             if (m) {
                 try {
                     const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
-                    const clean = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(parsed) : parsed;
+                    const clean = sanitize(parsed);
                     bodyEl.innerHTML = `<div class="markdown-content">${clean}</div>`;
                 } catch (e) {
                     console.error('Markdown error:', e);
-                    bodyEl.innerHTML = rawContent;
+                    bodyEl.innerHTML = sanitize(rawContent);
                 }
             } else {
-                bodyEl.innerHTML = rawContent || '<p class="empty-state">No content available.</p>';
+                bodyEl.innerHTML = sanitize(rawContent) || '<p class="empty-state">No content available.</p>';
             }
         } else {
             bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
@@ -2107,7 +2136,7 @@ function renderTeacherSubmissions(subs) {
                     <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="background: #ebf4ff; color: #2b6cb0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;" title="View File">
                         <i class="fas fa-eye"></i> View
                     </button>
-                    <button onclick="openReviewModal(${s.id}, '${escapeAttr(s.student_name)}', '${formatDate(s.submitted_at)}', '${escapeAttr(s.marks || '')}', '${escapeAttr(s.remark_text || '')}')" class="btn-sm" style="background: #e6fffa; color: #2c7a7b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                    <button onclick="openReviewModal(${s.id}, '${escapeAttr(s.student_name)}', '${formatDate(s.submitted_at)}', '${escapeAttr(s.marks ?? '')}', '${escapeAttr(s.remark_text ?? '')}')" class="btn-sm" style="background: #e6fffa; color: #2c7a7b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
                         <i class="fas fa-check-circle"></i> ${s.status === 'reviewed' ? 'Update' : 'Review'}
                     </button>
                 </div>
@@ -2156,7 +2185,7 @@ window.viewSubmissions = async function(homeworkId, title) {
                         <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="background: #ebf4ff; color: #2b6cb0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
                             <i class="fas fa-eye"></i> View
                         </button>
-                        <button onclick="openReviewModal(${s.id}, '${escapeAttr(s.student_name)}', '${formatDate(s.submitted_at)}', '${escapeAttr(s.marks || '')}', '${escapeAttr(s.remark_text || '')}')" class="btn-sm" style="background: #e6fffa; color: #2c7a7b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                        <button onclick="openReviewModal(${s.id}, '${escapeAttr(s.student_name)}', '${formatDate(s.submitted_at)}', '${escapeAttr(s.marks ?? '')}', '${escapeAttr(s.remark_text ?? '')}')" class="btn-sm" style="background: #e6fffa; color: #2c7a7b; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
                             <i class="fas fa-check-circle"></i> ${s.status === 'reviewed' ? 'Update' : 'Review'}
                         </button>
                     </div>
@@ -2181,8 +2210,8 @@ window.openReviewModal = function(id, name, date, marks, remarks) {
     document.getElementById('review-submission-id').value = id;
     document.getElementById('review-student-name').textContent = name;
     document.getElementById('review-submitted-at').textContent = `Submitted: ${date}`;
-    document.getElementById('review-marks').value = marks === 'null' ? '' : marks;
-    document.getElementById('review-remarks').value = remarks === 'null' ? '' : remarks;
+    document.getElementById('review-marks').value = (marks === 'null' || marks === null || marks === undefined) ? '' : marks;
+    document.getElementById('review-remarks').value = (remarks === 'null' || remarks === null || remarks === undefined) ? '' : remarks;
     
     modal.style.display = 'flex';
 };

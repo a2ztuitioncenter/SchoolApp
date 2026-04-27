@@ -8,10 +8,10 @@ const getBaseApiUrl = () => {
   if (typeof window === 'undefined') return '';
 
   const { hostname, origin, port } = window.location;
-  
+
   // Check if we are on a Cloudflare tunnel
   const isCloudflare = hostname.endsWith('.trycloudflare.com');
-  
+
   // If on Cloudflare, use relative paths (return empty string)
   // This ensures /api calls go to the same origin as the frontend
   if (isCloudflare) {
@@ -19,19 +19,19 @@ const getBaseApiUrl = () => {
   }
 
   // Inclusive check for localhost variations
-  const isLocal = hostname === 'localhost' || 
-                 hostname === '127.0.0.1' ||
-                 hostname === 'www.localhost' ||
-                 hostname.startsWith('192.168.') ||
-                 hostname.startsWith('10.') ||
-                 hostname.endsWith('.local');
-                  
+  const isLocal = hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === 'www.localhost' ||
+    hostname.startsWith('192.168.') ||
+    hostname.startsWith('10.') ||
+    hostname.endsWith('.local');
+
   if (isLocal) {
     // Use relative paths to take advantage of the frontend server's proxy (on port 8000)
     // or direct access (if on port 3000).
     return '';
   }
-  
+
   // Fallback for production
   return 'https://schoolapp-d9y5.onrender.com';
 };
@@ -88,16 +88,31 @@ export const apiCall = async (endpoint, options = {}) => {
         // Try to refresh the token silently
         const refreshed = await tryRefreshToken();
         if (refreshed) {
-          // Retry the original request once
-          const retryResp = await fetch(url, { ...options, headers, signal, credentials: 'include' });
-          if (retryResp.ok) {
-            if (options.responseType === 'blob') return await retryResp.blob();
-            const ct = retryResp.headers.get('content-type');
-            if (ct?.includes('application/json')) {
-              const text = await retryResp.text();
-              return text ? JSON.parse(text) : {};
+          // Retry the original request once with a fresh timeout/signal
+          const retryController = new AbortController();
+          const retryTimeoutId = setTimeout(() => retryController.abort(), 15000);
+          
+          try {
+            const retryResp = await fetch(url, { 
+              ...options, 
+              headers, 
+              signal: retryController.signal, 
+              credentials: 'include' 
+            });
+            clearTimeout(retryTimeoutId);
+
+            if (retryResp.ok) {
+              if (options.responseType === 'blob') return await retryResp.blob();
+              const ct = retryResp.headers.get('content-type');
+              if (ct?.includes('application/json')) {
+                const text = await retryResp.text();
+                return text ? JSON.parse(text) : {};
+              }
+              return await retryResp.text();
             }
-            return await retryResp.text();
+          } catch (retryError) {
+            clearTimeout(retryTimeoutId);
+            console.error('Retry request failed:', retryError);
           }
         }
         // Refresh failed or retry failed — redirect to login
@@ -261,8 +276,7 @@ const materialsAPI = {
 
 const notificationsAPI = {
   getAll: () => apiCall('/admin/notifications', { method: 'GET' }),
-  create: (data) => apiCall('/admin/notifications', { method: 'POST', body: data }),
-  delete: (id) => apiCall(`/admin/notifications/${id}`, { method: 'DELETE' }),
+  create: (data) => apiCall('/admin/notifications', { method: 'POST', body: JSON.stringify(data) }), delete: (id) => apiCall(`/admin/notifications/${id}`, { method: 'DELETE' }),
 };
 
 const resultsAPI = {
@@ -352,7 +366,7 @@ export const adminAPI = {
   getClasses: () => apiCall('/admin/classes', { method: 'GET' }),
   getSections: (classLevel) => apiCall(`/admin/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
   getTeachersByClass: (classLevel, section) => apiCall(`/admin/teachers-by-class?classLevel=${encodeURIComponent(classLevel)}&section=${encodeURIComponent(section)}`, { method: 'GET' }),
-  
+
   // Profile & Settings
   getProfile: () => apiCall('/admin/profile', { method: 'GET' }),
   updateProfile: (data) => apiCall('/admin/profile', { method: 'PUT', body: JSON.stringify(data) }),

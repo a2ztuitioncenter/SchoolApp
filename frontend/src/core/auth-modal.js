@@ -13,6 +13,13 @@ window.setAuth = importedSetAuth;
 let currentAuthType = null;
 let currentAuthRole = null;
 
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 /**
  * Open login selector (shows role selection cards)
  */
@@ -20,7 +27,7 @@ function openAuthLoginSelector(event) {
     event?.preventDefault?.();
     const modal = document.getElementById("authModal");
     const content = document.getElementById("authContent");
-    
+
     content.innerHTML = `
         <div class="modal-header">
             <h2>Login to Your Account</h2>
@@ -44,7 +51,7 @@ function openAuthLoginSelector(event) {
             </div>
         </div>
     `;
-    
+
     showModal();
 }
 
@@ -55,7 +62,7 @@ function openAuthSignupSelector(event) {
     event?.preventDefault?.();
     const modal = document.getElementById("authModal");
     const content = document.getElementById("authContent");
-    
+
     content.innerHTML = `
         <div class="modal-header">
             <h2>Create Your Account</h2>
@@ -74,7 +81,7 @@ function openAuthSignupSelector(event) {
             </div>
         </div>
     `;
-    
+
     showModal();
 }
 
@@ -84,10 +91,10 @@ function openAuthSignupSelector(event) {
 function openAuthModal(type, role) {
     const modal = document.getElementById("authModal");
     const content = document.getElementById("authContent");
-    
+
     currentAuthType = type;
     currentAuthRole = role;
-    
+
     let formContainerId;
     if (type === 'login') {
         if (role === 'student') formContainerId = 'studentLoginForm';
@@ -98,27 +105,27 @@ function openAuthModal(type, role) {
         else if (role === 'teacher') formContainerId = 'teacherSignupForm';
         else if (role === 'unified') formContainerId = 'unifiedSignupForm';
     }
-    
+
     if (!formContainerId) {
         console.error('Invalid auth type or role:', type, role);
         return;
     }
-    
+
     const formContainer = document.getElementById(formContainerId);
     if (!formContainer) {
         console.error('Form container not found:', formContainerId);
         return;
     }
-    
+
     // Clear existing content
     content.innerHTML = '';
-    
+
     // Manage specific styling classes
     modal.classList.remove('student-signup-active');
     if (formContainerId === 'studentSignupForm') {
         modal.classList.add('student-signup-active');
     }
-    
+
     // If it's a template, clone it. Otherwise use innerHTML for backward compatibility.
     if (formContainer.tagName === 'TEMPLATE') {
         const clone = formContainer.content.cloneNode(true);
@@ -126,10 +133,10 @@ function openAuthModal(type, role) {
     } else {
         content.innerHTML = formContainer.innerHTML;
     }
-    
+
     // Rebind event listeners for the injected form
     rebindFormListeners(type, role);
-    
+
     showModal();
 }
 
@@ -171,12 +178,12 @@ function showModal() {
     const modal = document.getElementById('authModal');
     modal.classList.remove('hidden');
     document.body.classList.add('modal-open');
-    
+
     // Trigger animation
     setTimeout(() => {
         modal.classList.add('show');
     }, 10);
-    
+
     setupModalCloseHandlers();
 }
 
@@ -186,7 +193,7 @@ function showModal() {
 function closeAuthModal() {
     const modal = document.getElementById('authModal');
     modal.classList.remove('show');
-    
+
     setTimeout(() => {
         modal.classList.add('hidden');
         modal.classList.remove('student-signup-active');
@@ -225,10 +232,9 @@ async function handleStudentLoginModal(e) {
     const btn = modal.querySelector('#studentLoginBtn');
 
     if (!identifier || !dateOfBirth) {
-        showError(errorDiv, 'Phone/Username and password are required');
+        showError(errorDiv, 'Phone/Username and Date of Birth are required');
         return;
     }
-
     btn.disabled = true;
     btn.textContent = 'Logging in...';
 
@@ -273,18 +279,18 @@ async function handleTeacherLoginModal(e) {
     const password = modal.querySelector('#teacher-login-password')?.value?.trim();
     const errorDiv = modal.querySelector('#teacherLoginError');
     const btn = modal.querySelector('#teacherLoginBtn');
-    
+
     if (!identifier || !password) {
         showError(errorDiv, 'Phone/Username and password are required');
         return;
     }
-    
+
     btn.disabled = true;
     btn.textContent = 'Verifying...';
-    
+
     try {
         const response = await window.authAPI.teacherLogin(identifier, password);
-        
+
         if (response.success && (response.user.role === 'teacher' || response.user.role === 'staff')) {
             window.setAuth({
                 isLoggedIn: true,
@@ -293,11 +299,11 @@ async function handleTeacherLoginModal(e) {
                 name: response.user?.name || '',
                 phone: response.user?.phone || identifier
             });
-            
+
             const successDiv = modal.querySelector('#teacherLoginSuccess');
             showSuccess(successDiv, 'Teacher verified! Redirecting to portal...');
             btn.textContent = 'Redirecting...';
-            
+
             setTimeout(() => {
                 closeAuthModal();
                 window.location.href = '/teacher-dashboard.html';
@@ -323,18 +329,18 @@ async function handleAdminLoginModal(e) {
     const password = modal.querySelector('#admin-login-password')?.value?.trim();
     const errorDiv = modal.querySelector('#adminLoginError');
     const btn = modal.querySelector('#adminLoginBtn');
-    
+
     if (!identifier || !password) {
         showError(errorDiv, 'Phone/Username and password are required');
         return;
     }
-    
+
     btn.disabled = true;
     btn.textContent = 'Verifying...';
-    
+
     try {
         const response = await window.authAPI.adminLogin(identifier, password);
-        
+
         if (response.success && response.user.role === 'admin') {
             window.setAuth({
                 isLoggedIn: true,
@@ -343,11 +349,11 @@ async function handleAdminLoginModal(e) {
                 name: response.user?.name || '',
                 phone: response.user?.phone || identifier
             });
-            
+
             const successDiv = modal.querySelector('#adminLoginSuccess');
             showSuccess(successDiv, 'Admin verified! Redirecting to panel...');
             btn.textContent = 'Redirecting...';
-            
+
             setTimeout(() => {
                 closeAuthModal();
                 window.location.href = '/admin-dashboard.html';
@@ -370,29 +376,29 @@ async function handleStudentSignupModal(e) {
     e.preventDefault();
     const form = e.target;
 
-    const firstName    = form.querySelector('#student-signup-firstName')?.value?.trim();
-    const lastName     = form.querySelector('#student-signup-lastName')?.value?.trim();
-    const phone        = form.querySelector('#student-signup-phone')?.value?.trim();
-    const email        = form.querySelector('#student-signup-email')?.value?.trim();
-    const username     = form.querySelector('#student-signup-username')?.value?.trim();
-    const dobRaw       = form.querySelector('#student-signup-dob')?.value; // YYYY-MM-DD
-    const classLevel   = form.querySelector('#student-signup-class')?.value;
-    const section      = form.querySelector('#student-signup-section')?.value;
-    const fatherName   = form.querySelector('#student-signup-fatherName')?.value?.trim();
-    const motherName   = form.querySelector('#student-signup-motherName')?.value?.trim();
+    const firstName = form.querySelector('#student-signup-firstName')?.value?.trim();
+    const lastName = form.querySelector('#student-signup-lastName')?.value?.trim();
+    const phone = form.querySelector('#student-signup-phone')?.value?.trim();
+    const email = form.querySelector('#student-signup-email')?.value?.trim();
+    const username = form.querySelector('#student-signup-username')?.value?.trim();
+    const dobRaw = form.querySelector('#student-signup-dob')?.value; // YYYY-MM-DD
+    const classLevel = form.querySelector('#student-signup-class')?.value;
+    const section = form.querySelector('#student-signup-section')?.value;
+    const fatherName = form.querySelector('#student-signup-fatherName')?.value?.trim();
+    const motherName = form.querySelector('#student-signup-motherName')?.value?.trim();
 
-    const errorDiv  = form.querySelector('#studentSignupError');
+    const errorDiv = form.querySelector('#studentSignupError');
     const successDiv = form.querySelector('#studentSignupSuccess');
-    const btn       = form.querySelector('#studentSignupBtn');
+    const btn = form.querySelector('#studentSignupBtn');
 
     clearMessages(errorDiv, successDiv);
 
     const missing = [
-        { val: firstName,  name: 'First Name' },
-        { val: phone,      name: 'Phone' },
-        { val: dobRaw,     name: 'Date of Birth' },
+        { val: firstName, name: 'First Name' },
+        { val: phone, name: 'Phone' },
+        { val: dobRaw, name: 'Date of Birth' },
         { val: classLevel, name: 'Class Level' },
-        { val: section,    name: 'Section' },
+        { val: section, name: 'Section' },
         { val: fatherName, name: 'Father Name' },
         { val: motherName, name: 'Mother Name' }
     ].filter(f => !f.val);
@@ -415,7 +421,12 @@ async function handleStudentSignupModal(e) {
     }
 
     // Format YYYY-MM-DD -> DD/MM/YY
-    const [yyyy, mm, dd] = dobRaw.split('-');
+    const parts = dobRaw.split('-');
+    if (parts.length !== 3 || parts.some(p => !p)) {
+        showError(errorDiv, 'Invalid date format. Please use YYYY-MM-DD.');
+        return;
+    }
+    const [yyyy, mm, dd] = parts;
     const yy = yyyy.slice(2);
     const dateOfBirth = `${dd}/${mm}/${yy}`;
 
@@ -457,7 +468,7 @@ async function handleStudentSignupModal(e) {
 async function handleTeacherSignupModal(e) {
     e.preventDefault();
     const form = e.target;
-    
+
     const role = form.querySelector('#teacher-signup-role')?.value?.trim();
     const name = form.querySelector('#teacher-signup-name')?.value?.trim();
     const username = form.querySelector('#teacher-signup-username')?.value?.trim();
@@ -468,9 +479,9 @@ async function handleTeacherSignupModal(e) {
     const errorDiv = form.querySelector('#teacherSignupError');
     const successDiv = form.querySelector('#teacherSignupSuccess');
     const btn = form.querySelector('#teacherSignupBtn');
-    
+
     clearMessages(errorDiv, successDiv);
-    
+
     if (!role || !name || !email || !phone || !password || !confirmPassword) {
         showError(errorDiv, 'All fields are required');
         return;
@@ -487,15 +498,15 @@ async function handleTeacherSignupModal(e) {
             return;
         }
     }
-    
+
     if (password !== confirmPassword) {
         showError(errorDiv, 'Passwords do not match');
         return;
     }
-    
+
     btn.disabled = true;
     btn.textContent = 'Creating Account...';
-    
+
     try {
         const response = await window.authAPI.teacherRegister({
             name,
@@ -506,7 +517,7 @@ async function handleTeacherSignupModal(e) {
             role,
             username: username || undefined
         });
-        
+
         if (response.success) {
             btn.textContent = 'Sign Up';
             showRegistrationPopup('success',
@@ -583,7 +594,7 @@ function showError(element, message) {
     element.textContent = message;
     element.classList.add('show');
     element.classList.remove('hidden');
-    
+
     setTimeout(() => {
         element.classList.remove('show');
     }, 5000);
@@ -594,7 +605,7 @@ function showSuccess(element, message) {
     element.textContent = message;
     element.classList.add('show');
     element.classList.remove('hidden');
-    
+
     setTimeout(() => {
         element.classList.remove('show');
     }, 3000);
@@ -632,7 +643,7 @@ function showRegistrationPopup(type, message) {
                 <i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-times-circle'}"></i>
             </div>
             <h2 class="reg-popup-title">${isSuccess ? 'Registration Successful!' : 'Registration Failed'}</h2>
-            <p class="reg-popup-message">${message}</p>
+            <p class="reg-popup-message">${escapeHtml(message)}</p>
             ${isSuccess ? '<div class="reg-popup-badge"><i class="fas fa-clock"></i> Pending Admin Approval</div>' : ''}
             <button class="reg-popup-btn ${isSuccess ? 'reg-popup-btn--success' : 'reg-popup-btn--error'}" id="reg-popup-close">
                 ${isSuccess ? 'Got it!' : 'Try Again'}

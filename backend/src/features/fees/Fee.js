@@ -142,7 +142,9 @@ export const feeModel = {
 // Legacy helper exports
 export const getAllStudentFees = async (pool, studentId) => {
   const result = await pool.query(
-    `SELECT * FROM fees WHERE student_id = $1 ORDER BY created_at DESC`,
+    `SELECT f.*, s.name AS student_name, s.class_level, s.section
+     FROM fees f JOIN students s ON f.student_id = s.id
+     WHERE f.student_id = $1 ORDER BY f.created_at DESC`,
     [studentId]
   );
   return result.rows.map(row => feeModel.formatRow(row));
@@ -159,12 +161,22 @@ export const getFeesSummary = async (pool, studentId) => {
      FROM fees WHERE student_id = $1`,
     [studentId]
   );
-  return result.rows[0] || { total_amount: 0, total_paid: 0, total_pending: 0, pending_count: 0, paid_count: 0 };
+  const row = result.rows[0];
+  if (!row) {
+    return { totalAmount: 0, totalPaid: 0, totalPending: 0, pendingCount: 0, paidCount: 0 };
+  }
+  return {
+    totalAmount: parseFloat(row.total_amount),
+    totalPaid: parseFloat(row.total_paid),
+    totalPending: parseFloat(row.total_pending),
+    pendingCount: parseInt(row.pending_count),
+    paidCount: parseInt(row.paid_count)
+  };
 };
 
 export const getPendingFees = async (pool) => {
   const result = await pool.query(
-    `SELECT f.*, s.name AS student_name, s.class_level
+    `SELECT f.*, s.name AS student_name, s.class_level, s.section
      FROM fees f JOIN students s ON f.student_id = s.id
      WHERE f.is_paid = FALSE ORDER BY f.due_date ASC`
   );

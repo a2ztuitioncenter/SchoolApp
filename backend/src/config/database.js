@@ -20,6 +20,11 @@ import pool from './pool.js';
 export async function initializeDatabase() {
     try {
         console.log('Checking/Creating database tables...');
+        
+        // Run migrations for tables that underwent snake_case transition
+        if (resultsModel.migration) await pool.query(resultsModel.migration);
+        if (examResultModel.migration) await pool.query(examResultModel.migration);
+        
         await pool.query(userModel.schema);
         await pool.query(studentModel.schema);
         await pool.query(feeModel.schema);
@@ -58,6 +63,7 @@ async function seedContentPages() {
         }
     } catch (err) {
         console.error('Error seeding content pages:', err.message);
+        throw err;
     }
 }
 

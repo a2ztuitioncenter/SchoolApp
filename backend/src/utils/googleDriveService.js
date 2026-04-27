@@ -6,6 +6,7 @@ class GoogleDriveService {
     constructor() {
         this.scopes = ['https://www.googleapis.com/auth/drive.file'];
         this.folderCache = new Map();
+        this.pendingFolderCreations = new Map();
         this.drive = null;
         this.initPromise = null;
     }
@@ -19,9 +20,12 @@ class GoogleDriveService {
                 const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
                 if (!privateKey) throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is missing');
                 
+                const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+                if (!clientEmail) throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL is missing');
+
                 const auth = new google.auth.GoogleAuth({
                     credentials: {
-                        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                        client_email: clientEmail,
                         private_key: privateKey,
                     },
                     scopes: this.scopes,
@@ -40,48 +44,68 @@ class GoogleDriveService {
     }
 
     async getOrCreateFolder(folderName, parentId = null) {
-        const drive = await this.init();
         const cacheKey = `${parentId || 'root'}_${folderName}`;
+        
+        // 1. Check permanent cache
         if (this.folderCache.has(cacheKey)) {
             return this.folderCache.get(cacheKey);
         }
 
-        try {
-            const escapedName = folderName.replace(/'/g, "\\'");
-            let query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-            if (parentId) {
-                const escapedParent = parentId.replace(/'/g, "\\'");
-                query += ` and '${escapedParent}' in parents`;
-            }
+        // 2. Check for pending creation to prevent race conditions
+        if (this.pendingFolderCreations.has(cacheKey)) {
+            return this.pendingFolderCreations.get(cacheKey);
+        }
 
-            const response = await drive.files.list({
-                q: query,
-                fields: 'files(id, name)',
-                spaces: 'drive',
-            });
+        // 3. Start a new creation process
+        const creationPromise = (async () => {
+            const drive = await this.init();
+            try {
+                const escapedName = folderName.replace(/'/g, "\\'");
+                let query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+                if (parentId) {
+                    const escapedParent = parentId.replace(/'/g, "\\'");
+                    query += ` and '${escapedParent}' in parents`;
+                }
 
-            if (response.data.files && response.data.files.length > 0) {
-                const folderId = response.data.files[0].id;
+                const response = await drive.files.list({
+                    q: query,
+                    fields: 'files(id, name)',
+                    spaces: 'drive',
+                });
+
+                if (response.data.files && response.data.files.length > 0) {
+                    const folderId = response.data.files[0].id;
+                    this.folderCache.set(cacheKey, folderId);
+                    return folderId;
+                }
+
+                const fileMetadata = {
+                    name: folderName,
+                    mimeType: 'application/vnd.google-apps.folder',
+                    parents: parentId ? [parentId] : [],
+                };
+
+                const folder = await drive.files.create({
+                    requestBody: fileMetadata,
+                    fields: 'id',
+                });
+
+                const folderId = folder.data.id;
                 this.folderCache.set(cacheKey, folderId);
                 return folderId;
+            } catch (error) {
+                console.error(`Error in getOrCreateFolder for ${folderName}:`, error.message);
+                throw error;
             }
+        })();
 
-            const fileMetadata = {
-                name: folderName,
-                mimeType: 'application/vnd.google-apps.folder',
-                parents: parentId ? [parentId] : [],
-            };
+        this.pendingFolderCreations.set(cacheKey, creationPromise);
 
-            const folder = await drive.files.create({
-                requestBody: fileMetadata,
-                fields: 'id',
-            });
-
-            this.folderCache.set(cacheKey, folder.data.id);
-            return folder.data.id;
-        } catch (error) {
-            console.error(`Error in getOrCreateFolder for ${folderName}:`, error.message);
-            throw error;
+        try {
+            return await creationPromise;
+        } finally {
+            // Clean up the pending map once done (success or failure)
+            this.pendingFolderCreations.delete(cacheKey);
         }
     }
 
@@ -102,7 +126,7 @@ class GoogleDriveService {
         const sectionId = await this.getOrCreateFolder(`Section_${section}`, classId);
         
         // Map types to display names if needed
-        const typeFolderName = type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
+        const typeFolderName = type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
         const typeId = await this.getOrCreateFolder(typeFolderName, sectionId);
         
         return typeId;
@@ -113,9 +137,7 @@ class GoogleDriveService {
             console.log('⚠️ Using LOCAL storage fallback because GOOGLE_DRIVE_PARENT_ID is missing.');
             const fs = await import('fs/promises');
             const uploadDir = path.join(process.cwd(), 'uploads');
-            try {
-                await fs.mkdir(uploadDir, { recursive: true });
-            } catch (e) {}
+            await fs.mkdir(uploadDir, { recursive: true });
             
             const sanitizedName = this.sanitizeFileName(fileName);
             const uniqueName = `${Date.now()}_${sanitizedName}`;
@@ -179,11 +201,12 @@ class GoogleDriveService {
     async deleteFile(fileId) {
         if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
             const fs = await import('fs/promises');
-            const filePath = path.join(process.cwd(), 'uploads', fileId);
+            const safeFileId = path.basename(fileId);
+            const filePath = path.join(process.cwd(), 'uploads', safeFileId);
             try {
                 await fs.unlink(filePath);
             } catch (err) {
-                console.warn(`Local file ${fileId} not found, skipping deletion.`);
+                console.warn(`Local file ${safeFileId} not found, skipping deletion.`);
             }
             return;
         }
@@ -203,7 +226,8 @@ class GoogleDriveService {
     async getFileStream(fileId) {
         if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
             const fs = await import('fs');
-            const filePath = path.join(process.cwd(), 'uploads', fileId);
+            const safeFileId = path.basename(fileId);
+            const filePath = path.join(process.cwd(), 'uploads', safeFileId);
             if (fs.existsSync(filePath)) {
                 return fs.createReadStream(filePath);
             }
@@ -226,15 +250,16 @@ class GoogleDriveService {
     async getFileMetadata(fileId) {
         if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
             const fs = await import('fs/promises');
-            const filePath = path.join(process.cwd(), 'uploads', fileId);
+            const safeFileId = path.basename(fileId);
+            const filePath = path.join(process.cwd(), 'uploads', safeFileId);
             try {
                 const stats = await fs.stat(filePath);
                 return {
-                    id: fileId,
-                    name: fileId,
+                    id: safeFileId,
+                    name: safeFileId,
                     mimeType: 'application/octet-stream', // Fallback
                     size: stats.size,
-                    webViewLink: `/uploads/${fileId}`
+                    webViewLink: `/uploads/${safeFileId}`
                 };
             } catch (err) {
                 throw new Error('Local file metadata not found');

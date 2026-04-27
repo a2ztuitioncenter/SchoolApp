@@ -36,7 +36,7 @@ router.get('/:userId/results', async (req, res) => {
     const pool = req.db;
 
     const student = await getStudentByUserId(pool, userId);
-    if (!student) return res.json({ success: true, data: [] });
+    if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
     // Fetch results using exam_results table (all columns now snake_case)
     const results = await pool.query(

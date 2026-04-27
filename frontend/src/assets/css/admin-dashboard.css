@@ -1186,20 +1186,23 @@ textarea:focus {
   position: fixed;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  /* rounded-xl */
+  border-radius: var(--radius-md, 12px);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  /* shadow-lg */
   min-width: 180px;
   z-index: 9999999 !important;
   display: none;
-  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
   overflow: hidden;
-  /* For rounded corners + dividers */
 }
 
 .action-menu-dropdown.active {
   display: block;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 @keyframes slideDown {
@@ -2275,30 +2278,7 @@ textarea:focus {
   color: var(--text-main);
 }
 
-.action-menu-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 160px;
-  z-index: 10000;
-  display: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  pointer-events: none;
-}
-
-.action-menu-dropdown.active {
-  display: block;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
+/* Redundant .action-menu-dropdown definitions removed for consolidation */
 
 .action-menu-item {
   display: flex;

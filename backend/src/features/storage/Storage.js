@@ -3,11 +3,11 @@ export const storageModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS app_files (
       id SERIAL PRIMARY KEY,
-      drive_file_id VARCHAR(255) NOT NULL,
+      drive_file_id VARCHAR(255) NOT NULL UNIQUE,
       file_name VARCHAR(255) NOT NULL,
       class_level VARCHAR(50),
       section VARCHAR(50),
-      uploaded_by INTEGER REFERENCES users(id),
+      uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
       file_type VARCHAR(50), -- study_material, homework, assignment
       mime_type VARCHAR(100),
       file_size BIGINT,

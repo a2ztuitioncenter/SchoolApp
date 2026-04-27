@@ -10,7 +10,7 @@ const router = express.Router();
 // Fallback middleware for existing sessions without schoolId in token
 router.use((req, res, next) => {
     if (req.user && !req.user.schoolId) {
-        req.user.schoolId = 'school-001';
+        return res.status(401).json({ success: false, error: 'Session missing schoolId. Please re-authenticate.' });
     }
     next();
 });
@@ -80,7 +80,7 @@ router.get('/users', async (req, res) => {
         res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch users error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch users', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch users' });
     }
 });
 
@@ -97,6 +97,12 @@ router.post('/users/create', async (req, res) => {
             if (studentCount >= 4) return res.status(409).json({ success: false, error: 'Maximum 4 students can register with the same phone number' });
             if (await getNonStudentByPhone(req.db, phone)) return res.status(409).json({ success: false, error: 'Phone already registered to a non-student account' });
         }
+        if (email) {
+            const emailCheck = await req.db.query('SELECT id FROM users WHERE email = $1', [email]);
+            if (emailCheck.rows.length > 0) {
+                return res.status(409).json({ success: false, error: 'Email already registered' });
+            }
+        }
         let teacherId = null;
         if (role === 'teacher' || role === 'staff') {
             teacherId = await generateTeacherId(req.db, role);
@@ -109,7 +115,7 @@ router.post('/users/create', async (req, res) => {
         res.status(201).json({ success: true, data: user });
     } catch (err) {
         console.error('Create user error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -117,7 +123,18 @@ router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
     const { name, phone, email, role, classesAssigned } = req.body;
     try {
-        const user = await updateUser(req.db, id, { name, phone, email, role });
+        // Check email uniqueness if email is being changed
+        if (email) {
+            const emailCheck = await req.db.query(
+                'SELECT id FROM users WHERE email = $1 AND id != $2',
+                [email, id]
+            );
+            if (emailCheck.rows.length > 0) {
+                return res.status(409).json({ success: false, error: 'Email is already in use by another user' });
+            }
+        }
+
+        const user = await updateUser(req.db, id, { name, phone, email, role }, req.user.schoolId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         const schoolId = user.schoolId || req.user.schoolId;
         if ((role === 'teacher' || role === 'staff') && classesAssigned) {
@@ -132,7 +149,7 @@ router.put('/users/:id', async (req, res) => {
         res.json({ success: true, data: user });
     } catch (err) {
         console.error('Update user error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -142,13 +159,13 @@ router.get('/users/:id/assignments', async (req, res) => {
         res.json({ success: true, data: assignments || [] });
     } catch (err) {
         console.error('Fetch assignments error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 router.delete('/users/:id', async (req, res) => {
     try {
-        const deleted = await deleteUser(req.db, req.params.id);
+        const deleted = await deleteUser(req.db, req.params.id, req.user.schoolId);
         if (!deleted) return res.status(404).json({ success: false, error: 'User not found' });
         
         await logAudit(req.db, req.user.userId, 'DELETE_USER', 'users', req.params.id, `Deleted user ID ${req.params.id}`);
@@ -156,18 +173,18 @@ router.delete('/users/:id', async (req, res) => {
         res.json({ success: true, message: 'User deleted' });
     } catch (err) {
         console.error('Delete user error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 router.patch('/users/:id/status', async (req, res) => {
     try {
-        const user = await toggleUserStatus(req.db, req.params.id, req.body.isActive);
+        const user = await toggleUserStatus(req.db, req.params.id, req.body.isActive, req.user.schoolId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         res.json({ success: true, data: user });
     } catch (err) {
         console.error('Toggle status error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -208,7 +225,7 @@ router.get('/students', async (req, res) => {
         res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch students error:', err.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch students', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch students' });
     }
 });
 
@@ -265,6 +282,16 @@ router.post('/students/create', async (req, res) => {
                 await client.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
             }
 
+            // Check for duplicate enrollment
+            const existingStudent = await client.query(
+                'SELECT id FROM students WHERE user_id = $1 AND class_level = $2 AND section = $3 AND school_id = $4',
+                [user.id, classLevel.toString(), section, req.user.schoolId]
+            );
+            if (existingStudent.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ success: false, error: 'Student already enrolled in this class/section' });
+            }
+
             const classPart = classLevel.toString().padStart(2, '0');
             const sectionPart = section.toUpperCase();
             const prefix = `${classPart}${sectionPart}`;
@@ -304,7 +331,7 @@ router.post('/students/create', async (req, res) => {
         }
     } catch (err) {
         console.error('[STUDENT CREATE] Error:', err.message);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -321,28 +348,28 @@ router.put('/students/:id', async (req, res) => {
                  mother_name = COALESCE($5, mother_name),
                  phone = COALESCE($6, phone),
                  email = COALESCE($7, email)
-             WHERE id = $8 RETURNING *`,
-            [name, classLevel, section, fatherName, motherName, phone, email, id]
+             WHERE id = $8 AND school_id = $9 RETURNING *`,
+            [name, classLevel, section, fatherName, motherName, phone, email, id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update student error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 router.patch('/students/:id/status', async (req, res) => {
     try {
         const result = await req.db.query(
-            `UPDATE students SET status = $1 WHERE id = $2 RETURNING *`,
-            [req.body.status, req.params.id]
+            `UPDATE students SET status = $1 WHERE id = $2 AND school_id = $3 RETURNING *`,
+            [req.body.status, req.params.id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update student status error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -352,7 +379,7 @@ router.delete('/students/:id', async (req, res) => {
         const studentId = req.params.id;
         await client.query('BEGIN');
 
-        const studentResult = await client.query('SELECT user_id FROM students WHERE id = $1 FOR UPDATE', [studentId]);
+        const studentResult = await client.query('SELECT user_id FROM students WHERE id = $1 AND school_id = $2 FOR UPDATE', [studentId, req.user.schoolId]);
         if (studentResult.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ success: false, error: 'Student not found' });
@@ -382,7 +409,7 @@ router.delete('/students/:id', async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Delete student error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     } finally {
         client.release();
     }
@@ -424,7 +451,7 @@ router.get('/financials/unpaid-fees', async (req, res) => {
         res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch unpaid fees error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch unpaid fees', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch unpaid fees' });
     }
 });
 
@@ -444,7 +471,7 @@ router.get('/financials/report', async (req, res) => {
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Financial report error:', err);
-        res.status(500).json({ success: false, error: 'Failed to generate report', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to generate report' });
     }
 });
 
@@ -466,7 +493,7 @@ router.get('/financials/trends', async (req, res) => {
         res.json({ success: true, data: result.rows || [] });
     } catch (err) {
         console.error('Financial trends error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch trends', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch trends' });
     }
 });
 
@@ -504,13 +531,13 @@ router.get('/timetable', async (req, res) => {
         res.json({ success: true, data: mapped });
     } catch (err) {
         console.error('Fetch timetable error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch timetable', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch timetable' });
     }
 });
 
 router.post('/timetable', async (req, res) => {
     const { dayOfWeek, startTime, endTime, subjectId, classLevel, section, teacherId } = req.body;
-    const normalizedSection = section || 'A';
+    const normalizedSection = section || null;
     const client = await req.db.connect();
 
     try {
@@ -549,7 +576,7 @@ router.post('/timetable', async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Create timetable error:', err);
-        res.status(500).json({ success: false, error: 'Failed to create timetable entry', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to create timetable entry' });
     } finally {
         client.release();
     }
@@ -557,11 +584,17 @@ router.post('/timetable', async (req, res) => {
 
 router.delete('/timetable/:id', async (req, res) => {
     try {
-        await req.db.query('DELETE FROM timetable WHERE id = $1', [req.params.id]);
+        const result = await req.db.query(
+            'DELETE FROM timetable WHERE id = $1 AND school_id = $2 RETURNING id',
+            [req.params.id, req.user.schoolId]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, error: 'Timetable entry not found' });
+        }
         res.json({ success: true, message: 'Timetable entry deleted' });
     } catch (err) {
         console.error('Delete timetable error:', err);
-        res.status(500).json({ success: false, error: 'Failed to delete timetable', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to delete timetable' });
     }
 });
 
@@ -700,7 +733,8 @@ router.get('/financials/trends', async (req, res) => {
 router.get('/classes', async (req, res) => {
     try {
         const result = await req.db.query(
-            "SELECT DISTINCT class_level FROM students WHERE class_level IS NOT NULL AND class_level != '' ORDER BY class_level ASC"
+            "SELECT DISTINCT class_level FROM students WHERE school_id = $1 AND class_level IS NOT NULL AND class_level != '' ORDER BY class_level ASC",
+            [req.user.schoolId]
         );
         res.json({ success: true, data: result.rows.map(r => r.class_level) });
     } catch (err) {
@@ -719,8 +753,8 @@ router.get('/sections', async (req, res) => {
     
     try {
         const result = await req.db.query(
-            "SELECT DISTINCT section FROM students WHERE class_level = $1 AND section IS NOT NULL AND section != '' ORDER BY section ASC",
-            [classLevel]
+            "SELECT DISTINCT section FROM students WHERE school_id = $2 AND class_level = $1 AND section IS NOT NULL AND section != '' ORDER BY section ASC",
+            [classLevel, req.user.schoolId]
         );
         res.json({ success: true, data: result.rows.map(r => r.section) });
     } catch (err) {
@@ -742,12 +776,12 @@ router.get('/teachers-by-class', async (req, res) => {
             SELECT DISTINCT u.id, u.name 
             FROM users u
             JOIN teacher_class_assignment tca ON u.id = tca.teacher_id
-            WHERE tca.class_level = $1
+            WHERE tca.class_level = $1 AND tca.school_id = $2
         `;
-        const params = [classLevel];
+        const params = [classLevel, req.user.schoolId];
         
         if (section && section !== 'ALL') {
-            query += " AND (tca.section = $2 OR tca.section = 'ALL')";
+            query += " AND (tca.section = $3 OR tca.section = 'ALL')";
             params.push(section);
         }
 
@@ -790,6 +824,17 @@ router.get('/profile', async (req, res) => {
 router.put('/profile', async (req, res) => {
     const { name, email, avatar_url, designation } = req.body;
     try {
+        // Check email uniqueness if email is being changed
+        if (email) {
+            const emailCheck = await req.db.query(
+                'SELECT id FROM users WHERE email = $1 AND id != $2',
+                [email, req.user.userId]
+            );
+            if (emailCheck.rows.length > 0) {
+                return res.status(409).json({ success: false, error: 'Email is already in use' });
+            }
+        }
+
         const result = await req.db.query(
             `UPDATE users 
              SET name = COALESCE($2, name), 

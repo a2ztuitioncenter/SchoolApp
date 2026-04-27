@@ -8,7 +8,7 @@ export const storageController = {
             const file = req.file;
 
             if (!file) return res.status(400).json({ success: false, error: 'No file uploaded' });
-            
+
             // Type is required to organize the storage
             if (!type) {
                 return res.status(400).json({ success: false, error: 'Missing file type (e.g., material, homework, submission)' });
@@ -30,24 +30,36 @@ export const storageController = {
             );
 
             // 3. Save to Database
-            const result = await pool.query(
-                `INSERT INTO app_files 
-                (drive_file_id, file_name, class_level, section, uploaded_by, file_type, mime_type, file_size, web_view_link, download_link)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                RETURNING *`,
-                [
-                    driveFile.id,
-                    driveFile.name,
-                    classLevel,
-                    section,
-                    req.user?.userId || null,
-                    type,
-                    file.mimetype,
-                    driveFile.size,
-                    driveFile.webViewLink,
-                    driveFile.webContentLink
-                ]
-            );
+            let result;
+            try {
+                result = await pool.query(
+                    `INSERT INTO app_files 
+                    (drive_file_id, file_name, class_level, section, uploaded_by, file_type, mime_type, file_size, web_view_link, download_link)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    RETURNING *`,
+                    [
+                        driveFile.id,
+                        driveFile.name,
+                        classLevel,
+                        section,
+                        req.user?.userId || null,
+                        type,
+                        file.mimetype,
+                        driveFile.size,
+                        driveFile.webViewLink,
+                        driveFile.webContentLink
+                    ]
+                );
+            } catch (dbError) {
+                // Compensate: remove orphaned Drive file
+                console.error('DB insert failed, cleaning up Drive file:', driveFile.id);
+                try {
+                    await googleDriveService.deleteFile(driveFile.id);
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup orphaned Drive file:', cleanupError.message);
+                }
+                throw dbError;
+            }
 
             res.status(201).json({
                 success: true,
@@ -91,7 +103,7 @@ export const storageController = {
             query += ' ORDER BY f.created_at DESC';
 
             const result = await pool.query(query, params);
-            
+
             const files = result.rows.map(row => ({
                 id: row.id,
                 driveFileId: row.drive_file_id,
@@ -115,21 +127,21 @@ export const storageController = {
         try {
             const { fileId } = req.params;
             const metadata = await googleDriveService.getFileMetadata(fileId);
-            
+
             // RFC 5987 encoding for Content-Disposition (Security & Character Support)
             const filename = metadata.name || 'download';
             const asciiName = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
             const utf8Name = encodeURIComponent(filename).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
-            
-            res.setHeader('Content-Type', metadata.mimeType);
+
+            res.setHeader('Content-Type', metadata.mimeType || 'application/octet-stream');
             res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`);
-            
+
             if (metadata.size) {
                 res.setHeader('Content-Length', metadata.size);
             }
 
             const stream = await googleDriveService.getFileStream(fileId);
-            
+
             // Handle stream errors to prevent partial corrupted files
             stream.on('error', (err) => {
                 console.error('Stream error during download:', err);
@@ -159,7 +171,7 @@ export const storageController = {
                 'DELETE FROM app_files WHERE id = $1 RETURNING drive_file_id',
                 [id]
             );
-            
+
             if (result.rows.length === 0) {
                 return res.status(404).json({ success: false, error: 'File not found in database' });
             }

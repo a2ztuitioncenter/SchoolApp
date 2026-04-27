@@ -21,8 +21,8 @@ function validateField(value, fieldSchema, fieldName) {
 
   if (fieldSchema.type === 'string') {
     if (typeof value !== 'string') return `${fieldName} must be a string`;
-    if (fieldSchema.min && value.length < fieldSchema.min) return `${fieldName} must be at least ${fieldSchema.min} characters`;
-    if (fieldSchema.max && value.length > fieldSchema.max) return `${fieldName} must be at most ${fieldSchema.max} characters`;
+    if (fieldSchema.min !== undefined && value.length < fieldSchema.min) return `${fieldName} must be at least ${fieldSchema.min} characters`;
+    if (fieldSchema.max !== undefined && value.length > fieldSchema.max) return `${fieldName} must be at most ${fieldSchema.max} characters`;
     if (fieldSchema.pattern && !fieldSchema.pattern.test(value)) return fieldSchema.patternMsg || `${fieldName} has invalid format`;
     if (fieldSchema.enum && !fieldSchema.enum.includes(value)) return `${fieldName} must be one of: ${fieldSchema.enum.join(', ')}`;
   }
@@ -49,10 +49,22 @@ export function validateBody(schema) {
   return (req, res, next) => {
     const errors = [];
     for (const [field, rules] of Object.entries(schema)) {
+      if (field.startsWith('__')) continue;
       const value = req.body[field];
       const err = validateField(value, rules, field);
       if (err) errors.push(err);
     }
+
+    if (schema.__oneOf) {
+      const present = schema.__oneOf.some(f => {
+        const val = req.body[f];
+        return val !== undefined && val !== null && val !== '';
+      });
+      if (!present) {
+        errors.push(`At least one of ${schema.__oneOf.join(' or ')} is required`);
+      }
+    }
+
     if (errors.length > 0) {
       return res.status(400).json({ error: errors[0], errors, code: 'VALIDATION_ERROR' });
     }
@@ -66,18 +78,21 @@ export const loginSchema = {
   identifier: { type: 'string', max: 50 },
   phone: { type: 'string', max: 15 },
   dateOfBirth: { type: 'string', required: true, max: 20 },
+  __oneOf: ['identifier', 'phone']
 };
 
 export const adminLoginSchema = {
   identifier: { type: 'string', max: 50 },
   phone: { type: 'string', max: 15 },
   password: { type: 'string', required: true, min: 1, max: 128 },
+  __oneOf: ['identifier', 'phone']
 };
 
 export const teacherLoginSchema = {
   identifier: { type: 'string', max: 50 },
   phone: { type: 'string', max: 15 },
   password: { type: 'string', required: true, min: 1, max: 128 },
+  __oneOf: ['identifier', 'phone']
 };
 
 export const registerSchema = {

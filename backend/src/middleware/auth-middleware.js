@@ -278,11 +278,13 @@ export const validateInput = (req, res, next) => {
  * Restrict API access to trusted origins
  */
 export const corsSecure = () => {
+  // Use explicit allowlist for origins. Default to common dev ports if not specified.
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173,http://localhost:5174,http://127.0.0.1:3000').split(',').map(o => o.trim());
+
   return (req, res, next) => {
     const origin = req.headers.origin;
 
-    // DEVELOPMENT MODE: Always allow the requesting origin (Cloudflare tunnels, localhost, etc.)
-    if (origin) {
+    if (origin && allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token');
@@ -331,9 +333,14 @@ export const csrfProtection = (req, res, next) => {
   // Only enforce on state-changing methods
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
 
-  // Skip CSRF check for login/register/public routes (no cookie set yet)
   const csrfExemptPaths = ['/api/auth/login', '/api/auth/admin-login', '/api/auth/teacher-login', '/api/auth/register', '/api/auth/check-username', '/api/public/'];
   if (csrfExemptPaths.some(p => req.path.startsWith(p))) return next();
+
+  // Skip CSRF check if Authorization header is used (common for mobile/non-browser clients)
+  // CSRF is primarily a concern for cookie-based authentication.
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    return next();
+  }
 
   const cookieToken = req.cookies?.csrf;
   const headerToken = req.headers['x-csrf-token'];

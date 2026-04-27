@@ -4,10 +4,10 @@ export const markAttendance = async (req, res) => {
   try {
     const { studentId, classLevel, section, date, status, is_present } = req.body;
     const final_present = is_present !== undefined ? is_present : (status === 'present' || status === 'true' || status === true);
-    
+
     if (!studentId || !classLevel || !date)
       return res.status(400).json({ error: 'studentId, classLevel, date required' });
-      
+
     const record = await attendanceModel.markBulk(
       [{ studentId, classLevel, section: section || 'A', date, is_present: final_present }],
       req.user?.userId || null
@@ -15,7 +15,7 @@ export const markAttendance = async (req, res) => {
     res.status(201).json({ success: true, message: 'Attendance marked', data: record[0] });
   } catch (err) {
     console.error('markAttendance:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -24,11 +24,17 @@ export const markBulkAttendance = async (req, res) => {
     const { records } = req.body;
     if (!Array.isArray(records) || records.length === 0)
       return res.status(400).json({ error: 'records[] array required' });
-    const results = await attendanceModel.markBulk(records, req.user?.userId || null);
-    res.status(201).json({ success: true, message: `${results.length} records saved`, data: results });
+    const normalizedRecords = records.map(({ studentId, classLevel, section, date, status, is_present }) => ({
+      studentId,
+      classLevel,
+      section: section || 'A',
+      date,
+      is_present: is_present !== undefined ? is_present : (status === 'present' || status === 'true' || status === true)
+    }));
+    const results = await attendanceModel.markBulk(normalizedRecords, req.user?.userId || null); res.status(201).json({ success: true, message: `${results.length} records saved`, data: results });
   } catch (err) {
     console.error('markBulkAttendance:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -42,7 +48,7 @@ export const getByClassAndDate = async (req, res) => {
     res.json({ success: true, data: records });
   } catch (err) {
     console.error('getByClassAndDate:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -56,7 +62,7 @@ export const getStudentsByClass = async (req, res) => {
     res.json({ success: true, data: students });
   } catch (err) {
     console.error('getStudentsByClass:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -66,7 +72,7 @@ export const getByStudent = async (req, res) => {
     res.json({ success: true, data: records });
   } catch (err) {
     console.error('getByStudent:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -80,7 +86,7 @@ export const getMonthlySummary = async (req, res) => {
     res.json({ success: true, data: summary });
   } catch (err) {
     console.error('getMonthlySummary:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -90,7 +96,7 @@ export const getClasses = async (req, res) => {
     res.json({ success: true, data: classes });
   } catch (err) {
     console.error('getClasses:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -103,7 +109,7 @@ export const getSectionsByClass = async (req, res) => {
     res.json({ success: true, data: sections });
   } catch (err) {
     console.error('getSectionsByClass:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -114,6 +120,6 @@ export const getMonthlyOverallAttendance = async (req, res) => {
     res.json({ success: true, data: stats });
   } catch (err) {
     console.error('getMonthlyOverallAttendance:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };

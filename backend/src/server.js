@@ -50,9 +50,6 @@ try {
   const client = await pool.connect();
   console.log('PostgreSQL Database connected successfully');
   client.release();
-
-  // Initialize and Seed Database
-  await initializeDatabase();
 } catch (error) {
   console.error('PostgreSQL connection error:', error.message);
   console.error('Ensure PostgreSQL is running and your .env file is configured correctly.');
@@ -192,7 +189,7 @@ const startServer = async () => {
 
     if (shouldInitializeDB) {
       console.log('Initializing database tables and creating default admin...');
-      await initializeDatabase(pool);
+      await initializeDatabase();
     }
 
     // Start background jobs

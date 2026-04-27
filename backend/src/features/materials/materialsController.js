@@ -81,7 +81,7 @@ export const uploadMaterial = async (req, res) => {
       description,
       classLevel,
       section,
-      subjectId: req.body.subjectId || req.body.subject_id,
+      subjectId: sanitizeIdentifier(req.body.subjectId || req.body.subject_id, 20),
       fileUrl: `/uploads/materials/${req.file.filename}`,
     });
     res.status(201).json({ success: true, data: toApiMaterial(material) });
@@ -116,8 +116,8 @@ export const editMaterial = async (req, res) => {
       description: sanitizeNullableText(req.body.description, 5000),
       classLevel: nextClass,
       section: nextSection,
-      subjectId: req.body.subjectId || req.body.subject_id,
-      fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : req.body.fileUrl || req.body.file_url,
+      subjectId: sanitizeIdentifier(req.body.subjectId || req.body.subject_id, 20),
+      fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : material.file_url,
     });
 
     if (req.file && material.file_url && material.file_url !== updated.file_url) {
@@ -145,7 +145,9 @@ export const removeMaterial = async (req, res) => {
     }
 
     const deleted = await deleteMaterial(req.db, id);
-    removeStoredFile(deleted.file_url);
+    if (deleted?.file_url) {
+      removeStoredFile(deleted.file_url);
+    }
     res.json({ success: true, message: 'Material deleted successfully' });
   } catch (error) {
     console.error('removeMaterial error:', error);

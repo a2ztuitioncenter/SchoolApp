@@ -8,18 +8,18 @@ export const createExamResult = async (req, res) => {
   const examTitle = sanitizeText(req.body.examTitle || req.body.exam_title, 200);
   const subjects = Array.isArray(req.body.subjects)
     ? req.body.subjects.map((subject) => ({
-        name: sanitizeText(subject.name, 100),
-        total: Number(subject.total) || 0,
-        obtained: Number(subject.obtained) || 0,
-        grade: sanitizeNullableText(subject.grade, 10)
-      }))
+      name: sanitizeText(subject.name, 100),
+      total: Number(subject.total) || 0,
+      obtained: Number(subject.obtained) || 0,
+      grade: sanitizeNullableText(subject.grade, 10)
+    }))
     : null;
   const totalMarks = Number(req.body.totalMarks || req.body.total_marks) || 0;
   const obtainedMarks = Number(req.body.obtainedMarks || req.body.obtained_marks) || 0;
   const percentage = Number(req.body.percentage) || 0;
   const remarks = sanitizeNullableText(req.body.remarks, 500);
-  const studentId = Number(req.body.studentId);
-  const teacherId = req.user.userId;
+  const rawStudentId = req.body.studentId || req.body.student_id;
+  const studentId = rawStudentId ? Number(rawStudentId) : null; const teacherId = req.user.userId;
   const pool = req.db;
 
   try {

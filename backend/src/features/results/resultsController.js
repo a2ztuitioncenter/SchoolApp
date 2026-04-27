@@ -44,7 +44,7 @@ export const getResultsByStudent = async (req, res) => {
     res.json({ success: true, data: mappedData });
   } catch (err) {
     console.error('getResultsByStudent:', err);
-    res.status(500).json({ success: false, error: 'Server error', message: err.message });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 };
 
@@ -74,6 +74,6 @@ export const createResult = async (req, res) => {
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('createResult:', err);
-    res.status(500).json({ success: false, error: 'Server error', message: err.message });
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 };

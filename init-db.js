@@ -21,11 +21,12 @@ if (!connectionString) {
   process.exit(1);
 }
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const pool = new Pool({
   connectionString,
-  ssl: { rejectUnauthorized: false }
+  ssl: isDev ? { rejectUnauthorized: false } : { rejectUnauthorized: true }
 });
-
 const schema = `
 -- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
@@ -206,17 +207,19 @@ async function init() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    
+
     console.log('📝 Creating missing tables and indexes (if any)...');
     await client.query(schema);
-    
+
     await client.query('COMMIT');
     console.log('\n✅ Database Schema Sync Completed Successfully!');
     console.log('Existing tables were kept intact. Missing tables were created.');
-    
+
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('\n❌ Sync Failed:', err.message);
+    console.error(err.stack);
+    process.exitCode = 1;
   } finally {
     client.release();
     await pool.end();

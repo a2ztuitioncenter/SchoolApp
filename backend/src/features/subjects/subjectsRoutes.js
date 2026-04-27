@@ -41,13 +41,16 @@ router.post('/admin', async (req, res) => {
             return res.status(409).json({ success: false, error: 'Subject with this name or code already exists' });
         }
         console.error('Add master subject error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 // 3. Delete Master Subject (Admin Only)
 router.delete('/admin/:id', async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
         if (req.user.role !== 'admin') {
             return res.status(403).json({ success: false, error: 'Only admins can delete master subjects' });
         }
@@ -80,6 +83,9 @@ router.get('/', async (req, res) => {
 // 5. Get Subjects for Logged-in Teacher
 router.get('/teacher', async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
         if (req.user.role !== 'teacher') {
             return res.status(403).json({ success: false, error: 'Only teachers can access this' });
         }
@@ -106,7 +112,7 @@ router.post('/assign', async (req, res) => {
 
         // Teachers must be assigned to the class they are assigning a subject to
         if (authenticatedUser.role !== 'admin') {
-            const hasPermission = await subjectModel.checkTeacherPermission(authenticatedUser.userId, classLevel, req.db);
+            const hasPermission = await subjectModel.checkTeacherPermission(authenticatedUser.userId, actualClassLevel, section, null, req.db);
             if (!hasPermission) {
                 return res.status(403).json({ success: false, error: 'You are not assigned to this class' });
             }
@@ -126,13 +132,16 @@ router.post('/assign', async (req, res) => {
             return res.status(409).json({ success: false, error: 'Subject already assigned to this teacher in this class/section' });
         }
         console.error('Assign subject error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
-// 6. Delete Assignment
+// 7. Delete Assignment
 router.delete('/assign/:id', async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
         if (req.user.role !== 'admin') {
             return res.status(403).json({ success: false, error: 'Only admins can remove subject assignments' }); // Can modify for teacher perm
         }

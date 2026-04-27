@@ -29,7 +29,7 @@ export const createSyllabusEntry = async (pool, { teacherId, classLevel, section
   const res = await pool.query(
     `INSERT INTO syllabus (teacher_id, class_level, section, subject, chapter, description)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [teacherId, classLevel, section || 'ALL', subject, chapter, description || null]
+    [teacherId, classLevel, section ?? 'ALL', subject, chapter, description ?? null]
   );
   return res.rows[0];
 };

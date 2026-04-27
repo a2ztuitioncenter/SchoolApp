@@ -1,16 +1,23 @@
-const TAG_RE = /<[^>]*>/g;
+import xss from 'xss';
+
 const CONTROL_RE = /[\u0000-\u001F\u007F]/g;
 
+/**
+ * Sanitize text to prevent XSS and remove control characters.
+ * Always returns a string.
+ */
 export function sanitizeText(value, maxLength = 5000) {
-  if (typeof value !== 'string') return value;
+  if (value === null || value === undefined) return '';
+  
+  // Ensure we are working with a string
+  const str = String(value);
 
-  const normalized = value
+  const sanitized = xss(str)
     .replace(CONTROL_RE, ' ')
-    .replace(TAG_RE, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  return normalized.slice(0, maxLength);
+  return sanitized.slice(0, maxLength);
 }
 
 export function sanitizeNullableText(value, maxLength = 5000) {
@@ -19,6 +26,7 @@ export function sanitizeNullableText(value, maxLength = 5000) {
 }
 
 export function sanitizeIdentifier(value, maxLength = 120) {
+  if (typeof value !== 'string') return null;
   const sanitized = sanitizeText(value, maxLength);
   return sanitized || null;
 }

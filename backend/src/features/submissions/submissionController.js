@@ -9,6 +9,10 @@ export const submitHomework = async (req, res) => {
         const { homeworkId } = req.body;
         const userId = req.user.userId;
 
+        if (!homeworkId) {
+            return res.status(400).json({ success: false, error: 'Homework ID is required' });
+        }
+
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'File is required' });
         }
@@ -21,6 +25,11 @@ export const submitHomework = async (req, res) => {
         const homework = await homeworkModel.getById(homeworkId);
         if (!homework) {
             return res.status(404).json({ success: false, error: 'Homework not found' });
+        }
+
+        // Verify student is authorized to submit to this homework (must be in same class level)
+        if (String(student.classLevel) !== String(homework.classLevel)) {
+            return res.status(403).json({ success: false, error: 'Not authorized to submit to this homework (class mismatch)' });
         }
 
         // Upload to Google Drive
@@ -46,13 +55,22 @@ export const submitHomework = async (req, res) => {
         });
     } catch (err) {
         console.error('submitHomework error:', err);
-        res.status(500).json({ success: false, error: 'Failed to submit homework', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to submit homework' });
     }
 };
 
 export const getStudentSubmissions = async (req, res) => {
     try {
         const userId = req.params.userId;
+        const requesterId = req.user.userId;
+        const requesterRole = req.user.role;
+
+        // Authorization: Only allow students to view their own submissions.
+        // Teachers and admins are permitted to view any student's submissions.
+        if (requesterRole === 'student' && String(requesterId) !== String(userId)) {
+            return res.status(403).json({ success: false, error: 'Unauthorized to view these submissions' });
+        }
+
         const student = await getStudentByUserId(req.db, userId);
         if (!student) {
             return res.status(404).json({ success: false, error: 'Student not found' });
@@ -62,7 +80,7 @@ export const getStudentSubmissions = async (req, res) => {
         res.json({ success: true, data: submissions });
     } catch (err) {
         console.error('getStudentSubmissions error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch submissions', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
     }
 };
 
@@ -77,9 +95,9 @@ export const getHomeworkSubmissions = async (req, res) => {
         }
 
         // Verify teacher permission
-        const hasPermission = homework.teacherId === teacherId || 
-                             await subjectModel.checkTeacherPermission(teacherId, homework.classLevel);
-        
+        const hasPermission = homework.teacherId === teacherId ||
+            await subjectModel.checkTeacherPermission(teacherId, homework.classLevel, homework.section, homework.subjectId);
+
         if (!hasPermission) {
             return res.status(403).json({ success: false, error: 'Unauthorized to view these submissions' });
         }
@@ -88,7 +106,7 @@ export const getHomeworkSubmissions = async (req, res) => {
         res.json({ success: true, data: submissions });
     } catch (err) {
         console.error('getHomeworkSubmissions error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch submissions', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
     }
 };
 
@@ -99,7 +117,7 @@ export const getTeacherSubmissions = async (req, res) => {
         res.json({ success: true, data: submissions });
     } catch (err) {
         console.error('getTeacherSubmissions error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch submissions', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
     }
 };
 
@@ -115,9 +133,9 @@ export const reviewSubmission = async (req, res) => {
         }
 
         // Verify teacher permission
-        const hasPermission = submission.teacher_id === reviewerId || 
-                             await subjectModel.checkTeacherPermission(reviewerId, submission.class_level);
-        
+        const hasPermission = submission.teacher_id === reviewerId ||
+            await subjectModel.checkTeacherPermission(reviewerId, submission.class_level, submission.section, submission.subject_id);
+
         if (!hasPermission) {
             return res.status(403).json({ success: false, error: 'Unauthorized to review this submission' });
         }
@@ -132,6 +150,6 @@ export const reviewSubmission = async (req, res) => {
         res.json({ success: true, message: 'Submission reviewed successfully', data: updated });
     } catch (err) {
         console.error('reviewSubmission error:', err);
-        res.status(500).json({ success: false, error: 'Failed to review submission', message: err.message });
+        res.status(500).json({ success: false, error: 'Failed to review submission' });
     }
 };

@@ -42,7 +42,13 @@ export function startCleanupJob(pool) {
   runCleanup();
 
   // Then schedule to run periodically
-  setInterval(runCleanup, INTERVAL_MS);
-  
+  const intervalId = setInterval(runCleanup, INTERVAL_MS);
+
   console.log('[Cleanup Job] Scheduled expired assignment cleanup (every hour).');
+
+  // Return a function to stop the cleanup job
+  return () => {
+    clearInterval(intervalId);
+    console.log('[Cleanup Job] Stopped cleanup job.');
+  };
 }

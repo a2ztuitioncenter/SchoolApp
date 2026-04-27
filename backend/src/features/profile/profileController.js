@@ -1,5 +1,6 @@
 import { googleDriveService } from '../../utils/googleDriveService.js';
 import { getUserById } from '../auth/User.js';
+import { fileTypeFromBuffer } from 'file-type';
 
 export const updateProfile = async (req, res) => {
     const { name, email } = req.body;
@@ -13,11 +14,19 @@ export const updateProfile = async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        let avatarUrl = user.avatarUrl;
-        let avatarDriveId = user.avatarDriveId;
+        let avatarUrl = user.avatarUrl || user.avatar_url;
+        let avatarDriveId = user.avatarDriveId || user.avatar_drive_id;
 
         // Handle file upload if present
         if (req.file) {
+            // 0. Validate actual file content (signatures)
+            const typeInfo = await fileTypeFromBuffer(req.file.buffer);
+            const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+            
+            if (!typeInfo || !allowedMimeTypes.includes(typeInfo.mime)) {
+                return res.status(400).json({ success: false, error: 'Invalid file content. Only JPG and PNG images are allowed.' });
+            }
+
             console.log('🔄 Uploading new profile picture...');
 
             // 1. Get or create Profile Pictures folder
@@ -26,7 +35,9 @@ export const updateProfile = async (req, res) => {
             const profilesFolderId = await googleDriveService.getOrCreateFolder('Profile_Pictures', rootId);
 
             // 2. Upload new file
-            const fileName = `profile_${userId}_${Date.now()}${req.file.originalname.substring(req.file.originalname.lastIndexOf('.'))}`;
+            const extIndex = req.file.originalname.lastIndexOf('.');
+            const ext = extIndex !== -1 ? req.file.originalname.substring(extIndex) : '';
+            const fileName = `profile_${userId}_${Date.now()}${ext}`;
             const uploadResult = await googleDriveService.uploadFile(
                 req.file.buffer,
                 fileName,
@@ -47,6 +58,17 @@ export const updateProfile = async (req, res) => {
             avatarDriveId = uploadResult.id;
             // Construct download link via our Google Drive download API
             avatarUrl = `/api/storage/download/${avatarDriveId}`;
+        }
+
+        // Check email uniqueness if email is being changed
+        if (email && email !== user.email) {
+            const emailCheck = await pool.query(
+                'SELECT id FROM users WHERE email = $1 AND id != $2',
+                [email, userId]
+            );
+            if (emailCheck.rows.length > 0) {
+                return res.status(409).json({ success: false, error: 'Email is already in use' });
+            }
         }
 
         // 4. Update database

@@ -117,8 +117,8 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
       const [dd, mm, yy] = parts;
       const pivotYear = (new Date().getFullYear() % 100) + 10;
       const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
-      dobISO = `${year}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
-      
+      dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+
       // Semantic validation: Ensure the date actually exists (e.g. Feb 31st is invalid)
       const parsedDate = new Date(dobISO);
       if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO) {
@@ -143,7 +143,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
         if (candidate.status === 'pending') continue;
         if (candidate.status === 'rejected') continue;
         if (candidate.isActive === false) continue;
-        
+
         const dobCheck = await pool.query(
           `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
           [candidate.id, dobISO]
@@ -201,7 +201,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', validateBody(registerSchema), async (req, res) => {
   const { role, phone, password, confirmPassword } = req.body;
   const pool = req.db;
 
@@ -212,7 +212,7 @@ router.post('/register', async (req, res) => {
 
     const normalizedRole = role.toLowerCase();
     const allowedRoles = ['student', 'teacher', 'staff'];
-    
+
     if (!allowedRoles.includes(normalizedRole)) {
       return res.status(400).json({ error: 'Invalid role. Must be student, teacher, or staff' });
     }
@@ -230,8 +230,13 @@ router.post('/register', async (req, res) => {
       if (await isUsernameTaken(pool, username)) return res.status(409).json({ error: 'Username already taken' });
     }
 
-    if (normalizedRole === 'student' && (!sanitizedPhone || !req.body.dateOfBirth)) {
-      return res.status(400).json({ error: 'Phone and Date of Birth are required' });
+    if (sanitizedEmail) {
+      const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1', [sanitizedEmail]);
+      if (emailCheck.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    if (normalizedRole === 'student' && (!sanitizedPhone || !req.body.dateOfBirth || !classLevel)) {
+      return res.status(400).json({ error: 'Phone, Date of Birth, and Class Level are required' });
     }
 
     if (normalizedRole !== 'student' && password !== confirmPassword) {
@@ -256,15 +261,15 @@ router.post('/register', async (req, res) => {
       const { dateOfBirth } = req.body;
       const fullName = sanitizeText(req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(), 100);
 
+      let dobISO_check = null;
       if (dateOfBirth && classLevel) {
-        let dobISO_check = null;
         const dparts = dateOfBirth.split('/');
         if (dparts.length === 3) {
           const [dd, mm, yy] = dparts;
           const pivotYear = (new Date().getFullYear() % 100) + 10;
           const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
           dobISO_check = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-          
+
           // Semantic validation
           const parsedDate = new Date(dobISO_check);
           if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO_check) {
@@ -277,7 +282,7 @@ router.post('/register', async (req, res) => {
           return res.status(409).json({ error: 'A student with the same details is already registered' });
         }
       }
-      
+
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -374,7 +379,7 @@ router.post('/register', async (req, res) => {
         if (!username) {
           await client.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
         }
-        
+
         await updateLastLogin(client, user.id);
         await client.query('COMMIT');
 
@@ -411,7 +416,7 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
     if (!user || (user.role || '').toLowerCase() !== 'admin') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
-    
+
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
@@ -430,11 +435,12 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
     const user = await getUserByPhoneOrUsername(pool, loginId, true);
+    if (!user) return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     const userRole = (user.role || '').toLowerCase();
-    if (!user || (userRole !== 'teacher' && userRole !== 'staff')) return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
+    if (userRole !== 'teacher' && userRole !== 'staff') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     if (user.status !== 'active' || !user.isActive) return res.status(403).json({ error: 'Account not active' });
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
-    
+
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
@@ -448,7 +454,7 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
 
 router.get('/admin/pending-users', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const users = await getUsersByStatus(req.db, 'pending', 'school-001');
+    const users = await getUsersByStatus(req.db, 'pending', req.user.schoolId);
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
     console.error('Pending users error:', error);
@@ -459,7 +465,7 @@ router.get('/admin/pending-users', authenticate, authorize('admin'), async (req,
 router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
   const { classesAssigned } = req.body;
-  
+
   if (!userId) {
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
@@ -492,7 +498,7 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
 
         const sanitizedClasses = [];
         const seen = new Set();
-        
+
         for (const entry of classesAssigned) {
           if (entry === null || entry === undefined) continue;
           let val = entry;
@@ -534,17 +540,17 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
          WHERE id = $1 RETURNING *`,
         [id, 'active', req.user.userId]
       );
-      
+
       const updatedUser = updatedUserRes.rows[0];
       await client.query('COMMIT');
-      
+
       console.log(`[AUTH] Admin ${req.user.userId} approved user ${id} (${user.role})`);
-      
-      res.json({ 
-        success: true, 
-        message: 'User approved successfully', 
+
+      res.json({
+        success: true,
+        message: 'User approved successfully',
         user: updatedUser,
-        data: updatedUser 
+        data: updatedUser
       });
     } catch (err) {
       await client.query('ROLLBACK');
@@ -554,8 +560,8 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
     }
   } catch (error) {
     console.error('Approve user error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Server error approving user',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -565,7 +571,7 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
 router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), async (req, res) => {
   const { userId } = req.params;
   const { reason } = req.body;
-  
+
   if (!userId) {
     return res.status(400).json({ success: false, error: 'User ID is required' });
   }
@@ -582,14 +588,14 @@ router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), asyn
     }
 
     const updatedUser = await updateUserStatus(req.db, id, 'rejected', null, reason || 'Admin rejection');
-    
+
     console.log(`[AUTH] Admin ${req.user.userId} rejected user ${id}`);
-    
+
     res.json({ success: true, message: 'User rejected', user: updatedUser, data: updatedUser });
   } catch (error) {
     console.error('Reject user error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Server error rejecting user',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -598,7 +604,7 @@ router.post('/admin/reject-user/:userId', authenticate, authorize('admin'), asyn
 
 router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const classLevels = await getClassLevels(req.db, 'school-001');
+    const classLevels = await getClassLevels(req.db, req.user.schoolId);
     res.json({ success: true, classLevels });
   } catch (error) {
     console.error('Error fetching class levels:', error);
@@ -607,44 +613,44 @@ router.get('/admin/class-levels', authenticate, authorize('admin'), async (req, 
 });
 
 router.post('/change-password', authenticate, validateBody(changePasswordSchema), async (req, res) => {
-    const { currentPassword, newPassword } = req.body;
-    const pool = req.db;
-    try {
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
-        }
-
-        if (newPassword.length < 6) {
-            return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long' });
-        }
-
-        // Fetch user with password
-        const userResult = await pool.query('SELECT password FROM users WHERE id = $1', [req.user.userId]);
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
-
-        const user = userResult.rows[0];
-
-        // Verify current password
-        const isMatch = await bcrypt.compare(currentPassword, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ success: false, error: 'Incorrect current password' });
-        }
-
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-        // Update password
-        await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.userId]);
-
-        console.log(`[AUTH] User ${req.user.userId} changed their password`);
-
-        res.json({ success: true, message: 'Password changed successfully' });
-    } catch (error) {
-        console.error('Change password error:', error);
-        res.status(500).json({ success: false, error: 'Server error changing password' });
+  const { currentPassword, newPassword } = req.body;
+  const pool = req.db;
+  try {
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
     }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long' });
+    }
+
+    // Fetch user with password
+    const userResult = await pool.query('SELECT password FROM users WHERE id = $1', [req.user.userId]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, error: 'Incorrect current password' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, req.user.userId]);
+
+    console.log(`[AUTH] User ${req.user.userId} changed their password`);
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ success: false, error: 'Server error changing password' });
+  }
 });
 
 // ── Logout ─────────────────────────────────────────────────────
@@ -684,7 +690,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     // Rotate: issue new access + refresh tokens
-    const newAccess = generateToken(user.id, user.role, user.phone);
+    const newAccess = generateToken(user.id, user.role, user.phone, user.schoolId);
     const newRefresh = generateRefreshToken(user.id);
     setAuthCookies(res, newAccess, newRefresh);
 

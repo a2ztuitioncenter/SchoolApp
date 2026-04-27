@@ -65,7 +65,11 @@ export const submissionModel = {
             JOIN homework h ON s.homework_id = h.id
             LEFT JOIN users u ON s.reviewed_by = u.id
             WHERE h.teacher_id = $1 OR EXISTS (
-                SELECT 1 FROM subject_assignments sa WHERE sa.teacher_id = $1 AND sa.class_level = h.class_level
+                SELECT 1 FROM subject_assignments sa 
+                WHERE sa.teacher_id = $1 
+                AND sa.class_level = h.class_level 
+                AND (sa.section = h.section OR sa.section = 'ALL')
+                AND sa.subject_id = h.subject_id
             )
             ORDER BY s.submitted_at DESC
         `;

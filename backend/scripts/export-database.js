@@ -10,10 +10,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Validate DATABASE_URL before creating pool
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL environment variable is not configured');
+  process.exit(1);
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: process.env.NODE_ENV === 'production'
   }
 });
 
@@ -48,7 +54,7 @@ async function exportDatabase() {
     // Drop existing tables (if importing to fresh database)
     sqlContent += '-- Drop existing tables\n';
     for (const table of tables) {
-      sqlContent += `DROP TABLE IF EXISTS ${table} CASCADE;\n`;
+      sqlContent += `DROP TABLE IF EXISTS "${table}" CASCADE;\n`;
     }
     sqlContent += '\n';
 
@@ -74,10 +80,10 @@ async function exportDatabase() {
       const constraintResult = await client.query(constraintQuery);
       
       // Build CREATE TABLE statement
-      let createStmt = `CREATE TABLE ${table} (\n`;
+      let createStmt = `CREATE TABLE "${table}" (\n`;
       
       const columnDefs = columns.map(col => {
-        let def = `  ${col.column_name} ${col.data_type}`;
+        let def = `  "${col.column_name}" ${col.data_type}`;
         if (col.column_default) def += ` DEFAULT ${col.column_default}`;
         if (col.is_nullable === 'NO') def += ' NOT NULL';
         return def;
@@ -107,7 +113,7 @@ async function exportDatabase() {
     // Export data for each table
     console.log('Exporting data...');
     for (const table of tables) {
-      const dataQuery = `SELECT * FROM ${table};`;
+      const dataQuery = `SELECT * FROM "${table}";`;
       const dataResult = await client.query(dataQuery);
       
       if (dataResult.rows.length > 0) {
@@ -125,7 +131,7 @@ async function exportDatabase() {
             return String(value);
           });
           
-          sqlContent += `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${values.join(', ')});\n`;
+          sqlContent += `INSERT INTO "${table}" (${columns.map(c => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});\n`;
         }
         
         sqlContent += '\n';
@@ -142,6 +148,7 @@ async function exportDatabase() {
   } catch (error) {
     console.error('Export error:', error.message);
     console.error('Error details:', error);
+    process.exitCode = 1;
   } finally {
     if (client) client.release();
     await pool.end();

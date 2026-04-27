@@ -58,7 +58,6 @@ export const getStudentDashboard = async (req, res) => {
     ]);
 
     const normalizeRow = (h) => ({
-      ...h,
       id: h.id,
       title: h.title,
       description: h.description,
@@ -102,7 +101,7 @@ export const getStudentDashboard = async (req, res) => {
         homework,
         dailyPractice,
         timetable: (timetableResult.rows || []).map(t => ({
-          ...t,
+          id: t.id,
           classLevel: t.class_level,
           startTime: t.start_time,
           endTime: t.end_time,
@@ -113,7 +112,11 @@ export const getStudentDashboard = async (req, res) => {
           dayOfWeek: t.day_of_week
         })),
         notifications: (notificationsResult.rows || []).map(n => ({
-          ...n,
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          classLevel: n.class_level,
+          section: n.section,
           recipientRole: n.recipient_role,
           attachmentUrl: n.attachment_url,
           createdAt: n.created_at

@@ -170,10 +170,9 @@ export async function updateMaterial(db, materialId, payload) {
       payload.fileUrl || current.file_url,
       classId,
       sectionId,
-      payload.subjectId || current.subject_id,
+      payload.subjectId !== undefined ? payload.subjectId : current.subject_id,
       materialId,
-    ]
-  );
+    ]);
 
   return getMaterialById(db, materialId);
 }

@@ -103,17 +103,30 @@ export const subjectModel = {
     },
 
     // 8. Check teacher permission (using both tables for safety)
-    async checkTeacherPermission(teacher_id, class_level, db = pool) {
-        const query = `
+    async checkTeacherPermission(teacher_id, class_level, section = null, subject_id = null, db = pool) {
+        let query = `
             SELECT 1 FROM (
-                SELECT teacher_id, class_level FROM teacher_class_assignment
+                SELECT teacher_id, class_level, section, NULL::UUID as subject_id FROM teacher_class_assignment
                 UNION
-                SELECT teacher_id, class_level FROM subject_assignments
+                SELECT teacher_id, class_level, section, subject_id FROM subject_assignments
             ) AS combined_assignments
             WHERE teacher_id = $1 AND class_level = $2
-            LIMIT 1
         `;
-        const res = await db.query(query, [teacher_id, class_level]);
+        const values = [teacher_id, class_level];
+        let placeholderCount = 3;
+
+        if (section && section !== 'ALL') {
+            query += ` AND (section = $${placeholderCount++} OR section = 'ALL' OR section IS NULL)`;
+            values.push(section);
+        }
+
+        if (subject_id) {
+            query += ` AND (subject_id = $${placeholderCount++} OR subject_id IS NULL)`; 
+            values.push(subject_id);
+        }
+
+        query += ' LIMIT 1';
+        const res = await db.query(query, values);
         return res.rows.length > 0;
     }
 };

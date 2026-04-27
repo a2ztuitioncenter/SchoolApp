@@ -29,7 +29,7 @@
     --text-primary: var(--text-main);
     --text-secondary: var(--text-muted);
     --bg-white: var(--white);
-    --bg-light: var(--bg-light);
+    /* --bg-light already defined above at line 20, no re-mapping needed */
     --border-color: var(--border);
     --border-subtle: var(--border);
     --accent-color: var(--primary);
@@ -37,7 +37,7 @@
     --accent-purple: var(--primary);
     --bg-primary: var(--bg-light);
     --bg-secondary: var(--white);
-    
+
     /* Spacing System */
     --spacing-xs: 8px;
     --spacing-sm: 12px;
@@ -45,7 +45,7 @@
     --spacing-lg: 24px;
     --spacing-xl: 32px;
     --spacing-2xl: 48px;
-    
+
     /* Responsive Sizing */
     --radius-sm: 8px;
     --radius-md: 12px;
@@ -204,7 +204,8 @@ select:focus {
 
 /* Hero Section */
 .erp-hero {
-    padding: 120px 0 60px 0; /* Reduced from 140/80 */
+    padding: 120px 0 60px 0;
+    /* Reduced from 140/80 */
     background: radial-gradient(circle at top right, #f0f4ff 0%, #ffffff 50%);
     min-height: 80vh;
     display: flex;
@@ -270,7 +271,8 @@ select:focus {
 
 /* Modules Grid */
 .erp-modules-section {
-    padding: 80px 0; /* Reduced from 100px */
+    padding: 80px 0;
+    /* Reduced from 100px */
     background-color: var(--white);
 }
 
@@ -303,19 +305,23 @@ select:focus {
 .erp-card {
     background: var(--white);
     border: 1px solid var(--border);
-    padding: 32px; /* Reduced from 40px for better balance */
+    padding: 32px;
+    /* Reduced from 40px for better balance */
     border-radius: var(--radius-lg);
     transition: all var(--transition);
     display: flex;
     flex-direction: column;
     height: auto;
-    min-height: 240px; /* Base minimum height for consistency */
+    min-height: 240px;
+    /* Base minimum height for consistency */
 }
 
 .erp-card:hover {
     border-color: var(--primary);
-    box-shadow: var(--shadow-md); /* Softer shadow */
-    transform: translateY(-2px); /* Subtle lift */
+    box-shadow: var(--shadow-md);
+    /* Softer shadow */
+    transform: translateY(-2px);
+    /* Subtle lift */
 }
 
 .erp-card-featured {
@@ -343,14 +349,30 @@ select:focus {
     margin-bottom: 0;
     width: 80px;
     height: 80px;
-    font-size: 2.2rem; /* Slightly smaller for balance */
+    font-size: 2.2rem;
+    /* Slightly smaller for balance */
     flex-shrink: 0;
 }
 
-.portal-icon { background-color: var(--primary-light); color: var(--primary); }
-.tutor-icon { background-color: #f0f9ff; color: #0369a1; }
-.management-icon { background-color: #f8fafc; color: #475569; }
-.billing-icon { background-color: #f0fdf4; color: #15803d; }
+.portal-icon {
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.tutor-icon {
+    background-color: #f0f9ff;
+    color: #0369a1;
+}
+
+.management-icon {
+    background-color: #f8fafc;
+    color: #475569;
+}
+
+.billing-icon {
+    background-color: #f0fdf4;
+    color: #15803d;
+}
 
 .erp-card h3 {
     font-size: 20px;
@@ -402,10 +424,13 @@ select:focus {
 }
 
 .stat-number {
-    font-size: 40px; /* Slightly smaller for better balance */
+    font-size: 40px;
+    /* Slightly smaller for better balance */
     font-weight: 800;
-    margin-bottom: 4px; /* Tighter spacing */
-    color: var(--white); /* White for better contrast on dark */
+    margin-bottom: 4px;
+    /* Tighter spacing */
+    color: var(--white);
+    /* White for better contrast on dark */
     font-family: 'Plus Jakarta Sans', sans-serif;
     letter-spacing: -1px;
 }
@@ -525,40 +550,80 @@ select:focus {
 }
 
 @media (max-width: 900px) {
-    .erp-nav-desktop, .erp-header-auth { display: none; }
-    .erp-mobile-menu-btn { display: block; }
-    
-    .erp-hero { padding: 100px 0 40px 0; }
-    .erp-title { font-size: 36px; }
-    .erp-subtitle { font-size: 16px; margin-bottom: 32px; }
-    
-    .erp-modules-section { padding: 64px 0; }
-    .erp-grid { gap: 24px; }
-    
-    .erp-stats { padding: 48px 0; }
-    .erp-stats-grid { grid-template-columns: 1fr; gap: 32px; }
-    
-    .erp-footer-container { 
-        grid-template-columns: 1fr; 
-        gap: 40px; 
+
+    .erp-nav-desktop,
+    .erp-header-auth {
+        display: none;
+    }
+
+    .erp-mobile-menu-btn {
+        display: block;
+    }
+
+    .erp-hero {
+        padding: 100px 0 40px 0;
+    }
+
+    .erp-title {
+        font-size: 36px;
+    }
+
+    .erp-subtitle {
+        font-size: 16px;
+        margin-bottom: 32px;
+    }
+
+    .erp-modules-section {
+        padding: 64px 0;
+    }
+
+    .erp-grid {
+        gap: 24px;
+    }
+
+    .erp-stats {
+        padding: 48px 0;
+    }
+
+    .erp-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .erp-footer-container {
+        grid-template-columns: 1fr;
+        gap: 40px;
         text-align: center;
         margin-bottom: 40px;
     }
-    .erp-footer-brand p { margin: 16px auto 0; }
-    .erp-footer-links { grid-template-columns: 1fr; gap: 32px; }
-    
-    .erp-card-featured { 
-        flex-direction: column; 
-        text-align: center; 
+
+    .erp-footer-brand p {
+        margin: 16px auto 0;
+    }
+
+    .erp-footer-links {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .erp-card-featured {
+        flex-direction: column;
+        text-align: center;
         padding: 32px;
     }
-    .erp-card-featured .erp-card-icon { margin: 0 auto 20px auto; }
-    
+
+    .erp-card-featured .erp-card-icon {
+        margin: 0 auto 20px auto;
+    }
+
     .erp-footer-bottom .container {
         flex-direction: column;
         text-align: center;
     }
-    .erp-social-links { justify-content: center; }
+
+    .erp-social-links {
+        justify-content: center;
+    }
 }
 
 /* ============================================
@@ -695,7 +760,8 @@ header {
 /* Bottom Bar */
 .header-bottom {
     padding: var(--spacing-sm) 0;
-    display: none; /* Hide on mobile */
+    display: none;
+    /* Hide on mobile */
 }
 
 .header-bottom .container {
@@ -787,9 +853,11 @@ header {
         stroke-dashoffset: 0;
         opacity: 0.3;
     }
+
     50% {
         opacity: 0.6;
     }
+
     100% {
         stroke-dasharray: 1200;
         stroke-dashoffset: 1200;
@@ -844,6 +912,7 @@ header {
         opacity: 0;
         transform: translateY(15px);
     }
+
     100% {
         opacity: 1;
         transform: translateY(0);
@@ -892,6 +961,7 @@ header {
         opacity: 0;
         transform: scale(0.85);
     }
+
     100% {
         opacity: 1;
         transform: scale(1);
@@ -903,6 +973,7 @@ header {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -953,7 +1024,7 @@ header {
     transform: translateX(4px);
 }
 
-#btn-get-started-hero, 
+#btn-get-started-hero,
 #btn-get-started-hero * {
     transition: none !important;
     animation: none !important;
@@ -1029,9 +1100,12 @@ header {
 }
 
 @keyframes float {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0px);
     }
+
     50% {
         transform: translateY(-20px);
     }
@@ -1098,6 +1172,7 @@ body.modal-open {
         transform: translateY(30px) scale(0.95);
         opacity: 0;
     }
+
     to {
         transform: translateY(0) scale(1);
         opacity: 1;
@@ -1284,7 +1359,8 @@ body.modal-open {
 .auth-selector-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-subtle);
-    border-radius: 16px; /* rounded-2xl */
+    border-radius: 16px;
+    /* rounded-2xl */
     padding: var(--spacing-lg);
     text-align: center;
     cursor: pointer;
@@ -1323,7 +1399,7 @@ body.modal-open {
     .auth-selector-grid {
         grid-template-columns: repeat(3, 1fr);
     }
-    
+
     .auth-selector-grid.signup {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -1334,6 +1410,7 @@ body.modal-open {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1449,73 +1526,74 @@ footer .container {
    8. RESPONSIVE DESIGN - TABLET (768px+)
    ============================================ */
 @media (min-width: 768px) {
+
     /* Update container padding */
     .container {
         padding: 0 var(--spacing-xl);
     }
-    
+
     /* Typography Scaling */
     h1 {
         font-size: 2rem;
     }
-    
+
     h2 {
         font-size: 1.5rem;
     }
-    
+
     /* Header Bottom Visible on Tablet+ */
     .header-bottom {
         display: block;
     }
-    
+
     /* Hero Section */
     .hero-animated {
         min-height: auto;
         padding: 120px var(--spacing-md) var(--spacing-xl);
     }
-    
+
     .content-wrapper {
         gap: var(--spacing-xl);
         padding: var(--spacing-xl);
     }
-    
+
     .hero-title-animated {
         font-size: clamp(1.8rem, 5vw, 2.8rem);
     }
-    
+
     .hero-subtitle-modern {
         font-size: clamp(1.15rem, 3vw, 1.4rem);
     }
-    
+
     /* CTA Buttons - Horizontal on Tablet */
     .hero-cta-group {
         flex-direction: row;
         gap: var(--spacing-md);
         width: auto;
     }
-    
+
     .btn-glass,
     .btn-outline {
         width: auto;
         min-width: 160px;
     }
-    
+
     /* Floating Elements - Visible on Tablet */
     .floating-element {
         display: block;
     }
-    
+
     /* Footer - Multi-column */
     footer .container {
         flex-direction: row;
         justify-content: space-between;
         align-items: flex-start;
     }
-    
+
     .footer-logo {
         text-align: left;
     }
-    
+
     .footer-links {
         grid-template-columns: repeat(4, 1fr);
         gap: var(--spacing-xl);
@@ -1527,59 +1605,60 @@ footer .container {
    9. RESPONSIVE DESIGN - DESKTOP (1024px+)
    ============================================ */
 @media (min-width: 1024px) {
+
     /* Typography */
     h1 {
         font-size: 2.5rem;
     }
-    
+
     h2 {
         font-size: 1.75rem;
     }
-    
+
     p {
         font-size: 1rem;
     }
-    
+
     /* Container */
     .container {
         padding: 0 var(--spacing-xl);
     }
-    
+
     /* Hero Section */
     .hero-animated {
         min-height: auto;
         padding: 140px var(--spacing-lg) var(--spacing-2xl);
     }
-    
+
     .hero-title-animated {
         font-size: 3rem;
     }
-    
+
     .hero-subtitle-modern {
         font-size: 1.5rem;
     }
-    
+
     .hero-description {
         font-size: 1.1rem;
     }
-    
+
     /* About Sections */
     .about-text {
         columns: 2;
         column-gap: var(--spacing-2xl);
         text-align: left;
     }
-    
+
     .about-columns .container {
         flex-direction: row;
         gap: var(--spacing-2xl);
     }
-    
+
     .column-content {
         text-align: left;
         flex: 1;
     }
-    
+
     /* Modal */
     .modal-container {
         max-width: 600px;
@@ -1592,18 +1671,25 @@ footer .container {
    ============================================ */
 
 @keyframes cursorBlink {
-    0%, 49% {
+
+    0%,
+    49% {
         opacity: 1;
     }
-    50%, 100% {
+
+    50%,
+    100% {
         opacity: 0;
     }
 }
 
 @keyframes buttonGlow {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
     }
+
     50% {
         box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
     }
@@ -1627,38 +1713,39 @@ input:focus-visible {
         transition-duration: 0.01ms !important;
     }
 }
-    /* ============================================
+
+/* ============================================
        DARK HEADER FOR MODALS
        ============================================ */
-    .modal-header-dark {
-        background: transparent !important;
-        color: var(--text-primary) !important;
-        padding: 1.5rem 0 1rem 0 !important;
-        margin: 0 0 1.5rem 0 !important;
-        border-bottom: 1px solid var(--border-color);
-        text-align: center;
-    }
+.modal-header-dark {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    padding: 1.5rem 0 1rem 0 !important;
+    margin: 0 0 1.5rem 0 !important;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+}
 
-    .modal-header-dark h2 {
-        color: var(--text-primary) !important;
-        font-size: 1.4rem !important;
-        margin-bottom: 0.25rem !important;
-    }
+.modal-header-dark h2 {
+    color: var(--text-primary) !important;
+    font-size: 1.4rem !important;
+    margin-bottom: 0.25rem !important;
+}
 
-    .modal-header-dark .modal-subtitle {
-        color: var(--text-secondary) !important;
-        font-size: 0.9rem !important;
-    }
+.modal-header-dark .modal-subtitle {
+    color: var(--text-secondary) !important;
+    font-size: 0.9rem !important;
+}
 
-    .modal-header-dark .modal-logo {
-        margin-bottom: 0.5rem;
-    }
+.modal-header-dark .modal-logo {
+    margin-bottom: 0.5rem;
+}
 
-    .modal-header-dark .modal-logo i {
-        color: var(--accent-color) !important;
-        font-size: 1.5rem !important;
-    }
+.modal-header-dark .modal-logo i {
+    color: var(--accent-color) !important;
+    font-size: 1.5rem !important;
+}
 
-    .student-signup-active .modal-close {
-        color: var(--text-primary) !important;
-    }
+.student-signup-active .modal-close {
+    color: var(--text-primary) !important;
+}

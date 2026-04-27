@@ -51,9 +51,10 @@ async function requireTeacher(req, suppliedTeacherId = null) {
   const teacher = await getUserById(req.db, authenticatedTeacherId);
   if (!teacher) return null;
 
-  // Admin bypass: Admins can access any teacher's data
   if (teacher.role === 'admin') {
-    return (await getUserById(req.db, requestedTeacherId)) || teacher;
+    const requestedTeacher = await getUserById(req.db, requestedTeacherId);
+    if (!requestedTeacher) return null; // Let caller handle 403/404
+    return requestedTeacher;
   }
 
   // Identity check: Non-admins can only access their own data
@@ -175,14 +176,21 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       },
       classes: classes.map(c => ({ classLevel: c })),
       homework: hwRes.rows.map(h => ({
-          ...h,
+          id: h.id,
+          title: h.title,
+          description: h.description,
           classLevel: h.class_level,
+          section: h.section,
           dueDate: h.due_date,
-          createdAt: h.created_at
+          createdAt: h.created_at,
+          type: h.type
       })),
       timetable: ttRes.rows.map(t => ({
-          ...t,
+          id: t.id,
           classLevel: t.class_level,
+          section: t.section,
+          subjectId: t.subject_id,
+          teacherId: t.teacher_id,
           dayOfWeek: t.day_of_week,
           startTime: t.start_time,
           endTime: t.end_time
@@ -190,7 +198,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     });
   } catch (err) {
     console.error('❌ Teacher dashboard error:', err.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch dashboard data', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch dashboard data' });
   }
 });
 
@@ -207,14 +215,17 @@ router.get('/timetable/:teacherId', async (req, res) => {
       [teacher.id]
     );
     res.json({ success: true, data: res2.rows.map(t => ({
-        ...t,
+        id: t.id,
         classLevel: t.class_level,
+        section: t.section,
+        subjectId: t.subject_id,
+        teacherId: t.teacher_id,
         dayOfWeek: t.day_of_week,
         startTime: t.start_time,
         endTime: t.end_time
     })) });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to fetch timetable', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch timetable' });
   }
 });
 
@@ -250,7 +261,7 @@ router.get('/attendance/classes', async (req, res) => {
 
     res.json({ success: true, data: classes.map(c => ({ class_level: c })) });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to fetch classes', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch classes' });
   }
 });
 
@@ -298,7 +309,7 @@ router.get('/attendance/sections', async (req, res) => {
     const sections = result.rows.map(r => r.section);
     res.json({ success: true, data: sections });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to fetch sections', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch sections' });
   }
 });
 
@@ -350,7 +361,7 @@ router.get('/attendance/sheet', async (req, res) => {
     });
   } catch (err) {
     console.error('Sheet error:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch sheet', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch sheet' });
   }
 });
 
@@ -367,9 +378,9 @@ router.post('/attendance/mark-bulk', async (req, res) => {
     // Security check: Verify teacher has permission for all classes/sections in the batch
     const first = records[0];
     const classLevel = first.classLevel;
-    const section = first.section || 'A';
+    const section = first.section || null;
 
-    const allMatch = records.every(r => r.classLevel === classLevel && (r.section || 'A') === section);
+    const allMatch = records.every(r => r.classLevel === classLevel && (r.section || null) === section);
     if (!allMatch) {
       return res.status(400).json({ success: false, error: 'Bulk attendance must belong to a single class and section' });
     }
@@ -393,7 +404,7 @@ router.post('/attendance/mark-bulk', async (req, res) => {
          VALUES ($1, (SELECT user_id FROM students WHERE id = $1), $2, $3, $4, $5)
          ON CONFLICT (student_id, date)
          DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level, section = EXCLUDED.section`,
-          [r.studentId, r.classLevel, r.section || 'A', r.date, isPresent]
+          [r.studentId, r.classLevel, r.section || null, r.date, isPresent]
         );
       }
       await client.query('COMMIT');
@@ -406,7 +417,7 @@ router.post('/attendance/mark-bulk', async (req, res) => {
     res.json({ success: true, message: `Saved ${records.length} attendance records` });
   } catch (err) {
     console.error('Mark bulk error:', err);
-    res.status(500).json({ success: false, error: 'Failed to save attendance', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to save attendance' });
   }
 });
 
@@ -454,7 +465,7 @@ router.get('/attendance/summary', async (req, res) => {
     });
   } catch (err) {
     console.error('Summary error:', err);
-    res.status(500).json({ success: false, error: 'Failed to load summary', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to load summary' });
   }
 });
 
@@ -472,7 +483,7 @@ router.get('/homework', async (req, res) => {
     const homework = await getHomeworkByTeacher(pool, teacher.id);
     res.json({ success: true, data: homework });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to fetch homework', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch homework' });
   }
 });
 
@@ -503,7 +514,7 @@ router.post('/homework', uploadHomework.single('attachment'), async (req, res) =
     const hw = await createHomework(pool, { teacherId: teacher.id, classLevel, section, subject, title, description, dueDate: finalDueDate, attachmentUrl, type });
     res.status(201).json({ success: true, data: hw });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to create homework', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to create homework' });
   }
 });
 
@@ -533,7 +544,7 @@ router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res
     const updated = await updateHomework(pool, id, { title, description, dueDate: finalDueDate, subject, attachmentUrl, type });
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to update homework', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to update homework' });
   }
 });
 
@@ -557,7 +568,7 @@ router.delete('/homework/:id', async (req, res) => {
     await deleteHomework(pool, id);
     res.json({ success: true, message: 'Homework deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to delete homework', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to delete homework' });
   }
 });
 
@@ -581,15 +592,19 @@ router.get('/materials', async (req, res) => {
     );
 
     res.json({ success: true, data: result.rows.map(m => ({
-        ...m,
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        subject: m.subject,
         classLevel: m.class_level,
+        section: m.section,
         fileUrl: m.file_url,
         uploadedById: m.uploaded_by_id,
         uploadedBy: m.uploaded_by,
         createdAt: m.created_at
     })) });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to fetch materials', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch materials' });
   }
 });
 
@@ -624,7 +639,7 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to upload material', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to upload material' });
   }
 });
 
@@ -658,7 +673,7 @@ router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, 
 
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to update material', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to update material' });
   }
 });
 
@@ -677,7 +692,7 @@ router.delete('/materials/:id', async (req, res) => {
     await pool.query('DELETE FROM materials WHERE id = $1', [id]);
     res.json({ success: true, message: 'Material deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to delete material', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to delete material' });
   }
 });
 
@@ -694,13 +709,17 @@ router.get('/syllabus', async (req, res) => {
 
     const data = await getSyllabusByTeacher(pool, teacher.id);
     res.json({ success: true, data: data.map(s => ({
-        ...s,
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        subject: s.subject,
         teacherId: s.teacher_id,
         classLevel: s.class_level,
+        section: s.section,
         createdAt: s.created_at
     })) });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to fetch syllabus', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch syllabus' });
   }
 });
 
@@ -728,7 +747,7 @@ router.post('/syllabus', async (req, res) => {
     const entry = await createSyllabusEntry(pool, { teacherId: teacher.id, classLevel, section, subject, chapter, description });
     res.status(201).json({ success: true, data: entry });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to create syllabus entry', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to create syllabus entry' });
   }
 });
 
@@ -749,7 +768,7 @@ router.put('/syllabus/:id', async (req, res) => {
     const updated = await updateSyllabusEntry(pool, id, { chapter, description, completed });
     res.json({ success: true, data: updated });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to update syllabus entry', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to update syllabus entry' });
   }
 });
 
@@ -768,7 +787,7 @@ router.delete('/syllabus/:id', async (req, res) => {
     await deleteSyllabusEntry(pool, id);
     res.json({ success: true, message: 'Entry deleted' });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to delete syllabus entry', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to delete syllabus entry' });
   }
 });
 
@@ -789,7 +808,7 @@ router.get('/subjects', async (req, res) => {
     res.json({ success: true, data: subjects });
   } catch (err) {
     console.error('Fetch teacher subjects error:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch subjects', message: err.message });
+    res.status(500).json({ success: false, error: 'Failed to fetch subjects' });
   }
 });
 

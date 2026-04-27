@@ -21,7 +21,7 @@ export const addFee = async (req, res) => {
     res.status(201).json({ success: true, message: 'Fee added', data: fee });
   } catch (err) {
     console.error('addFee:', err);
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -29,7 +29,7 @@ export const getAllFees = async (req, res) => {
   try {
     res.json({ success: true, data: await feeModel.getAll() });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -37,7 +37,7 @@ export const getUnpaidFees = async (req, res) => {
   try {
     res.json({ success: true, data: await feeModel.getUnpaid() });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -45,7 +45,7 @@ export const getFeesByStudent = async (req, res) => {
   try {
     res.json({ success: true, data: await feeModel.getByStudent(req.params.student_id) });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -55,7 +55,7 @@ export const markPaid = async (req, res) => {
     if (!fee) return res.status(404).json({ error: 'Fee not found' });
     res.json({ success: true, message: 'Marked as paid', data: fee });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -65,7 +65,7 @@ export const markUnpaid = async (req, res) => {
     if (!fee) return res.status(404).json({ error: 'Fee not found' });
     res.json({ success: true, message: 'Marked as unpaid', data: fee });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -75,7 +75,7 @@ export const deleteFee = async (req, res) => {
     if (!deleted) return res.status(404).json({ error: 'Fee not found' });
     res.json({ success: true, message: 'Fee deleted' });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -83,6 +83,6 @@ export const getFeeStats = async (req, res) => {
   try {
     res.json({ success: true, data: await feeModel.getStats() });
   } catch (err) {
-    res.status(500).json({ error: 'Server error', detail: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
