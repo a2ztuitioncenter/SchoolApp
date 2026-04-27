@@ -11,7 +11,7 @@
         (function () {
             const performAuthCheck = function () {
                 try {
-                    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
+                    const authStr = sessionStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isAdmin = auth && auth.isLoggedIn === true && auth.role === 'admin';
 
@@ -87,7 +87,7 @@
         </div>
     </div>
 
-    <div class="admin-container">
+    <div class="admin-container" id="admin-dashboard-root">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
@@ -323,6 +323,37 @@
                         <div class="kpi-value" id="kpi-attendance-rate">0%</div>
                         <div class="kpi-footer" id="kpi-attendance-detail">This month</div>
                     </div>
+
+                    <!-- Total Users KPI -->
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <i class="fas fa-id-card"></i>
+                            <span class="kpi-label">Total Users</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-users">0</div>
+                        <div class="kpi-footer" id="kpi-total-users-detail">All roles included</div>
+                    </div>
+
+                    <!-- Teachers Count KPI -->
+                    <div class="kpi-card kpi-purple">
+                        <div class="kpi-header">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <span class="kpi-label">Teachers</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-teachers-count">0</div>
+                        <div class="kpi-footer" id="kpi-teachers-detail">Teaching staff</div>
+                    </div>
+
+                    <!-- Recent Homework KPI -->
+                    <div class="kpi-card kpi-indigo">
+                        <div class="kpi-header">
+                            <i class="fas fa-book-open"></i>
+                            <span class="kpi-label">New Homework</span>
+                        </div>
+                        <div class="kpi-value" id="kpi-recent-homework">0</div>
+                        <div class="kpi-footer" id="kpi-homework-detail">Last 30 days</div>
+                    </div>
+
                 </div>
 
                 <!-- ===== ROW 1: KEY METRICS - CHART-BASED ERP STYLE ===== -->

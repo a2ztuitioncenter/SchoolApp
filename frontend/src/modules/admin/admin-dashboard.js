@@ -9,10 +9,12 @@ import { escapeAttr as escapeAttrValue, escapeHtml, escapeHtml as escapeMarkup, 
 import './admin-pending-approvals.js';
 import './exam-results.js';
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ROUTE PROTECTION - Must be first
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-if (!requireRole('admin')) {
+// 🛑 DOM GUARD
+const isAdminPage = !!document.getElementById('admin-dashboard-root');
+
+// â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• â• 
+// ROUTE PROTECTION
+if (isAdminPage && !requireRole('admin')) {
     throw new Error('Unauthorized: Admin role required');
 }
 
@@ -22,26 +24,21 @@ window.handleLogout = function () {
     authLogout();
 };
 
-syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
-
-// Expose APIs for debugging in development only
-const isDevelopment = window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.endsWith('.local') ||
-    window.location.hostname.endsWith('.trycloudflare.com');
-
-if (isDevelopment) {
-    window.adminAPI = adminAPI;
-    window.resultsAPI = resultsAPI;
+if (isAdminPage) {
+    syncToSessionStorage('admin'); // Ensure sessionStorage is in sync
 }
+
+// Removed global API exposures for security
 
 // Remove full-screen "Loading..." overlay as soon as this module runs (deferred modules execute
 // after the document is parsed, so #auth-protection-screen already exists). Relying only on
 // DOMContentLoaded misses bfcache restores and edge cases where the event already fired.
-hideProtectionScreen();
-window.addEventListener('pageshow', (e) => {
-    if (e.persisted) hideProtectionScreen();
-});
+if (isAdminPage) {
+    hideProtectionScreen();
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) hideProtectionScreen();
+    });
+}
 
 
 let currentTab = 'dashboard';
@@ -54,12 +51,13 @@ let currentEditHwId = null;
 let pendingMaterialUpload = null;
 let pendingHomeworkUpload = null;
 let pendingNoticeUpload = null;
-console.log('ðŸš€ admin-dashboard.js loaded. Global state exposed.');
+console.log('🚀 admin-dashboard.js loaded.');
 
 // =============================================
 // INIT
 // =============================================
 async function initDashboard() {
+    if (!isAdminPage) return;
     hideProtectionScreen();
 
     const adminId = getUserId();
@@ -516,7 +514,13 @@ async function loadTabContent(tabName) {
         case 'materials': await loadMaterials(); break;
         case 'timetable': await loadTimetable(); break;
         case 'notifications': await loadNotifications(); break;
-        case 'results': await initExamResults(); break;
+        case 'results': 
+            if (typeof window.initExamResults === 'function') {
+                await window.initExamResults();
+            } else {
+                console.warn('⚠️ initExamResults not found');
+            }
+            break;
         case 'subjects': await loadSubjects(); break;
         case 'content-management': await loadContentManagement(); break;
     }
@@ -541,7 +545,7 @@ let dashboardData = {
     latestHomework: []
 };
 
-window.dashboardData = dashboardData;
+// Dashboard data cache (internal)
 let dashboardRefreshInterval = null;
 
 async function loadDashboardData() {
@@ -555,16 +559,18 @@ async function loadDashboardData() {
 
         const loadDataPromise = (async () => {
             // ✅ Load all data in parallel with proper timeout and error handling
-            const [studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
-                adminAPI.getStudents().catch(() => ({ students: [] })),
-                adminAPI.getUnpaidFees().catch(() => ({ fees: [] })),
+            const [summaryRes, studentsRes, unpaidFeesRes, financialRes, timetableRes, trendsRes, attendanceRes] = await Promise.all([
+                adminAPI.getDashboardSummary().catch(() => ({ data: {} })),
+                adminAPI.getStudents().catch(() => ({ data: [] })),
+                adminAPI.getUnpaidFees().catch(() => ({ data: [] })),
                 adminAPI.getFinancialSummary?.().catch(() => ({})) ?? Promise.resolve({}),
-                adminAPI.getTimetable?.().catch(() => ({ timetable: [] })) ?? Promise.resolve({ timetable: [] }),
+                adminAPI.getTimetable?.().catch(() => ({ data: [] })) ?? Promise.resolve({ data: [] }),
                 // ✅ Fetch 30-day trend data with timeout
                 fetchTrendDataSafe().catch(() => ({ trends: [], summary: {} })),
                 // ✅ Fetch attendance statistics with timeout
                 adminAPI.getAttendanceStats?.().catch(() => ({})) ?? Promise.resolve({})
             ]);
+            dashboardData.summary = summaryRes?.data || {};
 
             // ✅ Store data with null-safe access
             dashboardData.students = studentsRes?.data || [];
@@ -737,7 +743,7 @@ function formatCurrency(amount, options = {}) {
         return '₹0';
     }
 }
-window.formatCurrency = formatCurrency;
+// Internal currency formatter
 
 
 /**
@@ -747,87 +753,101 @@ window.formatCurrency = formatCurrency;
 function renderQuickStatsKPI() {
     try {
         const el = id => document.getElementById(id);
-
-        // ✅ Null-safe data access
-        const students = dashboardData?.students || [];
+        const summary = dashboardData?.summary || {};
         const unpaidFees = dashboardData?.unpaidFees || [];
-        const financials = dashboardData?.financialSummary || {};
-        const attendanceStats = dashboardData?.attendanceStats || {};
 
-        // Calculate metrics with null checks
-        const totalStudents = students.length || 0;
-        const activeStudents = students.filter(s => s?.status === 'active').length || 0;
-        const inactiveStudents = totalStudents - activeStudents;
-
-        // Financial data processed
-        const rawPaid = financials.totalPaid || financials.total_paid || 0;
-        const rawPending = financials.totalPending || financials.total_pending || 0;
-        const totalCollected = parseFloat(rawPaid);
-        const totalPending = parseFloat(rawPending);
-        const totalFees = totalCollected + totalPending;
-
-        // Calculate overdue fees
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const overdueData = unpaidFees.reduce((acc, f) => {
-            const dateStr = f?.dueDate || f?.due_date;
-            if (!dateStr || !f?.amount) return acc;
-            const dueDate = new Date(dateStr);
-            dueDate.setHours(0, 0, 0, 0);
-            if (dueDate < today) {
-                acc.count += 1;
-                acc.amount += parseFloat(f.amount) || 0;
-            }
-            return acc;
-        }, { count: 0, amount: 0 });
-
-        // Calculate percentages
-        const collectionPercentage = totalFees > 0 ? ((totalCollected / totalFees) * 100).toFixed(1) : 0;
-        const pendingPercentage = totalFees > 0 ? ((totalPending / totalFees) * 100).toFixed(1) : 0;
-        const activePercentage = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : 0;
-        const attendanceRate = attendanceStats.attendancePercent ? parseFloat(attendanceStats.attendancePercent).toFixed(1) : 0;
-
-        // ✅ Safe DOM updates with null checks
+        // 1. Total Students
         if (el('kpi-total-students')) {
-            el('kpi-total-students').textContent = totalStudents || 0;
+            const total = summary.students?.total || 0;
+            const active = summary.students?.active || 0;
+            el('kpi-total-students').textContent = total;
             if (el('kpi-total-students-detail')) {
-                el('kpi-total-students-detail').textContent = `${activeStudents} active, ${inactiveStudents} inactive`;
+                el('kpi-total-students-detail').textContent = `${active} active, ${total - active} inactive`;
             }
         }
 
+        // 2. Active Students
         if (el('kpi-active-students')) {
-            el('kpi-active-students').textContent = activeStudents || 0;
+            const total = summary.students?.total || 1;
+            const active = summary.students?.active || 0;
+            const pct = ((active / total) * 100).toFixed(1);
+            el('kpi-active-students').textContent = active;
             if (el('kpi-active-percentage')) {
-                el('kpi-active-percentage').textContent = `${activePercentage}% of total`;
+                el('kpi-active-percentage').textContent = `${pct}% of total`;
             }
         }
 
+        // 3. Fees Collected
         if (el('kpi-fees-collected')) {
-            el('kpi-fees-collected').textContent = formatCurrency(totalCollected);
+            const paid = summary.financials?.totalPaid || 0;
+            const pending = summary.financials?.totalPending || 0;
+            const total = paid + pending;
+            const pct = total > 0 ? ((paid / total) * 100).toFixed(1) : 0;
+            el('kpi-fees-collected').textContent = formatCurrency(paid);
             if (el('kpi-collection-percentage')) {
-                el('kpi-collection-percentage').textContent = `${collectionPercentage}% collected`;
+                el('kpi-collection-percentage').textContent = `${pct}% collected`;
             }
         }
 
+        // 4. Pending Fees
         if (el('kpi-fees-pending')) {
-            el('kpi-fees-pending').textContent = formatCurrency(totalPending);
+            const paid = summary.financials?.totalPaid || 0;
+            const pending = summary.financials?.totalPending || 0;
+            const total = paid + pending;
+            const pct = total > 0 ? ((pending / total) * 100).toFixed(1) : 0;
+            el('kpi-fees-pending').textContent = formatCurrency(pending);
             if (el('kpi-pending-percentage')) {
-                el('kpi-pending-percentage').textContent = `${pendingPercentage}% pending`;
+                el('kpi-pending-percentage').textContent = `${pct}% pending`;
             }
         }
 
+        // 5. Overdue Fees (Keep frontend calculation for date-specific overdue check)
         if (el('kpi-fees-overdue')) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const overdueData = unpaidFees.reduce((acc, f) => {
+                const dateStr = f?.dueDate || f?.due_date;
+                if (!dateStr || !f?.amount) return acc;
+                const dueDate = new Date(dateStr);
+                dueDate.setHours(0, 0, 0, 0);
+                if (dueDate < today) {
+                    acc.count += 1;
+                    acc.amount += parseFloat(f.amount) || 0;
+                }
+                return acc;
+            }, { count: 0, amount: 0 });
+
             el('kpi-fees-overdue').textContent = formatCurrency(overdueData.amount);
             if (el('kpi-overdue-count')) {
                 el('kpi-overdue-count').textContent = `${overdueData.count} students overdue`;
             }
         }
 
+        // 6. Attendance Rate
         if (el('kpi-attendance-rate')) {
-            el('kpi-attendance-rate').textContent = `${attendanceRate || 0}%`;
+            const rate = summary.attendance?.monthlyRate || 0;
+            el('kpi-attendance-rate').textContent = `${rate}%`;
             if (el('kpi-attendance-detail')) {
                 el('kpi-attendance-detail').textContent = 'This month (avg.)';
             }
+        }
+
+        // 7. Total Users
+        if (el('kpi-total-users')) {
+            el('kpi-total-users').textContent = summary.users?.total || 0;
+            if (el('kpi-total-users-detail')) {
+                el('kpi-total-users-detail').textContent = `${summary.users?.pending || 0} pending approval`;
+            }
+        }
+
+        // 8. Teachers Count
+        if (el('kpi-teachers-count')) {
+            el('kpi-teachers-count').textContent = summary.users?.teachers || 0;
+        }
+
+        // 9. Recent Homework
+        if (el('kpi-recent-homework')) {
+            el('kpi-recent-homework').textContent = summary.homework?.recentCount || 0;
         }
 
         console.log('✅ Quick Stats rendered successfully');

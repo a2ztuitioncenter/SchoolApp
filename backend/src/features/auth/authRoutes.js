@@ -15,12 +15,12 @@ const REFRESH_EXPIRY = '7d';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-const generateToken = (userId, role, phone) => {
+const generateToken = (userId, role, phone, schoolId) => {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET is required but not found in process.env');
   }
   return jwt.sign(
-    { userId, role, phone, iat: Math.floor(Date.now() / 1000) },
+    { userId, role, phone, schoolId, iat: Math.floor(Date.now() / 1000) },
     process.env.JWT_SECRET,
     { expiresIn: JWT_EXPIRY }
   );
@@ -179,7 +179,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
 
     studentData = await getStudentByUserId(pool, user.id);
     await updateLastLogin(pool, user.id);
-    const accessToken = generateToken(user.id, user.role, user.phone);
+    const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
 
     setAuthCookies(res, accessToken, refreshToken);
@@ -334,7 +334,7 @@ router.post('/register', async (req, res) => {
 
         await updateLastLogin(client, user.id);
         await client.query('COMMIT');
-        const accessToken = generateToken(user.id, user.role, sanitizedPhone);
+        const accessToken = generateToken(user.id, user.role, sanitizedPhone, user.schoolId);
         const refreshToken = generateRefreshToken(user.id);
 
         setAuthCookies(res, accessToken, refreshToken);
@@ -378,7 +378,7 @@ router.post('/register', async (req, res) => {
         await updateLastLogin(client, user.id);
         await client.query('COMMIT');
 
-        const accessToken = generateToken(user.id, user.role, sanitizedPhone);
+        const accessToken = generateToken(user.id, user.role, sanitizedPhone, user.schoolId);
         const refreshToken = generateRefreshToken(user.id);
 
         setAuthCookies(res, accessToken, refreshToken);
@@ -413,7 +413,7 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
     
     await updateLastLogin(pool, user.id);
-    const accessToken = generateToken(user.id, user.role, user.phone);
+    const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
     setAuthCookies(res, accessToken, refreshToken);
     res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
@@ -436,7 +436,7 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
     
     await updateLastLogin(pool, user.id);
-    const accessToken = generateToken(user.id, user.role, user.phone);
+    const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
     setAuthCookies(res, accessToken, refreshToken);
     res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });

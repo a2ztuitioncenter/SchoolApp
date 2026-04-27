@@ -7,7 +7,11 @@
 import { resultsAPI } from '../../core/api.js';
 import { populateERPFilters } from './admin-dashboard.js';
 
-// ═══════════════════════════════════════════════════════════════════
+// 🛑 DOM GUARD
+const isAdminPage = !!document.getElementById('admin-dashboard-root');
+if (!isAdminPage && !document.getElementById('student-results-container')) {
+  console.debug('ℹ️ exam-results.js skipped');
+}
 // SCOPED STYLES - Prevents conflicts with dashboard CSS
 // ═══════════════════════════════════════════════════════════════════
 const examResultsStyles = document.createElement('style');
@@ -411,11 +415,16 @@ export function initExamResults() {
   console.log('✅ Exam Results Module initialized');
 }
 
+// Make functions globally available
+window.initExamResults = initExamResults;
+
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
+    // Both admin and student dashboards might use this script via circular imports, 
+    // but they must only initialize their respective parts.
     const tbody = document.getElementById('exam-results-tbody');
-    if (tbody) {
+    if (tbody && isAdminPage) {
       initExamResults();
     }
   }, 300);

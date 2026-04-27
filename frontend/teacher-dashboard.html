@@ -277,7 +277,7 @@
         (function () {
             const performAuthCheck = function () {
                 try {
-                    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
+                    const authStr = sessionStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isTeacher = auth && auth.isLoggedIn === true && auth.role === 'teacher';
 

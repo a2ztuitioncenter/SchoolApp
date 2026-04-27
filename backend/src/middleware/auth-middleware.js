@@ -46,6 +46,7 @@ export const authenticate = (req, res, next) => {
       userId: decoded.userId,
       role: decoded.role,
       phone: decoded.phone,
+      schoolId: decoded.schoolId,
       timestamp: decoded.iat
     };
 

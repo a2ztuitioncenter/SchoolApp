@@ -326,7 +326,9 @@ export const studentAPI = {
  * Admin APIs
  */
 export const adminAPI = {
+  getDashboardSummary: () => apiCall('/admin/stats/summary', { method: 'GET' }),
   getStudents: () => apiCall('/admin/students', { method: 'GET' }),
+
   getUsers: () => apiCall('/admin/users', { method: 'GET' }),
   addUser: (userData) => apiCall('/admin/users/create', { method: 'POST', body: JSON.stringify(userData) }),
   updateUser: (id, userData) => apiCall(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(userData) }),

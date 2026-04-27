@@ -7,6 +7,14 @@ import crypto from 'crypto';
 
 const router = express.Router();
 
+// Fallback middleware for existing sessions without schoolId in token
+router.use((req, res, next) => {
+    if (req.user && !req.user.schoolId) {
+        req.user.schoolId = 'school-001';
+    }
+    next();
+});
+
 /**
  * Audit Log Helper
  */
@@ -446,7 +454,7 @@ router.get('/financials/trends', async (req, res) => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const result = await req.db.query(
             `SELECT 
-                DATE(created_at) as date,
+                DATE(f.created_at) as date,
                 COALESCE(SUM(amount), 0) as amount
              FROM fees f
              JOIN students s ON f.student_id = s.id
@@ -558,6 +566,128 @@ router.delete('/timetable/:id', async (req, res) => {
 });
 
 router.get('/attendance/overall-monthly', getMonthlyOverallAttendance);
+
+/**
+ * GET /api/admin/stats/summary
+ * Unified endpoint for dashboard KPI stats
+ */
+router.get('/stats/summary', async (req, res) => {
+    try {
+        const schoolId = req.user.schoolId;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const currentMonth = new Date().toISOString().slice(0, 7);
+
+        // Run all count queries in parallel
+        const [
+            studentStats,
+            userStats,
+            financialStats,
+            homeworkStats,
+            attendanceStats
+        ] = await Promise.all([
+            // Student Counts
+            req.db.query(
+                `SELECT 
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN status = 'active' THEN 1 END) as active
+                 FROM students WHERE school_id = $1`,
+                [schoolId]
+            ),
+            // User Counts
+            req.db.query(
+                `SELECT 
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN role = 'teacher' THEN 1 END) as teachers,
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending
+                 FROM users WHERE school_id = $1`,
+                [schoolId]
+            ),
+            // Financials
+            req.db.query(
+                `SELECT 
+                    COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as paid,
+                    COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as pending,
+                    COUNT(CASE WHEN is_paid = FALSE THEN 1 END) as unpaid_count
+                 FROM fees f
+                 JOIN students s ON f.student_id = s.id
+                 WHERE s.school_id = $1`,
+                [schoolId]
+            ),
+            // Homework (last 30 days)
+            req.db.query(
+                `SELECT COUNT(*) as total FROM homework WHERE school_id = $1 AND created_at >= $2`,
+                [schoolId, thirtyDaysAgo]
+            ),
+            // Attendance (current month)
+            req.db.query(
+                `SELECT 
+                    ROUND(COUNT(CASE WHEN is_present=true THEN 1 END) * 100.0 / NULLIF(COUNT(id), 0), 1) as percentage
+                 FROM attendance
+                 WHERE school_id = $1 AND TO_CHAR(date, 'YYYY-MM') = $2`,
+                [schoolId, currentMonth]
+            )
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                students: {
+                    total: parseInt(studentStats.rows[0].total),
+                    active: parseInt(studentStats.rows[0].active)
+                },
+                users: {
+                    total: parseInt(userStats.rows[0].total),
+                    teachers: parseInt(userStats.rows[0].teachers),
+                    pending: parseInt(userStats.rows[0].pending)
+                },
+                financials: {
+                    totalPaid: parseFloat(financialStats.rows[0].paid),
+                    totalPending: parseFloat(financialStats.rows[0].pending),
+                    unpaidCount: parseInt(financialStats.rows[0].unpaid_count)
+                },
+                homework: {
+                    recentCount: parseInt(homeworkStats.rows[0].total)
+                },
+                attendance: {
+                    monthlyRate: parseFloat(attendanceStats.rows[0].percentage) || 0
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Stats summary error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch summary stats' });
+    }
+});
+
+/**
+ * GET /api/admin/financials/trends
+ * Returns 30-day fee collection trends
+ */
+router.get('/financials/trends', async (req, res) => {
+    try {
+        const schoolId = req.user.schoolId;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const result = await req.db.query(
+            `SELECT 
+                DATE(paid_date) as date, 
+                SUM(amount) as amount 
+             FROM fees 
+             WHERE school_id = $1 AND status = 'paid' AND paid_date >= $2
+             GROUP BY DATE(paid_date)
+             ORDER BY date ASC`,
+            [schoolId, thirtyDaysAgo]
+        );
+
+        res.json({ success: true, trends: result.rows });
+    } catch (err) {
+        console.error('Trend data error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch trend data' });
+    }
+});
+
 
 // ============================================================
 // DYNAMIC DROPDOWNS (ERP GRADE)

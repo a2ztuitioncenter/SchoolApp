@@ -67,46 +67,43 @@ let currentRejectingUserId = null;
 let currentClassAssignmentUserId = null;
 let availableClassLevels = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔄 Initializing Pending Approvals...');
-    
-    // Check if admin is logged in (use auth-manager)
-    const auth = getAuth();
-    if (!auth || auth.role !== 'admin') {
-        window.location.href = '/';
-        return;
-    }
 
-    // Fetch pending users
-    fetchPendingUsers();
+// 🛑 DOM GUARD: Prevent script from running if this is not the admin dashboard page
+if (document.getElementById('admin-dashboard-root')) {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🔄 Initializing Pending Approvals...');
+        
+        // Fetch pending users
+        fetchPendingUsers();
 
-    // Setup rejection modal handlers
-    const confirmRejectBtn = document.getElementById('confirm-reject-btn');
-    if (confirmRejectBtn) {
-        confirmRejectBtn.addEventListener('click', async () => {
-            const reasonElement = document.getElementById('rejection-reason');
-            const reason = reasonElement ? reasonElement.value : '';
-            await rejectUser(currentRejectingUserId, reason);
-        });
-    }
+        // Setup rejection modal handlers
+        const confirmRejectBtn = document.getElementById('confirm-reject-btn');
+        if (confirmRejectBtn) {
+            confirmRejectBtn.addEventListener('click', async () => {
+                const reasonElement = document.getElementById('rejection-reason');
+                const reason = reasonElement ? reasonElement.value : '';
+                await rejectUser(currentRejectingUserId, reason);
+            });
+        }
 
-    // Setup class assignment modal handler
-    const confirmClassAssignmentBtn = document.getElementById('confirm-class-assignment-btn');
-    if (confirmClassAssignmentBtn) {
-        confirmClassAssignmentBtn.addEventListener('click', async () => {
-            const selectedClasses = Array.from(
-                document.querySelectorAll('#class-checkboxes-container input[type="checkbox"]:checked')
-            ).map(checkbox => checkbox.value);
+        // Setup class assignment modal handler
+        const confirmClassAssignmentBtn = document.getElementById('confirm-class-assignment-btn');
+        if (confirmClassAssignmentBtn) {
+            confirmClassAssignmentBtn.addEventListener('click', async () => {
+                const selectedClasses = Array.from(
+                    document.querySelectorAll('#class-checkboxes-container input[type="checkbox"]:checked')
+                ).map(checkbox => checkbox.value);
 
-            if (selectedClasses.length === 0) {
-                alert('Please select at least one class');
-                return;
-            }
+                if (selectedClasses.length === 0) {
+                    alert('Please select at least one class');
+                    return;
+                }
 
-            await approveUserWithClasses(currentClassAssignmentUserId, selectedClasses);
-        });
-    }
-});
+                await approveUserWithClasses(currentClassAssignmentUserId, selectedClasses);
+            });
+        }
+    });
+}
 
 /**
  * Fetch all pending users from backend

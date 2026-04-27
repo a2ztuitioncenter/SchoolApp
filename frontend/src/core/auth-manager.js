@@ -18,7 +18,10 @@
 const AUTH_STORAGE_KEY = 'auth';
 const AUTH_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 
-const readStoredAuth = () => sessionStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(AUTH_STORAGE_KEY);
+const readStoredAuth = () => {
+  // Use sessionStorage exclusively for active session identity to prevent bleed between tabs/users
+  return sessionStorage.getItem(AUTH_STORAGE_KEY);
+};
 
 /**
  * Store authentication data in sessionStorage
@@ -30,6 +33,11 @@ const readStoredAuth = () => sessionStorage.getItem(AUTH_STORAGE_KEY) || localSt
  * @param {string} [authData.phone] - User phone
  */
 export const setAuth = (authData) => {
+  // CRITICAL: Clear ANY existing auth state from both storages before setting new one
+  // This prevents identity bleed if an admin was logged in previously on this machine
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  
   const auth = {
     isLoggedIn: true,
     role: authData.role,
@@ -40,7 +48,6 @@ export const setAuth = (authData) => {
   };
   const serializedAuth = JSON.stringify(auth);
   sessionStorage.setItem(AUTH_STORAGE_KEY, serializedAuth);
-  localStorage.removeItem(AUTH_STORAGE_KEY);
   console.log('✅ Auth state saved:', { role: auth.role, userId: auth.userId });
 };
 
@@ -74,9 +81,19 @@ export const getAuth = () => {
  * Also clears the server-side HttpOnly cookie via API call.
  */
 export const clearAuth = () => {
+  // Clear all potential auth locations
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.clear();
+  
+  // Clear any role-specific keys used for backward compatibility
+  const compatKeys = [
+    'studentUserId', 'studentRole', 'studentPhone', 'studentName',
+    'teacherId', 'teacherRole', 'teacherPhone',
+    'adminUserId', 'adminRole', 'adminPhone'
+  ];
+  compatKeys.forEach(key => sessionStorage.removeItem(key));
+
   // Fire-and-forget: clear server-side cookies
   try {
     const base = window.__BASE_API_URL || '';
