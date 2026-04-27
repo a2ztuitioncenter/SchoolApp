@@ -209,6 +209,7 @@ select:focus {
     min-height: 80vh;
     display: flex;
     align-items: center;
+    justify-content: center;
     position: relative;
     overflow: hidden;
     text-align: center;
@@ -521,6 +522,7 @@ select:focus {
     border-color: var(--primary);
     transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
+}
 
 @media (max-width: 900px) {
     .erp-nav-desktop, .erp-header-auth { display: none; }
@@ -1660,4 +1662,3 @@ input:focus-visible {
     .student-signup-active .modal-close {
         color: var(--text-primary) !important;
     }
-}
