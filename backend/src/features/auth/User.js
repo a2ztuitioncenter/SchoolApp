@@ -111,7 +111,7 @@ export const getUserByUsername = async (pool, username, includePassword = false)
 };
 
 export const getUserByPhoneOrUsername = async (pool, identifier, includePassword = false) => {
-  const isPhone = /^\d{10}$/.test(identifier);
+  const isPhone = /^\+?\d{10,15}$/.test(identifier);
   if (isPhone) return getUserByPhone(pool, identifier, includePassword);
   return getUserByUsername(pool, identifier, includePassword);
 };
@@ -224,12 +224,22 @@ export const generateTeacherId = async (pool, role) => {
   const prefix = role === 'teacher' ? 'T' : role === 'staff' ? 'S' : 'T';
   let teacherId;
   let isUnique = false;
-  while (!isUnique) {
+  let attempts = 0;
+  const MAX_ATTEMPTS = 50;
+
+  while (!isUnique && attempts < MAX_ATTEMPTS) {
     const randomDigits = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
     teacherId = `${prefix}${randomDigits}`;
     const result = await pool.query('SELECT id FROM users WHERE teacher_id = $1', [teacherId]);
     isUnique = result.rows.length === 0;
+    attempts++;
   }
+
+  if (!isUnique) {
+    // Fallback to timestamp if random collisions are too high
+    teacherId = `${prefix}${Date.now().toString().slice(-6)}`;
+  }
+
   return teacherId;
 };
 

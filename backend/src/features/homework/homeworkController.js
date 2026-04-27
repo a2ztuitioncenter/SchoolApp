@@ -3,6 +3,9 @@ import { getStudentByUserId } from '../student/Student.js';
 
 export const getActiveAssignments = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: No user session' });
+    }
     const userId = req.user.userId;
     
     // Graceful fallback for admins/teachers previewing the student dashboard

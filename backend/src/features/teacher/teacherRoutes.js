@@ -383,6 +383,10 @@ router.post('/attendance/mark-bulk', async (req, res) => {
     try {
       await client.query('BEGIN');
       for (const r of records) {
+        // Validate status: must be 'present' or 'absent'
+        if (r.status !== 'present' && r.status !== 'absent') {
+           throw new Error(`Invalid attendance status: ${r.status} for student ${r.studentId}`);
+        }
         const isPresent = r.status === 'present';
         await client.query(
           `INSERT INTO attendance (student_id, user_id, class_level, section, date, is_present)
@@ -485,6 +489,14 @@ router.post('/homework', uploadHomework.single('attachment'), async (req, res) =
     const description = sanitizeNullableText(req.body.description, 5000);
     if (!classLevel || !title) return res.status(400).json({ success: false, error: 'classLevel and title required' });
     if (type !== 'daily_practice' && !dueDate) return res.status(400).json({ success: false, error: 'dueDate required' });
+
+    // Verify teacher has permission for this class
+    if (teacher.role !== 'admin') {
+      const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
+      if (!hasPermission) {
+        return res.status(403).json({ success: false, error: 'You do not have permission to assign homework to this class' });
+      }
+    }
 
     const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : null;
     const finalDueDate = type === 'daily_practice' ? null : dueDate;
@@ -704,6 +716,14 @@ router.post('/syllabus', async (req, res) => {
     const chapter = sanitizeText(req.body.chapter, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     if (!classLevel || !subject || !chapter) return res.status(400).json({ success: false, error: 'Required fields missing' });
+
+    // Verify teacher has permission for this class
+    if (teacher.role !== 'admin') {
+      const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
+      if (!hasPermission) {
+        return res.status(403).json({ success: false, error: 'You do not have permission to update syllabus for this class' });
+      }
+    }
 
     const entry = await createSyllabusEntry(pool, { teacherId: teacher.id, classLevel, section, subject, chapter, description });
     res.status(201).json({ success: true, data: entry });

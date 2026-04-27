@@ -91,7 +91,8 @@ export const homeworkModel = {
 
   async update(id, { title, description, classLevel, section, subjectId, subject, dueDate, attachmentUrl }) {
     const result = await db.query(
-      `UPDATE homework SET title=$1, description=$2, class_level=$3, section=$4, subject_id=$5, subject=$6, due_date=$7, attachment_url=$8 WHERE id=$9 RETURNING *`,
+      `UPDATE homework SET title=$1, description=$2, class_level=$3, section=$4, subject_id=$5, subject=$6, due_date=$7, 
+       attachment_url=COALESCE($8, attachment_url) WHERE id=$9 RETURNING *`,
       [title, description || null, classLevel, section || 'A', subjectId || null, subject || null, dueDate || null, attachmentUrl || null, id]
     );
     return this.formatRow(result.rows[0]);

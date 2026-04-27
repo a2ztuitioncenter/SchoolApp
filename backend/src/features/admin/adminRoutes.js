@@ -22,10 +22,10 @@ const logAudit = async (db, userId, action, entity, entityId, details) => {
         } else {
             detailsJson = JSON.stringify(details);
         }
-        await db.query(
-            'INSERT INTO audit_logs (user_id, action, entity, entity_id, details) VALUES ($1, $2, $3, $4, $5)',
-            [userId, action, entity, entityId, detailsJson]
-        );
+    await db.query(
+        'INSERT INTO audit_logs (user_id, action, entity, entity_id, details, school_id) VALUES ($1, $2, $3, $4, $5, $6)',
+        [userId, action, entity, entityId, detailsJson, details?.schoolId || null]
+    );
     } catch (err) {
         console.error('Audit Log Error:', err);
     }
@@ -50,10 +50,10 @@ router.get('/users', async (req, res) => {
                 ) AS classes_assigned
             FROM users u
             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
-            WHERE u.role IN ($1, $2)
+            WHERE u.role IN ($1, $2) AND u.school_id = $3
             GROUP BY u.id
             ORDER BY u.created_at DESC`,
-            ['teacher', 'staff']
+            ['teacher', 'staff', req.user.schoolId]
         );
 
         const mapped = result.rows.map(u => ({
@@ -173,7 +173,9 @@ router.get('/students', async (req, res) => {
             `SELECT s.*, u.phone as user_phone
              FROM students s 
              LEFT JOIN users u ON s.user_id = u.id 
-             ORDER BY s.name ASC`
+             WHERE s.school_id = $1
+             ORDER BY s.name ASC`,
+            [req.user.schoolId]
         );
         
         const mapped = result.rows.map(s => ({
@@ -247,7 +249,13 @@ router.post('/students/create', async (req, res) => {
                 });
             }
 
-            await client.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
+            if (user.status === 'blocked') {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ success: false, error: 'Cannot enroll student: Associated user account is blocked' });
+            }
+            if (user.status !== 'active') {
+                await client.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
+            }
 
             const classPart = classLevel.toString().padStart(2, '0');
             const sectionPart = section.toUpperCase();
@@ -354,10 +362,12 @@ router.delete('/students/:id', async (req, res) => {
         if (otherStudentsCount === 0) {
             // 3. No other students, safe to delete the user account
             await client.query('DELETE FROM users WHERE id = $1', [userId]);
+            await logAudit(client, req.user.userId, 'DELETE_STUDENT', 'students', studentId, { message: 'Deleted student and shared user account', userId, schoolId: req.user.schoolId });
             await client.query('COMMIT');
             res.json({ success: true, message: 'Student and associated user account deleted' });
         } else {
             // 4. Other students exist, commit student deletion but keep user
+            await logAudit(client, req.user.userId, 'DELETE_STUDENT', 'students', studentId, { message: 'Deleted student record (user account preserved)', userId, schoolId: req.user.schoolId });
             await client.query('COMMIT');
             res.json({ success: true, message: 'Student record deleted (user account preserved for other students)' });
         }
@@ -386,8 +396,9 @@ router.get('/financials/unpaid-fees', async (req, res) => {
              FROM fees f
              JOIN students s ON f.student_id = s.id
              JOIN users u ON s.user_id = u.id
-             WHERE f.is_paid = FALSE
-             ORDER BY f.due_date ASC`
+             WHERE f.is_paid = FALSE AND s.school_id = $1
+             ORDER BY f.due_date ASC`,
+            [req.user.schoolId]
         );
         
         const mapped = result.rows.map(f => ({
@@ -417,7 +428,10 @@ router.get('/financials/report', async (req, res) => {
                 COALESCE(SUM(amount), 0) as total_amount,
                 COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as total_paid,
                 COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as total_pending
-            FROM fees`
+            FROM fees f
+            JOIN students s ON f.student_id = s.id
+            WHERE s.school_id = $1`,
+            [req.user.schoolId]
         );
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
@@ -434,11 +448,12 @@ router.get('/financials/trends', async (req, res) => {
             `SELECT 
                 DATE(created_at) as date,
                 COALESCE(SUM(amount), 0) as amount
-             FROM fees
-             WHERE is_paid = TRUE AND created_at >= $1
-             GROUP BY DATE(created_at)
+             FROM fees f
+             JOIN students s ON f.student_id = s.id
+             WHERE f.is_paid = TRUE AND f.created_at >= $1 AND s.school_id = $2
+             GROUP BY DATE(f.created_at)
              ORDER BY date ASC`,
-            [thirtyDaysAgo]
+            [thirtyDaysAgo, req.user.schoolId]
         );
         res.json({ success: true, data: result.rows || [] });
     } catch (err) {
@@ -460,7 +475,9 @@ router.get('/timetable', async (req, res) => {
              FROM timetable t
              LEFT JOIN users u ON t.teacher_id = u.id
              LEFT JOIN subjects s ON t.subject_id = s.id
-             ORDER BY t.day_of_week, t.start_time ASC`
+             WHERE t.school_id = $1
+             ORDER BY t.day_of_week, t.start_time ASC`,
+            [req.user.schoolId]
         );
         
         const mapped = result.rows.map(t => ({

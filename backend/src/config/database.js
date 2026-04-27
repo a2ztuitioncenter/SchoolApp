@@ -38,7 +38,8 @@ export async function initializeDatabase() {
         await seedContentPages();
         await createDefaultAdmin();
     } catch (err) {
-        console.error('Database Initialization Error:', err.message);
+        console.error('❌ Database Initialization Error:', err.message);
+        throw err;
     }
 }
 
@@ -90,7 +91,8 @@ async function createDefaultAdmin() {
             console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);
         }
     } catch (err) {
-        console.error('ERROR configuring admin account:', err.message);
+        console.error('❌ ERROR configuring admin account:', err.message);
+        throw err;
     }
 }
 

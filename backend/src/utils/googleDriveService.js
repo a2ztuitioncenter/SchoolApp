@@ -7,29 +7,36 @@ class GoogleDriveService {
         this.scopes = ['https://www.googleapis.com/auth/drive.file'];
         this.folderCache = new Map();
         this.drive = null;
+        this.initPromise = null;
     }
 
     async init() {
         if (this.drive) return this.drive;
+        if (this.initPromise) return this.initPromise;
 
-        try {
-            const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
-            if (!privateKey) throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is missing');
-            
-            const auth = new google.auth.GoogleAuth({
-                credentials: {
-                    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                    private_key: privateKey,
-                },
-                scopes: this.scopes,
-            });
+        this.initPromise = (async () => {
+            try {
+                const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
+                if (!privateKey) throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY is missing');
+                
+                const auth = new google.auth.GoogleAuth({
+                    credentials: {
+                        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                        private_key: privateKey,
+                    },
+                    scopes: this.scopes,
+                });
 
-            this.drive = google.drive({ version: 'v3', auth });
-            return this.drive;
-        } catch (error) {
-            console.error('Failed to initialize Google Drive client:', error.message);
-            throw new Error('Google Drive service initialization failed');
-        }
+                this.drive = google.drive({ version: 'v3', auth });
+                return this.drive;
+            } catch (error) {
+                console.error('Failed to initialize Google Drive client:', error.message);
+                this.initPromise = null;
+                throw new Error('Google Drive service initialization failed');
+            }
+        })();
+
+        return this.initPromise;
     }
 
     async getOrCreateFolder(folderName, parentId = null) {
@@ -40,9 +47,11 @@ class GoogleDriveService {
         }
 
         try {
-            let query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+            const escapedName = folderName.replace(/'/g, "\\'");
+            let query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
             if (parentId) {
-                query += ` and '${parentId}' in parents`;
+                const escapedParent = parentId.replace(/'/g, "\\'");
+                query += ` and '${escapedParent}' in parents`;
             }
 
             const response = await drive.files.list({
@@ -168,6 +177,17 @@ class GoogleDriveService {
     }
 
     async deleteFile(fileId) {
+        if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
+            const fs = await import('fs/promises');
+            const filePath = path.join(process.cwd(), 'uploads', fileId);
+            try {
+                await fs.unlink(filePath);
+            } catch (err) {
+                console.warn(`Local file ${fileId} not found, skipping deletion.`);
+            }
+            return;
+        }
+
         const drive = await this.init();
         try {
             await drive.files.delete({ fileId });
@@ -181,6 +201,15 @@ class GoogleDriveService {
     }
 
     async getFileStream(fileId) {
+        if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
+            const fs = await import('fs');
+            const filePath = path.join(process.cwd(), 'uploads', fileId);
+            if (fs.existsSync(filePath)) {
+                return fs.createReadStream(filePath);
+            }
+            throw new Error('Local file not found');
+        }
+
         const drive = await this.init();
         try {
             const response = await drive.files.get(
@@ -195,6 +224,23 @@ class GoogleDriveService {
     }
 
     async getFileMetadata(fileId) {
+        if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
+            const fs = await import('fs/promises');
+            const filePath = path.join(process.cwd(), 'uploads', fileId);
+            try {
+                const stats = await fs.stat(filePath);
+                return {
+                    id: fileId,
+                    name: fileId,
+                    mimeType: 'application/octet-stream', // Fallback
+                    size: stats.size,
+                    webViewLink: `/uploads/${fileId}`
+                };
+            } catch (err) {
+                throw new Error('Local file metadata not found');
+            }
+        }
+
         const drive = await this.init();
         try {
             const response = await drive.files.get({

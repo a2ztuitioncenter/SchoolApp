@@ -84,7 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmRejectBtn = document.getElementById('confirm-reject-btn');
     if (confirmRejectBtn) {
         confirmRejectBtn.addEventListener('click', async () => {
-            const reason = document.getElementById('rejection-reason').value;
+            const reasonElement = document.getElementById('rejection-reason');
+            const reason = reasonElement ? reasonElement.value : '';
             await rejectUser(currentRejectingUserId, reason);
         });
     }

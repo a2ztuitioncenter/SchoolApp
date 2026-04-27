@@ -104,8 +104,7 @@ export const attendanceModel = {
   },
 
   async getSectionsByClass(classLevel) {
-    const { sanitizeIdentifier } = await import('../../utils/sanitize.js');
-    return (await db.query(`SELECT DISTINCT section FROM students WHERE class_level = $1 AND section IS NOT NULL ORDER BY section`, [sanitizeIdentifier(classLevel)])).rows.map(r => r.section);
+    return (await db.query(`SELECT DISTINCT section FROM students WHERE class_level = $1 AND section IS NOT NULL ORDER BY section`, [classLevel])).rows.map(r => r.section);
   }
 };
 

@@ -479,62 +479,79 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
       return res.status(400).json({ success: false, error: 'User is already approved' });
     }
 
-    // Assign classes if applicable
-    if ((user.role === 'teacher' || user.role === 'staff') && classesAssigned) {
-      if (!Array.isArray(classesAssigned)) {
-        return res.status(400).json({ success: false, error: 'classesAssigned must be an array' });
-      }
+    // Perform approval in a transaction
+    const client = await req.db.connect();
+    try {
+      await client.query('BEGIN');
 
-      // Sanitize: trim strings, handle numeric IDs, remove duplicates/empty, limit length
-      const sanitizedClasses = [];
-      const seen = new Set();
-      
-      for (const entry of classesAssigned) {
-        if (entry === null || entry === undefined) continue;
+      // Assign classes if applicable
+      if ((user.role === 'teacher' || user.role === 'staff') && classesAssigned) {
+        if (!Array.isArray(classesAssigned)) {
+          throw new Error('classesAssigned must be an array');
+        }
+
+        const sanitizedClasses = [];
+        const seen = new Set();
         
-        let val = entry;
-        if (typeof val === 'string') {
-          val = val.trim();
-          if (val === '') continue;
-          
-          // If it looks like a number, parse it to ensure it's a valid ID/Level
-          if (/^\d+$/.test(val)) {
-            const num = parseInt(val, 10);
-            if (isNaN(num)) continue;
-            val = String(num);
+        for (const entry of classesAssigned) {
+          if (entry === null || entry === undefined) continue;
+          let val = entry;
+          if (typeof val === 'string') {
+            val = val.trim();
+            if (val === '') continue;
+            if (/^\d+$/.test(val)) {
+              const num = parseInt(val, 10);
+              if (!isNaN(num)) val = String(num);
+            }
+          } else if (typeof val === 'number') {
+            if (!isNaN(val)) val = String(val);
+          } else {
+            continue;
           }
-        } else if (typeof val === 'number') {
-          if (isNaN(val)) continue;
-          val = String(val);
-        } else {
-          continue; // Reject other types
+
+          if (val && !seen.has(val) && val.length <= 20) {
+            sanitizedClasses.push(val);
+            seen.add(val);
+          }
+          if (sanitizedClasses.length >= 20) break;
         }
 
-        if (val && !seen.has(val) && val.length <= 20) {
-          sanitizedClasses.push(val);
-          seen.add(val);
+        if (sanitizedClasses.length > 0) {
+          await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [id]);
+          for (const classLevel of sanitizedClasses) {
+            await client.query(
+              `INSERT INTO teacher_class_assignment (teacher_id, class_level, section, school_id)
+               VALUES ($1, $2, $3, $4)`,
+              [id, classLevel, 'ALL', user.schoolId]
+            );
+          }
         }
-        
-        if (sanitizedClasses.length >= 20) break; // Enforce max length
       }
 
-      if (sanitizedClasses.length === 0 && classesAssigned.length > 0) {
-        return res.status(400).json({ success: false, error: 'Invalid entries in classesAssigned' });
-      }
-
-      await assignTeacherToClasses(req.db, id, sanitizedClasses, user.schoolId);
+      const updatedUserRes = await client.query(
+        `UPDATE users 
+         SET status = $2, approved_by = $3, status_updated_at = NOW()
+         WHERE id = $1 RETURNING *`,
+        [id, 'active', req.user.userId]
+      );
+      
+      const updatedUser = updatedUserRes.rows[0];
+      await client.query('COMMIT');
+      
+      console.log(`[AUTH] Admin ${req.user.userId} approved user ${id} (${user.role})`);
+      
+      res.json({ 
+        success: true, 
+        message: 'User approved successfully', 
+        user: updatedUser,
+        data: updatedUser 
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-
-    const updatedUser = await updateUserStatus(req.db, id, 'active', req.user.userId);
-    
-    console.log(`[AUTH] Admin ${req.user.userId} approved user ${id} (${user.role})`);
-    
-    res.json({ 
-      success: true, 
-      message: 'User approved successfully', 
-      user: updatedUser,
-      data: updatedUser 
-    });
   } catch (error) {
     console.error('Approve user error:', error);
     res.status(500).json({ 
