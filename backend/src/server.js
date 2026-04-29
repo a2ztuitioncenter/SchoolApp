@@ -36,25 +36,39 @@ import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securi
 import { initializeDatabase } from './config/database.js';
 
 import fs from 'fs';
-
+import pool from './config/pool.js';
 
 // Ensure upload directories exist (relative to CWD, which is backend root)
 ['uploads/materials', 'uploads/homework', 'uploads/notifications'].forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-import pool from './config/pool.js';
-
-// Test the connection
-try {
-  const client = await pool.connect();
-  console.log('PostgreSQL Database connected successfully');
-  client.release();
-} catch (error) {
-  console.error('PostgreSQL connection error:', error.message);
-  console.error('Ensure PostgreSQL is running and your .env file is configured correctly.');
+// Global Exception Handlers (Critical for Production Debugging)
+process.on('uncaughtException', (err) => {
+  console.error('\nFATAL ERROR: Uncaught Exception');
+  console.error(err.stack || err);
   process.exit(1);
-}
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('\nFATAL ERROR: Unhandled Rejection at:', promise);
+  console.error('Reason:', reason.stack || reason);
+  process.exit(1);
+});
+
+// Environment Validation
+const validateEnv = () => {
+  const required = ['DATABASE_URL', 'JWT_SECRET', 'ADMIN_PHONE', 'ADMIN_PASSWORD', 'ADMIN_USERNAME'];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error('\n❌ CONFIGURATION ERROR: Missing required environment variables:');
+    missing.forEach(key => console.error(`   - ${key}`));
+    console.error('\nPlease ensure these are set in your Render dashboard or .env file.\n');
+    process.exit(1);
+  }
+  console.log('✅ Environment variables validated.');
+};
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,164 +76,152 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Trust proxy for production (Render/Vercel)
 if (isProd) {
+  console.log('🛡️  Running in PRODUCTION mode (Trust Proxy enabled)');
   app.set('trust proxy', 1);
+} else {
+  console.log('🛠️  Running in DEVELOPMENT mode');
 }
-
-// Security middleware first
-app.use(corsSecure());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(validateInput);
-app.use(rateLimiter(100, 60000));
-app.use(csrfProtection);
-app.use(securityLogger);
-
-// Attach Database Pool to Request
-app.use((req, res, next) => {
-  req.db = pool;
-  next();
-});
-
-// Global Request Logger
-app.use((req, res, next) => {
-  console.log(`[EXPRESS ${req.method}] ${req.url}`);
-  next();
-});
-
-// Serve index.html (master landing / login selector) on root route
-app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, '../../frontend/index.html');
-  res.sendFile(indexPath);
-});
-
-// Serve static files from frontend
-app.use(express.static(path.join(__dirname, '../../frontend')));
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-// Handle favicon requests
-app.get('/favicon.ico', (req, res) => {
-  res.status(204).end();
-});
-
-// Routes
-app.use('/api/auth', authRoutes); // Auth routes are public for login/register
-
-// Protected routes - Require authentication
-app.use('/api/student', authenticate, studentRoutes);
-app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
-app.use('/api/teacher', authenticate, authorize(['teacher', 'staff', 'admin']), teacherRoutes);
-
-// Admin Module Routes (from verification requirements)
-app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);
-app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
-app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
-app.use('/api/materials', authenticate, materialsRoutes);
-app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
-app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
-app.use('/api/download', authenticate, downloadRoutes); // Download available to authenticated users
-app.use('/api/subjects', authenticate, subjectsRoutes); // Combined RBAC internally
-app.use('/api/storage', authenticate, storageRoutes); // Storage routes (upload, files, download)
-app.use('/api/profile', authenticate, profileRoutes);
-app.use('/api/content', authenticate, contentRoutes);
-app.use('/api/submissions', authenticate, submissionRoutes);
-app.use('/api/assignments', authenticate, assignmentRoutes);
-
-// PUBLIC content route (no auth required — for landing page)
-const PUBLIC_CONTENT_KEYS = ['programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms', 'help', 'documentation'];
-app.get('/api/public/content/:key', async (req, res) => {
-  const { key } = req.params;
-  if (!PUBLIC_CONTENT_KEYS.includes(key)) {
-    return res.status(400).json({ success: false, error: 'Invalid content key' });
-  }
-  try {
-    const result = await pool.query(
-      'SELECT key, content, updated_at FROM content_pages WHERE key = $1',
-      [key]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Content not found' });
-    }
-    res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    console.error('Public content fetch error:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch content' });
-  }
-});
-
-// Health check endpoint
-app.get('/health', async (req, res) => {
-  try {
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW()');
-    client.release();
-    res.json({ 
-      status: 'Healthy',
-      server: 'Running',
-      database: 'Connected',
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(503).json({
-      status: 'Unhealthy',
-      server: 'Running',
-      database: 'Disconnected',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Fallback: serve index.html for unknown routes
-app.use((req, res) => {
-  const indexPath = path.join(__dirname, '../../frontend/index.html');
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error('Error serving index.html:', err.message);
-      res.status(404).json({ error: 'Page not found' });
-    }
-  });
-});
-
-// Error Handling
-app.use((err, req, res, next) => {
-  console.error('Unexpected error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-  });
-});
 
 // Database Initialization & Start Server
 const startServer = async () => {
   try {
-    const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
+    console.log('\n🚀 Starting Backend Server Initialization...');
+    
+    // 1. Validate Environment
+    validateEnv();
 
+    // 2. Test Database Connection
+    console.log('📡 Connecting to database...');
+    try {
+      const client = await pool.connect();
+      console.log('✅ PostgreSQL Database connected successfully');
+      client.release();
+    } catch (dbError) {
+      console.error('❌ DATABASE CONNECTION FAILED:');
+      console.error(dbError.message);
+      console.error('Check your DATABASE_URL and SSL settings.');
+      process.exit(1);
+    }
+
+    // 3. Security & Middleware
+    console.log('🔒 Initializing security middleware...');
+    app.use(corsSecure());
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(cookieParser());
+    app.use(validateInput);
+    app.use(rateLimiter(100, 60000));
+    app.use(csrfProtection);
+    app.use(securityLogger);
+
+    // Attach Database Pool to Request
+    app.use((req, res, next) => {
+      req.db = pool;
+      next();
+    });
+
+    // Global Request Logger
+    app.use((req, res, next) => {
+      if (!isProd || req.url !== '/health') {
+        console.log(`[EXPRESS ${req.method}] ${req.url}`);
+      }
+      next();
+    });
+
+    // 4. Static Files & Landing Page
+    console.log('📂 Setting up static file serving...');
+    app.get('/', (req, res) => {
+      const indexPath = path.join(__dirname, '../../frontend/index.html');
+      res.sendFile(indexPath);
+    });
+
+    app.use(express.static(path.join(__dirname, '../../frontend')));
+    app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+    app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+    // 5. Routes
+    console.log('🛣️  Loading API routes...');
+    app.use('/api/auth', authRoutes);
+    app.use('/api/student', authenticate, studentRoutes);
+    app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
+    app.use('/api/teacher', authenticate, authorize(['teacher', 'staff', 'admin']), teacherRoutes);
+    app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);
+    app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
+    app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
+    app.use('/api/materials', authenticate, materialsRoutes);
+    app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
+    app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
+    app.use('/api/download', authenticate, downloadRoutes);
+    app.use('/api/subjects', authenticate, subjectsRoutes);
+    app.use('/api/storage', authenticate, storageRoutes);
+    app.use('/api/profile', authenticate, profileRoutes);
+    app.use('/api/content', authenticate, contentRoutes);
+    app.use('/api/submissions', authenticate, submissionRoutes);
+    app.use('/api/assignments', authenticate, assignmentRoutes);
+
+    // Public content route
+    const PUBLIC_CONTENT_KEYS = ['programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms', 'help', 'documentation'];
+    app.get('/api/public/content/:key', async (req, res) => {
+      const { key } = req.params;
+      if (!PUBLIC_CONTENT_KEYS.includes(key)) return res.status(400).json({ error: 'Invalid key' });
+      const result = await pool.query('SELECT key, content, updated_at FROM content_pages WHERE key = $1', [key]);
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+      res.json({ success: true, data: result.rows[0] });
+    });
+
+    // Health check
+    app.get('/health', async (req, res) => {
+      try {
+        const client = await pool.connect();
+        await client.query('SELECT NOW()');
+        client.release();
+        res.json({ status: 'Healthy', timestamp: new Date().toISOString() });
+      } catch (error) {
+        res.status(503).json({ status: 'Unhealthy' });
+      }
+    });
+
+    // Fallback
+    app.use((req, res) => {
+      const indexPath = path.join(__dirname, '../../frontend/index.html');
+      res.sendFile(indexPath, (err) => {
+        if (err) res.status(404).json({ error: 'Page not found' });
+      });
+    });
+
+    // Error Handling
+    app.use((err, req, res, next) => {
+      console.error('Unexpected error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    });
+
+    // 6. DB Initialization (Conditional)
+    const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
     if (shouldInitializeDB) {
-      console.log('Initializing database tables and creating default admin...');
+      console.log('🛠️  Initializing database schema...');
       await initializeDatabase();
     }
 
-    // Start background jobs
+    // 7. Background Jobs
+    console.log('⏰ Starting background jobs...');
     import('./utils/cleanupJob.js').then(({ startCleanupJob }) => {
       startCleanupJob(pool);
     }).catch(err => console.error('Failed to load cleanup job:', err));
 
+    // 8. Listen
     app.listen(PORT, '0.0.0.0', () => {
       console.log('\n╔═══════════════════════════════════════════════════════════╗');
       console.log('║               BACKEND SERVER STARTED                      ║');
       console.log('╚═══════════════════════════════════════════════════════════╝\n');
       console.log(`Backend API Server: http://localhost:${PORT}`);
-      console.log(`  • Local: http://localhost:${PORT}/health`);
-      console.log(`  • Network: http://0.0.0.0:${PORT}/health`);
+      console.log(`  • Health Check: http://localhost:${PORT}/health`);
       console.log(`  • Database: Connected ✓\n`);
-      console.log(`Quick Links:`);
-      console.log(`  • Student Login: http://localhost:${PORT}/student-login.html`);
-      console.log(`  • Admin Login: http://localhost:${PORT}/admin-login.html`);
-      console.log(`  • Teacher Login: http://localhost:${PORT}/teacher-login.html`);
-      console.log(`  • Health Check: http://localhost:${PORT}/health\n`);
-      console.log("Server is RUnning ...")
     });
+
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('\n❌ FAILED TO START SERVER:');
+    console.error(error.stack || error);
     process.exit(1);
   }
 };
