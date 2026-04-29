@@ -17,6 +17,7 @@ drive key.json
 *.json.bak
 supabase/
 *.json.old
+scratch/*
 
 # ============================================================================
 # DEPENDENCIES & LOCK FILES

@@ -522,14 +522,14 @@ router.get('/financials/trends', async (req, res) => {
 
         const result = await req.db.query(
             `SELECT 
-                DATE(COALESCE(paid_date, created_at)) as date,
-                COALESCE(SUM(amount), 0) as amount
+                DATE(COALESCE(f.paid_date, f.created_at)) as date,
+                COALESCE(SUM(f.amount), 0) as amount
              FROM fees f
              JOIN students s ON f.student_id = s.id
-             WHERE (status = 'paid' OR is_paid = TRUE) 
-               AND (COALESCE(paid_date, created_at)) >= $1 
+             WHERE (f.status = 'paid' OR f.is_paid = TRUE) 
+               AND (COALESCE(f.paid_date, f.created_at)) >= $1 
                AND s.school_id = $2
-             GROUP BY DATE(COALESCE(paid_date, created_at))
+             GROUP BY DATE(COALESCE(f.paid_date, f.created_at))
              ORDER BY date ASC`,
             [thirtyDaysAgo, schoolId]
         );

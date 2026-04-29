@@ -17,28 +17,28 @@ export const syllabusModel = {
   `,
 };
 
-export const getSyllabusByTeacher = async (pool, teacherId) => {
+export const getSyllabusByTeacher = async (pool, teacherId, schoolId) => {
   const res = await pool.query(
-    `SELECT * FROM syllabus WHERE teacher_id = $1 ORDER BY subject, created_at ASC`,
-    [teacherId]
+    `SELECT * FROM syllabus WHERE teacher_id = $1 AND school_id = $2 ORDER BY subject, created_at ASC`,
+    [teacherId, schoolId]
   );
   return res.rows;
 };
 
-export const createSyllabusEntry = async (pool, { teacherId, classLevel, section, subject, chapter, description }) => {
+export const createSyllabusEntry = async (pool, { teacherId, classLevel, section, subject, chapter, description, schoolId }) => {
   const res = await pool.query(
-    `INSERT INTO syllabus (teacher_id, class_level, section, subject, chapter, description)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [teacherId, classLevel, section ?? 'ALL', subject, chapter, description ?? null]
+    `INSERT INTO syllabus (teacher_id, class_level, section, subject, chapter, description, school_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [teacherId, classLevel, section ?? 'ALL', subject, chapter, description ?? null, schoolId]
   );
   return res.rows[0];
 };
 
-export const updateSyllabusEntry = async (pool, id, { chapter, description, completed }) => {
+export const updateSyllabusEntry = async (pool, id, { chapter, description, completed, schoolId }) => {
   const res = await pool.query(
     `UPDATE syllabus SET chapter = COALESCE($2, chapter), description = COALESCE($3, description),
-     completed = COALESCE($4, completed) WHERE id = $1 RETURNING *`,
-    [id, chapter, description, completed]
+     completed = COALESCE($4, completed) WHERE id = $1 AND school_id = $5 RETURNING *`,
+    [id, chapter, description, completed, schoolId]
   );
   return res.rows[0];
 };

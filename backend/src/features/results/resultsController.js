@@ -2,6 +2,11 @@ import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../ut
 
 export const getResultsByStudent = async (req, res) => {
   try {
+    const schoolId = req.user?.schoolId;
+    if (!schoolId) {
+      console.warn('⚠️ [getResultsByStudent] Missing schoolId in request');
+      return res.status(401).json({ success: false, error: 'Unauthorized: Missing school isolation key' });
+    }
     const { student } = req.params;
     let result;
     if (student === 'all') {
@@ -9,7 +14,9 @@ export const getResultsByStudent = async (req, res) => {
         `SELECT er.*, s.roll_number as roll_no
          FROM exam_results er
          LEFT JOIN students s ON er.student_id = s.id
-         ORDER BY er.created_at DESC`
+         WHERE er.school_id = $1
+         ORDER BY er.created_at DESC`,
+        [schoolId]
       );
     } else {
       // Filter by roll number or student name
@@ -17,9 +24,9 @@ export const getResultsByStudent = async (req, res) => {
         `SELECT er.*, s.roll_number as roll_no
          FROM exam_results er
          LEFT JOIN students s ON er.student_id = s.id
-         WHERE er.roll_number = $1 OR er.student_name = $1 
+         WHERE (er.roll_number = $1 OR er.student_name = $1) AND er.school_id = $2
          ORDER BY er.created_at DESC`,
-        [student]
+        [student, schoolId]
       );
     }
 
@@ -43,8 +50,11 @@ export const getResultsByStudent = async (req, res) => {
 
     res.json({ success: true, data: mappedData });
   } catch (err) {
-    console.error('getResultsByStudent:', err);
-    res.status(500).json({ success: false, error: 'Server error' });
+    console.error('❌ [getResultsByStudent] Error:', err.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.error(err.stack);
+    }
+    res.status(500).json({ success: false, error: 'Server error', details: err.message });
   }
 };
 
@@ -59,7 +69,8 @@ export const createResult = async (req, res) => {
     const obtainedMarks = Number(req.body.obtainedMarks || req.body.obtained_marks) || 0;
     const remarks = sanitizeNullableText(req.body.remarks, 500);
     const studentId = Number(req.body.studentId || req.body.student_id);
-    const teacherId = sanitizeIdentifier(req.user?.userId || req.body.teacherId || req.body.teacher_id, 20);
+    const teacherId = sanitizeIdentifier(String(req.user?.userId || req.body.teacherId || req.body.teacher_id), 20);
+    const schoolId = req.user.schoolId;
 
     if (!classLevel || !studentName || !examTitle)
       return res.status(400).json({ success: false, error: 'classLevel, studentName, and examTitle are required' });
@@ -67,9 +78,9 @@ export const createResult = async (req, res) => {
     const subjects = req.body.subjects || {};
 
     const result = await req.db.query(
-      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id, student_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId, studentId]
+      `INSERT INTO exam_results (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id, student_id, school_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, (obtainedMarks / totalMarks * 100) || 0, remarks, teacherId, studentId, schoolId]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {

@@ -29,9 +29,9 @@ export const createExamResult = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO exam_results 
-       (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id, student_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId, studentId]
+       (class_level, section, roll_number, student_name, exam_title, subjects, total_marks, obtained_marks, percentage, remarks, teacher_id, student_id, school_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [classLevel, section, rollNumber, studentName, examTitle, JSON.stringify(subjects), totalMarks, obtainedMarks, percentage, remarks, teacherId, studentId, req.user.schoolId]
     );
 
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -50,9 +50,9 @@ export const getExamResults = async (req, res) => {
       `SELECT er.*, COALESCE(s.roll_number, er.roll_number) as roll_no
        FROM exam_results er
        LEFT JOIN students s ON er.student_id = s.id
-       WHERE er.teacher_id = $1 
+       WHERE er.teacher_id = $1 AND er.school_id = $2
        ORDER BY er.created_at DESC`,
-      [teacherId]
+      [teacherId, req.user.schoolId]
     );
 
     const mappedResults = results.rows.map(r => ({

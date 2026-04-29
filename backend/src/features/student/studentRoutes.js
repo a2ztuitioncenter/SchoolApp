@@ -42,9 +42,9 @@ router.get('/:userId/results', async (req, res) => {
     const results = await pool.query(
       `SELECT er.* 
        FROM exam_results er
-       WHERE er.student_id = $1
+       WHERE er.student_id = $1 AND er.school_id = $2
        ORDER BY er.created_at DESC`,
-      [student.id]
+      [student.id, student.schoolId]
     );
 
     // Map snake_case to camelCase for the frontend
@@ -92,9 +92,9 @@ router.get('/:userId/homework', async (req, res) => {
       `SELECT h.*, u.phone AS teacher_phone 
        FROM homework h 
        LEFT JOIN users u ON h.teacher_id = u.id 
-       WHERE h.class_level = $1 AND (h.section = $2 OR h.section = 'ALL')
+       WHERE h.class_level = $1 AND (h.section = $2 OR h.section = 'ALL') AND h.school_id = $3
        ORDER BY h.created_at DESC`,
-      [classLevel, section]
+      [classLevel, section, student.schoolId]
     );
 
     const homework = (homeworkResult.rows || []).map(h => ({
@@ -145,9 +145,9 @@ router.get('/:userId/syllabus', async (req, res) => {
       `SELECT s.*, u.name AS teacher_name 
        FROM syllabus s 
        LEFT JOIN users u ON s.teacher_id = u.id 
-       WHERE s.class_level = $1 AND (s.section = $2 OR s.section = 'ALL' OR $2 = 'ALL')
+       WHERE s.class_level = $1 AND (s.section = $2 OR s.section = 'ALL' OR $2 = 'ALL') AND s.school_id = $3
        ORDER BY s.subject ASC, s.created_at ASC`,
-      [classLevel, section || 'ALL']
+      [classLevel, section || 'ALL', student.schoolId]
     );
 
     const syllabus = (syllabusResult.rows || []).map(s => ({
