@@ -16,24 +16,45 @@ router.use((req, res, next) => {
 });
 
 /**
- * Audit Log Helper
+ * Safe JSON Parser Utility
+ * Prevents double-parsing, double-stringification, and handles malformed inputs gracefully.
  */
-const logAudit = async (db, userId, action, entity, entityId, details) => {
+const safeJsonParse = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'object') return value;
+    
     try {
-        let detailsJson = details;
-        if (typeof details === 'string') {
+        // Attempt single parse
+        const parsed = JSON.parse(value);
+        // If the result is still a string (could be double stringified), parse again once
+        if (typeof parsed === 'string') {
             try {
-                JSON.parse(details);
-            } catch (e) {
-                detailsJson = JSON.stringify({ message: details });
+                return JSON.parse(parsed);
+            } catch {
+                return parsed;
             }
-        } else {
-            detailsJson = JSON.stringify(details);
         }
-    await db.query(
-        'INSERT INTO audit_logs (user_id, action, entity, entity_id, details, school_id) VALUES ($1, $2, $3, $4, $5, $6)',
-        [userId, action, entity, entityId, detailsJson, details?.schoolId || null]
-    );
+        return parsed;
+    } catch {
+        return value;
+    }
+};
+
+/**
+ * Audit Log Helper - Production Safe & Tenant Scoped
+ */
+const logAudit = async (db, userId, action, entity, entityId, details, schoolId) => {
+    try {
+        if (!schoolId) {
+            console.warn(`[AuditLog] Missing schoolId for action: ${action} by user: ${userId}`);
+        }
+
+        const detailsJson = typeof details === 'object' ? JSON.stringify(details) : JSON.stringify({ message: details });
+
+        await db.query(
+            'INSERT INTO audit_logs (user_id, action, entity, entity_id, details, school_id) VALUES ($1, $2, $3, $4, $5, $6)',
+            [userId, action, entity, entityId, detailsJson, schoolId || null]
+        );
     } catch (err) {
         console.error('Audit Log Error:', err);
     }
@@ -110,7 +131,7 @@ router.post('/users/create', async (req, res) => {
 
         const user = await createUser(req.db, { name, phone, email, password, role, schoolId: req.user.schoolId, username, status: 'active', teacherId });
         
-        await logAudit(req.db, req.user.userId, 'CREATE_USER', 'users', user.id, `Created ${role}: ${name}`);
+        await logAudit(req.db, req.user.userId, 'CREATE_USER', 'users', user.id, `Created ${role}: ${name}`, req.user.schoolId);
         
         res.status(201).json({ success: true, data: user });
     } catch (err) {
@@ -144,7 +165,7 @@ router.put('/users/:id', async (req, res) => {
             await assignTeacherToClasses(req.db, id, classesAssigned, schoolId);
         }
         
-        await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`);
+        await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`, req.user.schoolId);
         
         res.json({ success: true, data: user });
     } catch (err) {
@@ -156,6 +177,13 @@ router.put('/users/:id', async (req, res) => {
 router.get('/users/:id/assignments', async (req, res) => {
     try {
         const assignments = await getTeacherAssignments(req.db, req.params.id);
+        
+        // Security check: ensure teacher belongs to the same school
+        const teacher = await getUserById(req.db, req.params.id);
+        if (!teacher || teacher.school_id !== req.user.schoolId) {
+            return res.status(403).json({ success: false, error: 'Unauthorized: Teacher belongs to another school' });
+        }
+
         res.json({ success: true, data: assignments || [] });
     } catch (err) {
         console.error('Fetch assignments error:', err);
@@ -168,7 +196,7 @@ router.delete('/users/:id', async (req, res) => {
         const deleted = await deleteUser(req.db, req.params.id, req.user.schoolId);
         if (!deleted) return res.status(404).json({ success: false, error: 'User not found' });
         
-        await logAudit(req.db, req.user.userId, 'DELETE_USER', 'users', req.params.id, `Deleted user ID ${req.params.id}`);
+        await logAudit(req.db, req.user.userId, 'DELETE_USER', 'users', req.params.id, `Deleted user ID ${req.params.id}`, req.user.schoolId);
         
         res.json({ success: true, message: 'User deleted' });
     } catch (err) {
@@ -316,10 +344,11 @@ router.post('/students/create', async (req, res) => {
                 joiningDate: joiningDate || new Date().toISOString().split('T')[0],
                 dateOfBirth: dobISO,
                 status: status || 'active',
-                rollNumber
+                rollNumber,
+                schoolId: req.user.schoolId
             });
 
-            await logAudit(client, req.user.userId, 'CREATE_STUDENT', 'students', student.id, `Enrolled student: ${fullName}`);
+            await logAudit(client, req.user.userId, 'CREATE_STUDENT', 'students', student.id, `Enrolled student: ${fullName}`, req.user.schoolId);
 
             await client.query('COMMIT');
             res.status(201).json({ success: true, data: student });
@@ -352,6 +381,9 @@ router.put('/students/:id', async (req, res) => {
             [name, classLevel, section, fatherName, motherName, phone, email, id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
+        
+        await logAudit(req.db, req.user.userId, 'UPDATE_STUDENT', 'students', id, `Updated student: ${name || result.rows[0].name}`, req.user.schoolId);
+
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update student error:', err);
@@ -366,6 +398,9 @@ router.patch('/students/:id/status', async (req, res) => {
             [req.body.status, req.params.id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
+        
+        await logAudit(req.db, req.user.userId, 'UPDATE_STUDENT_STATUS', 'students', req.params.id, `Changed status to ${req.body.status}`, req.user.schoolId);
+
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update student status error:', err);
@@ -397,12 +432,12 @@ router.delete('/students/:id', async (req, res) => {
         if (otherStudentsCount === 0) {
             // 3. No other students, safe to delete the user account
             await client.query('DELETE FROM users WHERE id = $1', [userId]);
-            await logAudit(client, req.user.userId, 'DELETE_STUDENT', 'students', studentId, { message: 'Deleted student and shared user account', userId, schoolId: req.user.schoolId });
+            await logAudit(client, req.user.userId, 'DELETE_STUDENT', 'students', studentId, { message: 'Deleted student and shared user account', userId, schoolId: req.user.schoolId }, req.user.schoolId);
             await client.query('COMMIT');
             res.json({ success: true, message: 'Student and associated user account deleted' });
         } else {
             // 4. Other students exist, commit student deletion but keep user
-            await logAudit(client, req.user.userId, 'DELETE_STUDENT', 'students', studentId, { message: 'Deleted student record (user account preserved)', userId, schoolId: req.user.schoolId });
+            await logAudit(client, req.user.userId, 'DELETE_STUDENT', 'students', studentId, { message: 'Deleted student record (user account preserved)', userId, schoolId: req.user.schoolId }, req.user.schoolId);
             await client.query('COMMIT');
             res.json({ success: true, message: 'Student record deleted (user account preserved for other students)' });
         }
@@ -475,22 +510,36 @@ router.get('/financials/report', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/admin/financials/trends
+ * Combined implementation with backward compatibility
+ */
 router.get('/financials/trends', async (req, res) => {
     try {
+        const schoolId = req.user.schoolId;
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
         const result = await req.db.query(
             `SELECT 
-                DATE(f.created_at) as date,
+                DATE(COALESCE(paid_date, created_at)) as date,
                 COALESCE(SUM(amount), 0) as amount
              FROM fees f
              JOIN students s ON f.student_id = s.id
-             WHERE f.is_paid = TRUE AND f.created_at >= $1 AND s.school_id = $2
-             GROUP BY DATE(f.created_at)
+             WHERE (status = 'paid' OR is_paid = TRUE) 
+               AND (COALESCE(paid_date, created_at)) >= $1 
+               AND s.school_id = $2
+             GROUP BY DATE(COALESCE(paid_date, created_at))
              ORDER BY date ASC`,
-            [thirtyDaysAgo, req.user.schoolId]
+            [thirtyDaysAgo, schoolId]
         );
-        res.json({ success: true, data: result.rows || [] });
+
+        // Return both 'data' and 'trends' for backward compatibility with different frontend versions
+        res.json({ 
+            success: true, 
+            data: result.rows || [], 
+            trends: result.rows || [] 
+        });
     } catch (err) {
         console.error('Financial trends error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch trends' });
@@ -693,33 +742,7 @@ router.get('/stats/summary', async (req, res) => {
     }
 });
 
-/**
- * GET /api/admin/financials/trends
- * Returns 30-day fee collection trends
- */
-router.get('/financials/trends', async (req, res) => {
-    try {
-        const schoolId = req.user.schoolId;
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        const result = await req.db.query(
-            `SELECT 
-                DATE(paid_date) as date, 
-                SUM(amount) as amount 
-             FROM fees 
-             WHERE school_id = $1 AND status = 'paid' AND paid_date >= $2
-             GROUP BY DATE(paid_date)
-             ORDER BY date ASC`,
-            [schoolId, thirtyDaysAgo]
-        );
-
-        res.json({ success: true, trends: result.rows });
-    } catch (err) {
-        console.error('Trend data error:', err);
-        res.status(500).json({ success: false, error: 'Failed to fetch trend data' });
-    }
-});
+// Route removed as it was a duplicate. Logic merged into primary /financials/trends endpoint above.
 
 
 // ============================================================
@@ -793,6 +816,42 @@ router.get('/teachers-by-class', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/admin/teachers
+ * Returns all teachers in the school (scoped)
+ */
+router.get('/teachers', async (req, res) => {
+    try {
+        const result = await req.db.query(
+            "SELECT id, name, teacher_id FROM users WHERE school_id = $1 AND role = 'teacher' AND status = 'active' ORDER BY name ASC",
+            [req.user.schoolId]
+        );
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Fetch all teachers error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch teachers' });
+    }
+});
+
+/**
+ * GET /api/admin/subjects
+ * Returns all subjects in the school (scoped)
+ */
+router.get('/subjects', async (req, res) => {
+    try {
+        // Note: subjects table currently missing school_id, adding it in migration.
+        // For now, we fetch all, but will be filtered after migration.
+        const result = await req.db.query(
+            "SELECT id, name, code FROM subjects WHERE school_id = $1 ORDER BY name ASC",
+            [req.user.schoolId]
+        );
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Fetch all subjects error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch subjects' });
+    }
+});
+
 
 // ============================================================
 // PROFILE & ORGANIZATION MODULE
@@ -845,7 +904,7 @@ router.put('/profile', async (req, res) => {
             [req.user.userId, name, email, avatar_url, designation]
         );
         
-        await logAudit(req.db, req.user.userId, 'UPDATE_PROFILE', 'users', req.user.userId, 'Updated personal profile details');
+        await logAudit(req.db, req.user.userId, 'UPDATE_PROFILE', 'users', req.user.userId, 'Updated personal profile details', req.user.schoolId);
         
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
@@ -898,7 +957,8 @@ const VALID_CONTENT_KEYS = ['help', 'documentation', 'programs', 'resources', 'c
 router.get('/content', async (req, res) => {
     try {
         const result = await req.db.query(
-            'SELECT id, key, content, updated_at FROM content_pages ORDER BY key ASC'
+            `SELECT key, updated_at FROM content_pages WHERE school_id = $1 ORDER BY key ASC`,
+            [req.user.schoolId]
         );
         res.json({ success: true, data: result.rows });
     } catch (err) {
@@ -918,8 +978,8 @@ router.get('/content/:key', async (req, res) => {
     }
     try {
         const result = await req.db.query(
-            'SELECT key, content, updated_at FROM content_pages WHERE key = $1',
-            [key]
+            `SELECT key, content, updated_at FROM content_pages WHERE key = $1 AND school_id = $2`,
+            [key, req.user.schoolId]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Content not found' });
@@ -934,7 +994,7 @@ router.get('/content/:key', async (req, res) => {
 // CREATE or UPDATE content page
 router.put('/content/:key', async (req, res) => {
     const { key } = req.params;
-    const { content, title } = req.body;
+    const { content } = req.body;
     if (!VALID_CONTENT_KEYS.includes(key)) {
         return res.status(400).json({ success: false, error: 'Invalid content key' });
     }
@@ -943,13 +1003,14 @@ router.put('/content/:key', async (req, res) => {
     }
     try {
         const result = await req.db.query(
-            `INSERT INTO content_pages (key, content, updated_at)
-             VALUES ($1, $2, NOW())
-             ON CONFLICT (key) DO UPDATE SET content = $2, updated_at = NOW()
+            `INSERT INTO content_pages (key, content, school_id)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (key, school_id) 
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()
              RETURNING id, key, content, updated_at`,
-            [key, content]
+            [key, content, req.user.schoolId]
         );
-        await logAudit(req.db, req.user.userId, 'UPDATE_CONTENT', 'content_pages', key, `Updated "${key}" page content`);
+        await logAudit(req.db, req.user.userId, 'UPDATE_CONTENT', 'content_pages', key, `Updated "${key}" page content`, req.user.schoolId);
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update content error:', err);
@@ -964,11 +1025,11 @@ router.delete('/content/:key', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Invalid content key' });
     }
     try {
-        await req.db.query(
-            `UPDATE content_pages SET content = '', updated_at = NOW() WHERE key = $1`,
-            [key]
+        const result = await req.db.query(
+            `UPDATE content_pages SET content = '', updated_at = NOW() WHERE key = $1 AND school_id = $2`,
+            [key, req.user.schoolId]
         );
-        await logAudit(req.db, req.user.userId, 'DELETE_CONTENT', 'content_pages', key, `Cleared "${key}" page content`);
+        await logAudit(req.db, req.user.userId, 'DELETE_CONTENT', 'content_pages', key, `Cleared "${key}" page content`, req.user.schoolId);
         res.json({ success: true, message: `Content for "${key}" cleared.` });
     } catch (err) {
         console.error('Delete content error:', err);

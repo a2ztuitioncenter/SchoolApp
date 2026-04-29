@@ -21,4 +21,4 @@ export async function removeStoredFile(fileUrl) {
       console.error('Failed to delete file:', absolutePath, err);
     }
   }
-
+}

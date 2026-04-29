@@ -17,7 +17,7 @@ export const attendanceModel = {
     );
   `,
 
-  async markBulk(records, userId) {
+  async markBulk(records, userId, schoolId) {
     const results = [];
     for (const rec of records) {
       const studentId = rec.studentId || rec.student_id;
@@ -27,48 +27,43 @@ export const attendanceModel = {
       const isPresent = (rec.isPresent === true || rec.isPresent === 'true' || rec.is_present === true || rec.is_present === 'true' || rec.status === 'present' || rec.status === 'true' || rec.status === true);
 
       const r = await db.query(
-       const r = await db.query(
-        `INSERT INTO attendance (student_id, class_level, section, date, is_present, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO attendance (student_id, class_level, section, date, is_present, user_id, school_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (student_id, date)
          DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level, section = EXCLUDED.section
          RETURNING *`,
-        [studentId, classLevel, section, date, isPresent, userId]
-      );         ON CONFLICT(student_id, date)
-         DO UPDATE SET is_present = EXCLUDED.is_present, class_level = EXCLUDED.class_level, section = EXCLUDED.section
-      RETURNING * `,
-        [studentId, classLevel, section, date, isPresent]
+        [studentId, classLevel, section, date, isPresent, userId, schoolId]
       );
       results.push(r.rows[0]);
     }
     return results;
   },
 
-  async getByClassAndDate(classLevel, date, section = null) {
+  async getByClassAndDate(classLevel, date, section = null, schoolId) {
     const result = await db.query(
       `SELECT a.*, s.name AS student_name, s.roll_number AS "rollNumber"
        FROM attendance a
        JOIN students s ON a.student_id = s.id
-       WHERE s.class_level = $1 AND s.section = $2 AND a.date = $3
+       WHERE s.class_level = $1 AND s.section = $2 AND a.date = $3 AND a.school_id = $4
        ORDER BY s.name`,
-      [classLevel, section, date]
+      [classLevel, section, date, schoolId]
     );
     return result.rows;
   },
 
-  async getStudentsByClass(classLevel, section = 'A') {
+  async getStudentsByClass(classLevel, section = 'A', schoolId) {
     const result = await db.query(
-      `SELECT id, name, roll_number AS "rollNumber" FROM students WHERE class_level = $1 AND section = $2 ORDER BY name`,
-      [classLevel, section]
+      `SELECT id, name, roll_number AS "rollNumber" FROM students WHERE class_level = $1 AND section = $2 AND school_id = $3 ORDER BY name`,
+      [classLevel, section, schoolId]
     );
     return result.rows;
   },
 
-  async getByStudent(studentId) {
-    return (await db.query(`SELECT * FROM attendance WHERE student_id = $1 ORDER BY date DESC`, [studentId])).rows;
+  async getByStudent(studentId, schoolId) {
+    return (await db.query(`SELECT * FROM attendance WHERE student_id = $1 AND school_id = $2 ORDER BY date DESC`, [studentId, schoolId])).rows;
   },
 
-  async getMonthlySummary(classLevel, month, section = 'A') {
+  async getMonthlySummary(classLevel, month, section = 'A', schoolId) {
     const result = await db.query(
       `SELECT
       s.id, s.name, s.roll_number AS "rollNumber",
@@ -80,15 +75,16 @@ export const attendanceModel = {
       LEFT JOIN attendance a
         ON s.id = a.student_id
         AND TO_CHAR(a.date, 'YYYY-MM') = $2
-      WHERE s.class_level = $1 AND s.section = $3
+        AND a.school_id = $4
+      WHERE s.class_level = $1 AND s.section = $3 AND s.school_id = $4
       GROUP BY s.id, s.name, s.roll_number
       ORDER BY s.name`,
-     [classLevel, month, section]
+     [classLevel, month, section, schoolId]
     );
     return result.rows;
   },
 
-  async getMonthlyOverallAttendance(month = null) {
+  async getMonthlyOverallAttendance(month = null, schoolId) {
     const targetMonth = month || new Date().toISOString().slice(0, 7);
     const result = await db.query(
       `SELECT
@@ -98,18 +94,18 @@ export const attendanceModel = {
             COUNT(CASE WHEN is_present = false THEN 1 END) AS absent_count,
               ROUND(COUNT(CASE WHEN is_present = true THEN 1 END) * 100.0 / NULLIF(COUNT(id), 0), 1) AS attendance_percent
        FROM attendance
-       WHERE TO_CHAR(date, 'YYYY-MM') = $1`,
-      [targetMonth]
+       WHERE TO_CHAR(date, 'YYYY-MM') = $1 AND school_id = $2`,
+      [targetMonth, schoolId]
     );
     return result.rows[0] || { total_students: 0, total_records: 0, present_count: 0, absent_count: 0, attendance_percent: 0 };
   },
 
-  async getAllClasses() {
-    return (await db.query(`SELECT DISTINCT class_level FROM students ORDER BY class_level`)).rows.map(r => r.class_level);
+  async getAllClasses(schoolId) {
+    return (await db.query(`SELECT DISTINCT class_level FROM students WHERE school_id = $1 ORDER BY class_level`, [schoolId])).rows.map(r => r.class_level);
   },
 
-  async getSectionsByClass(classLevel) {
-    return (await db.query(`SELECT DISTINCT section FROM students WHERE class_level = $1 AND section IS NOT NULL ORDER BY section`, [classLevel])).rows.map(r => r.section);
+  async getSectionsByClass(classLevel, schoolId) {
+    return (await db.query(`SELECT DISTINCT section FROM students WHERE class_level = $1 AND section IS NOT NULL AND school_id = $2 ORDER BY section`, [classLevel, schoolId])).rows.map(r => r.section);
   }
 };
 

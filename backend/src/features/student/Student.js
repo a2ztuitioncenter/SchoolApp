@@ -15,7 +15,7 @@ export const studentModel = {
       joining_date DATE NOT NULL,
       date_of_birth DATE DEFAULT NULL,
       status VARCHAR(20) DEFAULT 'active',
-      school_id VARCHAR(50) DEFAULT 'school-001',
+      school_id VARCHAR(50) NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
   `,
@@ -46,7 +46,7 @@ const MAP_STUDENT = (row) => {
 export const createStudent = async (pool, data) => {
   const {
     userId, name, classLevel, section, fatherName, motherName,
-    phone, email, rollNumber, joiningDate, dateOfBirth, status, schoolId = 'school-001'
+    phone, email, rollNumber, joiningDate, dateOfBirth, status, schoolId
   } = data;
   const result = await pool.query(
     `INSERT INTO students (user_id, name, class_level, section, father_name, mother_name, phone, email, roll_number, joining_date, date_of_birth, status, school_id)

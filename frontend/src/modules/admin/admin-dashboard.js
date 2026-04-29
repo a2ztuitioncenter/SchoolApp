@@ -5195,36 +5195,35 @@ window.cm_previewContent = async function (key) {
     const meta = CM_PAGE_LABELS[key] || { label: key };
     try {
         const res = await adminAPI.getContent(key);
-        if (res.success && res.data && res.data.content.trim()) {
+        if (res.success && res.data && res.data.content && res.data.content.trim()) {
+            const htmlContent = res.data.content;
             const modal = document.getElementById('cm-preview-modal');
             document.getElementById('cm-preview-title').textContent = 'Preview: ' + meta.label;
 
             const previewBody = document.getElementById('cm-preview-body');
+            // Basic markdown detection
+            const isMarkdown = htmlContent.trim().startsWith('#') || htmlContent.includes('\n#');
+
             if (isMarkdown && typeof marked !== 'undefined') {
-                // Parse Markdown and wrap in premium styling class
                 const parsed = marked.parse(htmlContent);
                 const clean = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(parsed) : parsed;
                 previewBody.innerHTML = `<div class="markdown-body">${clean}</div>`;
             } else {
-                // Legacy HTML content
                 const clean = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(htmlContent) : htmlContent;
                 previewBody.innerHTML = clean;
-            } previewBody.innerHTML = `<div class="markdown-body">${clean}</div>`;
-        } else {
-            // Legacy HTML content
-            previewBody.innerHTML = htmlContent;
-        }
+            }
 
-        document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    } else {
-        showInfoAlert('This page has no content yet.', 3000);
+            document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        } else {
+            showInfoAlert('This page has no content yet.', 3000);
+        }
+    } catch (e) {
+        console.error('Preview error:', e);
+        showErrorAlert('Could not load preview.');
     }
-} catch (e) {
-    showErrorAlert('Could not load preview.');
-}
-        };
+};
 
 window.cm_closePreview = function () {
     const m = document.getElementById('cm-preview-modal');
