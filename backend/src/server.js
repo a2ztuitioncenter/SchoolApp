@@ -58,6 +58,12 @@ try {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+
+// Trust proxy for production (Render/Vercel)
+if (isProd) {
+  app.set('trust proxy', 1);
+}
 
 // Security middleware first
 app.use(corsSecure());

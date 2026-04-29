@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "public": true,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://schoolapp-e7ng.onrender.com/api/$1"
+    }
+  ]
+}

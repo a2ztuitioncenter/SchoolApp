@@ -33,7 +33,7 @@ const getBaseApiUrl = () => {
   }
 
   // Fallback for production
-  return 'https://schoolapp-d9y5.onrender.com';
+  return 'https://schoolapp-e7ng.onrender.com';
 };
 
 export const base_api_url = getBaseApiUrl();

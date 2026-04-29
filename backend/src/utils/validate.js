@@ -96,7 +96,7 @@ export const teacherLoginSchema = {
 };
 
 export const registerSchema = {
-  role: { type: 'string', required: true, enum: ['student', 'teacher', 'staff'] },
+  role: { type: 'string', required: false, enum: ['student', 'teacher', 'staff'] },
   phone: { type: 'string', required: true, min: 10, max: 15 },
 };
 

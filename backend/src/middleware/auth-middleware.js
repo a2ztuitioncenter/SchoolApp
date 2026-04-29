@@ -278,8 +278,12 @@ export const validateInput = (req, res, next) => {
  * Restrict API access to trusted origins
  */
 export const corsSecure = () => {
-  // Use explicit allowlist for origins. Default to common dev ports if not specified.
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173,http://localhost:5174,http://127.0.0.1:3000').split(',').map(o => o.trim());
+  const isProd = process.env.NODE_ENV === 'production';
+  
+  // Production vs Development origins
+  const allowedOrigins = isProd 
+    ? ['https://school-app-one-kappa.vercel.app']
+    : (process.env.ALLOWED_ORIGINS || 'http://localhost:8000,http://localhost:3000,http://localhost:5173,http://127.0.0.1:8000,http://127.0.0.1:3000').split(',').map(o => o.trim());
 
   return (req, res, next) => {
     const origin = req.headers.origin;
@@ -290,18 +294,17 @@ export const corsSecure = () => {
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token');
       res.header('Access-Control-Allow-Credentials', 'true');
       
-      // Specifically allow access to the local loopback (localhost) from a public origin
-      // This fixes: "Permission was denied for this request to access the loopback address space"
-      res.header('Access-Control-Allow-Private-Network', 'true');
+      // Specifically allow access to the local loopback (localhost) from a public origin in dev
+      if (!isProd) {
+        res.header('Access-Control-Allow-Private-Network', 'true');
+      }
     }
 
-    // Prevent MIME type sniffing
+    // Security Headers
     res.header('X-Content-Type-Options', 'nosniff');
-    // Enable XSS protection
     res.header('X-XSS-Protection', '1; mode=block');
-    // Prevent clickjacking
     res.header('X-Frame-Options', 'DENY');
-    res.header('Referrer-Policy', 'no-referrer');
+    res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);

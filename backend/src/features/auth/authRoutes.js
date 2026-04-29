@@ -44,7 +44,7 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('token', accessToken, {
     httpOnly: true,
     secure: IS_PROD,
-    sameSite: IS_PROD ? 'Strict' : 'Lax',
+    sameSite: IS_PROD ? 'None' : 'Lax',
     maxAge: 2 * 60 * 60 * 1000, // 2 hours
     path: '/'
   });
@@ -52,7 +52,7 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: IS_PROD,
-    sameSite: IS_PROD ? 'Strict' : 'Lax',
+    sameSite: IS_PROD ? 'None' : 'Lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: '/api/auth' // only sent to auth routes
   });
@@ -61,7 +61,7 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('csrf', csrfToken, {
     httpOnly: false,
     secure: IS_PROD,
-    sameSite: IS_PROD ? 'Strict' : 'Lax',
+    sameSite: IS_PROD ? 'None' : 'Lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/'
   });
@@ -202,12 +202,19 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
 });
 
 router.post('/register', validateBody(registerSchema), async (req, res) => {
-  const { role, phone, password, confirmPassword } = req.body;
+  let { role, phone, password, confirmPassword } = req.body;
   const pool = req.db;
 
   try {
+    // Root Cause Fix: If role is missing, infer 'student' if student-specific fields are present.
+    // This allows dedicated student forms to work without explicit role selection.
     if (!role) {
-      return res.status(400).json({ error: 'Role is required (student, teacher, or staff)' });
+      const isStudentForm = req.body.classLevel || req.body.class_level || req.body.dateOfBirth;
+      if (isStudentForm) {
+        role = 'student';
+      } else {
+        return res.status(400).json({ error: 'Role is required (student, teacher, or staff)' });
+      }
     }
 
     const normalizedRole = role.toLowerCase();
