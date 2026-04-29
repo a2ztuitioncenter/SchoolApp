@@ -280,10 +280,19 @@ export const validateInput = (req, res, next) => {
 export const corsSecure = () => {
   const isProd = process.env.NODE_ENV === 'production';
   
-  // Production vs Development origins
-  const allowedOrigins = isProd 
-    ? ['https://school-app-one-kappa.vercel.app']
-    : (process.env.ALLOWED_ORIGINS || 'http://localhost:8000,http://localhost:3000,http://localhost:5173,http://127.0.0.1:8000,http://127.0.0.1:3000').split(',').map(o => o.trim());
+  // Base allowed origins
+  const baseOrigins = [
+    'https://school-app-one-kappa.vercel.app',
+    'http://localhost:8000',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:8000',
+    'http://127.0.0.1:3000'
+  ];
+
+  // Add origins from env var
+  const envOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+  const allowedOrigins = [...new Set([...baseOrigins, ...envOrigins])];
 
   return (req, res, next) => {
     const origin = req.headers.origin;
@@ -294,10 +303,11 @@ export const corsSecure = () => {
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token');
       res.header('Access-Control-Allow-Credentials', 'true');
       
-      // Specifically allow access to the local loopback (localhost) from a public origin in dev
-      if (!isProd) {
+      if (!isProd || origin.includes('localhost')) {
         res.header('Access-Control-Allow-Private-Network', 'true');
       }
+    } else if (origin) {
+      console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
     }
 
     // Security Headers
