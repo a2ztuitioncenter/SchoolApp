@@ -957,7 +957,7 @@ const VALID_CONTENT_KEYS = ['help', 'documentation', 'programs', 'resources', 'c
 router.get('/content', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT key, updated_at FROM content_pages ORDER BY key ASC`
+            `SELECT key, content, updated_at FROM content_pages ORDER BY key ASC`
         );
         res.json({ success: true, data: result.rows });
     } catch (err) {

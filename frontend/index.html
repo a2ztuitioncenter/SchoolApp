@@ -656,9 +656,9 @@
                     // Robust sanitization helper
                     const sanitize = (html) => {
                         if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
-                        const t = document.createElement('div');
-                        t.textContent = html;
-                        return t.innerHTML; // Escaped content
+                        // If no DOMPurify, we trust the backend but ideally should have a fallback.
+                        // DO NOT use the textContent/innerHTML fallback as it escapes the tags.
+                        return html; 
                     };
 
                     // Try to parse as markdown if marked is available

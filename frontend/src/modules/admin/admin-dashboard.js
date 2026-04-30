@@ -5013,9 +5013,10 @@ function cm_renderPagesGrid(pages) {
 
     grid.innerHTML = Object.entries(CM_PAGE_LABELS).map(([key, meta]) => {
         const page = pagesByKey[key];
-        const hasContent = page && page.content && page.content.trim().length > 10;
+        const content = page?.content || '';
+        const hasContent = content.trim().length > 10;
         const lastUpdated = page ? new Date(page.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Never';
-        const wordCount = page ? page.content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length : 0;
+        const wordCount = content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length;
 
         return "<div class='content-page-card' style='background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:12px;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;'>" +
             "<div style='display:flex;align-items:center;gap:0.75rem;'>" +
