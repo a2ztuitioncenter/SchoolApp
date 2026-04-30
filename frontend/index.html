@@ -629,17 +629,10 @@
         </div>
     </div>
     <script>
-        const _lcBaseUrl = (function () {
-            const h = window.location.hostname;
-            const isLocal = h === 'localhost' || h === '127.0.0.1';
-            const isVercel = h.endsWith('.vercel.app');
-            const isCloudflare = h.endsWith('.trycloudflare.com');
-            
-            return (isLocal || isVercel || isCloudflare) ? '' : 'https://schoolapp-e7ng.onrender.com';
-        })();
-
         window.showLandingContent = async function (key, title, event) {
             if (event) { event.preventDefault(); }
+            const { config } = await import('./src/config/api.js');
+            const _lcBaseUrl = config.API_BASE_URL;
             const modal = document.getElementById('landing-content-modal');
             const body = document.getElementById('lc-body');
             const titleEl = document.getElementById('lc-title');

@@ -3,39 +3,9 @@
  * Provides fetch() utilities and centralized configuration
  */
 
-// Backend Connection Configuration
-const getBaseApiUrl = () => {
-  if (typeof window === 'undefined') return '';
+import { config } from '../config/api.js';
 
-  const { hostname, origin, port } = window.location;
-
-  // Check if we are on a Cloudflare tunnel or Vercel
-  const isCloudflare = hostname.endsWith('.trycloudflare.com');
-  const isVercel = hostname.endsWith('.vercel.app');
-
-  if (isCloudflare || isVercel) {
-    return '';
-  }
-
-  // Inclusive check for localhost variations
-  const isLocal = hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === 'www.localhost' ||
-    hostname.startsWith('192.168.') ||
-    hostname.startsWith('10.') ||
-    hostname.endsWith('.local');
-
-  if (isLocal) {
-    // Use relative paths to take advantage of the frontend server's proxy (on port 8000)
-    // or direct access (if on port 3000).
-    return '';
-  }
-
-  // Fallback for production
-  return 'https://schoolapp-e7ng.onrender.com';
-};
-
-export const base_api_url = getBaseApiUrl();
+export const base_api_url = config.API_BASE_URL;
 
 /**
  * Read the CSRF token from the csrf cookie (set by backend, readable by JS)

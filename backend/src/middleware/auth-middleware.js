@@ -4,7 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-
+import { config } from '../config/env.js';
 // Lazy-load JWT_SECRET to ensure environment variables are loaded
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
@@ -293,11 +293,11 @@ export const validateInput = (req, res, next) => {
  * Restrict API access to trusted origins
  */
 export const corsSecure = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = config.isProd;
   
   // Base allowed origins - Normalize by removing trailing slashes
   const rawBaseOrigins = [
-    'https://school-app-one-kappa.vercel.app',
+    config.FRONTEND_URL,
     'http://localhost:8000',
     'http://localhost:3000',
     'http://localhost:5173',
@@ -307,7 +307,7 @@ export const corsSecure = () => {
 
   // Add origins from env var and normalize all
   const envOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
-  const allowedOrigins = [...new Set([...rawBaseOrigins, ...envOrigins])].map(o => o.replace(/\/$/, ''));
+  const allowedOrigins = [...new Set([...rawBaseOrigins, ...envOrigins])].map(o => o?.replace(/\/$/, '')).filter(Boolean);
 
   if (isProd) {
     console.log('[CORS] Allowed Origins:', allowedOrigins);
