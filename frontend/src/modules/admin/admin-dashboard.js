@@ -4929,6 +4929,20 @@ window.openEditProfileModal = async function () {
     }
 };
 
+window.closeEditProfileModal = function () {
+    document.getElementById('edit-profile-modal').style.display = 'none';
+};
+
+// Global click listener to close modals when clicking outside
+window.addEventListener('click', (e) => {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+
 
 // =============================================
 // DYNAMIC CONTENT PAGES (Help & Documentation)
@@ -4957,8 +4971,6 @@ document.querySelectorAll('.profile-dropdown .dropdown-item').forEach(item => {
         switch (action) {
             case 'edit-profile': openEditProfileModal(); break;
             case 'change-password': openChangePasswordModal(); break;
-            case 'audit-logs': loadAuditLogs(); break;
-            case 'view-profile': openEditProfileModal(); break;
             case 'docs': cm_previewContent('documentation'); break;
             case 'help': cm_previewContent('help'); break;
             case 'content-editor': cm_openEditor('documentation'); break;

@@ -725,6 +725,8 @@ textarea:focus {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border-subtle);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
 }
 
 .modal-header h2 {
@@ -757,6 +759,8 @@ textarea:focus {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
 }
 
 /* ============================================
