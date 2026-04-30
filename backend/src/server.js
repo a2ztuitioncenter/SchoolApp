@@ -51,9 +51,10 @@ process.on('uncaughtException', (err) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('\nFATAL ERROR: Unhandled Rejection at:', promise);
+  console.error('[FATAL] Unhandled Rejection at:', promise);
   console.error('Reason:', reason.stack || reason);
-  process.exit(1);
+  // Do NOT exit — let the process manager (Render) handle restarts if needed.
+  // Exiting here on transient DB errors causes unnecessary crash loops.
 });
 
 // Environment Validation
@@ -67,7 +68,7 @@ const validateEnv = () => {
     console.error('\nPlease ensure these are set in your Render dashboard or .env file.\n');
     process.exit(1);
   }
-  console.log('Environment variables validated.');
+  console.log('[INIT] Environment variables validated.');
 };
 
 const app = express();
@@ -76,35 +77,36 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Trust proxy for production (Render/Vercel)
 if (isProd) {
-  console.log('Running in PRODUCTION mode (Trust Proxy enabled)');
+  console.log('[INIT] Running in PRODUCTION mode (Trust Proxy enabled)');
   app.set('trust proxy', 1);
 } else {
-  console.log('Running in DEVELOPMENT mode');
+  console.log('[INIT] Running in DEVELOPMENT mode');
 }
 
 // Database Initialization & Start Server
 const startServer = async () => {
   try {
-    console.log('\nStarting Backend Server Initialization...');
+    console.log('[INIT] Starting Backend Server Initialization...');
     
     // 1. Validate Environment
     validateEnv();
 
     // 2. Test Database Connection
-    console.log('Connecting to database...');
+    console.log('[INIT] Connecting to database...');
     try {
       const client = await pool.connect();
-      console.log('PostgreSQL Database connected successfully');
+      console.log('[INIT] PostgreSQL Database connected successfully');
       client.release();
     } catch (dbError) {
-      console.error('DATABASE CONNECTION FAILED:');
+      console.error('[FATAL] DATABASE CONNECTION FAILED:');
       console.error(dbError.message);
       console.error('Check your DATABASE_URL and SSL settings.');
       process.exit(1);
     }
 
     // 3. Security & Middleware
-    console.log('Initializing security middleware...');
+    console.log('[INIT] Initializing security middleware...');
+    app.use(compression());
     app.use(corsSecure());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
@@ -112,7 +114,6 @@ const startServer = async () => {
     app.use(validateInput);
     app.use(rateLimiter(100, 60000));
     app.use(csrfProtection);
-    app.use(securityLogger);
 
     // Attach Database Pool to Request
     app.use((req, res, next) => {
@@ -129,7 +130,7 @@ const startServer = async () => {
     });
 
     // 4. Static Files & Landing Page
-    console.log('Setting up static file serving...');
+    console.log('[INIT] Setting up static file serving...');
     app.get('/', (req, res) => {
       const indexPath = path.join(__dirname, '../../frontend/index.html');
       res.sendFile(indexPath);
@@ -141,7 +142,7 @@ const startServer = async () => {
     app.get('/favicon.ico', (req, res) => res.status(204).end());
 
     // 5. Routes
-    console.log('Loading API routes...');
+    console.log('[INIT] Loading API routes...');
     app.use('/api/auth', authRoutes);
     app.use('/api/student', authenticate, studentRoutes);
     app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
@@ -163,11 +164,16 @@ const startServer = async () => {
     // Public content route
     const PUBLIC_CONTENT_KEYS = ['programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms', 'help', 'documentation'];
     app.get('/api/public/content/:key', async (req, res) => {
-      const { key } = req.params;
-      if (!PUBLIC_CONTENT_KEYS.includes(key)) return res.status(400).json({ error: 'Invalid key' });
-      const result = await pool.query('SELECT key, content, updated_at FROM content_pages WHERE key = $1', [key]);
-      if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-      res.json({ success: true, data: result.rows[0] });
+      try {
+        const { key } = req.params;
+        if (!PUBLIC_CONTENT_KEYS.includes(key)) return res.status(400).json({ error: 'Invalid key' });
+        const result = await pool.query('SELECT key, content, updated_at FROM content_pages WHERE key = $1', [key]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+        res.json({ success: true, data: result.rows[0] });
+      } catch (error) {
+        console.error('[PUBLIC CONTENT] Error:', error.message);
+        res.status(500).json({ error: 'Failed to load content' });
+      }
     });
 
     // Health check
@@ -199,12 +205,12 @@ const startServer = async () => {
     // 6. DB Initialization (Conditional)
     const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
     if (shouldInitializeDB) {
-      console.log('Initializing database schema...');
+      console.log('[INIT] Initializing database schema...');
       await initializeDatabase();
     }
 
     // 7. Background Jobs
-    console.log('Starting background jobs...');
+    console.log('[INIT] Starting background jobs...');
     import('./utils/cleanupJob.js').then(({ startCleanupJob }) => {
       startCleanupJob(pool);
     }).catch(err => console.error('Failed to load cleanup job:', err));
@@ -214,9 +220,9 @@ const startServer = async () => {
       console.log('\n+-----------------------------------------------------------+');
       console.log('|               BACKEND SERVER STARTED                      |');
       console.log('+-----------------------------------------------------------+\n');
-      console.log(`Backend API Server: http://localhost:${PORT}`);
-      console.log(`  • Health Check: http://localhost:${PORT}/health`);
-      console.log(`  • Database: Connected\n`);
+      console.log(`  Backend API Server: http://localhost:${PORT}`);
+      console.log(`  Health Check:       http://localhost:${PORT}/health`);
+      console.log(`  Database:           Connected\n`);
     });
 
   } catch (error) {

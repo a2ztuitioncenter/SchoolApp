@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 // Resolve frontend directory
 const publicDir = path.resolve(
@@ -108,4 +109,14 @@ const server = Bun.serve({
 
 console.log(`\nFrontend server running on port ${PORT}`);
 console.log(`  Local:   http://localhost:${PORT}`);
-console.log(`  Network: http://10.254.252.100:${PORT} (Use this for mobile)`);
+
+// Dynamically detect network IP
+const nets = os.networkInterfaces();
+for (const name of Object.keys(nets)) {
+  for (const net of nets[name]!) {
+    if (net.family === 'IPv4' && !net.internal) {
+      console.log(`  Network: http://${net.address}:${PORT} (Use this for mobile)`);
+      break;
+    }
+  }
+}

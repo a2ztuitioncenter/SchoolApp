@@ -115,11 +115,11 @@ class GoogleDriveService {
 
         if (parentId) {
             rootId = parentId;
-            console.log(`📂 Using provided GOOGLE_DRIVE_PARENT_ID: ${rootId}`);
+            console.log(`[DRIVE] Using provided GOOGLE_DRIVE_PARENT_ID: ${rootId}`);
         } else {
             const rootName = process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME || 'Tuition App Storage';
             rootId = await this.getOrCreateFolder(rootName);
-            console.warn('⚠️ No GOOGLE_DRIVE_PARENT_ID found. Using root folder created by service account (Quota may be limited).');
+            console.warn('[DRIVE] No GOOGLE_DRIVE_PARENT_ID found. Using root folder created by service account (Quota may be limited).');
         }
 
         const classId = await this.getOrCreateFolder(`Class_${classLevel}`, rootId);
@@ -134,7 +134,7 @@ class GoogleDriveService {
 
     async uploadFile(fileBuffer, fileName, mimeType, folderId) {
         if (!process.env.GOOGLE_DRIVE_PARENT_ID) {
-            console.log('⚠️ Using LOCAL storage fallback because GOOGLE_DRIVE_PARENT_ID is missing.');
+            console.log('[DRIVE] Using LOCAL storage fallback because GOOGLE_DRIVE_PARENT_ID is missing.');
             const fs = await import('fs/promises');
             const uploadDir = path.join(process.cwd(), 'uploads');
             await fs.mkdir(uploadDir, { recursive: true });

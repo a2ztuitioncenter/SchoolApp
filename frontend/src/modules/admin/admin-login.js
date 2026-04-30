@@ -59,7 +59,7 @@ export async function handleAdminLogin() {
       showError('Login failed. Please check your credentials.');
     }
   } catch (error) {
-    console.error('❌ Admin Login error:', error);
+    console.error('[AUTH] Admin Login error:', error);
     showError(error.message || 'An error occurred during login');
   } finally {
     const loginBtn = document.getElementById('admin-login-btn');

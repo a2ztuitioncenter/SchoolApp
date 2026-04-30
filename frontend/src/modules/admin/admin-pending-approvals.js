@@ -122,22 +122,22 @@ async function fetchPendingUsers() {
 
             if (pendingUsers.length === 0) {
                 renderEmptyState();
-                console.log('✅ No pending users found');
+                console.log('[APPROVALS] No pending users found');
             } else {
                 renderPendingUsers();
-                console.log(`✅ Loaded ${pendingUsers.length} pending users`);
+                console.log(`[APPROVALS] Loaded ${pendingUsers.length} pending users`);
             }
         } else if (response) {
             const errorMsg = response.error || 'Failed to fetch pending users';
             showMessage(errorMsg, 'error');
-            console.error('❌ ' + errorMsg);
+            console.error('[APPROVALS] ' + errorMsg);
             listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${escapeHtml(errorMsg)}</p></div>`;
         } else {
             showMessage('Invalid response from server', 'error');
             listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>Invalid response from server</p></div>';
         }
     } catch (error) {
-        console.error('❌ Error fetching pending users:', error);
+        console.error('[APPROVALS] Error fetching pending users:', error);
         const errorMsg = 'Error loading pending users: ' + error.message;
         showMessage(errorMsg, 'error');
         listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${escapeHtml(errorMsg)}</p><p style="font-size: 0.9em; margin-top: 10px;">Make sure the backend server is running.</p></div>`;
@@ -433,7 +433,7 @@ async function approveUser(userId) {
             showMessage(response.error || 'Failed to approve user', 'error');
         }
     } catch (error) {
-        console.error('❌ Error approving user:', error);
+        console.error('[APPROVALS] Error approving user:', error);
         showMessage('Error approving user: ' + error.message, 'error');
     }
 }
@@ -468,7 +468,7 @@ async function approveUserWithClasses(userId, classesAssigned) {
             showMessage(data.error || 'Failed to approve user', 'error');
         }
     } catch (error) {
-        console.error('❌ Error approving user with classes:', error);
+        console.error('[APPROVALS] Error approving user with classes:', error);
         showMessage('Error approving user: ' + error.message, 'error');
     }
 }
@@ -506,7 +506,7 @@ async function rejectUser(userId, reason) {
             showMessage(response.error || 'Failed to reject user', 'error');
         }
     } catch (error) {
-        console.error('❌ Error rejecting user:', error);
+        console.error('[APPROVALS] Error rejecting user:', error);
         showMessage('Error rejecting user: ' + error.message, 'error');
     }
 }

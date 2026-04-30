@@ -593,23 +593,23 @@ async function loadDashboardData() {
             dashboardData.latestHomework = latestHomework;
 
             // ✅ Render all sections with individual error handling
-            try { renderQuickStatsKPI(); } catch (e) { console.warn('❌ KPI render error:', e); }
-            try { renderFeesOverviewChart(); } catch (e) { console.warn('❌ Fees overview error:', e); }
-            try { renderGrowthTrendChart(); } catch (e) { console.warn('❌ Growth trend error:', e); }
-            try { renderFeesChart(); } catch (e) { console.warn('❌ Fees chart error:', e); }
-            try { renderClassDistributionLineChart(); } catch (e) { console.warn('❌ Class distribution error:', e); }
-            try { renderTrendChart(); } catch (e) { console.warn('❌ Trend chart error:', e); }
-            try { renderActivityPanel(); } catch (e) { console.warn('❌ Activity panel error:', e); }
-            try { renderUnpaidFeesTable(); } catch (e) { console.warn('❌ Unpaid fees table error:', e); }
-            try { renderRecentStudents(); } catch (e) { console.warn('❌ Recent students error:', e); }
-            try { renderTodayTimetable(); } catch (e) { console.warn('❌ Today timetable error:', e); }
+            try { renderQuickStatsKPI(); } catch (e) { console.warn('[ADMIN] KPI render error:', e); }
+            try { renderFeesOverviewChart(); } catch (e) { console.warn('[ADMIN] Fees overview error:', e); }
+            try { renderGrowthTrendChart(); } catch (e) { console.warn('[ADMIN] Growth trend error:', e); }
+            try { renderFeesChart(); } catch (e) { console.warn('[ADMIN] Fees chart error:', e); }
+            try { renderClassDistributionLineChart(); } catch (e) { console.warn('[ADMIN] Class distribution error:', e); }
+            try { renderTrendChart(); } catch (e) { console.warn('[ADMIN] Trend chart error:', e); }
+            try { renderActivityPanel(); } catch (e) { console.warn('[ADMIN] Activity panel error:', e); }
+            try { renderUnpaidFeesTable(); } catch (e) { console.warn('[ADMIN] Unpaid fees table error:', e); }
+            try { renderRecentStudents(); } catch (e) { console.warn('[ADMIN] Recent students error:', e); }
+            try { renderTodayTimetable(); } catch (e) { console.warn('[ADMIN] Today timetable error:', e); }
         })();
 
         // Wait for dashboard load with timeout protection
         await Promise.race([loadDataPromise, dashboardTimeout]);
 
         hideInfoAlert();
-        console.log('✅ Dashboard loaded successfully');
+        console.log('[ADMIN] Dashboard loaded successfully');
 
         // Setup auto-refresh: only refresh when this tab is active AND page is visible
         if (dashboardRefreshInterval) clearInterval(dashboardRefreshInterval);
@@ -621,7 +621,7 @@ async function loadDashboardData() {
 
     } catch (err) {
         hideInfoAlert();
-        console.error('❌ Failed to load dashboard data:', err);
+        console.error('[ADMIN] Failed to load dashboard data:', err);
         // Show dashboard anyway with empty data
         showErrorAlert(`⚠ Dashboard data loading took too long or failed. Basic dashboard was shown. Error: ${err.message}`);
 
@@ -850,9 +850,9 @@ function renderQuickStatsKPI() {
             el('kpi-recent-homework').textContent = summary.homework?.recentCount || 0;
         }
 
-        console.log('✅ Quick Stats rendered successfully');
+        console.log('[ADMIN] Quick Stats rendered successfully');
     } catch (err) {
-        console.error('❌ Error rendering quick stats KPI:', err);
+        console.error('[ADMIN] Error rendering quick stats KPI:', err);
         showErrorAlert('Error rendering KPI cards: ' + err.message);
     }
 }
@@ -1121,7 +1121,7 @@ function renderFeesOverviewChart() {
                 },
                 plugins: [ChartDataLabels]
             });
-            console.log('✅ Fees overview chart rendered');
+            console.log('[ADMIN] Fees overview chart rendered');
         } catch (chartErr) {
             console.error('Chart rendering error:', chartErr);
             if (container) container.innerHTML = '<p class="empty-state-text">Error loading chart</p>';

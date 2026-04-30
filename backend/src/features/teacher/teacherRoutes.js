@@ -98,11 +98,11 @@ router.get('/dashboard/:teacherId', async (req, res) => {
     const { teacherId } = req.params;
     const pool = req.db;
     const parsedTeacherId = parseInt(req.user.userId, 10);
-    console.log(`[DEBUG] Teacher Dashboard Request: teacherId=${teacherId}, authenticatedUserId=${req.user.userId}, parsedTeacherId=${parsedTeacherId}`);
+
 
     const teacher = await requireTeacher(req, teacherId);
     if (!teacher) {
-      console.warn(`[DEBUG] Authorization failed for teacherId=${teacherId}`);
+      console.warn(`[TEACHER] Authorization failed for teacherId=${teacherId}`);
       return res.status(403).json({ success: false, error: 'Unauthorized access to teacher data' });
     }
 
@@ -197,7 +197,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('❌ Teacher dashboard error:', err.message);
+    console.error('[TEACHER] Dashboard error:', err.message);
     res.status(500).json({ success: false, error: 'Failed to fetch dashboard data' });
   }
 });

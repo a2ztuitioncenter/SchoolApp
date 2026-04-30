@@ -366,7 +366,7 @@ async function loadDashboard() {
     const cachedMat = getCache(userId, 'teacher_materials');
     
     if (cachedDash && cachedMat) {
-        console.log('⚡ Using cached teacher dashboard data');
+        console.log('[DASHBOARD] Using cached teacher dashboard data');
         updateDashboardUI(cachedDash.data, cachedMat.data);
         if (!cachedDash.isStale && !cachedMat.isStale) return;
     }

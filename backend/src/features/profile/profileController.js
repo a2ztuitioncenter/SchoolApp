@@ -27,7 +27,7 @@ export const updateProfile = async (req, res) => {
                 return res.status(400).json({ success: false, error: 'Invalid file content. Only JPG and PNG images are allowed.' });
             }
 
-            console.log('🔄 Uploading new profile picture...');
+            console.log('[PROFILE] Uploading new profile picture...');
 
             // 1. Get or create Profile Pictures folder
             const rootName = process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME || 'Tuition App Storage';
@@ -48,7 +48,7 @@ export const updateProfile = async (req, res) => {
             // 3. Delete old file from Drive if it exists
             if (avatarDriveId) {
                 try {
-                    console.log(`🗑️ Deleting old profile picture: ${avatarDriveId}`);
+                    console.log(`[PROFILE] Deleting old profile picture: ${avatarDriveId}`);
                     await googleDriveService.deleteFile(avatarDriveId);
                 } catch (delErr) {
                     console.warn('Failed to delete old avatar from Drive:', delErr.message);
@@ -97,7 +97,7 @@ export const updateProfile = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('❌ Profile Update Error:', error);
+        console.error('[PROFILE] Update Error:', error);
         res.status(500).json({ success: false, error: 'Failed to update profile' });
     }
 };

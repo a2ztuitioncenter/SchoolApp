@@ -59,7 +59,7 @@ async function fetchExamResultsFromAPI() {
     renderExamResultsTable();
 
   } catch (error) {
-    console.error('❌ Failed to fetch exam results:', error);
+    console.error('[RESULTS] Failed to fetch exam results:', error);
     if (tbody) {
       tbody.innerHTML = `
         <tr class="expand-row">

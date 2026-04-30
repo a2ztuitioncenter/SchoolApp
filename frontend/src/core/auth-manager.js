@@ -51,7 +51,7 @@ export const setAuth = (authData) => {
   sessionStorage.setItem(AUTH_STORAGE_KEY, serializedAuth);
   localStorage.setItem(AUTH_STORAGE_KEY, serializedAuth);
   
-  console.log('✅ Auth state saved:', { role: auth.role, userId: auth.userId });
+  console.log('[AUTH] State saved:', { role: auth.role, userId: auth.userId });
 };
 
 /**
@@ -67,14 +67,14 @@ export const getAuth = () => {
     
     // Check if session has expired
     if (auth.timestamp && Date.now() - auth.timestamp > AUTH_TIMEOUT) {
-      console.warn('⚠️ Session expired, clearing auth');
+      console.warn('[AUTH] Session expired, clearing auth');
       clearAuth();
       return null;
     }
 
     return auth.isLoggedIn ? auth : null;
   } catch (error) {
-    console.error('❌ Error reading auth state:', error);
+    console.error('[AUTH] Error reading auth state:', error);
     return null;
   }
 };
@@ -102,7 +102,7 @@ export const clearAuth = () => {
     const base = window.__BASE_API_URL || '';
     fetch(`${base}/api/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
   } catch (_) { /* ignore */ }
-  console.log('✅ Auth state cleared (logged out)');
+  console.log('[AUTH] State cleared (logged out)');
 };
 
 /**
@@ -114,12 +114,12 @@ export const isLoggedIn = () => {
   const loggedIn = auth !== null && auth.isLoggedIn === true;
   
   if (!loggedIn) {
-    console.warn('🔍 Auth Check: User NOT logged in', {
+    console.warn('[AUTH] Check: User NOT logged in', {
       hasAuthObj: !!auth,
       pathname: window.location.pathname
     });
   } else {
-    console.log('✅ Auth Check: User is logged in', {
+    console.log('[AUTH] Check: User is logged in', {
       role: auth.role,
       userId: auth.userId
     });
@@ -180,7 +180,7 @@ export const hasAnyRole = (roles) => {
  */
 export const requireLogin = () => {
   if (!isLoggedIn()) {
-    console.warn('⚠️ Route protection: User not logged in, redirecting to index');
+    console.warn('[AUTH] Route protection: User not logged in, redirecting to index');
     window.location.href = '/';
     return false;
   }
@@ -193,7 +193,7 @@ export const requireLogin = () => {
  */
 export const requireRole = (allowedRoles) => {
   if (!isLoggedIn()) {
-    console.warn('⚠️ Route protection: User not logged in, redirecting to index');
+    console.warn('[AUTH] Route protection: User not logged in, redirecting to index');
     window.location.href = '/';
     return false;
   }
@@ -202,7 +202,7 @@ export const requireRole = (allowedRoles) => {
   const userRole = getUserRole();
 
   if (!roles.includes(userRole)) {
-    console.error(`🚫 Route protection: Unauthorized. Role "${userRole}" not in [${roles.join(', ')}]. Redirecting to index...`, {
+    console.error(`[AUTH] Route protection: Unauthorized. Role "${userRole}" not in [${roles.join(', ')}]. Redirecting to index...`, {
       currentPath: window.location.pathname,
       allowedRoles: roles
     });
@@ -210,7 +210,7 @@ export const requireRole = (allowedRoles) => {
     return false;
   }
 
-  console.log(`✅ Route access granted for role: ${userRole}`);
+  console.log(`[AUTH] Route access granted for role: ${userRole}`);
   return true;
 };
 
@@ -219,7 +219,7 @@ export const requireRole = (allowedRoles) => {
  */
 export const logout = () => {
   clearAuth();
-  console.log('✅ User logged out');
+  console.log('[AUTH] User logged out');
   window.location.href = '/';
 };
 
@@ -282,5 +282,5 @@ export const syncToSessionStorage = (role) => {
     if (auth.phone) sessionStorage.setItem('adminPhone', auth.phone);
   }
 
-  console.log('✅ Auth synced to sessionStorage for backward compatibility');
+  console.log('[AUTH] Synced to sessionStorage for backward compatibility');
 };

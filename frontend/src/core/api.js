@@ -55,7 +55,7 @@ export const apiCall = async (endpoint, options = {}) => {
   let url = base_api_url ? `${base_api_url}/api${endpoint}` : `/api${endpoint}`;
   
   if (window.location.hostname !== 'localhost') {
-    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`, {
+    console.log(`[API] ${options.method || 'GET'} ${url}`, {
       base: base_api_url,
       endpoint
     });
@@ -122,7 +122,7 @@ export const apiCall = async (endpoint, options = {}) => {
           }
         }
         // Refresh failed or retry failed — redirect to login
-        console.warn(`🛑 AUTH FAILURE [401]: Redirecting to login. 
+        console.warn(`[AUTH] 401 Failure: Redirecting to login. 
           Endpoint: ${endpoint}
           Path: ${window.location.pathname}`);
         
@@ -131,7 +131,7 @@ export const apiCall = async (endpoint, options = {}) => {
           const isLandingPage = path === '/' || path === '/index.html' || path === '';
           
           if (!isLandingPage) {
-            console.log('🧹 Clearing local auth state and returning to landing page');
+            console.log('[AUTH] Clearing local auth state and returning to landing page');
             sessionStorage.removeItem('auth');
             // Use a slight delay to allow any pending setAuth to finish
             window.location.href = '/';
@@ -154,7 +154,7 @@ export const apiCall = async (endpoint, options = {}) => {
       }
       
       if (isOwnershipViolation) {
-        console.warn(`🛑 AUTH FAILURE [403 OWNERSHIP_VIOLATION]: Cache mismatch. Clearing session and reloading.`);
+        console.warn(`[AUTH] 403 OWNERSHIP_VIOLATION: Cache mismatch. Clearing session and reloading.`);
         setTimeout(() => {
           const path = window.location.pathname;
           const isLandingPage = path === '/' || path === '/index.html' || path === '';
@@ -186,7 +186,7 @@ export const apiCall = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
-      console.error(`❌ API Error [${method} ${url}]: ${errorMsg}`, data);
+      console.error(`[API] Error [${method} ${url}]: ${errorMsg}`, data);
       return { ...data, error: errorMsg, status: response.status, success: false };
     }
 

@@ -6,7 +6,7 @@ function init() {
   setupHeaderSignupHandler();
   setupLoginCardHandlers();
   setupHeaderLoginHandler();
-  console.log('Index Page Loaded');
+
 }
 
 if (document.readyState === 'loading') {
@@ -62,7 +62,7 @@ function setupGetStartedHandler() {
   if (getStartedBtn && loginModal) {
     getStartedBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Get Started clicked');
+
       const isHidden = loginModal.classList.contains('login-modal--hidden');
       
       if (isHidden) {
@@ -117,7 +117,7 @@ function setupHeaderSignupHandler() {
   if (headerSignupBtn && signupModal) {
     headerSignupBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Header signup clicked');
+
       signupModal.classList.remove('signup-modal--hidden');
       signupModal.classList.add('signup-modal--visible');
       document.body.style.overflow = 'hidden';
@@ -194,7 +194,7 @@ function setupHeaderLoginHandler() {
   if (headerLoginBtn) {
     headerLoginBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Header login clicked');
+
       // Open auth modal with login selector
       openAuthLoginSelector(e);
     });
@@ -205,7 +205,7 @@ function setupHeaderLoginHandler() {
  * Handle login card click - open auth modal with appropriate role
  */
 function handleLoginCardClick(loginType) {
-  console.log('Handling login for type:', loginType);
+
   
   switch(loginType) {
     case 'student':

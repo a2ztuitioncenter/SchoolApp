@@ -67,7 +67,7 @@ router.get('/:userId/results', requireSelfOrAdmin('userId'), async (req, res) =>
 
     res.json({ success: true, data: mappedResults });
   } catch (err) {
-    console.error(`❌ [STUDENT RESULTS] Error:`, err.message);
+    console.error(`[STUDENT RESULTS] Error:`, err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -163,7 +163,7 @@ router.get('/:userId/syllabus', async (req, res) => {
 
     return res.json({ success: true, syllabus });
   } catch (error) {
-    console.error(`❌ [SYLLABUS ERROR]:`, error.message);
+    console.error(`[SYLLABUS] Error:`, error.message);
     return res.status(500).json({ success: false, message: 'Failed to fetch syllabus' });
   }
 });

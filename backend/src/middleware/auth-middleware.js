@@ -258,8 +258,10 @@ export const validateInput = (req, res, next) => {
         const isContentField = ['content', 'description', 'message', 'remark', 'details'].some(f => 
           fullPath.toLowerCase().endsWith(f.toLowerCase())
         );
-        if (!isContentField && /(\bDROP\b|\bDELETE\b|\bINSERT\b|\bUPDATE\b|\bSELECT\b|--|\/\*|\*\/)/gi.test(value)) {
-          console.warn(`Suspicious input detected in ${fullPath}: ${value.substring(0, 50)}`);
+        // Only flag actual injection-like patterns: SQL comment markers and semicolons + SQL keywords
+        // Note: Parameterized queries already prevent SQL injection — this is defense-in-depth only
+        if (!isContentField && /(--|\/\*|\*\/|;\s*(DROP|DELETE|INSERT|UPDATE|SELECT|ALTER|EXEC)\b)/gi.test(value)) {
+          console.warn(`[SECURITY] Suspicious input in ${fullPath}: ${value.substring(0, 50)}`);
           throw new Error(`Suspicious input in field: ${fullPath}`);
         }
       } else if (value && typeof value === 'object') {
@@ -308,7 +310,7 @@ export const corsSecure = () => {
   const allowedOrigins = [...new Set([...rawBaseOrigins, ...envOrigins])].map(o => o.replace(/\/$/, ''));
 
   if (isProd) {
-    console.log('🌐 CORS Allowed Origins:', allowedOrigins);
+    console.log('[CORS] Allowed Origins:', allowedOrigins);
   }
 
   return (req, res, next) => {

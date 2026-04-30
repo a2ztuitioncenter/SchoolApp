@@ -264,7 +264,7 @@ async function fetchStudentResult() {
       throw new Error(data.error);
     }
 
-    console.log('✅ Student result fetched:', data);
+    console.log('[RESULTS] Student result fetched:', data);
 
     // Handle both array and object responses
     let resultArray = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []);
@@ -281,7 +281,7 @@ async function fetchStudentResult() {
     renderStudentResult();
 
   } catch (error) {
-    console.error('❌ Failed to fetch student result:', error);
+    console.error('[RESULTS] Failed to fetch student result:', error);
     showErrorState(error.message);
   }
 }
@@ -446,7 +446,7 @@ export function initStudentResults() {
   // Fetch data from backend
   fetchStudentResult();
   
-  console.log('✅ Student Results Module initialized');
+  console.log('[RESULTS] Student Results Module initialized');
 }
 
 // Auto-initialize when DOM is ready

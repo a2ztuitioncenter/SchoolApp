@@ -19,7 +19,7 @@ export const getStudentDashboard = async (req, res) => {
     // Student fields are already mapped to camelCase by Student.js fetch
     const { id: studentId, classLevel, section } = student;
 
-    console.log(`📌 Dashboard request for student:`, studentId, classLevel, section);
+    console.log(`[DASHBOARD] Request for student:`, studentId, classLevel, section);
 
     // Parallel fetch of attendance, fees, homework, timetable, and notifications
     // Using try-catch wrappers for safety
@@ -125,7 +125,7 @@ export const getStudentDashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('❌ Dashboard Exception:', error.message);
+    console.error('[DASHBOARD] Exception:', error.message);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isBackendReady = await waitForBackend(3, 1000);
     
     if (!isBackendReady) {
-      console.error('❌ Backend server is not responding');
+      console.error('[DASHBOARD] Backend server is not responding');
       const errorDiv = document.querySelector('.dashboard-card');
       if (errorDiv) {
         errorDiv.innerHTML = `
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let userId = getUserId();
 
     if (!userId) {
-      console.error('❌ No user ID found in auth state');
+      console.error('[DASHBOARD] No user ID found in auth state');
       window.location.href = '/';
       return;
     }
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup Profile Menu
     setupProfileMenu();
   } catch (error) {
-    console.error('❌ Dashboard initialization failed:', error);
+    console.error('[DASHBOARD] Initialization failed:', error);
     showErrorMessage('Failed to load dashboard. Please refresh the page.');
   }
 });
@@ -277,10 +277,10 @@ async function fetchSubmissionsMap(userId) {
       res.data.forEach(sub => {
         window.studentSubmissionsMap.set(sub.homework_id, sub);
       });
-      console.log('✅ Submissions map populated:', window.studentSubmissionsMap);
+      console.log('[SUBMISSIONS] Map populated:', window.studentSubmissionsMap);
     }
   } catch (err) {
-    console.warn('⚠️ Could not fetch submissions map:', err);
+    console.warn('[SUBMISSIONS] Could not fetch submissions map:', err);
   }
 }
 
@@ -298,7 +298,7 @@ async function loadDashboardData(userId) {
     // 1. Check Cache (Stale-While-Revalidate)
     const cached = getCache(userId, 'dashboard');
     if (cached) {
-      console.log('⚡ Using cached dashboard data');
+      console.log('[DASHBOARD] Using cached dashboard data');
       
       // Fetch submissions map
       await fetchSubmissionsMap(userId);
@@ -345,10 +345,10 @@ async function loadDashboardData(userId) {
     return data;
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.log('📡 Dashboard fetch aborted');
+      console.log('[DASHBOARD] Fetch aborted');
       return null;
     }
-    console.error('❌ Error loading dashboard:', error);
+    console.error('[DASHBOARD] Error loading dashboard:', error);
     
     // Fallback to cache if error occurs
     const cached = getCache(userId, 'dashboard');
@@ -369,21 +369,21 @@ async function loadMaterials(classLevel, section = '') {
         const normalizedClassLevel = String(classLevel).trim();
         const normalizedSection = String(section).trim();
         
-        console.log('📚 [Student Materials] Loading: classLevel=', normalizedClassLevel, 'section=', normalizedSection || 'ALL');
+        console.log('[MATERIALS] Loading: classLevel=', normalizedClassLevel, 'section=', normalizedSection || 'ALL');
         
         const res = await materialsAPI.getByClass(normalizedClassLevel, normalizedSection);
         
-        console.log('📚 [Student Materials] Response:', res);
+        console.log('[MATERIALS] Response:', res);
         
         // Check for API errors
         if (res.error) {
-            console.error('❌ [Student Materials] API Error:', res.error);
+            console.error('[MATERIALS] API Error:', res.error);
             container.innerHTML = `<p class="error" style="color:#e53e3e;">Failed to load materials: ${res.error}</p>`;
             return;
         }
         
         const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-        console.log(`📚 [Student Materials] Loaded ${list.length} materials`);
+        console.log(`[MATERIALS] Loaded ${list.length} materials`);
 
         if (list.length === 0) {
             container.innerHTML = '<p class="empty-state">No study materials available for your class.</p>';
@@ -408,7 +408,7 @@ async function loadMaterials(classLevel, section = '') {
             </div>
         `).join('');
     } catch (err) {
-        console.error('❌ Error loading materials:', err);
+        console.error('[MATERIALS] Error loading materials:', err);
         container.innerHTML = `<p class="error" style="color:#e53e3e;">Failed to load materials: ${err.message || 'Unknown error'}</p>`;
     }
 }
@@ -468,13 +468,13 @@ async function loadSubjects(classLevel, section = '') {
         const normalizedClassLevel = String(classLevel).trim();
         const normalizedSection = String(section).trim();
         
-        console.log('📚 [Student Subjects] Loading: classLevel=', normalizedClassLevel, 'section=', normalizedSection || 'ALL');
+        console.log('[SUBJECTS] Loading: classLevel=', normalizedClassLevel, 'section=', normalizedSection || 'ALL');
         
         // Import subjectsAPI from core/api.js (it's already imported at the top)
         const { subjectsAPI } = await import('../../core/api.js'); 
         const res = await subjectsAPI.getAll(normalizedClassLevel, normalizedSection);
         
-        console.log('📚 [Student Subjects] Response:', res);
+        console.log('[SUBJECTS] Response:', res);
         
         const list = Array.isArray(res) ? res : (res.data || []);
         
@@ -508,7 +508,7 @@ async function loadSubjects(classLevel, section = '') {
             </div>
         `;
     } catch (err) {
-        console.error('❌ Error loading subjects:', err);
+        console.error('[SUBJECTS] Error loading subjects:', err);
         container.innerHTML = `<p class="error" style="color: #e53e3e; text-align: center; padding: 1rem;">Failed to load subjects: ${err.message || 'Unknown error'}</p>`;
     }
 }
@@ -1381,7 +1381,7 @@ async function loadSubmissions(userId) {
             </div>
         `;
     } catch (err) {
-        console.error('❌ Error loading submissions:', err);
+        console.error('[SUBMISSIONS] Error loading submissions:', err);
         container.innerHTML = `<p class="error" style="color: #e53e3e; text-align: center; padding: 1rem;">Failed to load submissions: ${err.message || 'Unknown error'}</p>`;
     }
 }
@@ -1579,7 +1579,7 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
 let activeAssignments = [];
 
 window.openAssignmentSelector = async function() {
-    console.log('🚀 Opening assignment selector...');
+    console.log('[SUBMISSIONS] Opening assignment selector...');
     const modal = document.getElementById('select-assignment-modal');
     const homeworkGroup = document.getElementById('optgroup-homework-custom');
     const dppGroup = document.getElementById('optgroup-dpp-custom');
@@ -1591,7 +1591,7 @@ window.openAssignmentSelector = async function() {
     const proceedBtn = document.getElementById('proceed-to-submit-btn');
 
     if (!modal) {
-        console.error('❌ select-assignment-modal not found!');
+        console.error('[SUBMISSIONS] select-assignment-modal not found!');
         return;
     }
 
@@ -1619,12 +1619,12 @@ window.openAssignmentSelector = async function() {
         noAssignmentsMsg.classList.add('d-none');
         noAssignmentsMsg.classList.remove('d-block');
         
-        console.log('📡 Fetching active assignments...');
+        console.log('[SUBMISSIONS] Fetching active assignments...');
         const res = await assignmentsAPI.getActive();
-        console.log('✅ Assignments response:', res);
+        console.log('[SUBMISSIONS] Assignments response:', res);
         
         if (res.success && res.data) {
-            console.log(`📊 Found ${res.data.length} total active assignments`);
+            console.log(`[SUBMISSIONS] Found ${res.data.length} total active assignments`);
             // Only filter out assignments that are already SUBMITTED AND REVIEWED
             // "Submitted but Not Reviewed" stays in the list so students can update/replace if needed
             activeAssignments = res.data.filter(a => {
@@ -1632,7 +1632,7 @@ window.openAssignmentSelector = async function() {
                 if (!sub) return true; // Not submitted yet
                 return sub.status !== 'reviewed'; // Hide only if reviewed
             });
-            console.log(`🎯 After filtering (hide reviewed), ${activeAssignments.length} assignments remain`);
+            console.log(`[SUBMISSIONS] After filtering (hide reviewed), ${activeAssignments.length} assignments remain`);
 
             const homework = activeAssignments.filter(a => a.type === 'homework' || !a.type);
             const dpp = activeAssignments.filter(a => a.type === 'daily_practice' || a.type === 'dpp');

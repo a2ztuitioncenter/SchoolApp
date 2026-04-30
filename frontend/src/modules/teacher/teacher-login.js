@@ -59,7 +59,7 @@ export async function handleTeacherLogin() {
       showError('Login failed. Please check your credentials.');
     }
   } catch (error) {
-    console.error('❌ Teacher Login error:', error);
+    console.error('[AUTH] Teacher Login error:', error);
     showError(error.message || 'An error occurred during login');
   } finally {
     const loginBtn = document.getElementById('teacher-login-btn');
