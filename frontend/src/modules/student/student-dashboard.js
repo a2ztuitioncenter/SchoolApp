@@ -1226,6 +1226,16 @@ window.previewProfileImage = function(input) {
             document.getElementById('profile-preview').src = e.target.result;
         };
         reader.readAsDataURL(file);
+
+        // Upload to storage immediately to get Drive ID
+        handleStudentFileUpload(file, 'profile', null, 'profile_pic').then(result => {
+            if (result && result.success) {
+                pendingProfileUpload = {
+                    url: result.data.url,
+                    id: result.data.id
+                };
+            }
+        });
     }
 };
 
@@ -1240,7 +1250,7 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
     formData.append('name', name);
     if (pendingProfileUpload) {
         formData.append('avatarUrl', pendingProfileUpload.url);
-        formData.append('attachmentId', pendingProfileUpload.id);
+        formData.append('avatarDriveId', pendingProfileUpload.id);
     }
     
     try {
@@ -1847,3 +1857,19 @@ function resetStudentUploadProgress(prefix) {
     if (prefix === 'student-hw') pendingSubmissionUpload = null;
     if (prefix === 'profile') pendingProfileUpload = null;
 }
+
+// Close modals when clicking outside
+window.addEventListener('click', (e) => {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            // Clear inputs if profile modal
+            if (modal.id === 'edit-profile-modal') {
+                const fileInput = document.getElementById('profile-upload');
+                if (fileInput) fileInput.value = '';
+            }
+        }
+    });
+});
+

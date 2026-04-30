@@ -3,7 +3,7 @@ import { getUserById } from '../auth/User.js';
 import { fileTypeFromBuffer } from 'file-type';
 
 export const updateProfile = async (req, res) => {
-    const { name, email } = req.body;
+    const { name, email, avatarUrl: bodyAvatarUrl, avatarDriveId: bodyAvatarDriveId } = req.body;
     const userId = req.user.userId;
     const pool = req.db;
 
@@ -58,6 +58,10 @@ export const updateProfile = async (req, res) => {
             avatarDriveId = uploadResult.id;
             // Construct download link via our Google Drive download API
             avatarUrl = `/api/storage/download/${avatarDriveId}`;
+        } else {
+            // Fallback to body-provided values if no new file is uploaded
+            if (bodyAvatarUrl) avatarUrl = bodyAvatarUrl;
+            if (bodyAvatarDriveId) avatarDriveId = bodyAvatarDriveId;
         }
 
         // Check email uniqueness if email is being changed

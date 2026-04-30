@@ -65,10 +65,12 @@ export const storageController = {
                 success: true,
                 data: {
                     fileId: driveFile.id,
+                    id: driveFile.id, // Alias for frontend
                     dbId: result.rows[0].id,
                     fileName: driveFile.name,
                     webViewLink: driveFile.webViewLink,
-                    downloadLink: `/api/storage/download/${driveFile.id}`
+                    downloadLink: `/api/storage/download/${driveFile.id}`,
+                    url: `/api/storage/download/${driveFile.id}` // Alias for frontend
                 }
             });
         } catch (error) {

@@ -1324,6 +1324,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    background-color: var(--bg-secondary);
 }
 
 .modal-header h2,
@@ -1371,6 +1374,9 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 1rem;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+    background-color: var(--bg-secondary);
 }
 
 .modal-btn {

@@ -2316,3 +2316,113 @@ function resetTeacherUploadProgress(prefix) {
     if (prefix === 'material') pendingMaterialUpload = null;
     if (prefix === 'profile') pendingProfileUpload = null;
 }
+
+// Close modals when clicking outside
+window.addEventListener('click', (e) => {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+            // Clear inputs if profile modal
+            if (modal.id === 'edit-profile-modal') {
+                const fileInput = document.getElementById('profile-upload');
+                if (fileInput) fileInput.value = '';
+            }
+        }
+    });
+});
+
+window.closeEditProfileModal = function() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) modal.style.display = 'none';
+    const fileInput = document.getElementById('profile-upload');
+    if (fileInput) fileInput.value = '';
+};
+
+window.openEditProfileModal = function() {
+    const modal = document.getElementById('edit-profile-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Pre-fill data from UI or session
+        document.getElementById('edit-profile-name').value = document.getElementById('dropdown-teacher-name').textContent;
+        document.getElementById('edit-profile-email').value = document.getElementById('dropdown-teacher-email').textContent;
+        const currentAvatar = document.querySelector('#teacher-profile-btn img')?.src || document.getElementById('profile-preview').src;
+        document.getElementById('profile-preview').src = currentAvatar;
+    }
+};
+
+window.previewProfileImage = function(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        if (file.size > 200 * 1024) {
+            showError('Image size exceeds 200KB limit.');
+            input.value = '';
+            return;
+        }
+        
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            showError('Only JPG, JPEG, and PNG files are allowed.');
+            input.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to storage immediately to get Drive ID
+        handleTeacherFileUpload(file, 'profile', null, 'profile_pic').then(result => {
+            if (result && result.success) {
+                pendingProfileUpload = {
+                    url: result.data.url,
+                    id: result.data.id
+                };
+            }
+        });
+    }
+};
+
+document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('edit-profile-name').value;
+    const btn = e.target.querySelector('button[type="submit"]');
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    if (pendingProfileUpload) {
+        formData.append('avatarUrl', pendingProfileUpload.url);
+        formData.append('avatarDriveId', pendingProfileUpload.id);
+    }
+    
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        
+        const res = await profileAPI.update(formData);
+        if (res.success) {
+            showSuccess('Profile updated successfully!');
+            closeEditProfileModal();
+            // Refresh UI
+            if (res.user && res.user.avatarUrl) {
+                document.querySelector('#teacher-profile-btn img').src = res.user.avatarUrl;
+                document.getElementById('dropdown-teacher-name').textContent = res.user.name;
+            }
+        } else {
+            showError(res.error || 'Failed to update profile');
+        }
+    } catch (err) {
+        console.error('Profile update error:', err);
+        showError('An error occurred while updating profile');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+    }
+});
+
+
+
