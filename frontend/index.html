@@ -68,11 +68,11 @@
             </div>
             <div class="erp-mobile-nav">
                 <ul>
-                    <li><a href="javascript:showLandingContent('programs','Programs',event)">Programs</a></li>
-                    <li><a href="javascript:showLandingContent('resources','Resources',event)">Resources</a></li>
-                    <li><a href="javascript:showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
-                    <li><a href="#" onclick="openAuthLoginSelector(event)">Log in</a></li>
-                    <li><a href="#" onclick="openAuthSignupSelector(event)">Sign up</a></li>
+                    <li><a href="javascript:document.body.classList.remove('menu-open');showLandingContent('programs','Programs',event)">Programs</a></li>
+                    <li><a href="javascript:document.body.classList.remove('menu-open');showLandingContent('resources','Resources',event)">Resources</a></li>
+                    <li><a href="javascript:document.body.classList.remove('menu-open');showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
+                    <li><a href="#" onclick="document.body.classList.remove('menu-open');openAuthLoginSelector(event)">Log in</a></li>
+                    <li><a href="#" onclick="document.body.classList.remove('menu-open');openAuthSignupSelector(event)">Sign up</a></li>
                 </ul>
             </div>
     </header>

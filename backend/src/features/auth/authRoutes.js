@@ -43,30 +43,32 @@ const setAuthCookies = (res, accessToken, refreshToken, req) => {
   const origin = req?.headers?.origin || '';
   const isProd = process.env.NODE_ENV === 'production';
 
+  // Determine if we are on an external production-like environment (e.g. Vercel→Render, Cloudflare tunnel)
+  // Cross-site cookies require sameSite: 'None' + secure: true to be sent by the browser.
+  const isExternalProd = origin.startsWith('https://') && !origin.includes('localhost') && !origin.includes('127.0.0.1');
+  const crossSite = isProd || isExternalProd;
+
   res.cookie('token', accessToken, {
     httpOnly: true,
-    secure: isProd, 
-    sameSite: 'Lax', // Lax is safer for same-site (proxied) requests
+    secure: crossSite,
+    sameSite: crossSite ? 'None' : 'Lax',
     maxAge: 2 * 60 * 60 * 1000, // 2 hours
     path: '/'
   });
 
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProd,
-    sameSite: 'Lax',
+    secure: crossSite,
+    sameSite: crossSite ? 'None' : 'Lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: '/api/auth'
   });
 
-  // Determine if we are on an external production-like environment (e.g. Cloudflare tunnel)
-  const isExternalProd = origin.startsWith('https://') && !origin.includes('localhost') && !origin.includes('127.0.0.1');
-
   // CSRF token — readable by JS (NOT httpOnly) for double-submit pattern
   res.cookie('csrf', csrfToken, {
     httpOnly: false,
-    secure: isExternalProd || isProd,
-    sameSite: isExternalProd ? 'None' : 'Lax',
+    secure: crossSite,
+    sameSite: crossSite ? 'None' : 'Lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/'
   });

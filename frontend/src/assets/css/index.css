@@ -202,6 +202,51 @@ select:focus {
     display: none;
 }
 
+/* Mobile Menu Open State */
+body.menu-open .erp-mobile-nav {
+    display: block;
+    position: absolute;
+    top: 80px; /* height of header */
+    left: 0;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    z-index: 999;
+}
+
+.erp-mobile-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.erp-mobile-nav li {
+    width: 100%;
+}
+
+.erp-mobile-nav a {
+    display: block;
+    padding: 16px 24px;
+    color: var(--text-main);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid var(--border);
+}
+
+.erp-mobile-nav li:last-child a {
+    border-bottom: none;
+}
+
+.erp-mobile-nav a:hover {
+    background-color: var(--bg-light);
+    color: var(--primary);
+}
+
 /* Hero Section */
 .erp-hero {
     padding: 120px 0 60px 0;
