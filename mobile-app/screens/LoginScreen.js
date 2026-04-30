@@ -8,7 +8,7 @@ import { colors, spacing, typography } from '../utils/theme';
 
 const roles = ['student', 'teacher', 'admin'];
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
   const { login } = useAuth();
   const [role, setRole] = useState('student');
   const [identifier, setIdentifier] = useState('');
@@ -68,6 +68,10 @@ export default function LoginScreen() {
           placeholder="Enter password"
         />
         <AppButton label={loading ? 'Signing in...' : 'Login'} onPress={submit} disabled={loading} />
+
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={styles.signupLink}>
+          <Text style={styles.signupLinkText}>Don't have an account? Sign up</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -120,5 +124,13 @@ const styles = StyleSheet.create({
   roleTextActive: {
     color: colors.primary,
     fontWeight: '700'
+  },
+  signupLink: {
+    marginTop: spacing.md,
+    alignItems: 'center'
+  },
+  signupLinkText: {
+    color: colors.primary,
+    fontWeight: '600'
   }
 });

@@ -1,13 +1,48 @@
 import { apiClient } from './apiClient';
 
 export const adminService = {
-  getDashboardSummary() {
-    return apiClient('/admin/stats/summary', { method: 'GET' });
+  async getDashboardSummary() {
+    return apiClient('/admin/dashboard-summary');
   },
-  getUsers() {
-    return apiClient('/admin/users', { method: 'GET' });
+
+  async getStudents() {
+    return apiClient('/admin/students');
   },
-  getStudents() {
-    return apiClient('/admin/students', { method: 'GET' });
+
+  async getTeachers() {
+    return apiClient('/admin/teachers');
+  },
+
+  async getPendingApprovals() {
+    return apiClient('/admin/pending-approvals');
+  },
+
+  async approveUser(userId, role) {
+    return apiClient(`/admin/approve-user/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ role })
+    });
+  },
+
+  async deleteUser(userId) {
+    return apiClient(`/admin/users/${userId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getClasses() {
+    return apiClient('/admin/classes');
+  },
+
+  async getSections(classLevel) {
+    return apiClient(`/admin/sections/${classLevel}`);
+  },
+
+  async getFinancialSummary() {
+    return apiClient('/admin/financial-summary');
+  },
+
+  async getUnpaidFees() {
+    return apiClient('/admin/unpaid-fees');
   }
 };

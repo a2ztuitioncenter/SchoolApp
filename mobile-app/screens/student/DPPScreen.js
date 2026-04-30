@@ -2,18 +2,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View, RefreshControl } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
-import LoadingState from '../components/LoadingState';
-import ErrorBanner from '../components/ErrorBanner';
-import { studentService } from '../services/studentService';
-import { useAuth } from '../contexts/AuthContext';
-import { colors, spacing, typography } from '../utils/theme';
+import LoadingState from '../../components/LoadingState';
+import ErrorBanner from '../../components/ErrorBanner';
+import { studentService } from '../../services/studentService';
+import { useAuth } from '../../contexts/AuthContext';
+import { colors, spacing, typography } from '../../utils/theme';
 
-export default function AssignmentsScreen() {
+export default function DPPScreen() {
   const { auth } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [assignments, setAssignments] = useState([]);
+  const [dpps, setDpps] = useState([]);
   const [submissions, setSubmissions] = useState({});
 
   const loadData = useCallback(async () => {
@@ -25,9 +25,9 @@ export default function AssignmentsScreen() {
       ]);
 
       if (dashRes.success) {
-        setAssignments(dashRes.data.homework || []);
+        setDpps(dashRes.data.dailyPractice || []);
       } else {
-        setError(dashRes.error || 'Failed to load assignments');
+        setError(dashRes.error || 'Failed to load practice problems');
       }
 
       if (subRes.success) {
@@ -52,7 +52,7 @@ export default function AssignmentsScreen() {
     loadData();
   };
 
-  const uploadForAssignment = async (assignmentId) => {
+  const uploadForDPP = async (dppId) => {
     try {
       const picked = await DocumentPicker.getDocumentAsync({ 
         type: ['application/pdf', 'image/*'],
@@ -63,7 +63,7 @@ export default function AssignmentsScreen() {
       
       const file = picked.assets[0];
       const formData = new FormData();
-      formData.append('homeworkId', assignmentId); // Changed from assignmentId to match backend
+      formData.append('homeworkId', dppId); 
       formData.append('studentId', auth.userId);
       formData.append('file', {
         uri: file.uri,
@@ -76,8 +76,8 @@ export default function AssignmentsScreen() {
       setLoading(false);
 
       if (result.success) {
-        Alert.alert('Success', 'Assignment submitted successfully.');
-        loadData(); // Refresh to show submitted status
+        Alert.alert('Success', 'Practice work submitted successfully.');
+        loadData();
       } else {
         Alert.alert('Upload failed', result.error || 'Submission failed.');
       }
@@ -111,17 +111,16 @@ export default function AssignmentsScreen() {
           </View>
         </View>
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
         
         <View style={styles.cardFooter}>
           <View style={styles.meta}>
-            <Ionicons name="calendar-outline" size={14} color="#6c757d" />
-            <Text style={styles.metaText}>Due: {new Date(item.dueDate).toLocaleDateString()}</Text>
+            <Ionicons name="time-outline" size={14} color="#6c757d" />
+            <Text style={styles.metaText}>Posted: {new Date(item.createdAt).toLocaleDateString()}</Text>
           </View>
           {item.attachmentUrl && (
             <TouchableOpacity style={styles.downloadBtn}>
-               <Ionicons name="download-outline" size={16} color="#4e73df" />
-               <Text style={styles.downloadText}>Attachment</Text>
+               <Ionicons name="download-outline" size={16} color="#48bb78" />
+               <Text style={[styles.downloadText, { color: '#48bb78' }]}>View DPP</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -135,43 +134,43 @@ export default function AssignmentsScreen() {
 
         {!isSubmitted && (
           <TouchableOpacity 
-            style={styles.submitBtn} 
-            onPress={() => uploadForAssignment(item.id)}
+            style={[styles.submitBtn, { backgroundColor: '#1cc88a' }]} 
+            onPress={() => uploadForDPP(item.id)}
           >
             <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-            <Text style={styles.submitBtnText}>Submit Assignment</Text>
+            <Text style={styles.submitBtnText}>Submit Practice</Text>
           </TouchableOpacity>
         )}
         
         {isSubmitted && !isReviewed && (
           <View style={styles.submittedInfo}>
-             <Ionicons name="time-outline" size={16} color="#d69e2e" />
-             <Text style={styles.submittedText}>Awaiting Review</Text>
+             <Ionicons name="checkmark-circle-outline" size={16} color="#d69e2e" />
+             <Text style={styles.submittedText}>Submitted for review</Text>
           </View>
         )}
       </View>
     );
   };
 
-  if (loading && !refreshing) return <LoadingState label="Loading assignments..." />;
+  if (loading && !refreshing) return <LoadingState label="Loading practice problems..." />;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-         <Text style={styles.headerTitle}>Assignments</Text>
-         <Text style={styles.headerSubtitle}>Manage your homework submissions</Text>
+         <Text style={styles.headerTitle}>Daily Practice</Text>
+         <Text style={styles.headerSubtitle}>Complete your daily assignments</Text>
       </View>
       <ErrorBanner message={error} />
       <FlatList
-        data={assignments}
+        data={dpps}
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="document-text-outline" size={60} color="#ccc" />
-            <Text style={styles.emptyText}>No assignments found</Text>
+            <Ionicons name="create-outline" size={60} color="#ccc" />
+            <Text style={styles.emptyText}>No practice problems today</Text>
           </View>
         }
       />
@@ -243,11 +242,6 @@ const styles = StyleSheet.create({
     color: '#212529',
     marginBottom: 5,
   },
-  description: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginBottom: 12,
-  },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -255,6 +249,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f1f3f5',
     paddingTop: 10,
+    marginTop: 10,
   },
   meta: {
     flexDirection: 'row',
@@ -271,7 +266,6 @@ const styles = StyleSheet.create({
   },
   downloadText: {
     fontSize: 12,
-    color: '#4e73df',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -294,7 +288,6 @@ const styles = StyleSheet.create({
     color: '#2f855a',
   },
   submitBtn: {
-    backgroundColor: '#4e73df',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',

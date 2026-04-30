@@ -42,6 +42,24 @@ export const authService = {
     return apiClient('/auth/verify', { method: 'POST' });
   },
 
+  async register(payload) {
+    return apiClient('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async teacherRegister(payload) {
+    return apiClient('/auth/teacher-register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async checkUsername(username) {
+    return apiClient(`/auth/check-username?username=${encodeURIComponent(username)}`);
+  },
+
   async logout() {
     return apiClient('/auth/logout', { method: 'POST' });
   }
