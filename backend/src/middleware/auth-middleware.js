@@ -301,11 +301,19 @@ export const corsSecure = () => {
 
   return (req, res, next) => {
     const origin = req.headers.origin;
-    
-    // Normalize incoming origin for comparison
     const normalizedOrigin = origin ? origin.replace(/\/$/, '') : null;
 
-    if (normalizedOrigin && allowedOrigins.includes(normalizedOrigin)) {
+    // Allow exact matches from allowedOrigins OR any private network IP in development
+    const isAllowed = allowedOrigins.includes(normalizedOrigin);
+    const isPrivateIP = normalizedOrigin && (
+      normalizedOrigin.includes('192.168.') || 
+      normalizedOrigin.includes('10.') || 
+      normalizedOrigin.includes('172.') ||
+      normalizedOrigin.includes('localhost') ||
+      normalizedOrigin.includes('127.0.0.1')
+    );
+
+    if (normalizedOrigin && (isAllowed || (!isProd && isPrivateIP))) {
       res.header('Access-Control-Allow-Origin', origin); // Send back original origin
       res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token, Accept-Encoding');

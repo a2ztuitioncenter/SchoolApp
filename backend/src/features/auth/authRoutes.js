@@ -59,6 +59,9 @@ const setAuthCookies = (res, accessToken, refreshToken, req) => {
     path: '/api/auth'
   });
 
+  // Determine if we are on an external production-like environment (e.g. Cloudflare tunnel)
+  const isExternalProd = origin.startsWith('https://') && !origin.includes('localhost') && !origin.includes('127.0.0.1');
+
   // CSRF token — readable by JS (NOT httpOnly) for double-submit pattern
   res.cookie('csrf', csrfToken, {
     httpOnly: false,
