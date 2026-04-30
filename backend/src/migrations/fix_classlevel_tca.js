@@ -23,15 +23,15 @@ async function migrate() {
 
         if (checkColumn.rows.length > 0) {
             await client.query('ALTER TABLE teacher_class_assignment RENAME COLUMN class_level TO "classLevel"');
-            console.log('✅ teacher_class_assignment.class_level migrated to "classLevel".');
+            console.log('teacher_class_assignment.class_level migrated to "classLevel".');
         } else {
-            console.log('ℹ️ teacher_class_assignment.class_level already migrated or not found.');
+            console.log('teacher_class_assignment.class_level already migrated or not found.');
         }
 
         await client.query('COMMIT');
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('❌ Migration failed:', err);
+        console.error('Migration failed:', err);
     } finally {
         client.release();
         await pool.end();

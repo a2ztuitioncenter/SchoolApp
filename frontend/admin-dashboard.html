@@ -11,7 +11,8 @@
         (function () {
             const performAuthCheck = function () {
                 try {
-                    const authStr = sessionStorage.getItem('auth');
+                    // Check both sessionStorage and localStorage for maximum reliability on mobile
+                    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isAdmin = auth && auth.isLoggedIn === true && auth.role === 'admin';
 
@@ -22,9 +23,8 @@
                         document.open();
                         document.write('');
                         document.close();
-                        // Force redirect with small delay to allow sessionStorage sync if needed
+                        // Force redirect
                         setTimeout(() => {
-                            console.warn('🔒 Redirecting to landing page...');
                             window.location.replace('/');
                         }, 500);
                         // Stop execution
@@ -36,6 +36,9 @@
                     if (e.message !== 'UNAUTHORIZED_ACCESS') {
                         console.error('Auth error:', e);
                     }
+                    // If we're already being redirected, don't double-trigger
+                    if (e.message === 'UNAUTHORIZED_ACCESS') throw e;
+                    
                     document.open();
                     document.write('');
                     document.close();
@@ -47,9 +50,7 @@
             };
 
             // Execute IMMEDIATELY
-            if (!performAuthCheck()) {
-                throw new Error('Auth failed');
-            }
+            performAuthCheck();
         })();
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

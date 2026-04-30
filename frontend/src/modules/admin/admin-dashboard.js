@@ -4128,7 +4128,7 @@ async function handleDashboardFileUpload(fileInput, type, prefix) {
     if (submitBtn) submitBtn.disabled = true;
 
     const formData = new FormData();
-    formData.append('materialFile', file); // Generic name used by backend storageController
+    formData.append('file', file); // Field name must be 'file' to match backend handleFileUpload
     formData.append('type', type);
 
     // Optional metadata if available

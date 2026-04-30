@@ -277,6 +277,7 @@
         (function () {
             const performAuthCheck = function () {
                 try {
+                    // Check both sessionStorage and localStorage for maximum reliability on mobile
                     const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isTeacher = auth && auth.isLoggedIn === true && (auth.role === 'teacher' || auth.role === 'staff');
@@ -291,7 +292,7 @@
                         // Force redirect
                         setTimeout(() => {
                             window.location.replace('/');
-                        }, 800);
+                        }, 500);
                         // Stop execution
                         throw new Error('UNAUTHORIZED_ACCESS');
                     }
@@ -301,6 +302,9 @@
                     if (e.message !== 'UNAUTHORIZED_ACCESS') {
                         console.error('Auth error:', e);
                     }
+                    // If we're already being redirected, don't double-trigger
+                    if (e.message === 'UNAUTHORIZED_ACCESS') throw e;
+
                     document.open();
                     document.write('');
                     document.close();
@@ -312,9 +316,7 @@
             };
 
             // Execute IMMEDIATELY
-            if (!performAuthCheck()) {
-                throw new Error('Auth failed');
-            }
+            performAuthCheck();
         })();
     </script>
     <style>

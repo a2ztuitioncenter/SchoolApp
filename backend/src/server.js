@@ -62,12 +62,12 @@ const validateEnv = () => {
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    console.error('\n❌ CONFIGURATION ERROR: Missing required environment variables:');
+    console.error('\nCONFIGURATION ERROR: Missing required environment variables:');
     missing.forEach(key => console.error(`   - ${key}`));
     console.error('\nPlease ensure these are set in your Render dashboard or .env file.\n');
     process.exit(1);
   }
-  console.log('✅ Environment variables validated.');
+  console.log('Environment variables validated.');
 };
 
 const app = express();
@@ -76,35 +76,35 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Trust proxy for production (Render/Vercel)
 if (isProd) {
-  console.log('🛡️  Running in PRODUCTION mode (Trust Proxy enabled)');
+  console.log('Running in PRODUCTION mode (Trust Proxy enabled)');
   app.set('trust proxy', 1);
 } else {
-  console.log('🛠️  Running in DEVELOPMENT mode');
+  console.log('Running in DEVELOPMENT mode');
 }
 
 // Database Initialization & Start Server
 const startServer = async () => {
   try {
-    console.log('\n🚀 Starting Backend Server Initialization...');
+    console.log('\nStarting Backend Server Initialization...');
     
     // 1. Validate Environment
     validateEnv();
 
     // 2. Test Database Connection
-    console.log('📡 Connecting to database...');
+    console.log('Connecting to database...');
     try {
       const client = await pool.connect();
-      console.log('✅ PostgreSQL Database connected successfully');
+      console.log('PostgreSQL Database connected successfully');
       client.release();
     } catch (dbError) {
-      console.error('❌ DATABASE CONNECTION FAILED:');
+      console.error('DATABASE CONNECTION FAILED:');
       console.error(dbError.message);
       console.error('Check your DATABASE_URL and SSL settings.');
       process.exit(1);
     }
 
     // 3. Security & Middleware
-    console.log('🔒 Initializing security middleware...');
+    console.log('Initializing security middleware...');
     app.use(corsSecure());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
@@ -129,7 +129,7 @@ const startServer = async () => {
     });
 
     // 4. Static Files & Landing Page
-    console.log('📂 Setting up static file serving...');
+    console.log('Setting up static file serving...');
     app.get('/', (req, res) => {
       const indexPath = path.join(__dirname, '../../frontend/index.html');
       res.sendFile(indexPath);
@@ -141,7 +141,7 @@ const startServer = async () => {
     app.get('/favicon.ico', (req, res) => res.status(204).end());
 
     // 5. Routes
-    console.log('🛣️  Loading API routes...');
+    console.log('Loading API routes...');
     app.use('/api/auth', authRoutes);
     app.use('/api/student', authenticate, studentRoutes);
     app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
@@ -199,28 +199,28 @@ const startServer = async () => {
     // 6. DB Initialization (Conditional)
     const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
     if (shouldInitializeDB) {
-      console.log('🛠️  Initializing database schema...');
+      console.log('Initializing database schema...');
       await initializeDatabase();
     }
 
     // 7. Background Jobs
-    console.log('⏰ Starting background jobs...');
+    console.log('Starting background jobs...');
     import('./utils/cleanupJob.js').then(({ startCleanupJob }) => {
       startCleanupJob(pool);
     }).catch(err => console.error('Failed to load cleanup job:', err));
 
     // 8. Listen
     app.listen(PORT, '0.0.0.0', () => {
-      console.log('\n╔═══════════════════════════════════════════════════════════╗');
-      console.log('║               BACKEND SERVER STARTED                      ║');
-      console.log('╚═══════════════════════════════════════════════════════════╝\n');
+      console.log('\n+-----------------------------------------------------------+');
+      console.log('|               BACKEND SERVER STARTED                      |');
+      console.log('+-----------------------------------------------------------+\n');
       console.log(`Backend API Server: http://localhost:${PORT}`);
       console.log(`  • Health Check: http://localhost:${PORT}/health`);
-      console.log(`  • Database: Connected ✓\n`);
+      console.log(`  • Database: Connected\n`);
     });
 
   } catch (error) {
-    console.error('\n❌ FAILED TO START SERVER:');
+    console.error('\nFAILED TO START SERVER:');
     console.error(error.stack || error);
     process.exit(1);
   }

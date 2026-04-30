@@ -6,7 +6,7 @@ export const getResultsByStudent = async (req, res) => {
     const { student } = req.params;
 
     if (!schoolId) {
-      console.warn('⚠️ [getResultsByStudent] Missing schoolId in request');
+      console.warn('[getResultsByStudent] Missing schoolId in request');
       return res.status(401).json({ success: false, error: 'Unauthorized: Missing school isolation key' });
     }
 
@@ -37,29 +37,28 @@ export const getResultsByStudent = async (req, res) => {
     }
 
     const mappedData = result.rows.map(r => ({
-        id: r.id,
-        classLevel: r.class_level,
-        section: r.section,
-        rollNumber: r.roll_no || r.roll_number,
-        studentName: r.student_name,
-        examTitle: r.exam_title,
-        subjects: typeof r.subjects === 'string' ? JSON.parse(r.subjects) : r.subjects,
-        totalMarks: r.total_marks,
-        obtainedMarks: r.obtained_marks,
-        percentage: r.percentage,
-        remarks: r.remarks,
-        teacherId: r.teacher_id,
-        studentId: r.student_id,
-        createdAt: r.created_at
+      id: r.id,
+      classLevel: r.class_level,
+      section: r.section,
+      rollNumber: r.roll_no || r.roll_number,
+      studentName: r.student_name,
+      examTitle: r.exam_title,
+      subjects: typeof r.subjects === 'string' ? JSON.parse(r.subjects) : r.subjects,
+      totalMarks: r.total_marks,
+      obtainedMarks: r.obtained_marks,
+      percentage: r.percentage,
+      remarks: r.remarks,
+      teacherId: r.teacher_id,
+      studentId: r.student_id,
+      createdAt: r.created_at
     }));
 
     res.json({ success: true, data: mappedData });
   } catch (err) {
-    console.error('❌ [getResultsByStudent] Error:', err.message);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Server error', 
-      message: err.message
+    console.error('[getResultsByStudent] Error:', err.message);
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
     });
   }
 };

@@ -43,7 +43,7 @@ export async function initializeDatabase() {
         await seedContentPages();
         await createDefaultAdmin();
     } catch (err) {
-        console.error('❌ Database Initialization Error:', err.message);
+        console.error('Database Initialization Error:', err.message);
         throw err;
     }
 }
@@ -52,14 +52,14 @@ async function seedContentPages() {
     try {
         const count = await pool.query('SELECT COUNT(*) FROM content_pages');
         if (parseInt(count.rows[0].count) === 0) {
-            console.log('🌱 Seeding baseline content pages...');
+            console.log('Seeding baseline content pages...');
             for (const item of contentPageModel.baselineData) {
                 await pool.query(
                     'INSERT INTO content_pages (key, content) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
                     [item.key, item.content]
                 );
             }
-            console.log('✅ Baseline content pages seeded.');
+            console.log('Baseline content pages seeded.');
         }
     } catch (err) {
         console.error('Error seeding content pages:', err.message);
@@ -77,7 +77,7 @@ async function createDefaultAdmin() {
     }
 
     const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);
-    console.log(`👤 Configuring Admin Account for phone: ${maskedPhone}...`);
+    console.log(`Configuring Admin Account for phone: ${maskedPhone}...`);
 
     try {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
@@ -97,7 +97,7 @@ async function createDefaultAdmin() {
             console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);
         }
     } catch (err) {
-        console.error('❌ ERROR configuring admin account:', err.message);
+        console.error('ERROR configuring admin account:', err.message);
         throw err;
     }
 }

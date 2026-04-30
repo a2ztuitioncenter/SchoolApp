@@ -140,6 +140,33 @@ export const apiCall = async (endpoint, options = {}) => {
       }
     }
 
+    if (response.status === 403) {
+      let isOwnershipViolation = false;
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        try {
+          const clonedResponse = response.clone();
+          const errBody = await clonedResponse.json();
+          if (errBody?.code === 'OWNERSHIP_VIOLATION') isOwnershipViolation = true;
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+      
+      if (isOwnershipViolation) {
+        console.warn(`🛑 AUTH FAILURE [403 OWNERSHIP_VIOLATION]: Cache mismatch. Clearing session and reloading.`);
+        setTimeout(() => {
+          const path = window.location.pathname;
+          const isLandingPage = path === '/' || path === '/index.html' || path === '';
+          if (!isLandingPage) {
+            sessionStorage.removeItem('auth');
+            localStorage.removeItem('auth');
+            window.location.href = '/';
+          }
+        }, 500);
+      }
+    }
+
     if (options.responseType === 'blob') {
       return await response.blob();
     }
@@ -186,10 +213,12 @@ export const uploadFileWithProgress = (endpoint, formData, onProgress) => {
     const csrf = getCsrfToken();
     if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
 
+    onProgress = typeof onProgress === 'function' ? onProgress : null;
+
     // Track progress
-    if (xhr.upload && onProgress) {
+    if (xhr.upload) {
       xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
+        if (typeof onProgress === 'function' && event.lengthComputable) {
           const percent = Math.round((event.loaded / event.total) * 100);
           onProgress(percent, event.loaded, event.total);
         }
@@ -344,12 +373,12 @@ export const authAPI = {
  * Student APIs
  */
 export const studentAPI = {
-  getDashboard: (userId, options = {}) => apiCall(`/student/${userId}/dashboard`, { method: 'GET', ...options }),
-  getAttendance: (userId, options = {}) => apiCall(`/student/${userId}/attendance`, { method: 'GET', ...options }),
-  getFees: (userId, options = {}) => apiCall(`/student/${userId}/fees`, { method: 'GET', ...options }),
-  getSyllabus: (userId, options = {}) => apiCall(`/student/${userId}/syllabus`, { method: 'GET', ...options }),
-  getResults: (userId, options = {}) => apiCall(`/student/${userId}/results`, { method: 'GET', ...options }),
-  getSubmissions: (userId, options = {}) => apiCall(`/submissions/student/${userId}`, { method: 'GET', ...options }),
+  getDashboard: (userId, options = {}) => apiCall(`/student/me/dashboard`, { method: 'GET', ...options }),
+  getAttendance: (userId, options = {}) => apiCall(`/student/me/attendance`, { method: 'GET', ...options }),
+  getFees: (userId, options = {}) => apiCall(`/student/me/fees`, { method: 'GET', ...options }),
+  getSyllabus: (userId, options = {}) => apiCall(`/student/me/syllabus`, { method: 'GET', ...options }),
+  getResults: (userId, options = {}) => apiCall(`/student/me/results`, { method: 'GET', ...options }),
+  getSubmissions: (userId, options = {}) => apiCall(`/submissions/student/me`, { method: 'GET', ...options }),
 };
 
 /**

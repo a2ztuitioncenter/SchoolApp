@@ -43,7 +43,7 @@ export const authenticate = (req, res, next) => {
     
     // Attach user info to request
     req.user = {
-      userId: decoded.userId,
+      userId: decoded.userId || decoded.id, 
       role: decoded.role,
       phone: decoded.phone,
       schoolId: decoded.schoolId,
@@ -154,15 +154,27 @@ export const requireSelfOrAdmin = (paramName = 'userId') => {
       });
     }
 
+    // Normalize IDs for comparison
+    let requestedId = String(req.params[paramName] || '').trim();
+    const authenticatedUserId = String(req.user.userId || '').trim();
+
+    // Dynamically resolve 'me' to the authenticated user's ID
+    if (requestedId === 'me') {
+      requestedId = authenticatedUserId;
+      req.params[paramName] = authenticatedUserId;
+    }
+
+    // Admins have global access
     if (req.user.role === 'admin') {
       return next();
     }
 
-    const requestedId = req.params[paramName];
-    if (!requestedId || String(requestedId) !== String(req.user.userId)) {
+    if (!requestedId || requestedId !== authenticatedUserId) {
+      console.warn(`[AUTH] Ownership violation: Request param ${paramName}='${req.params[paramName]}' does not match Auth UserID='${authenticatedUserId}'`);
       return res.status(403).json({
         error: 'Forbidden',
-        code: 'OWNERSHIP_VIOLATION'
+        code: 'OWNERSHIP_VIOLATION',
+        message: 'You are only authorized to access your own data'
       });
     }
 

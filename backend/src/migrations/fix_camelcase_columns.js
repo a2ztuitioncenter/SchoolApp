@@ -1,7 +1,7 @@
 import pool from '../config/pool.js';
 
 async function migrate() {
-    console.log('🚀 Starting migration: Standardizing camelCase column names...');
+    console.log('Starting migration: Standardizing camelCase column names...');
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -16,9 +16,9 @@ async function migrate() {
         if (tcaColumns.rows.length > 0) {
             await client.query('ALTER TABLE teacher_class_assignment RENAME COLUMN teacher_id TO "teacherId"');
             await client.query('ALTER TABLE teacher_class_assignment RENAME COLUMN school_id TO "schoolId"');
-            console.log('✅ teacher_class_assignment migrated.');
+            console.log('teacher_class_assignment migrated.');
         } else {
-            console.log('ℹ️ teacher_class_assignment already migrated or column not found.');
+            console.log('teacher_class_assignment already migrated or column not found.');
         }
 
         // 2. Migrate timetable
@@ -35,16 +35,16 @@ async function migrate() {
             await client.query('ALTER TABLE timetable RENAME COLUMN class_level TO "classLevel"');
             await client.query('ALTER TABLE timetable RENAME COLUMN teacher_id TO "teacherId"');
             await client.query('ALTER TABLE timetable RENAME COLUMN school_id TO "schoolId"');
-            console.log('✅ timetable migrated.');
+            console.log('timetable migrated.');
         } else {
-            console.log('ℹ️ timetable already migrated or column not found.');
+            console.log('timetable already migrated or column not found.');
         }
 
         await client.query('COMMIT');
-        console.log('🎉 Migration completed successfully!');
+        console.log('Migration completed successfully!');
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('❌ Migration failed:', err.message);
+        console.error('Migration failed:', err.message);
     } finally {
         client.release();
         process.exit();

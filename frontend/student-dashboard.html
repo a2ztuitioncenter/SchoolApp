@@ -8,19 +8,17 @@
     <!-- 🔒 AUTH CHECK MUST RUN IMMEDIATELY -->
     <script>
         // CRITICAL: Run auth check BEFORE any other resources load
-        (function() {
-            const performAuthCheck = function() {
+        (function () {
+            const performAuthCheck = function () {
                 try {
+                    // Check both sessionStorage and localStorage for maximum reliability on mobile
                     const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isStudent = auth && auth.isLoggedIn === true && auth.role === 'student';
-                    
+
                     if (!isStudent) {
                         // BLOCK EVERYTHING
-                        console.warn('🔒 STUDENT DASHBOARD: Unauthorized - blocking access', {
-                            hasAuth: !!auth,
-                            role: auth?.role
-                        });
+                        console.warn('🔒 STUDENT DASHBOARD: Unauthorized - blocking access');
                         // Prevent any content from rendering
                         document.open();
                         document.write('');
@@ -28,10 +26,7 @@
                         // Force redirect
                         setTimeout(() => {
                             window.location.replace('/');
-                        }, 800); // Slightly longer delay to ensure state persists
-                        // Stop execution
-                        throw new Error('UNAUTHORIZED_ACCESS');
-                    }
+                        }, 500);
                         // Stop execution
                         throw new Error('UNAUTHORIZED_ACCESS');
                     }
@@ -41,6 +36,9 @@
                     if (e.message !== 'UNAUTHORIZED_ACCESS') {
                         console.error('Auth error:', e);
                     }
+                    // If we're already being redirected, don't double-trigger
+                    if (e.message === 'UNAUTHORIZED_ACCESS') throw e;
+
                     document.open();
                     document.write('');
                     document.close();
@@ -50,11 +48,9 @@
                     throw new Error('AUTH_ERROR');
                 }
             };
-            
+
             // Execute IMMEDIATELY
-            if (!performAuthCheck()) {
-                throw new Error('Auth failed');
-            }
+            performAuthCheck();
         })();
     </script>
     <link rel="stylesheet" href="./src/assets/css/student-dashboard.css">

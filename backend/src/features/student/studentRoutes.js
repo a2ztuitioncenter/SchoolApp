@@ -10,27 +10,25 @@ import { getStudentByUserId } from './Student.js';
 
 const router = express.Router();
 
-router.use('/:userId', requireSelfOrAdmin('userId'));
-
 /**
  * GET /api/student/:userId/dashboard
  */
-router.get('/:userId/dashboard', getStudentDashboard);
+router.get('/:userId/dashboard', requireSelfOrAdmin('userId'), getStudentDashboard);
 
 /**
  * GET /api/student/:userId/attendance
  */
-router.get('/:userId/attendance', getStudentAttendance);
+router.get('/:userId/attendance', requireSelfOrAdmin('userId'), getStudentAttendance);
 
 /**
  * GET /api/student/:userId/fees
  */
-router.get('/:userId/fees', getStudentFees);
+router.get('/:userId/fees', requireSelfOrAdmin('userId'), getStudentFees);
 
 /**
  * GET /api/student/:userId/results
  */
-router.get('/:userId/results', async (req, res) => {
+router.get('/:userId/results', requireSelfOrAdmin('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     const pool = req.db;

@@ -1085,14 +1085,14 @@ function setupFormListeners() {
   // Attach immediate upload listeners
   document.getElementById('hw-file')?.addEventListener('change', async e => {
     if (e.target.files.length) {
-      const result = await handleTeacherFileUpload(e.target.files[0], 'hw', 'hw-form-submit-btn'); // Note: I should check if there is a specific submit btn ID
+      const result = await handleTeacherFileUpload(e.target.files[0], 'hw', 'hw-form-submit-btn', 'homework');
       if (result) pendingHwUpload = result;
     }
   });
 
   document.getElementById('material-file')?.addEventListener('change', async e => {
     if (e.target.files.length) {
-      const result = await handleTeacherFileUpload(e.target.files[0], 'material', 'material-submit-btn');
+      const result = await handleTeacherFileUpload(e.target.files[0], 'material', 'material-submit-btn', 'study_material');
       if (result) pendingMaterialUpload = result;
     }
   });
@@ -1100,7 +1100,7 @@ function setupFormListeners() {
   document.getElementById('profile-upload')?.addEventListener('change', async e => {
     if (e.target.files.length) {
       window.previewProfileImage(e.target);
-      const result = await handleTeacherFileUpload(e.target.files[0], 'profile', 'profile-save-btn'); // Note: I should check if there is a specific submit btn ID
+      const result = await handleTeacherFileUpload(e.target.files[0], 'profile', 'profile-save-btn', 'profile');
       if (result) pendingProfileUpload = result;
     }
   });
@@ -2261,7 +2261,7 @@ document.getElementById('review-submission-form')?.addEventListener('submit', as
 /**
  * Handle teacher file uploads with progress
  */
-async function handleTeacherFileUpload(file, prefix, submitBtnId) {
+async function handleTeacherFileUpload(file, prefix, submitBtnId, type = 'material') {
     const container = document.getElementById(`${prefix}-upload-progress`);
     const statusText = document.getElementById(`${prefix}-upload-status`);
     const percentText = document.getElementById(`${prefix}-upload-percent`);
@@ -2272,10 +2272,14 @@ async function handleTeacherFileUpload(file, prefix, submitBtnId) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        const result = await uploadFileWithProgress(file, (percent) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type); // Required by backend storageController
+
+        const result = await uploadFileWithProgress('/storage/upload', formData, (percent) => {
             if (percentText) percentText.textContent = `${percent}%`;
             if (progressBar) progressBar.style.width = `${percent}%`;
-        }, 'material'); // Use generic upload type
+        });
 
         if (statusText) statusText.textContent = 'Upload Complete';
         if (submitBtn) submitBtn.disabled = false;

@@ -1452,7 +1452,7 @@ if (fileInput) {
             handleFileSelect(file);
             
             // Immediate upload
-            const result = await handleStudentFileUpload(file, 'student-hw', 'submit-btn');
+            const result = await handleStudentFileUpload(file, 'student-hw', 'submit-btn', 'homework');
             if (result) pendingSubmissionUpload = result;
         }
     };
@@ -1466,7 +1466,7 @@ if (profileUpload) {
             window.previewProfileImage(profileUpload);
             
             // Immediate upload
-            const result = await handleStudentFileUpload(file, 'profile', null);
+            const result = await handleStudentFileUpload(file, 'profile', null, 'profile');
             if (result) pendingProfileUpload = result;
         }
     };
@@ -1793,7 +1793,7 @@ document.getElementById('cancel-select-assignment-btn')?.addEventListener('click
 /**
  * Handle student file uploads with progress
  */
-async function handleStudentFileUpload(file, prefix, submitBtnId) {
+async function handleStudentFileUpload(file, prefix, submitBtnId, type = 'homework') {
     const container = document.getElementById(`${prefix}-upload-progress`);
     const statusText = document.getElementById(`${prefix}-upload-status`);
     const percentText = document.getElementById(`${prefix}-upload-percent`);
@@ -1804,10 +1804,14 @@ async function handleStudentFileUpload(file, prefix, submitBtnId) {
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-        const result = await uploadFileWithProgress(file, (percent) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type); // Required by backend storageController
+
+        const result = await uploadFileWithProgress('/storage/upload', formData, (percent) => {
             if (percentText) percentText.textContent = `${percent}%`;
             if (progressBar) progressBar.style.width = `${percent}%`;
-        }, 'submission'); // Use generic upload type
+        });
 
         if (statusText) statusText.textContent = 'Upload Complete';
         if (submitBtn) submitBtn.disabled = false;

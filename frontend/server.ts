@@ -38,27 +38,31 @@ const server = Bun.serve({
 
     // Proxy API calls to the backend on port 3000
     if (pathname.startsWith("/api/")) {
-      const backendUrl = `http://localhost:3000${pathname}${url.search}`;
+      const backendUrl = `http://127.0.0.1:3000${pathname}${url.search}`;
       
-      // Explicitly clone headers to ensure cookies and other metadata are forwarded
       const headers = new Headers(req.headers);
-      
-      // Optional: Set X-Forwarded-For if needed for backend logging/security
-      const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("remote-addr");
-      if (forwardedFor) headers.set("X-Forwarded-For", forwardedFor);
+      headers.set("X-Forwarded-Host", url.host);
+      headers.set("X-Forwarded-Proto", url.protocol.replace(':', ''));
+      // Do NOT set "Host" to 127.0.0.1:3000 as it can break cookie domain matching
 
       console.log(`[PROXY] ${req.method} ${pathname} -> ${backendUrl}`);
       
       try {
-        const proxyReq = new Request(backendUrl, {
+        const response = await fetch(backendUrl, {
           method: req.method,
           headers: headers,
           body: req.body,
-          // @ts-ignore - Bun specific fetch options if needed
+          // @ts-ignore
           duplex: "half" 
         });
 
-        return await fetch(proxyReq);
+        // Reconstruct response to ensure all headers (especially multiple Set-Cookie) are forwarded correctly
+        const newHeaders = new Headers(response.headers);
+        
+        return new Response(response.body, {
+          status: response.status,
+          headers: newHeaders
+        });
       } catch (error) {
         console.error(`[PROXY ERROR] Failed to reach backend:`, error);
         return new Response(JSON.stringify({ error: "Backend unreachable" }), {
@@ -103,4 +107,5 @@ const server = Bun.serve({
 });
 
 console.log(`\nFrontend server running on port ${PORT}`);
-console.log(`  Local: http://localhost:${PORT}`);
+console.log(`  Local:   http://localhost:${PORT}`);
+console.log(`  Network: http://10.254.252.100:${PORT} (Use this for mobile)`);
