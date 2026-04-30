@@ -957,8 +957,7 @@ const VALID_CONTENT_KEYS = ['help', 'documentation', 'programs', 'resources', 'c
 router.get('/content', async (req, res) => {
     try {
         const result = await req.db.query(
-            `SELECT key, updated_at FROM content_pages WHERE school_id = $1 ORDER BY key ASC`,
-            [req.user.schoolId]
+            `SELECT key, updated_at FROM content_pages ORDER BY key ASC`
         );
         res.json({ success: true, data: result.rows });
     } catch (err) {
@@ -978,8 +977,8 @@ router.get('/content/:key', async (req, res) => {
     }
     try {
         const result = await req.db.query(
-            `SELECT key, content, updated_at FROM content_pages WHERE key = $1 AND school_id = $2`,
-            [key, req.user.schoolId]
+            `SELECT key, content, updated_at FROM content_pages WHERE key = $1`,
+            [key]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Content not found' });
@@ -1003,12 +1002,12 @@ router.put('/content/:key', async (req, res) => {
     }
     try {
         const result = await req.db.query(
-            `INSERT INTO content_pages (key, content, school_id)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (key, school_id) 
+            `INSERT INTO content_pages (key, content)
+             VALUES ($1, $2)
+             ON CONFLICT (key) 
              DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()
              RETURNING id, key, content, updated_at`,
-            [key, content, req.user.schoolId]
+            [key, content]
         );
         await logAudit(req.db, req.user.userId, 'UPDATE_CONTENT', 'content_pages', key, `Updated "${key}" page content`, req.user.schoolId);
         res.json({ success: true, data: result.rows[0] });
@@ -1026,8 +1025,8 @@ router.delete('/content/:key', async (req, res) => {
     }
     try {
         const result = await req.db.query(
-            `UPDATE content_pages SET content = '', updated_at = NOW() WHERE key = $1 AND school_id = $2`,
-            [key, req.user.schoolId]
+            `UPDATE content_pages SET content = '', updated_at = NOW() WHERE key = $1`,
+            [key]
         );
         await logAudit(req.db, req.user.userId, 'DELETE_CONTENT', 'content_pages', key, `Cleared "${key}" page content`, req.user.schoolId);
         res.json({ success: true, message: `Content for "${key}" cleared.` });

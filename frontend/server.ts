@@ -60,6 +60,10 @@ const server = Bun.serve({
         // Reconstruct response to ensure all headers (especially multiple Set-Cookie) are forwarded correctly
         const newHeaders = new Headers(response.headers);
         
+        // Strip headers that interfere with the browser's own decoding, since fetch() automatically decompresses the body
+        newHeaders.delete('Content-Encoding');
+        newHeaders.delete('Content-Length');
+        
         return new Response(response.body, {
           status: response.status,
           headers: newHeaders
