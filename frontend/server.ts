@@ -39,10 +39,26 @@ const server = Bun.serve({
     // Proxy API calls to the backend on port 3000
     if (pathname.startsWith("/api/")) {
       const backendUrl = `http://localhost:3000${pathname}${url.search}`;
+      
+      // Explicitly clone headers to ensure cookies and other metadata are forwarded
+      const headers = new Headers(req.headers);
+      
+      // Optional: Set X-Forwarded-For if needed for backend logging/security
+      const forwardedFor = req.headers.get("x-forwarded-for") || req.headers.get("remote-addr");
+      if (forwardedFor) headers.set("X-Forwarded-For", forwardedFor);
+
       console.log(`[PROXY] ${req.method} ${pathname} -> ${backendUrl}`);
       
       try {
-        return await fetch(backendUrl, req);
+        const proxyReq = new Request(backendUrl, {
+          method: req.method,
+          headers: headers,
+          body: req.body,
+          // @ts-ignore - Bun specific fetch options if needed
+          duplex: "half" 
+        });
+
+        return await fetch(proxyReq);
       } catch (error) {
         console.error(`[PROXY ERROR] Failed to reach backend:`, error);
         return new Response(JSON.stringify({ error: "Backend unreachable" }), {

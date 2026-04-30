@@ -38,30 +38,32 @@ const generateRefreshToken = (userId) => {
 };
 
 /** Set auth cookies on response */
-const setAuthCookies = (res, accessToken, refreshToken) => {
+const setAuthCookies = (res, accessToken, refreshToken, req) => {
   const csrfToken = crypto.randomBytes(24).toString('hex');
+  const origin = req?.headers?.origin || '';
+  const isProd = process.env.NODE_ENV === 'production';
 
   res.cookie('token', accessToken, {
     httpOnly: true,
-    secure: IS_PROD,
-    sameSite: IS_PROD ? 'None' : 'Lax',
+    secure: isProd, 
+    sameSite: 'Lax', // Lax is safer for same-site (proxied) requests
     maxAge: 2 * 60 * 60 * 1000, // 2 hours
     path: '/'
   });
 
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: IS_PROD,
-    sameSite: IS_PROD ? 'None' : 'Lax',
+    secure: isProd,
+    sameSite: 'Lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/api/auth' // only sent to auth routes
+    path: '/api/auth'
   });
 
   // CSRF token — readable by JS (NOT httpOnly) for double-submit pattern
   res.cookie('csrf', csrfToken, {
     httpOnly: false,
-    secure: IS_PROD,
-    sameSite: IS_PROD ? 'None' : 'Lax',
+    secure: isExternalProd || isProd,
+    sameSite: isExternalProd ? 'None' : 'Lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/'
   });
@@ -182,7 +184,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
 
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken, req);
 
     res.json({
       success: true,
@@ -349,7 +351,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
         const accessToken = generateToken(user.id, user.role, sanitizedPhone, user.schoolId);
         const refreshToken = generateRefreshToken(user.id);
 
-        setAuthCookies(res, accessToken, refreshToken);
+        setAuthCookies(res, accessToken, refreshToken, req);
 
         return res.json({
           success: true,
@@ -393,7 +395,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
         const accessToken = generateToken(user.id, user.role, sanitizedPhone, user.schoolId);
         const refreshToken = generateRefreshToken(user.id);
 
-        setAuthCookies(res, accessToken, refreshToken);
+        setAuthCookies(res, accessToken, refreshToken, req);
 
         return res.json({
           success: true,
@@ -427,7 +429,7 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken, req);
     res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {
     console.error('Admin login error:', error);
@@ -451,7 +453,7 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken, req);
     res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {
     console.error('Teacher login error:', error);
@@ -699,7 +701,7 @@ router.post('/refresh', async (req, res) => {
     // Rotate: issue new access + refresh tokens
     const newAccess = generateToken(user.id, user.role, user.phone, user.schoolId);
     const newRefresh = generateRefreshToken(user.id);
-    setAuthCookies(res, newAccess, newRefresh);
+    setAuthCookies(res, newAccess, newRefresh, req);
 
     res.json({ success: true, user: { id: user.id, role: user.role, phone: user.phone } });
   } catch (error) {

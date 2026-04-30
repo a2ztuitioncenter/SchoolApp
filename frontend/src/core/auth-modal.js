@@ -435,6 +435,7 @@ async function handleStudentSignupModal(e) {
 
     try {
         const response = await window.authAPI.register({
+            role: 'student',
             firstName,
             lastName,
             phone,

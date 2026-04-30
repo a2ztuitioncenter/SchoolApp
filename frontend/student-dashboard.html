@@ -11,13 +11,16 @@
         (function() {
             const performAuthCheck = function() {
                 try {
-                    const authStr = sessionStorage.getItem('auth');
+                    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
                     const isStudent = auth && auth.isLoggedIn === true && auth.role === 'student';
                     
                     if (!isStudent) {
                         // BLOCK EVERYTHING
-                        console.warn('🔒 STUDENT DASHBOARD: Unauthorized - blocking access');
+                        console.warn('🔒 STUDENT DASHBOARD: Unauthorized - blocking access', {
+                            hasAuth: !!auth,
+                            role: auth?.role
+                        });
                         // Prevent any content from rendering
                         document.open();
                         document.write('');
@@ -25,7 +28,10 @@
                         // Force redirect
                         setTimeout(() => {
                             window.location.replace('/');
-                        }, 100);
+                        }, 800); // Slightly longer delay to ensure state persists
+                        // Stop execution
+                        throw new Error('UNAUTHORIZED_ACCESS');
+                    }
                         // Stop execution
                         throw new Error('UNAUTHORIZED_ACCESS');
                     }
@@ -40,7 +46,7 @@
                     document.close();
                     setTimeout(() => {
                         window.location.replace('/');
-                    }, 100);
+                    }, 500);
                     throw new Error('AUTH_ERROR');
                 }
             };

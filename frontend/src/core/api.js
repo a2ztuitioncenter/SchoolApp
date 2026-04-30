@@ -9,12 +9,11 @@ const getBaseApiUrl = () => {
 
   const { hostname, origin, port } = window.location;
 
-  // Check if we are on a Cloudflare tunnel
+  // Check if we are on a Cloudflare tunnel or Vercel
   const isCloudflare = hostname.endsWith('.trycloudflare.com');
+  const isVercel = hostname.endsWith('.vercel.app');
 
-  // If on Cloudflare, use relative paths (return empty string)
-  // This ensures /api calls go to the same origin as the frontend
-  if (isCloudflare) {
+  if (isCloudflare || isVercel) {
     return '';
   }
 
@@ -54,6 +53,13 @@ export const waitForBackend = async () => true;
  */
 export const apiCall = async (endpoint, options = {}) => {
   let url = base_api_url ? `${base_api_url}/api${endpoint}` : `/api${endpoint}`;
+  
+  if (window.location.hostname !== 'localhost') {
+    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`, {
+      base: base_api_url,
+      endpoint
+    });
+  }
 
   const headers = { ...options.headers };
   if (!(options.body instanceof FormData)) {
@@ -116,12 +122,21 @@ export const apiCall = async (endpoint, options = {}) => {
           }
         }
         // Refresh failed or retry failed — redirect to login
+        console.warn(`🛑 AUTH FAILURE [401]: Redirecting to login. 
+          Endpoint: ${endpoint}
+          Path: ${window.location.pathname}`);
+        
         setTimeout(() => {
-          if (window.location.pathname !== '/' && window.location.pathname !== '/index.html') {
+          const path = window.location.pathname;
+          const isLandingPage = path === '/' || path === '/index.html' || path === '';
+          
+          if (!isLandingPage) {
+            console.log('🧹 Clearing local auth state and returning to landing page');
             sessionStorage.removeItem('auth');
+            // Use a slight delay to allow any pending setAuth to finish
             window.location.href = '/';
           }
-        }, 100);
+        }, 500);
       }
     }
 
@@ -144,10 +159,11 @@ export const apiCall = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
+      console.error(`❌ API Error [${method} ${url}]: ${errorMsg}`, data);
       return { ...data, error: errorMsg, status: response.status, success: false };
     }
 
-    return data;
+    return { ...data, success: true, status: response.status };
   } catch (error) {
     return { error: error.message, success: false };
   } finally {

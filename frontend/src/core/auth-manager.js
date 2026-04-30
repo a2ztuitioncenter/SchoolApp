@@ -19,8 +19,8 @@ const AUTH_STORAGE_KEY = 'auth';
 const AUTH_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 
 const readStoredAuth = () => {
-  // Use sessionStorage exclusively for active session identity to prevent bleed between tabs/users
-  return sessionStorage.getItem(AUTH_STORAGE_KEY);
+  // Check sessionStorage first (active session), then localStorage (persistent session)
+  return sessionStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(AUTH_STORAGE_KEY);
 };
 
 /**
@@ -34,20 +34,23 @@ const readStoredAuth = () => {
  */
 export const setAuth = (authData) => {
   // CRITICAL: Clear ANY existing auth state from both storages before setting new one
-  // This prevents identity bleed if an admin was logged in previously on this machine
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
   
   const auth = {
     isLoggedIn: true,
     role: authData.role,
-    userId: authData.userId,
-    name: authData.name || null,
-    phone: authData.phone || null,
+    userId: authData.userId || authData.user?.id,
+    name: authData.name || authData.user?.name || null,
+    phone: authData.phone || authData.user?.phone || null,
     timestamp: Date.now()
   };
   const serializedAuth = JSON.stringify(auth);
+  
+  // Store in both for maximum reliability during redirects
   sessionStorage.setItem(AUTH_STORAGE_KEY, serializedAuth);
+  localStorage.setItem(AUTH_STORAGE_KEY, serializedAuth);
+  
   console.log('✅ Auth state saved:', { role: auth.role, userId: auth.userId });
 };
 
@@ -109,9 +112,19 @@ export const clearAuth = () => {
 export const isLoggedIn = () => {
   const auth = getAuth();
   const loggedIn = auth !== null && auth.isLoggedIn === true;
+  
   if (!loggedIn) {
-    console.warn('🔍 Auth Check: User NOT logged in');
+    console.warn('🔍 Auth Check: User NOT logged in', {
+      hasAuthObj: !!auth,
+      pathname: window.location.pathname
+    });
+  } else {
+    console.log('✅ Auth Check: User is logged in', {
+      role: auth.role,
+      userId: auth.userId
+    });
   }
+  
   return loggedIn;
 };
 
@@ -189,7 +202,10 @@ export const requireRole = (allowedRoles) => {
   const userRole = getUserRole();
 
   if (!roles.includes(userRole)) {
-    console.error(`🚫 Route protection: Unauthorized. Role "${userRole}" not in [${roles.join(', ')}]. Redirecting...`);
+    console.error(`🚫 Route protection: Unauthorized. Role "${userRole}" not in [${roles.join(', ')}]. Redirecting to index...`, {
+      currentPath: window.location.pathname,
+      allowedRoles: roles
+    });
     window.location.href = '/';
     return false;
   }

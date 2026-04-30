@@ -52,7 +52,8 @@ export const authenticate = (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error.message);
+    const origin = req.headers.origin || 'unknown';
+    console.error(`[AUTH ERROR] Origin: ${origin} | Error: ${error.message}`);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
@@ -280,8 +281,8 @@ export const validateInput = (req, res, next) => {
 export const corsSecure = () => {
   const isProd = process.env.NODE_ENV === 'production';
   
-  // Base allowed origins
-  const baseOrigins = [
+  // Base allowed origins - Normalize by removing trailing slashes
+  const rawBaseOrigins = [
     'https://school-app-one-kappa.vercel.app',
     'http://localhost:8000',
     'http://localhost:3000',
@@ -290,27 +291,35 @@ export const corsSecure = () => {
     'http://127.0.0.1:3000'
   ];
 
-  // Add origins from env var
+  // Add origins from env var and normalize all
   const envOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
-  const allowedOrigins = [...new Set([...baseOrigins, ...envOrigins])];
+  const allowedOrigins = [...new Set([...rawBaseOrigins, ...envOrigins])].map(o => o.replace(/\/$/, ''));
+
+  if (isProd) {
+    console.log('🌐 CORS Allowed Origins:', allowedOrigins);
+  }
 
   return (req, res, next) => {
     const origin = req.headers.origin;
+    
+    // Normalize incoming origin for comparison
+    const normalizedOrigin = origin ? origin.replace(/\/$/, '') : null;
 
-    if (origin && allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
+    if (normalizedOrigin && allowedOrigins.includes(normalizedOrigin)) {
+      res.header('Access-Control-Allow-Origin', origin); // Send back original origin
       res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-school-id, X-CSRF-Token, Accept-Encoding');
       res.header('Access-Control-Allow-Credentials', 'true');
       
-      if (!isProd || origin.includes('localhost')) {
+      if (!isProd || (normalizedOrigin && normalizedOrigin.includes('localhost'))) {
         res.header('Access-Control-Allow-Private-Network', 'true');
       }
     } else if (origin) {
+      // Still set basic security headers for blocked origins
       console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
     }
 
-    // Security Headers
+    // ALWAYS set these security headers
     res.header('X-Content-Type-Options', 'nosniff');
     res.header('X-XSS-Protection', '1; mode=block');
     res.header('X-Frame-Options', 'DENY');

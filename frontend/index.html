@@ -630,8 +630,12 @@
     </div>
     <script>
         const _lcBaseUrl = (function () {
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            return isLocal ? '' : 'https://schoolapp-e7ng.onrender.com';
+            const h = window.location.hostname;
+            const isLocal = h === 'localhost' || h === '127.0.0.1';
+            const isVercel = h.endsWith('.vercel.app');
+            const isCloudflare = h.endsWith('.trycloudflare.com');
+            
+            return (isLocal || isVercel || isCloudflare) ? '' : 'https://schoolapp-e7ng.onrender.com';
         })();
 
         window.showLandingContent = async function (key, title, event) {

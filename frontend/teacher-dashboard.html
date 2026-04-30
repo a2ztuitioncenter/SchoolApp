@@ -277,9 +277,9 @@
         (function () {
             const performAuthCheck = function () {
                 try {
-                    const authStr = sessionStorage.getItem('auth');
+                    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
                     const auth = authStr ? JSON.parse(authStr) : null;
-                    const isTeacher = auth && auth.isLoggedIn === true && auth.role === 'teacher';
+                    const isTeacher = auth && auth.isLoggedIn === true && (auth.role === 'teacher' || auth.role === 'staff');
 
                     if (!isTeacher) {
                         // BLOCK EVERYTHING
@@ -291,7 +291,7 @@
                         // Force redirect
                         setTimeout(() => {
                             window.location.replace('/');
-                        }, 100);
+                        }, 800);
                         // Stop execution
                         throw new Error('UNAUTHORIZED_ACCESS');
                     }
@@ -306,7 +306,7 @@
                     document.close();
                     setTimeout(() => {
                         window.location.replace('/');
-                    }, 100);
+                    }, 500);
                     throw new Error('AUTH_ERROR');
                 }
             };

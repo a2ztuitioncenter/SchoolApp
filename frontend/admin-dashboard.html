@@ -22,10 +22,11 @@
                         document.open();
                         document.write('');
                         document.close();
-                        // Force redirect
+                        // Force redirect with small delay to allow sessionStorage sync if needed
                         setTimeout(() => {
+                            console.warn('🔒 Redirecting to landing page...');
                             window.location.replace('/');
-                        }, 100);
+                        }, 500);
                         // Stop execution
                         throw new Error('UNAUTHORIZED_ACCESS');
                     }
@@ -40,7 +41,7 @@
                     document.close();
                     setTimeout(() => {
                         window.location.replace('/');
-                    }, 100);
+                    }, 500);
                     throw new Error('AUTH_ERROR');
                 }
             };
