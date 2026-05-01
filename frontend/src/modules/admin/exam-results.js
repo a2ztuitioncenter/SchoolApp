@@ -1,5 +1,5 @@
 import { resultsAPI } from '../../core/api.js';
-import { getUserId } from '../../core/auth-manager.js';
+import { getUserId, getUserRole } from '../../core/auth-manager.js';
 import { escapeHtml } from '../../core/sanitize.js';
 
 // 🛑 DOM GUARD
@@ -167,6 +167,10 @@ window.toggleResultExpand = function(id) {
  */
 export function initExamResults() {
   if (!isAdminPage) return;
+  
+  // Guard: only admin
+  if (getUserRole() !== 'admin') return;
+
   fetchExamResultsFromAPI();
 
   // Add styles if not present

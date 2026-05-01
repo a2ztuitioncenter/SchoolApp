@@ -71,8 +71,11 @@ let availableClassLevels = [];
 // 🛑 DOM GUARD: Prevent script from running if this is not the admin dashboard page
 if (document.getElementById('admin-dashboard-root')) {
     document.addEventListener('DOMContentLoaded', () => {
-        console.log('🔄 Initializing Pending Approvals...');
+        // Prevent unauthorized execution
+        const auth = getAuth();
+        if (!auth || auth.role !== 'admin') return;
         
+        console.log('🔄 Initializing Pending Approvals...');        
         // Fetch pending users
         fetchPendingUsers();
 

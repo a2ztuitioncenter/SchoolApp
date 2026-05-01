@@ -63,6 +63,10 @@ console.log('🚀 admin-dashboard.js loaded.');
 // =============================================
 async function initDashboard() {
     if (!isAdminPage) return;
+    
+    // Extra guard: stop if role is not admin
+    if (!requireRole('admin')) return;
+
     hideProtectionScreen();
 
     const adminId = getUserId();
@@ -3756,7 +3760,8 @@ window.openAssignSubjectModal = async function () {
         await populateERPFilters({
             classSelectId: 'assign-subject-class',
             sectionSelectId: 'assign-subject-section',
-            teacherSelectId: 'assign-subject-teacher'
+            teacherSelectId: 'assign-subject-teacher',
+            useFallback: true
         });
 
     } catch (err) {
