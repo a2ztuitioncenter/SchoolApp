@@ -230,11 +230,13 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     const fatherName = sanitizeNullableText(req.body.fatherName || req.body.father_name, 100);
     const motherName = sanitizeNullableText(req.body.motherName || req.body.mother_name, 100);
 
-    if (username) {
-      const usernameError = validateUsername(username);
-      if (usernameError) return res.status(400).json({ error: usernameError });
-      if (await isUsernameTaken(pool, username)) return res.status(409).json({ error: 'Username already taken' });
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
     }
+    const usernameError = validateUsername(username);
+    if (usernameError) return res.status(400).json({ error: usernameError });
+    if (await isUsernameTaken(pool, username)) return res.status(409).json({ error: 'Username already taken' });
+
 
     if (sanitizedEmail) {
       const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1', [sanitizedEmail]);

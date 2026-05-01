@@ -377,7 +377,8 @@ export const csrfProtection = (req, res, next) => {
   // Only enforce on state-changing methods
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
 
-  const csrfExemptPaths = ['/api/auth/login', '/api/auth/admin-login', '/api/auth/teacher-login', '/api/auth/register', '/api/auth/check-username', '/api/public/'];
+  const csrfExemptPaths = ['/api/auth/login', '/api/auth/admin-login', '/api/auth/teacher-login', '/api/auth/register', '/api/auth/check-username', '/api/auth/logout', '/api/public/'];
+
   if (csrfExemptPaths.some(p => req.path.startsWith(p))) return next();
 
   // Skip CSRF check if Authorization header is used (common for mobile/non-browser clients)
