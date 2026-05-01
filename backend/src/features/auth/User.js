@@ -13,7 +13,7 @@ export const userModel = {
       is_active BOOLEAN DEFAULT TRUE,
       school_id VARCHAR(50) DEFAULT 'school-001',
       created_at TIMESTAMP DEFAULT NOW(),
-      status VARCHAR(20) DEFAULT 'active',
+      status VARCHAR(20) DEFAULT 'pending',
       teacher_id VARCHAR(20),
       approved_by INTEGER,
       rejection_reason TEXT,
@@ -220,6 +220,13 @@ export const updateUserStatus = async (pool, userId, newStatus, approvedByAdminI
        WHERE id = $1 RETURNING *`,
       [userId, newStatus, approvedByAdminId, rejectionReason]
     );
+
+    // Sync status to students table (safe if user is not a student)
+    await pool.query(
+      'UPDATE students SET status = $1 WHERE user_id = $2',
+      [newStatus, userId]
+    );
+
   return MAP_USER(result.rows[0]);
 };
 

@@ -2,6 +2,8 @@ import express from 'express';
 import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone, generateTeacherId, getUserById, isUsernameTaken } from '../auth/User.js';
 import { validateUsername } from '../../utils/validate.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
+import { registerUser } from '../auth/registrationService.js';
+
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
 import crypto from 'crypto';
@@ -106,40 +108,63 @@ router.get('/users', async (req, res) => {
     }
 });
 
-router.post('/users/create', async (req, res) => {
-    const { name, phone, email, role, password, username } = req.body;
+router.get('/pending-approvals', async (req, res) => {
     try {
-        if (!name || !phone || !role || !password) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
-        }
-        if (role !== 'student') {
-            if (await getUserByPhone(req.db, phone)) return res.status(409).json({ success: false, error: 'Phone already registered' });
-        } else {
-            const studentCount = await countStudentsByPhone(req.db, phone);
-            if (studentCount >= 4) return res.status(409).json({ success: false, error: 'Maximum 4 students can register with the same phone number' });
-            if (await getNonStudentByPhone(req.db, phone)) return res.status(409).json({ success: false, error: 'Phone already registered to a non-student account' });
-        }
-        if (email) {
-            const emailCheck = await req.db.query('SELECT id FROM users WHERE email = $1', [email]);
-            if (emailCheck.rows.length > 0) {
-                return res.status(409).json({ success: false, error: 'Email already registered' });
-            }
-        }
-        let teacherId = null;
-        if (role === 'teacher' || role === 'staff') {
-            teacherId = await generateTeacherId(req.db, role);
-        }
+        const result = await req.db.query(
+            `SELECT id, name, phone, email, role, status, teacher_id, created_at 
+             FROM users 
+             WHERE school_id = $1 AND status = 'pending'
+             ORDER BY created_at DESC`,
+            [req.user.schoolId]
+        );
+        
+        const mapped = result.rows.map(u => ({
+            id: u.id,
+            name: u.name,
+            phone: u.phone,
+            email: u.email,
+            role: u.role,
+            status: u.status,
+            teacherId: u.teacher_id,
+            createdAt: u.created_at
+        }));
 
-        const user = await createUser(req.db, { name, phone, email, password, role, schoolId: req.user.schoolId, username, status: 'active', teacherId });
-        
-        await logAudit(req.db, req.user.userId, 'CREATE_USER', 'users', user.id, `Created ${role}: ${name}`, req.user.schoolId);
-        
-        res.status(201).json({ success: true, data: user });
+        res.json({ success: true, data: mapped });
     } catch (err) {
-        console.error('Create user error:', err);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        console.error('Fetch pending approvals error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch pending approvals' });
     }
 });
+
+router.post('/users/create', async (req, res) => {
+
+    const { role, name } = req.body;
+    const pool = req.db;
+    try {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const result = await registerUser(client, {
+                ...req.body,
+                schoolId: req.user.schoolId,
+                status: 'pending',
+                source: 'admin'
+            });
+            await logAudit(client, req.user.userId, 'CREATE_USER', 'users', result.user.id, `Created ${role}: ${name}`, req.user.schoolId);
+            await client.query('COMMIT');
+            res.status(201).json({ success: true, data: result.user, message: 'User created and pending approval.' });
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Create user error:', err);
+        res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    }
+});
+
 
 router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
@@ -269,110 +294,40 @@ router.get('/students', async (req, res) => {
 });
 
 router.post('/students/create', async (req, res) => {
-    const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, dateOfBirth, username } = req.body;
+    const { firstName, lastName, phone, email, dateOfBirth, classLevel, section, fatherName, motherName, joiningDate, username } = req.body;
     const pool = req.db;
     try {
-        if (!firstName || !phone || !classLevel || !section || !dateOfBirth || !fatherName || !motherName || !username) {
-            return res.status(400).json({ success: false, error: 'Missing required fields (including username)' });
-        }
-
-        const usernameError = validateUsername(username);
-        if (usernameError) return res.status(400).json({ success: false, error: usernameError });
-
-        if (await isUsernameTaken(pool, username)) {
-            return res.status(409).json({ success: false, error: 'Username already taken' });
-        }
-
-        // Parse DD/MM/YY -> ISO YYYY-MM-DD
-        let dobISO;
-        const parts = dateOfBirth.split('/');
-        if (parts.length === 3) {
-            const [dd, mm, yy] = parts;
-            const pivotYear = (new Date().getFullYear() % 100) + 10;
-            const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
-            dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-            
-            // Semantic validation
-            const parsedDate = new Date(dobISO);
-            if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO) {
-                return res.status(400).json({ success: false, error: 'Invalid date of birth' });
-            }
-        } else {
-            return res.status(400).json({ success: false, error: 'Invalid date format. Use DD/MM/YY' });
-        }
 
         const fullName = `${firstName} ${lastName || ''}`.trim();
-        const client = await pool.connect();
 
+        let dobISO = null;
+
+        if (dateOfBirth) {
+            const parts = dateOfBirth.split('/');
+            if (parts.length === 3) {
+                const [dd, mm, yy] = parts;
+                const pivotYear = (new Date().getFullYear() % 100) + 10;
+                const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
+                dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+            }
+        }
+
+        const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            const lockKey = parseInt(`${classLevel}${section.toUpperCase().charCodeAt(0)}`, 10);
-            await client.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
-
-            let user = await getUserByPhone(client, phone);
-            if (!user) {
-                user = await createUser(client, {
-                    name: fullName,
-                    phone,
-                    email: email || null,
-                    password: crypto.randomBytes(32).toString('hex'),
-                    role: 'student',
-                    username: username,
-                    passwordStatus: 'generated'
-                });
-
-            }
-
-            if (user.status === 'blocked') {
-                await client.query('ROLLBACK');
-                return res.status(403).json({ success: false, error: 'Cannot enroll student: Associated user account is blocked' });
-            }
-            if (user.status !== 'active') {
-                await client.query('UPDATE users SET status = $1 WHERE id = $2', ['active', user.id]);
-            }
-
-            // Check for duplicate enrollment
-            const existingStudent = await client.query(
-                'SELECT id FROM students WHERE user_id = $1 AND class_level = $2 AND section = $3 AND school_id = $4',
-                [user.id, classLevel.toString(), section, req.user.schoolId]
-            );
-            if (existingStudent.rows.length > 0) {
-                await client.query('ROLLBACK');
-                return res.status(409).json({ success: false, error: 'Student already enrolled in this class/section' });
-            }
-
-            const classPart = classLevel.toString().padStart(2, '0');
-            const sectionPart = section.toUpperCase();
-            const prefix = `${classPart}${sectionPart}`;
-            const maxResult = await client.query(
-                `SELECT MAX(CAST(SUBSTRING(roll_number, $2) AS INTEGER)) AS max_num
-                 FROM students
-                 WHERE roll_number ~ ('^' || $1 || '[0-9]{3}$')`,
-                [prefix, (prefix.length + 1).toString()]
-            );
-            const nextNum = (maxResult.rows[0].max_num || 0) + 1;
-            const rollNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;
-
-            const student = await createStudent(client, {
-                userId: user.id,
+            const result = await registerUser(client, {
+                ...req.body,
                 name: fullName,
-                classLevel: classLevel.toString(),
-                section,
-                fatherName,
-                motherName,
-                phone,
-                email: email || null,
-                joiningDate: joiningDate || new Date().toISOString().split('T')[0],
                 dateOfBirth: dobISO,
-                status: status || 'active',
-                rollNumber,
-                schoolId: req.user.schoolId
+                role: 'student',
+                schoolId: req.user.schoolId,
+                status: 'pending',
+                source: 'admin'
             });
 
-            await logAudit(client, req.user.userId, 'CREATE_STUDENT', 'students', student.id, `Enrolled student: ${fullName}`, req.user.schoolId);
-
+            await logAudit(client, req.user.userId, 'CREATE_STUDENT', 'students', result.student.id, `Enrolled student: ${fullName}`, req.user.schoolId);
             await client.query('COMMIT');
-            res.status(201).json({ success: true, data: student });
+            res.status(201).json({ success: true, data: result.student, message: 'Student enrolled and pending approval.' });
         } catch (err) {
             await client.query('ROLLBACK');
             throw err;
@@ -381,9 +336,10 @@ router.post('/students/create', async (req, res) => {
         }
     } catch (err) {
         console.error('[STUDENT CREATE] Error:', err.message);
-        res.status(500).json({ success: false, error: 'Internal server error' });
+        res.status(500).json({ success: false, error: err.message || 'Internal server error' });
     }
 });
+
 
 router.put('/students/:id', async (req, res) => {
     const { id } = req.params;

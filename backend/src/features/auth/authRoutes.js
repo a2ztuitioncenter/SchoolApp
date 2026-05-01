@@ -4,7 +4,9 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTaken, createUser, getApprovedUser, getUsersByStatus, updateUserStatus, generateTeacherId, assignTeacherToClasses, getClassLevels, countStudentsByPhone, isDuplicateStudent, getNonStudentByPhone, getUserById, updateLastLogin } from './User.js';
 import { getStudentByUserId, createStudent } from '../student/Student.js';
+import { registerUser } from './registrationService.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
+
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
 import { validateBody, loginSchema, adminLoginSchema, teacherLoginSchema, registerSchema, changePasswordSchema, validateUsername } from '../../utils/validate.js';
 
@@ -82,7 +84,25 @@ const clearAuthCookies = (res) => {
 };
 
 
+router.get('/sections', async (req, res) => {
+  const { classLevel } = req.query;
+  const pool = req.db;
+
+  try {
+    const result = await pool.query(
+      'SELECT DISTINCT section FROM students WHERE class_level = $1 AND section IS NOT NULL AND section != \'\' ORDER BY section ASC',
+      [classLevel]
+    );
+    const sections = result.rows.map(r => r.section);
+    res.json({ success: true, data: sections });
+  } catch (error) {
+    console.error('Fetch sections error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.get('/check-username', async (req, res) => {
+
   const { username } = req.query;
   const pool = req.db;
 
@@ -205,214 +225,89 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
   const pool = req.db;
 
   try {
-    // Root Cause Fix: If role is missing, infer 'student' if student-specific fields are present.
-    // This allows dedicated student forms to work without explicit role selection.
     if (!role) {
       const isStudentForm = req.body.classLevel || req.body.class_level || req.body.dateOfBirth;
-      if (isStudentForm) {
-        role = 'student';
-      } else {
-        return res.status(400).json({ error: 'Role is required (student, teacher, or staff)' });
-      }
+      if (isStudentForm) role = 'student';
+      else return res.status(400).json({ error: 'Role is required' });
     }
 
     const normalizedRole = role.toLowerCase();
-    const allowedRoles = ['student', 'teacher', 'staff'];
-
-    if (!allowedRoles.includes(normalizedRole)) {
-      return res.status(400).json({ error: 'Invalid role. Must be student, teacher, or staff' });
-    }
     const username = sanitizeIdentifier(req.body.username, 50);
     const sanitizedPhone = sanitizeIdentifier(phone, 15);
     const sanitizedEmail = sanitizeNullableText(req.body.email, 255);
-    const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeIdentifier(req.body.section, 10) || 'A';
-    const fatherName = sanitizeNullableText(req.body.fatherName || req.body.father_name, 100);
-    const motherName = sanitizeNullableText(req.body.motherName || req.body.mother_name, 100);
 
-    if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
-    const usernameError = validateUsername(username);
-    if (usernameError) return res.status(400).json({ error: usernameError });
-    if (await isUsernameTaken(pool, username)) return res.status(409).json({ error: 'Username already taken' });
-
-
-    if (sanitizedEmail) {
-      const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1', [sanitizedEmail]);
-      if (emailCheck.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
-    }
-
-    if (normalizedRole === 'student' && (!sanitizedPhone || !req.body.dateOfBirth || !classLevel)) {
-      return res.status(400).json({ error: 'Phone, Date of Birth, and Class Level are required' });
-    }
-
-    if (normalizedRole !== 'student' && password !== confirmPassword) {
-      return res.status(400).json({ error: 'Passwords do not match' });
-    }
-
-    if (normalizedRole !== 'student') {
-      if (await getUserByPhone(pool, sanitizedPhone)) {
-        return res.status(409).json({ error: 'Phone number already registered' });
-      }
-    } else {
-      const studentCount = await countStudentsByPhone(pool, sanitizedPhone);
-      if (studentCount >= 4) {
-        return res.status(409).json({ error: 'Maximum 4 students can register with the same phone number' });
-      }
-      if (await getNonStudentByPhone(pool, sanitizedPhone)) {
-        return res.status(409).json({ error: 'Phone number already registered to a non-student account' });
-      }
+    // 1. Initial Checks (Duplicate Detection)
+    if (username && await isUsernameTaken(pool, username)) {
+      return res.status(409).json({ error: 'Username already taken' });
     }
 
     if (normalizedRole === 'student') {
-      const { dateOfBirth } = req.body;
+      const studentCount = await countStudentsByPhone(pool, sanitizedPhone);
+      if (studentCount >= 4) return res.status(409).json({ error: 'Maximum 4 students per phone' });
+      
       const fullName = sanitizeText(req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(), 100);
+      const dob = req.body.dateOfBirth;
+      const classLevel = req.body.classLevel || req.body.class_level;
 
-      let dobISO_check = null;
-      if (dateOfBirth && classLevel) {
-        const dparts = dateOfBirth.split('/');
+      if (dob && classLevel) {
+        // Reuse validation from before or let service handle it
+        const dparts = dob.split('/');
         if (dparts.length === 3) {
           const [dd, mm, yy] = dparts;
-          const pivotYear = (new Date().getFullYear() % 100) + 10;
-          const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
-          dobISO_check = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-
-          // Semantic validation
-          const parsedDate = new Date(dobISO_check);
-          if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO_check) {
-            return res.status(400).json({ error: 'Invalid date of birth' });
+          const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
+          const dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+          
+          if (await isDuplicateStudent(pool, sanitizedPhone, fullName, classLevel.toString(), dobISO)) {
+            return res.status(409).json({ error: 'Student already registered' });
           }
-        } else {
-          return res.status(400).json({ error: 'Invalid date format for DOB. Use DD/MM/YY' });
-        }
-        if (dobISO_check && await isDuplicateStudent(pool, sanitizedPhone, fullName, classLevel.toString(), dobISO_check, fatherName, motherName)) {
-          return res.status(409).json({ error: 'A student with the same details is already registered' });
+          req.body.dateOfBirth = dobISO; // Pass ISO to service
         }
       }
-
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        // Use a deterministic advisory lock key based on class+section to avoid
-        // table-wide locks while still serializing roll-number generation per class.
-        const lockKey = parseInt(classLevel.toString().replace(/\D/g, '') || '0') * 1000 +
-          section.toUpperCase().charCodeAt(0);
-        await client.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
-
-        const user = await createUser(client, {
-          name: fullName,
-          phone: sanitizedPhone,
-          email: sanitizedEmail || `${sanitizedPhone}@student.local`,
-          password: crypto.randomBytes(32).toString('hex'),
-          role: 'student',
-          schoolId: 'school-001',
-          username: username || null,
-        });
-
-        if (!username) {
-          await client.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
-        }
-
-        const classPart = classLevel.toString().padStart(2, '0');
-        const sectionPart = section.toUpperCase();
-        const prefix = `${classPart}${sectionPart}`;
-
-        const maxResult = await client.query(
-          `SELECT MAX(CAST(SUBSTRING(roll_number, $2) AS INTEGER)) AS max_num
-           FROM students
-           WHERE roll_number ~ ('^' || $1 || '[0-9]{3}$')`,
-          [prefix, (prefix.length + 1).toString()]
-        );
-        const nextNum = (maxResult.rows[0].max_num || 0) + 1;
-        const rollNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;
-
-        let dobISO = dobISO_check; // Reuse validated DOB from above
-
-        const student = await createStudent(client, {
-          userId: user.id,
-          name: fullName,
-          classLevel: classLevel.toString(),
-          section,
-          fatherName,
-          motherName,
-          phone: sanitizedPhone,
-          email: user.email,
-          joiningDate: new Date().toISOString().split('T')[0],
-          dateOfBirth: dobISO,
-          status: 'active',
-          rollNumber,
-          schoolId: 'school-001',
-        });
-
-        await updateLastLogin(client, user.id);
-        await client.query('COMMIT');
-        const accessToken = generateToken(user.id, user.role, sanitizedPhone, user.schoolId);
-        const refreshToken = generateRefreshToken(user.id);
-
-        setAuthCookies(res, accessToken, refreshToken, req);
-
-        return res.json({
-          success: true,
-          user: { id: user.id, phone: user.phone, role: user.role, username: username || `user_${user.id}` },
-          student: { id: student.id, name: student.name, rollNumber: student.roll_number, classLevel: student.class_level },
-        });
-      } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
-      } finally {
-        client.release();
+    } else {
+      if (await getUserByPhone(pool, sanitizedPhone)) {
+        return res.status(409).json({ error: 'Phone number already registered' });
+      }
+      if (password !== confirmPassword) {
+        return res.status(400).json({ error: 'Passwords do not match' });
       }
     }
 
-    if (normalizedRole === 'teacher' || normalizedRole === 'staff') {
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        // Serializing teacher ID generation using a dedicated advisory lock
-        await client.query('SELECT pg_advisory_xact_lock(1001)');
+    // 2. Execute Unified Registration
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      const result = await registerUser(client, {
+        ...req.body,
+        role: normalizedRole,
+        source: 'public'
+      });
 
-        const teacherId = await generateTeacherId(client, normalizedRole);
-        const user = await createUser(client, {
-          name: sanitizeText(req.body.name, 100),
-          phone: sanitizedPhone,
-          email: sanitizedEmail,
-          password,
-          role: normalizedRole,
-          schoolId: 'school-001',
-          teacherId,
-          username: username || null,
-        });
+      await client.query('COMMIT');
 
-        if (!username) {
-          await client.query('UPDATE users SET username = $1 WHERE id = $2', [`user_${user.id}`, user.id]);
+      res.status(201).json({
+        success: true,
+        message: 'Registration successful. Awaiting admin approval.',
+        data: {
+          id: result.user.id,
+          role: result.user.role,
+          status: result.status,
+          username: result.user.username,
+          rollNumber: result.student?.rollNumber
         }
-
-        await updateLastLogin(client, user.id);
-        await client.query('COMMIT');
-
-        const accessToken = generateToken(user.id, user.role, sanitizedPhone, user.schoolId);
-        const refreshToken = generateRefreshToken(user.id);
-
-        setAuthCookies(res, accessToken, refreshToken, req);
-
-        return res.json({
-          success: true,
-          message: 'Registration successful. Awaiting admin approval.',
-          user: { id: user.id, phone: user.phone, role: user.role, status: user.status, teacherId: user.teacherId, username: username || `user_${user.id}` },
-        });
-      } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
-      } finally {
-        client.release();
-      }
+      });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Server error during registration' });
+    return res.status(error.status || 500).json({ error: error.message || 'Server error' });
   }
 });
+
 
 router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => {
   const { phone, identifier, password } = req.body;
@@ -458,7 +353,9 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
     if (!user) return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
     const userRole = (user.role || '').toLowerCase();
     if (userRole !== 'teacher' && userRole !== 'staff') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
-    if (user.status !== 'active' || !user.isActive) return res.status(403).json({ error: 'Account not active' });
+    if (!['active', 'approved'].includes(user.status) || !user.isActive) {
+      return res.status(403).json({ error: 'Account not active or awaiting approval' });
+    }
     if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
 
     await updateLastLogin(pool, user.id);
@@ -560,6 +457,14 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
          WHERE id = $1 RETURNING *`,
         [id, 'active', req.user.userId]
       );
+
+      // Also sync status to students table if role is student
+      if (user.role === 'student') {
+        await client.query(
+          'UPDATE students SET status = $1 WHERE user_id = $2',
+          ['active', id]
+        );
+      }
 
       const updatedUser = updatedUserRes.rows[0];
       await client.query('COMMIT');

@@ -52,7 +52,7 @@ export const createStudent = async (pool, data) => {
     `INSERT INTO students (user_id, name, class_level, section, father_name, mother_name, phone, email, roll_number, joining_date, date_of_birth, status, school_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [userId, name, classLevel, section || null, fatherName || null, motherName || null,
-     phone || null, email || null, rollNumber || null, joiningDate, dateOfBirth || null, status || 'active', schoolId]
+     phone || null, email || null, rollNumber || null, joiningDate, dateOfBirth || null, status || 'pending', schoolId]
   );
   return MAP_STUDENT(result.rows[0]);
 };

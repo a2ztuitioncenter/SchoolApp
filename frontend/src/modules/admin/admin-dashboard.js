@@ -6,8 +6,13 @@
 import { adminAPI, attendanceAPI, homeworkAPI, feesAPI, materialsAPI, notificationsAPI, resultsAPI, subjectsAPI, downloadFile, checkBackendHealth, waitForBackend, base_api_url, uploadFileWithProgress } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, hideProtectionScreen } from '../../core/auth-manager.js';
 import { escapeAttr as escapeAttrValue, escapeHtml, escapeHtml as escapeMarkup, safeFileName as safeDownloadName } from '../../core/sanitize.js';
+import { DEFAULT_CLASSES, DEFAULT_SECTIONS } from '../../core/academicDefaults.js';
+import { UsernameAvailabilityChecker } from '../../core/username-logic.js';
+
 import './admin-pending-approvals.js';
 import './exam-results.js';
+
+
 
 // 🛑 DOM GUARD
 const isAdminPage = !!document.getElementById('admin-dashboard-root');
@@ -318,7 +323,8 @@ async function populateERPFilters({
     defaultClass = '',
     defaultSection = '',
     allClassesLabel = 'Select Class',
-    allSectionsLabel = 'Select Section'
+    allSectionsLabel = 'Select Section',
+    useFallback = false
 } = {}) {
     const classSel = typeof classSelectId === 'string' ? document.getElementById(classSelectId) : classSelectId;
     const sectionSel = typeof sectionSelectId === 'string' ? document.getElementById(sectionSelectId) : sectionSelectId;
@@ -347,18 +353,22 @@ async function populateERPFilters({
             const res = await adminAPI.getSections(classLevel);
 
             if (res.success) {
-                const sections = res.data || [];
-                if (sections.length === 0) {
-                    sectionSel.innerHTML = '<option value="">No Sections</option>';
-                } else {
-                    sectionSel.innerHTML = `<option value="">${escapeHtml(allSectionsLabel)}</option>` +
-                        sections.map(s => `<option value="${escapeAttrValue(s)}">${escapeHtml(s)}</option>`).join('');
+                let sections = res.data || [];
+                
+                // Hybrid Fallback: Ensure at least the defaults are present in specific forms
+                if (useFallback) {
+                    const defaultValues = DEFAULT_SECTIONS.map(s => s.value);
+                    sections = [...new Set([...sections, ...defaultValues])].sort();
+                }
 
-                    if (targetSection && sections.includes(targetSection)) {
-                        sectionSel.value = targetSection;
-                    }
+                sectionSel.innerHTML = `<option value="">${escapeHtml(allSectionsLabel)}</option>` +
+                    sections.map(s => `<option value="${escapeAttrValue(s)}">${escapeHtml(s)}</option>`).join('');
+
+                if (targetSection && sections.includes(targetSection)) {
+                    sectionSel.value = targetSection;
                 }
             } else {
+
                 console.error('API returned error for sections:', res.error);
                 sectionSel.innerHTML = '<option value="">Error Loading</option>';
             }
@@ -404,7 +414,13 @@ async function populateERPFilters({
     try {
         // 1. Initial Class Population
         const classRes = await adminAPI.getClasses();
-        const classes = classRes.data || [];
+        let classes = classRes.data || [];
+
+        // Hybrid Fallback: Ensure at least the default classes are present in specific forms
+        if (useFallback) {
+            const defaultClasses = DEFAULT_CLASSES.map(c => c.value);
+            classes = [...new Set([...classes, ...defaultClasses])].sort((a, b) => parseInt(a) - parseInt(b));
+        }
 
         classSel.innerHTML = `<option value="">${allClassesLabel}</option>` +
             classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
@@ -2043,10 +2059,11 @@ window.openAddStudentModal = function () {
         document.getElementById('add-student-form').reset();
         document.body.style.overflow = 'hidden';
 
-        // Initialize dynamic dropdowns
+        // Initialize dynamic dropdowns with fallback enabled for Add Student form
         populateERPFilters({
             classSelectId: 'student-classLevel',
-            sectionSelectId: 'student-section'
+            sectionSelectId: 'student-section',
+            useFallback: true
         });
     }
 };
@@ -2070,13 +2087,15 @@ window.openEditStudentModal = async function (id) {
         document.getElementById('edit-student-fatherName').value = s.fatherName || '';
         document.getElementById('edit-student-motherName').value = s.motherName || '';
 
-        // Initialize and pre-select dynamic dropdowns
+        // Initialize and pre-select dynamic dropdowns with fallback enabled
         await populateERPFilters({
             classSelectId: 'edit-student-classLevel',
             sectionSelectId: 'edit-student-section',
             defaultClass: String(s.classLevel),
-            defaultSection: s.section
+            defaultSection: s.section,
+            useFallback: true
         });
+
 
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
@@ -4230,9 +4249,10 @@ function setupForms() {
 
     document.getElementById('add-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const usernameVal = document.getElementById('user-username')?.value.trim();
         const payload = {
             name: document.getElementById('user-name')?.value.trim(),
-            username: document.getElementById('user-username')?.value.trim() || undefined,
+            username: usernameVal || undefined,
             phone: document.getElementById('user-phone')?.value.trim(),
             email: document.getElementById('user-email')?.value.trim(),
             role: document.getElementById('user-role')?.value,
@@ -4242,16 +4262,40 @@ function setupForms() {
             showErrorAlert('All required fields (*) must be filled');
             return;
         }
+        // Block if username was entered but is not available
+        if (usernameVal) {
+            if (userUsernameStatus === 'checking') {
+                showErrorAlert('Please wait — checking username availability...');
+                return;
+            }
+            if (userUsernameStatus === 'taken') {
+                showErrorAlert('Username is already taken. Please choose a different one.');
+                document.getElementById('user-username')?.focus();
+                return;
+            }
+            if (['invalid_short', 'invalid_long', 'invalid_format'].includes(userUsernameStatus)) {
+                showErrorAlert('Please fix the username before submitting.');
+                document.getElementById('user-username')?.focus();
+                return;
+            }
+        }
         try {
             showInfoAlert('Adding user...');
             const res = await adminAPI.addUser(payload);
             hideInfoAlert();
             if (res.success) {
-                showSuccessAlert('User added successfully!');
                 document.getElementById('add-user-form').reset();
                 closeAddUserModal();
                 await loadUsers();
+                if (typeof window.fetchPendingUsers === 'function') window.fetchPendingUsers();
+                window.registrationSuccessModal.show({
+                    username: res.data.username || payload.username,
+                    title: 'Staff/Teacher Added',
+                    message: 'The account has been created and is now pending administrator approval.',
+                    showNote: false
+                });
             }
+
             else showErrorAlert(res.error || 'Failed to add user');
         } catch (err) {
             hideInfoAlert();
@@ -4292,38 +4336,51 @@ function setupForms() {
         } catch (err) { showErrorAlert(err.message); }
     });
 
-    const studentUsernameInput = document.getElementById('student-username');
+    // Centralized Username Checker for Students
     const studentUsernameError = document.getElementById('student-username-error');
-    if (studentUsernameInput && studentUsernameError) {
-        studentUsernameInput.addEventListener('input', async () => {
-            const username = studentUsernameInput.value.trim();
-            if (!username) {
-                studentUsernameError.style.display = 'none';
-                return;
-            }
-            if (username.length < 5) {
-                studentUsernameError.textContent = 'Username must be at least 5 characters';
-                studentUsernameError.style.display = 'block';
-                return;
-            }
-            if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-                studentUsernameError.textContent = 'Only letters, numbers, and underscores allowed';
-                studentUsernameError.style.display = 'block';
-                return;
-            }
-            try {
-                const res = await authAPI.checkUsername(username);
-                if (res.available) {
-                    studentUsernameError.style.display = 'none';
-                } else {
-                    studentUsernameError.textContent = 'Username already taken';
-                    studentUsernameError.style.display = 'block';
-                }
-            } catch (err) {
-                console.error('Username check failed', err);
-            }
-        });
-    }
+    const studentUsernameChecker = new UsernameAvailabilityChecker((status) => {
+        if (!studentUsernameError) return;
+        studentUsernameError.style.display = 'block';
+        switch (status) {
+            case 'idle': studentUsernameError.style.display = 'none'; break;
+            case 'invalid_short': studentUsernameError.textContent = 'Username too short (min 5)'; studentUsernameError.style.color = '#ef4444'; break;
+            case 'invalid_long': studentUsernameError.textContent = 'Username too long (max 50)'; studentUsernameError.style.color = '#ef4444'; break;
+            case 'invalid_format': studentUsernameError.textContent = 'Use only a-z, 0-9, and _'; studentUsernameError.style.color = '#ef4444'; break;
+            case 'checking': studentUsernameError.textContent = 'Checking...'; studentUsernameError.style.color = '#6b7280'; break;
+            case 'available': studentUsernameError.textContent = 'Available ✅'; studentUsernameError.style.color = '#10b981'; break;
+            case 'taken': studentUsernameError.textContent = 'Taken ❌'; studentUsernameError.style.color = '#ef4444'; break;
+            case 'error': studentUsernameError.textContent = 'API Error'; studentUsernameError.style.color = '#f59e0b'; break;
+        }
+    });
+
+    document.getElementById('student-username')?.addEventListener('input', (e) => {
+        studentUsernameChecker.check(e.target.value);
+    });
+
+    // Centralized Username Checker for Staff/Teachers
+    const userUsernameError = document.getElementById('user-username-error');
+    let userUsernameStatus = 'idle'; // Track current status for submit-time validation
+    const userUsernameChecker = new UsernameAvailabilityChecker((status) => {
+        userUsernameStatus = status;
+        if (!userUsernameError) return;
+        userUsernameError.style.display = 'block';
+        switch (status) {
+            case 'idle': userUsernameError.style.display = 'none'; break;
+            case 'invalid_short': userUsernameError.textContent = 'Username too short (min 5)'; userUsernameError.style.color = '#ef4444'; break;
+            case 'invalid_long': userUsernameError.textContent = 'Username too long (max 50)'; userUsernameError.style.color = '#ef4444'; break;
+            case 'invalid_format': userUsernameError.textContent = 'Use only a-z, 0-9, and _'; userUsernameError.style.color = '#ef4444'; break;
+            case 'checking': userUsernameError.textContent = 'Checking availability...'; userUsernameError.style.color = '#6b7280'; break;
+            case 'available': userUsernameError.textContent = 'Available ✅'; userUsernameError.style.color = '#10b981'; break;
+            case 'taken': userUsernameError.textContent = 'Already taken ❌'; userUsernameError.style.color = '#ef4444'; break;
+            case 'error': userUsernameError.textContent = 'Could not verify availability'; userUsernameError.style.color = '#f59e0b'; break;
+            default: userUsernameError.style.display = 'none';
+        }
+    });
+
+    document.getElementById('user-username')?.addEventListener('input', (e) => {
+        userUsernameChecker.check(e.target.value);
+    });
+
 
     document.getElementById('add-student-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -4370,11 +4427,19 @@ function setupForms() {
             const res = await adminAPI.addStudent(payload);
             if (res.success) {
                 hideInfoAlert();
-                showSuccessAlert(`✅ Student added successfully! Roll Number: ${res.student.rollNumber}`);
                 closeAddStudentModal();
                 e.target.reset();
                 await loadStudents();
+                if (typeof window.fetchPendingUsers === 'function') window.fetchPendingUsers();
+                window.registrationSuccessModal.show({
+                    username: res.data?.username,
+                    rollNumber: res.data?.rollNumber,
+                    title: 'Student Enrolled',
+                    message: 'The student has been successfully enrolled and is now pending final approval.',
+                    showNote: false
+                });
             }
+
             else {
                 hideInfoAlert();
                 showErrorAlert(res.error || 'Failed to add student');
@@ -4817,6 +4882,10 @@ window.openAddUserModal = function () {
     if (modal) {
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        
+        // Reset username error state
+        const errDiv = document.getElementById('user-username-error');
+        if (errDiv) errDiv.style.display = 'none';
     }
 };
 

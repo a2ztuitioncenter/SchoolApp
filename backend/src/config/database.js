@@ -14,6 +14,7 @@ import { examResultModel } from '../features/teacher/examResultModel.js';
 import { resultsModel } from '../features/results/resultsModel.js';
 import { contentPageModel } from '../features/admin/ContentPage.js';
 import { storageModel } from '../features/storage/Storage.js';
+import { auditLogModel } from '../features/admin/AuditLog.js';
 
 import pool from './pool.js';
 
@@ -24,9 +25,12 @@ export async function initializeDatabase() {
         // Run migrations for tables that underwent snake_case transition
         if (resultsModel.migration) await pool.query(resultsModel.migration);
         if (examResultModel.migration) await pool.query(examResultModel.migration);
+        if (auditLogModel.migration) await pool.query(auditLogModel.migration);
         
         await pool.query(userModel.schema);
+        await pool.query(auditLogModel.schema);
         await pool.query(studentModel.schema);
+
         await pool.query(feeModel.schema);
         await pool.query(homeworkModel.schema);
         await pool.query(attendanceModel.schema);

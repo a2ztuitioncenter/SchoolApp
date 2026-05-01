@@ -336,8 +336,10 @@ export const authAPI = {
   teacherLogin: (identifier, password) => apiCall('/auth/teacher-login', { method: 'POST', body: JSON.stringify({ identifier, password }) }),
   verify: () => apiCall('/auth/verify', { method: 'POST' }),
   checkUsername: (username) => apiCall(`/auth/check-username?username=${encodeURIComponent(username)}`, { method: 'GET' }),
+  getSections: (classLevel) => apiCall(`/auth/sections?classLevel=${encodeURIComponent(classLevel)}`, { method: 'GET' }),
   changePassword: (data) => apiCall('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
 };
+
 
 /**
  * Student APIs
