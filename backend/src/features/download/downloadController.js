@@ -18,13 +18,18 @@ export const downloadFile = async (req, res) => {
 
         // Resolve absolute path and ensure it's within the uploads directory
         const uploadsDir = path.resolve('uploads');
-        const absolutePath = path.resolve(uploadsDir, filePath.replace(/^\/?uploads\//, ''));
+        const relativePath = filePath.replace(/^\/?uploads\//, '');
+        const absolutePath = path.resolve(uploadsDir, relativePath);
+
+        console.log(`[DOWNLOAD] Request: ${filePath} -> Resolved: ${absolutePath}`);
 
         if (!absolutePath.startsWith(uploadsDir)) {
+            console.warn(`[DOWNLOAD] Blocked path traversal attempt: ${absolutePath}`);
             return res.status(403).json({ error: 'Access denied: Path traversal detected' });
         }
 
         if (!fs.existsSync(absolutePath)) {
+            console.warn(`[DOWNLOAD] File not found: ${absolutePath}`);
             return res.status(404).json({ error: 'File not found on server' });
         }
 

@@ -88,6 +88,7 @@
             <nav id="nav_left_sidebar" class="bottom-nav">
                 <a href="#" class="nav-link active" data-tab="home"><i class="fas fa-home"></i> <span>Home</span></a>
                 <a href="#" class="nav-link" data-tab="dpp"><i class="fas fa-edit"></i> <span>Practice</span></a>
+                <a href="#" class="nav-link" data-tab="homework"><i class="fas fa-tasks"></i> <span>Homework</span></a>
                 <a href="#" class="nav-link" data-tab="subjects"><i class="fas fa-book"></i> <span>Subjects</span></a>
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
                 <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-list-alt"></i> <span>Syllabus</span></a>
@@ -178,6 +179,18 @@
                 </div>
             </div>
 
+            <!-- Homework Tab -->
+            <div id="tab-homework" class="tab-content hidden-tab">
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-tasks"></i> My Homework</h2>
+                    </div>
+                    <div id="homework-container" class="container-padded-mt">
+                        <p class="loading-text">Loading homework...</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Materials Tab -->
             <div id="tab-materials" class="tab-content hidden-tab">
                 <div class="dashboard-card">
@@ -229,7 +242,7 @@
                 <div class="dashboard-card">
                     <div class="submissions-header-center">
                         <h2><i class="fas fa-file-upload"></i> Your Submissions</h2>
-                        <button id="open-assignment-selector-btn" class="btn-submit-assignment" onclick="openAssignmentSelector()">
+                        <button id="open-assignment-selector-btn" class="btn-submit-assignment">
                             <i class="fas fa-plus"></i> Submit Assignment
                         </button>
                     </div>
@@ -472,6 +485,23 @@
             <div class="modal-footer-flex">
                 <button type="button" class="modal-btn modal-btn-secondary" id="cancel-select-assignment-btn">Cancel</button>
                 <button type="button" class="modal-btn modal-btn-primary" id="proceed-to-submit-btn" disabled>Proceed to Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="assignment-detail-modal" class="modal">
+        <div class="modal-content modal-content-legacy">
+            <div class="modal-header">
+                <h3 id="detail-modal-title">Assignment Details</h3>
+                <button class="close-modal" onclick="closeAssignmentDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="detail-modal-content" class="assignment-detail-body">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="modal-footer-flex" id="detail-modal-footer">
+                <button type="button" class="modal-btn modal-btn-secondary" onclick="closeAssignmentDetailModal()">Close</button>
             </div>
         </div>
     </div>

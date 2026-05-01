@@ -1956,3 +1956,63 @@ body {
 .p-1-15rem {
     padding: 1rem 1.5rem;
 }
+/* Assignment Details & Modal */
+.assignment-detail-body {
+    padding: 0.5rem;
+}
+
+.detail-description-box {
+    font-size: 1rem;
+    color: var(--text-main);
+    background: var(--bg-primary);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-top: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    line-height: 1.6;
+}
+
+.detail-description-box p {
+    margin-bottom: 0.75rem;
+}
+
+.detail-description-box p:last-child {
+    margin-bottom: 0;
+}
+
+.modal-content-legacy {
+    border-radius: 20px !important;
+    border: none !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15) !important;
+    overflow: hidden;
+}
+
+.card-clickable {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.card-clickable:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 12px 24px rgba(0, 96, 176, 0.1) !important;
+    border-color: var(--accent-blue) !important;
+    background: #fff !important;
+}
+
+.homework-item.card-clickable:hover .subject-title {
+    color: var(--accent-blue) !important;
+}
+
+/* Animations */
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal[style*="display: flex"] .modal-content {
+    animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#tab-homework .section-container,
+#tab-dpp .section-container {
+    margin: 2rem 0;
+}

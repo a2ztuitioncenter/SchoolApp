@@ -14,6 +14,7 @@ import './student-results.js';
 // ===========================
 let dashboardAbortController = null;
 window.studentSubmissionsMap = new Map();
+window.currentAssignments = []; // Global storage for detail lookup
 
 // Pending uploads for student dashboard
 let pendingSubmissionUpload = null;
@@ -254,10 +255,12 @@ function populateDashboard(data) {
     if (data.attendance) populateAttendance(data.attendance);
     if (data.fees) populateFees(data.fees);
     if (data.homework) {
+        window.currentAssignments = [...window.currentAssignments, ...data.homework];
         populateHomework(data.homework);
         populateLatestHomeworkCard(data.homework);
     }
     if (data.dailyPractice) {
+        window.currentAssignments = [...window.currentAssignments, ...data.dailyPractice];
         populateDailyPractice(data.dailyPractice);
         populateLatestDPPCard(data.dailyPractice);
     }
@@ -316,6 +319,9 @@ async function loadDashboardData(userId) {
     const dashboardResponse = await studentAPI.getDashboard(userId, { 
       signal: dashboardAbortController.signal 
     });
+
+    // Reset current assignments on fresh load
+    window.currentAssignments = [];
 
     if (!dashboardResponse || !dashboardResponse.success) {
       const errTxt = dashboardResponse?.error || dashboardResponse?.message || '';
@@ -651,11 +657,16 @@ function populateHomework(homework) {
     }
 
     return `
-    <div class="homework-item" id="hw-card-${hw.id}" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${accentColor};">
+    <div class="homework-item card-clickable" id="hw-card-${hw.id}" onclick="openAssignmentDetailModal(${hw.id})" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${accentColor}; cursor: pointer;">
       <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
       <div class="details" style="flex: 1;">
         <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Homework')} - ${escapeHtml(hw.title || 'Assignment')}${statusBadge}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Due: ${formatDate(hw.dueDate)}</p>
+        ${hw.description ? `
+          <div class="assignment-description" style="margin: 8px 0; font-size: 0.9rem; color: #4a5568; line-height: 1.5; background: #f7fafc; padding: 8px 12px; border-radius: 6px; border-left: 3px solid #cbd5e0;">
+            ${window.DOMPurify ? DOMPurify.sanitize(marked.parse(hw.description)) : escapeHtml(hw.description)}
+          </div>
+        ` : ''}
         ${remarkHtml}
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px; align-items: center;">
           ${hw.attachmentUrl ? `
@@ -709,11 +720,16 @@ function populateDailyPractice(practiceList) {
     }
 
     return `
-    <div class="homework-item" id="hw-card-${hw.id}" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${accentColor};">
+    <div class="homework-item card-clickable" id="dpp-card-${hw.id}" onclick="openAssignmentDetailModal(${hw.id})" style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid ${accentColor}; cursor: pointer;">
       <div class="subject-icon" style="font-size: 1.5rem;">${getSubjectIcon(hw.subject)}</div>
       <div class="details" style="flex: 1;">
         <p class="subject-title" style="margin:0; font-weight: 600; color: #2d3748;">${escapeHtml(hw.subject || 'Practice')} - ${escapeHtml(hw.title || 'Assignment')}${statusBadge}</p>
         <p class="due-date" style="margin: 4px 0; font-size: 0.85rem; color: #718096;"><i class="fas fa-pencil-alt"></i> Posted: ${new Date(hw.createdAt).toLocaleDateString()}</p>
+        ${hw.description ? `
+          <div class="assignment-description" style="margin: 8px 0; font-size: 0.9rem; color: #4a5568; line-height: 1.5; background: #f7fafc; padding: 8px 12px; border-radius: 6px; border-left: 3px solid #cbd5e0;">
+            ${window.DOMPurify ? DOMPurify.sanitize(marked.parse(hw.description)) : escapeHtml(hw.description)}
+          </div>
+        ` : ''}
         ${remarkHtml}
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 8px; align-items: center;">
           ${hw.attachmentUrl ? `
@@ -744,13 +760,17 @@ function populateLatestHomeworkCard(homework) {
   // Get the latest homework
   const latest = homework[0];
   if (titleEl) titleEl.textContent = latest.subject ? `${latest.subject}${latest.title ? ' - ' + latest.title : ''}` : (latest.title || 'Assignment');
-  if (descEl) descEl.textContent = latest.title ? latest.title.substring(0, 50) + (latest.title.length > 50 ? '...' : '') : 'New assignment';
+  
+  if (descEl) {
+    const descriptionText = latest.description || latest.title || 'New assignment';
+    descEl.textContent = descriptionText.length > 50 ? descriptionText.substring(0, 50) + '...' : descriptionText;
+  }
   if (dueEl) dueEl.textContent = `Due: ${formatDate(latest.dueDate)}`;
 
-  // Add click handler to scroll to homework section on home tab
+  // Add click handler to open details
   if (card) {
     card.addEventListener('click', () => {
-      navigateToTab('dpp');
+      openAssignmentDetailModal(latest.id);
     });
   }
 }
@@ -771,13 +791,17 @@ function populateLatestDPPCard(practiceList) {
   // Get the latest practice
   const latest = practiceList[0];
   if (titleEl) titleEl.textContent = latest.subject ? `${latest.subject}${latest.title ? ' - ' + latest.title : ''}` : (latest.title || 'Practice Problem');
-  if (descEl) descEl.textContent = latest.title ? latest.title.substring(0, 50) + (latest.title.length > 50 ? '...' : '') : 'New problems';
+  
+  if (descEl) {
+    const descriptionText = latest.description || latest.title || 'New problems';
+    descEl.textContent = descriptionText.length > 50 ? descriptionText.substring(0, 50) + '...' : descriptionText;
+  }
   if (dateEl) dateEl.textContent = `Posted: ${formatDate(latest.createdAt)}`;
 
-  // Add click handler to navigate to DPP tab
+  // Add click handler to open details
   if (card) {
     card.addEventListener('click', () => {
-      navigateToTab('dpp');
+      openAssignmentDetailModal(latest.id);
     });
   }
 }
@@ -1397,6 +1421,102 @@ async function loadSubmissions(userId) {
 }
 
 // Submission Modal Logic
+window.openAssignmentDetailModal = function(id) {
+  const item = window.currentAssignments.find(a => a.id === id);
+  if (!item) {
+    console.error('[DETAIL] Assignment not found:', id);
+    return;
+  }
+
+  const modal = document.getElementById('assignment-detail-modal');
+  const titleEl = document.getElementById('detail-modal-title');
+  const bodyEl = document.getElementById('detail-modal-content');
+  const footerEl = document.getElementById('detail-modal-footer');
+
+  if (!modal || !bodyEl) return;
+
+  const isHomework = item.type === 'homework';
+  titleEl.textContent = isHomework ? 'Homework Details' : 'Practice Details';
+
+  // Format dates
+  const dueDateStr = item.dueDate ? formatDate(item.dueDate) : 'No due date';
+  const postedDateStr = item.createdAt ? formatDate(item.createdAt) : '--';
+
+  // Submission status
+  const submission = window.studentSubmissionsMap.get(item.id);
+  const isSubmitted = !!submission;
+  const isReviewed = submission && submission.status === 'reviewed';
+
+  let statusBadge = '';
+  if (isReviewed) {
+    statusBadge = `<span style="background:#48bb78; color:white; padding: 4px 12px; border-radius:20px; font-size:0.8rem; font-weight:600;">Reviewed</span>`;
+  } else if (isSubmitted) {
+    statusBadge = `<span style="background:#ecc94b; color:#744210; padding: 4px 12px; border-radius:20px; font-size:0.8rem; font-weight:600;">Submitted</span>`;
+  } else {
+    statusBadge = `<span style="background:#cbd5e0; color:#4a5568; padding: 4px 12px; border-radius:20px; font-size:0.8rem; font-weight:600;">Pending</span>`;
+  }
+
+  bodyEl.innerHTML = `
+    <div style="margin-bottom: 1.5rem;">
+      <h2 style="margin: 0 0 0.5rem 0; color: var(--text-main); font-size: 1.4rem;">${escapeHtml(item.title)}</h2>
+      <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+        <span style="color: var(--student-accent); font-weight: 600;">${escapeHtml(item.subject || 'General')}</span>
+        ${statusBadge}
+      </div>
+      <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; font-size: 0.9rem; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+        <div><i class="fas fa-calendar-alt"></i> Posted: ${postedDateStr}</div>
+        <div><i class="fas fa-clock"></i> Due: ${dueDateStr}</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Description</h4>
+      <div class="detail-description-box" style="padding: 1rem; background: white; border: 1px solid var(--border-color); border-radius: 8px; line-height: 1.6;">
+        ${window.DOMPurify ? DOMPurify.sanitize(marked.parse(item.description || 'No description provided.')) : escapeHtml(item.description || 'No description provided.')}
+      </div>
+    </div>
+
+    ${item.attachmentUrl ? `
+      <div style="margin-bottom: 1.5rem;">
+        <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Attachment</h4>
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: #ebf4ff; border-radius: 8px; border: 1px solid #bee3f8;">
+          <i class="fas fa-file-pdf" style="font-size: 2rem; color: #3182ce;"></i>
+          <div style="flex: 1;">
+            <p style="margin: 0; font-weight: 600; font-size: 0.9rem; color: #2b6cb0;">${escapeHtml(safeFileName(item.title) + '.pdf')}</p>
+          </div>
+          <button onclick="downloadFile('${escapeAttr(item.attachmentUrl)}', '${escapeAttr(safeFileName(item.title) + '.pdf')}')" class="modal-btn modal-btn-primary" style="padding: 0.5rem 1rem;">
+            <i class="fas fa-download"></i> Download
+          </button>
+        </div>
+      </div>
+    ` : ''}
+
+    ${isReviewed && submission.remark ? `
+      <div style="margin-top: 1.5rem; padding: 1rem; background: #f0fff4; border-radius: 8px; border-left: 4px solid #48bb78;">
+        <h4 style="margin: 0 0 0.5rem 0; color: #2f855a;"><i class="fas fa-comment-dots"></i> Teacher's Remark</h4>
+        <p style="margin: 0; font-size: 0.95rem; color: #276749;">${escapeHtml(submission.remark)}</p>
+      </div>
+    ` : ''}
+  `;
+
+  // Update footer with context-aware buttons
+  footerEl.innerHTML = `
+    <button type="button" class="modal-btn modal-btn-secondary" onclick="closeAssignmentDetailModal()">Close</button>
+    ${!isReviewed ? `
+      <button onclick="openSubmissionModal(${item.id}, '${escapeAttr(item.title)}', '${escapeAttr(item.subject)}'); closeAssignmentDetailModal();" class="modal-btn modal-btn-primary">
+        <i class="fas fa-file-upload"></i> ${isSubmitted ? 'Resubmit Work' : 'Submit Work'}
+      </button>
+    ` : ''}
+  `;
+
+  modal.style.display = 'flex';
+};
+
+window.closeAssignmentDetailModal = function() {
+  const modal = document.getElementById('assignment-detail-modal');
+  if (modal) modal.style.display = 'none';
+};
+
 window.openSubmissionModal = function(hwId, title, subject) {
     const modal = document.getElementById('homework-submission-modal');
     if (!modal) return;
@@ -1587,8 +1707,12 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
 // ===========================
 
 let activeAssignments = [];
+let isSelectorLoading = false;
 
 window.openAssignmentSelector = async function() {
+    if (isSelectorLoading) return;
+    isSelectorLoading = true;
+
     console.log('[SUBMISSIONS] Opening assignment selector...');
     const modal = document.getElementById('select-assignment-modal');
     const homeworkGroup = document.getElementById('optgroup-homework-custom');
@@ -1637,12 +1761,22 @@ window.openAssignmentSelector = async function() {
             console.log(`[SUBMISSIONS] Found ${res.data.length} total active assignments`);
             // Only filter out assignments that are already SUBMITTED AND REVIEWED
             // "Submitted but Not Reviewed" stays in the list so students can update/replace if needed
-            activeAssignments = res.data.filter(a => {
+            const rawData = res.data || [];
+            
+            // Deduplicate by ID to ensure unique entries even if API or events double-fire
+            const uniqueMap = new Map();
+            rawData.forEach(item => {
+                if (item && item.id) uniqueMap.set(item.id, item);
+            });
+            
+            const deduplicatedData = Array.from(uniqueMap.values());
+
+            activeAssignments = deduplicatedData.filter(a => {
                 const sub = window.studentSubmissionsMap.get(a.id);
                 if (!sub) return true; // Not submitted yet
                 return sub.status !== 'reviewed'; // Hide only if reviewed
             });
-            console.log(`[SUBMISSIONS] After filtering (hide reviewed), ${activeAssignments.length} assignments remain`);
+            console.log(`[SUBMISSIONS] After deduplication and filtering (hide reviewed), ${activeAssignments.length} assignments remain`);
 
             const homework = activeAssignments.filter(a => a.type === 'homework' || !a.type);
             const dpp = activeAssignments.filter(a => a.type === 'daily_practice' || a.type === 'dpp');
@@ -1681,6 +1815,8 @@ window.openAssignmentSelector = async function() {
     } catch (err) {
         console.error('Failed to load active assignments:', err);
         alert('Could not load assignments. Please try again.');
+    } finally {
+        isSelectorLoading = false;
     }
 };
 
