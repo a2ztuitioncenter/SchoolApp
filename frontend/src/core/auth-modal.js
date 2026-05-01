@@ -396,6 +396,7 @@ async function handleStudentSignupModal(e) {
     const missing = [
         { val: firstName, name: 'First Name' },
         { val: phone, name: 'Phone' },
+        { val: username, name: 'Username' },
         { val: dobRaw, name: 'Date of Birth' },
         { val: classLevel, name: 'Class Level' },
         { val: section, name: 'Section' },
@@ -409,6 +410,10 @@ async function handleStudentSignupModal(e) {
     }
 
     // Validate username if provided
+    if (!username) {
+        showError(errorDiv, 'Username is required');
+        return;
+    }
     if (username) {
         if (username.length < 5) {
             showError(errorDiv, 'Username must be at least 5 characters');
@@ -445,7 +450,7 @@ async function handleStudentSignupModal(e) {
             section,
             fatherName,
             motherName,
-            username: username || undefined
+            username: username
         });
 
         if (response.success) {
@@ -489,6 +494,10 @@ async function handleTeacherSignupModal(e) {
     }
 
     // Validate username if provided
+    if (!username) {
+        showError(errorDiv, 'Username is required');
+        return;
+    }
     if (username) {
         if (username.length < 5) {
             showError(errorDiv, 'Username must be at least 5 characters');
@@ -516,7 +525,7 @@ async function handleTeacherSignupModal(e) {
             password,
             confirmPassword,
             role,
-            username: username || undefined
+            username: username
         });
 
         if (response.success) {

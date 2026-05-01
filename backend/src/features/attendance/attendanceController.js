@@ -78,16 +78,19 @@ export const getByStudent = async (req, res) => {
 };
 
 export const getMonthlySummary = async (req, res) => {
+  const { classLevel, month, section } = req.query;
+  console.log(`[ATTENDANCE] getMonthlySummary | Class: ${classLevel} | Month: ${month} | Section: ${section} | User: ${req.user?.userId}`);
+  
   try {
-    const classLevel = req.query.classLevel || req.query.class_name || req.query.class_level;
-    const { month, section } = req.query;
-    if (!classLevel || !month)
+    const finalClassLevel = classLevel || req.query.class_name || req.query.class_level;
+    if (!finalClassLevel || !month)
       return res.status(400).json({ error: 'classLevel and month required' });
-    const summary = await attendanceModel.getMonthlySummary(classLevel, month, section || 'A', req.user?.schoolId);
+    const summary = await attendanceModel.getMonthlySummary(finalClassLevel, month, section || 'A', req.user?.schoolId);
+    console.log(`[ATTENDANCE] Summary fetched: ${summary.length} records`);
     res.json({ success: true, data: summary });
   } catch (err) {
-    console.error('getMonthlySummary:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('[ATTENDANCE] getMonthlySummary ERROR:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
   }
 };
 

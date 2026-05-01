@@ -67,10 +67,10 @@ export const attendanceModel = {
     const result = await db.query(
       `SELECT
       s.id, s.name, s.roll_number AS "rollNumber",
-        COUNT(a.id)                                         AS total_days,
-          COUNT(CASE WHEN a.is_present = true  THEN 1 END)     AS present_count,
-            COUNT(CASE WHEN a.is_present = false THEN 1 END)     AS absent_count,
-              ROUND(COUNT(CASE WHEN a.is_present = true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS attendance_percent
+        COUNT(a.id)                                         AS "totalDays",
+          COUNT(CASE WHEN a.is_present = true  THEN 1 END)     AS "presentCount",
+            COUNT(CASE WHEN a.is_present = false THEN 1 END)     AS "absentCount",
+              ROUND(COUNT(CASE WHEN a.is_present = true THEN 1 END) * 100.0 / NULLIF(COUNT(a.id), 0), 1) AS "attendancePercent"
       FROM students s
       LEFT JOIN attendance a
         ON s.id = a.student_id
@@ -101,7 +101,17 @@ export const attendanceModel = {
   },
 
   async getAllClasses(schoolId) {
-    return (await db.query(`SELECT DISTINCT class_level FROM students WHERE school_id = $1 ORDER BY class_level`, [schoolId])).rows.map(r => r.class_level);
+    const result = await db.query(`SELECT DISTINCT class_level FROM students WHERE school_id = $1 ORDER BY class_level`, [schoolId]);
+    const dbClasses = result.rows.map(r => r.class_level);
+    const defaultClasses = ['7', '8', '9', '10', '11', '12'];
+    
+    return [...new Set([...defaultClasses, ...dbClasses])]
+      .sort((a, b) => {
+        const numA = parseInt(a);
+        const numB = parseInt(b);
+        if (isNaN(numA) || isNaN(numB)) return a.localeCompare(b);
+        return numA - numB;
+      });
   },
 
   async getSectionsByClass(classLevel, schoolId) {

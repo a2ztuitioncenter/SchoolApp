@@ -778,6 +778,14 @@
                                 </div>
                             </div>
 
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Username * <small style="color:var(--text-muted)">(min 5 chars, letters/numbers/underscore)</small></label>
+                                    <input type="text" id="student-username" placeholder="Choose a unique username" required>
+                                    <div id="student-username-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                                </div>
+                            </div>
+
                             <!-- Academic Information -->
                             <div class="form-section-title">Academic Information</div>
                             <div class="form-row">
@@ -1125,6 +1133,8 @@
                         <div class="filter-group">
                             <select id="subject-class-filter" class="form-control" onchange="loadSubjectAssignments()">
                                 <option value="">Filter by Class</option>
+                                <option value="7">Class 7</option>
+                                <option value="8">Class 8</option>
                                 <option value="9">Class 9</option>
                                 <option value="10">Class 10</option>
                                 <option value="11">Class 11</option>

@@ -94,6 +94,7 @@ backend/scratch/
 backend/migrations/backup/
 frontend/uploads/
 init-db.js.old
+Report.md
 
 # ============================================================================
 # AGENT PLANNING & STATE

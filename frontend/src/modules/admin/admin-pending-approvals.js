@@ -355,9 +355,9 @@ window.approveUserHandler = async function(userId) {
 async function showClassAssignmentModal(userId) {
     currentClassAssignmentUserId = Number(userId);
 
-    // Use static class levels (consistent with the rest of the app)
-    if (availableClassLevels.length === 0) {
-        availableClassLevels = ['9', '10', '11', '12'];
+    // Use static class levels (consistent with the rest of the app)
+    if (availableClassLevels.length === 0) {
+        availableClassLevels = ['7', '8', '9', '10', '11', '12'];
     }
 
     // Populate checkboxes

@@ -97,10 +97,22 @@ export const teacherLoginSchema = {
 
 export const registerSchema = {
   role: { type: 'string', required: false, enum: ['student', 'teacher', 'staff'] },
+  username: { type: 'string', required: true, min: 5, max: 50 },
   phone: { type: 'string', required: true, min: 10, max: 15 },
+  classLevel: { type: 'string', required: false, enum: ['7', '8', '9', '10', '11', '12'] }
 };
+
 
 export const changePasswordSchema = {
   currentPassword: { type: 'string', required: true, min: 1, max: 128 },
   newPassword: { type: 'string', required: true, min: 6, max: 128 },
+};
+
+export const validateUsername = (username) => {
+  if (!username || typeof username !== 'string') return 'Username is required';
+  const trimmed = username.trim();
+  if (trimmed.length < 5) return 'Username must be at least 5 characters';
+  if (trimmed.length > 50) return 'Username must be at most 50 characters';
+  if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) return 'Username can only contain letters, numbers, and underscores';
+  return null;
 };

@@ -6,7 +6,7 @@ import { getUserByPhone, getUsersByPhone, getUserByPhoneOrUsername, isUsernameTa
 import { getStudentByUserId, createStudent } from '../student/Student.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeStringArray, sanitizeText } from '../../utils/sanitize.js';
-import { validateBody, loginSchema, adminLoginSchema, teacherLoginSchema, registerSchema, changePasswordSchema } from '../../utils/validate.js';
+import { validateBody, loginSchema, adminLoginSchema, teacherLoginSchema, registerSchema, changePasswordSchema, validateUsername } from '../../utils/validate.js';
 
 const router = express.Router();
 
@@ -81,14 +81,6 @@ const clearAuthCookies = (res) => {
   res.clearCookie('csrf', { path: '/' });
 };
 
-const validateUsername = (username) => {
-  if (!username || typeof username !== 'string') return 'Username is required';
-  username = username.trim();
-  if (username.length < 5) return 'Username must be at least 5 characters';
-  if (username.length > 50) return 'Username must be at most 50 characters';
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) return 'Username can only contain letters, numbers, and underscores';
-  return null;
-};
 
 router.get('/check-username', async (req, res) => {
   const { username } = req.query;
@@ -424,21 +416,33 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
   const { phone, identifier, password } = req.body;
   const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
+  console.log(`[AUTH] admin-login attempt for: ${loginId}`);
   try {
     if (!loginId || !password) return res.status(400).json({ error: 'Phone/Username and password are required' });
     const user = await getUserByPhoneOrUsername(pool, loginId, true);
-    if (!user || (user.role || '').toLowerCase() !== 'admin') return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
-    if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user) {
+      console.warn(`[AUTH] Admin login failed: User ${loginId} not found`);
+      return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
+    }
+    if ((user.role || '').toLowerCase() !== 'admin') {
+      console.warn(`[AUTH] Admin login failed: User ${loginId} is not an admin (Role: ${user.role})`);
+      return res.status(403).json({ error: 'Invalid credentials or unauthorized' });
+    }
+    if (!await bcrypt.compare(password, user.password)) {
+      console.warn(`[AUTH] Admin login failed: Invalid password for ${loginId}`);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
     if (user.isActive === false) return res.status(403).json({ error: 'This admin account has been deactivated.' });
 
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
     setAuthCookies(res, accessToken, refreshToken, req);
+    console.log(`[AUTH] Admin login SUCCESS: ${loginId}`);
     res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
   } catch (error) {
-    console.error('Admin login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    console.error('[AUTH] Admin login error:', error);
+    res.status(500).json({ error: 'Server error during login', details: error.message });
   }
 });
 

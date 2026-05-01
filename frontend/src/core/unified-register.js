@@ -55,6 +55,45 @@ document.addEventListener('DOMContentLoaded', () => {
     // Trigger role change on page load to set initial state
     roleSelect.dispatchEvent(new Event('change'));
 
+    // Real-time username check
+    const usernameInput = document.getElementById('username-input');
+    const usernameError = document.getElementById('username-input-error');
+    if (usernameInput && usernameError) {
+        let debounceTimer;
+        usernameInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const val = usernameInput.value.trim();
+            if (!val) {
+                usernameError.style.display = 'none';
+                return;
+            }
+            if (val.length < 5) {
+                usernameError.textContent = 'Username must be at least 5 characters';
+                usernameError.style.display = 'block';
+                return;
+            }
+            if (!/^[a-zA-Z0-9_]+$/.test(val)) {
+                usernameError.textContent = 'Only letters, numbers, and underscores allowed';
+                usernameError.style.display = 'block';
+                return;
+            }
+            
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await authAPI.checkUsername(val);
+                    if (res.available) {
+                        usernameError.style.display = 'none';
+                    } else {
+                        usernameError.textContent = 'Username already taken';
+                        usernameError.style.display = 'block';
+                    }
+                } catch (err) {
+                    console.error('Username check failed', err);
+                }
+            }, 500);
+        });
+    }
+
     // Form submission
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -75,6 +114,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Validate passwords match
         if (password !== confirmPassword) {
             errorMessage.textContent = 'Passwords do not match. Please try again.';
+            errorMessage.style.display = 'block';
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Sign Up';
+            return;
+        }
+
+        // Validate username
+        if (!username) {
+            errorMessage.textContent = 'Username is required.';
+            errorMessage.style.display = 'block';
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Sign Up';
+            return;
+        }
+        if (username.length < 5) {
+            errorMessage.textContent = 'Username must be at least 5 characters.';
+            errorMessage.style.display = 'block';
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Sign Up';
+            return;
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            errorMessage.textContent = 'Username can only contain letters, numbers, and underscores.';
             errorMessage.style.display = 'block';
             registerBtn.disabled = false;
             registerBtn.textContent = 'Sign Up';

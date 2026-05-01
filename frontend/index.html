@@ -292,12 +292,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="student-signup-username">Username</label>
-                    <input type="text" id="student-signup-username" placeholder="Choose a username (min 5 chars)"
-                        minlength="5" maxlength="50">
-                    <small id="student-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and
-                        underscores only. Optional but recommended.</small>
+                    <label for="student-signup-username">Username * <small style="color:#aaa">(min 5 chars, letters/numbers/underscore)</small></label>
+                    <input type="text" id="student-signup-username" placeholder="Choose a unique username" required>
+                    <div id="student-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and underscores only.</div>
                 </div>
+
 
                 <div class="form-group">
                     <label for="student-signup-dob">Date of Birth *</label>
@@ -313,6 +312,8 @@
                         <label for="student-signup-class">Class Level *</label>
                         <select id="student-signup-class" required>
                             <option value="">Select</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
                             <option value="9">9</option>
                             <option value="10">10</option>
                             <option value="11">11</option>
@@ -387,11 +388,11 @@
                     <input type="text" id="teacher-signup-name" name="name" placeholder="John Smith" required>
                 </div>
                 <div class="form-group">
-                    <label for="teacher-signup-username">Username</label>
-                    <input type="text" id="teacher-signup-username" placeholder="Choose a username (min 5 chars)"
-                        minlength="5" maxlength="50">
+                    <label for="teacher-signup-username">Username * <small style="color:#aaa">(min 5 chars, letters/numbers/underscore)</small></label>
+                    <input type="text" id="teacher-signup-username" placeholder="Choose a unique username"
+                        required minlength="5" maxlength="50">
                     <small id="teacher-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and
-                        underscores only. Optional but recommended.</small>
+                        underscores only.</small>
                 </div>
                 <div class="form-group">
                     <label for="teacher-signup-email">Email Address</label>
@@ -447,8 +448,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="username-input">Username</label>
-                    <input type="text" id="username-input" placeholder="Choose a username (optional)" minlength="5">
+                    <label for="username-input">Username * <small style="color:#aaa">(min 5 chars, letters/numbers/underscore)</small></label>
+                    <input type="text" id="username-input" placeholder="Choose a unique username" required>
+                    <div id="username-input-error" class="error-text" style="display:none; font-size: 0.75rem; color: #ff6b6b; margin-top: 4px;"></div>
                 </div>
 
                 <div class="form-group">
@@ -470,6 +472,8 @@
                             <label for="class-level-select">Class Level *</label>
                             <select id="class-level-select" required>
                                 <option value="">Select</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
                                 <option value="9">9</option>
                                 <option value="10">10</option>
                                 <option value="11">11</option>

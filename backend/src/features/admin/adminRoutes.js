@@ -1,5 +1,6 @@
 import express from 'express';
-import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone, generateTeacherId, getUserById } from '../auth/User.js';
+import { getUserByPhone, createUser, updateUser, deleteUser, toggleUserStatus, getTeacherAssignments, assignTeacherToClasses, countStudentsByPhone, getNonStudentByPhone, generateTeacherId, getUserById, isUsernameTaken } from '../auth/User.js';
+import { validateUsername } from '../../utils/validate.js';
 import { createStudent, getStudentsBySchool } from '../student/Student.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
@@ -221,16 +222,26 @@ router.patch('/users/:id/status', async (req, res) => {
 // ============================================================
 
 router.get('/students', async (req, res) => {
+    const schoolId = req.user?.schoolId || 1;
+
+    console.log(`[ADMIN API] GET /students | User: ${req.user?.userId} | School: ${schoolId}`);
     try {
+        // Quick DB check to ensure pool is responsive
+        await req.db.query('SELECT 1');
+        console.log('[ADMIN API] DB Check OK');
+
         const result = await req.db.query(
             `SELECT s.*, u.phone as user_phone
              FROM students s 
              LEFT JOIN users u ON s.user_id = u.id 
              WHERE s.school_id = $1
              ORDER BY s.name ASC`,
-            [req.user.schoolId]
+            [schoolId]
         );
         
+        console.log(`[ADMIN API] Fetched ${result.rows.length} students for school ${schoolId}`);
+
+
         const mapped = result.rows.map(s => ({
             id: s.id,
             userId: s.user_id,
@@ -252,17 +263,24 @@ router.get('/students', async (req, res) => {
 
         res.json({ success: true, data: mapped });
     } catch (err) {
-        console.error('Fetch students error:', err.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch students' });
+        console.error('[ADMIN API] Fetch students CRITICAL ERROR:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch students', details: err.message });
     }
 });
 
 router.post('/students/create', async (req, res) => {
-    const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, dateOfBirth } = req.body;
+    const { firstName, lastName, phone, email, classLevel, section, fatherName, motherName, joiningDate, status, dateOfBirth, username } = req.body;
     const pool = req.db;
     try {
-        if (!firstName || !phone || !classLevel || !section || !dateOfBirth || !fatherName || !motherName) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        if (!firstName || !phone || !classLevel || !section || !dateOfBirth || !fatherName || !motherName || !username) {
+            return res.status(400).json({ success: false, error: 'Missing required fields (including username)' });
+        }
+
+        const usernameError = validateUsername(username);
+        if (usernameError) return res.status(400).json({ success: false, error: usernameError });
+
+        if (await isUsernameTaken(pool, username)) {
+            return res.status(409).json({ success: false, error: 'Username already taken' });
         }
 
         // Parse DD/MM/YY -> ISO YYYY-MM-DD
@@ -298,7 +316,8 @@ router.post('/students/create', async (req, res) => {
                     phone,
                     email: email || null,
                     password: crypto.randomBytes(32).toString('hex'),
-                    role: 'student'
+                    role: 'student',
+                    username: username
                 });
             }
 
@@ -759,7 +778,20 @@ router.get('/classes', async (req, res) => {
             "SELECT DISTINCT class_level FROM students WHERE school_id = $1 AND class_level IS NOT NULL AND class_level != '' ORDER BY class_level ASC",
             [req.user.schoolId]
         );
-        res.json({ success: true, data: result.rows.map(r => r.class_level) });
+        
+        const dbClasses = result.rows.map(r => r.class_level);
+        const defaultClasses = ['7', '8', '9', '10', '11', '12'];
+        
+        // Merge and remove duplicates, then sort numerically
+        const allUniqueClasses = [...new Set([...defaultClasses, ...dbClasses])]
+            .sort((a, b) => {
+                const numA = parseInt(a);
+                const numB = parseInt(b);
+                if (isNaN(numA) || isNaN(numB)) return a.localeCompare(b);
+                return numA - numB;
+            });
+
+        res.json({ success: true, data: allUniqueClasses });
     } catch (err) {
         console.error('Fetch classes error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch classes' });

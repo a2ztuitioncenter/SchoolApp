@@ -4292,6 +4292,39 @@ function setupForms() {
         } catch (err) { showErrorAlert(err.message); }
     });
 
+    const studentUsernameInput = document.getElementById('student-username');
+    const studentUsernameError = document.getElementById('student-username-error');
+    if (studentUsernameInput && studentUsernameError) {
+        studentUsernameInput.addEventListener('input', async () => {
+            const username = studentUsernameInput.value.trim();
+            if (!username) {
+                studentUsernameError.style.display = 'none';
+                return;
+            }
+            if (username.length < 5) {
+                studentUsernameError.textContent = 'Username must be at least 5 characters';
+                studentUsernameError.style.display = 'block';
+                return;
+            }
+            if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                studentUsernameError.textContent = 'Only letters, numbers, and underscores allowed';
+                studentUsernameError.style.display = 'block';
+                return;
+            }
+            try {
+                const res = await authAPI.checkUsername(username);
+                if (res.available) {
+                    studentUsernameError.style.display = 'none';
+                } else {
+                    studentUsernameError.textContent = 'Username already taken';
+                    studentUsernameError.style.display = 'block';
+                }
+            } catch (err) {
+                console.error('Username check failed', err);
+            }
+        });
+    }
+
     document.getElementById('add-student-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -4315,9 +4348,12 @@ function setupForms() {
         const yy = yyyy.slice(2);
         const dateOfBirth = `${dd}/${mm}/${yy}`;
 
+        const username = document.getElementById('student-username')?.value.trim();
+
         const payload = {
             firstName,
             lastName,
+            username,
             phone: document.getElementById('student-phone')?.value,
             email: email || null,
             classLevel: document.getElementById('student-classLevel')?.value,
