@@ -45,9 +45,11 @@ const MAP_USER = (u) => {
         avatarUrl: u.avatar_url,
         avatarDriveId: u.avatar_drive_id,
         lastLoginAt: u.last_login_at,
-        designation: u.designation
+        designation: u.designation,
+        passwordStatus: u.password_status
     };
 };
+
 
 export const getUserByPhone = async (pool, phone, includePassword = false) => {
   const result = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
@@ -126,15 +128,16 @@ export const getUserById = async (pool, id) => {
   return MAP_USER(result.rows[0]);
 };
 
-export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null, username = null, status = 'pending' }) => {
+export const createUser = async (pool, { name, phone, email, password, role, schoolId = 'school-001', teacherId = null, username = null, status = 'pending', passwordStatus = 'verified' }) => {
   const hashedPassword = await bcrypt.hash(password, 12);
   const result = await pool.query(
-    `INSERT INTO users (name, phone, email, password, role, status, school_id, teacher_id, username)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-    [name || null, phone, email || null, hashedPassword, role, status, schoolId, teacherId, username]
+    `INSERT INTO users (name, phone, email, password, role, status, school_id, teacher_id, username, password_status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [name || null, phone, email || null, hashedPassword, role, status, schoolId, teacherId, username, passwordStatus]
   );
   return MAP_USER(result.rows[0]);
 };
+
 
 export const updateUser = async (pool, id, { name, phone, email, role }, schoolId) => {
   const result = await pool.query(

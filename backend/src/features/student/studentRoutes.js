@@ -1,6 +1,7 @@
 // studentRoutes.js - Student data endpoints
 import express from 'express';
-import { requireSelfOrAdmin } from '../../middleware/auth-middleware.js';
+import { authenticate, requireSelfOrAdmin } from '../../middleware/auth-middleware.js';
+
 import {
   getStudentDashboard,
   getStudentAttendance,
@@ -13,22 +14,26 @@ const router = express.Router();
 /**
  * GET /api/student/:userId/dashboard
  */
-router.get('/:userId/dashboard', requireSelfOrAdmin('userId'), getStudentDashboard);
+router.get('/:userId/dashboard', authenticate, requireSelfOrAdmin('userId'), getStudentDashboard);
+
 
 /**
  * GET /api/student/:userId/attendance
  */
-router.get('/:userId/attendance', requireSelfOrAdmin('userId'), getStudentAttendance);
+router.get('/:userId/attendance', authenticate, requireSelfOrAdmin('userId'), getStudentAttendance);
+
 
 /**
  * GET /api/student/:userId/fees
  */
-router.get('/:userId/fees', requireSelfOrAdmin('userId'), getStudentFees);
+router.get('/:userId/fees', authenticate, requireSelfOrAdmin('userId'), getStudentFees);
+
 
 /**
  * GET /api/student/:userId/results
  */
-router.get('/:userId/results', requireSelfOrAdmin('userId'), async (req, res) => {
+router.get('/:userId/results', authenticate, requireSelfOrAdmin('userId'), async (req, res) => {
+
   try {
     const { userId } = req.params;
     const pool = req.db;
@@ -75,7 +80,8 @@ router.get('/:userId/results', requireSelfOrAdmin('userId'), async (req, res) =>
 /**
  * GET /api/student/:userId/homework
  */
-router.get('/:userId/homework', async (req, res) => {
+router.get('/:userId/homework', authenticate, requireSelfOrAdmin('userId'), async (req, res) => {
+
   try {
     const { userId } = req.params;
     const pool = req.db;
@@ -125,7 +131,8 @@ router.get('/:userId/homework', async (req, res) => {
 /**
  * GET /api/student/:userId/syllabus
  */
-router.get('/:userId/syllabus', async (req, res) => {
+router.get('/:userId/syllabus', authenticate, requireSelfOrAdmin('userId'), async (req, res) => {
+
   try {
     const { userId } = req.params;
     const pool = req.db;

@@ -317,8 +317,10 @@ router.post('/students/create', async (req, res) => {
                     email: email || null,
                     password: crypto.randomBytes(32).toString('hex'),
                     role: 'student',
-                    username: username
+                    username: username,
+                    passwordStatus: 'generated'
                 });
+
             }
 
             if (user.status === 'blocked') {
