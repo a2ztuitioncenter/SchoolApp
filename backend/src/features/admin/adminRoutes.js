@@ -343,7 +343,14 @@ router.post('/students/create', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, classLevel, section, fatherName, motherName, phone, email } = req.body;
+    const { firstName, lastName, classLevel, section, fatherName, motherName, phone, email, dateOfBirth, joiningDate } = req.body;
+    
+    // Handle split name or full name
+    let name = req.body.name;
+    if (firstName) {
+        name = `${firstName} ${lastName || ''}`.trim();
+    }
+
     try {
         const result = await req.db.query(
             `UPDATE students 
@@ -353,9 +360,11 @@ router.put('/students/:id', async (req, res) => {
                  father_name = COALESCE($4, father_name),
                  mother_name = COALESCE($5, mother_name),
                  phone = COALESCE($6, phone),
-                 email = COALESCE($7, email)
-             WHERE id = $8 AND school_id = $9 RETURNING *`,
-            [name, classLevel, section, fatherName, motherName, phone, email, id, req.user.schoolId]
+                 email = COALESCE($7, email),
+                 date_of_birth = COALESCE($8, date_of_birth),
+                 joining_date = COALESCE($9, joining_date)
+             WHERE id = $10 AND school_id = $11 RETURNING *`,
+            [name, classLevel, section, fatherName, motherName, phone, email, dateOfBirth, joiningDate, id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
         

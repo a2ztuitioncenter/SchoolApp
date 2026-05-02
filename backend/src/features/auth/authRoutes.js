@@ -74,6 +74,8 @@ const setAuthCookies = (res, accessToken, refreshToken, req) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/'
   });
+
+  return csrfToken;
 };
 
 /** Clear all auth cookies */
@@ -201,18 +203,28 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
 
-    setAuthCookies(res, accessToken, refreshToken, req);
+    const csrfToken = setAuthCookies(res, accessToken, refreshToken, req);
 
     res.json({
       success: true,
-      user: { id: user.id, role: user.role, phone: user.phone },
+      user: { 
+        id: user.id, 
+        role: user.role, 
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        lastLoginAt: user.lastLoginAt
+      },
       student: studentData ? {
         id: studentData.id,
         name: studentData.name,
         rollNumber: studentData.roll_number,
         classLevel: studentData.class_level,
       } : null,
-      userId: user.id
+      userId: user.id,
+      token: accessToken,
+      csrfToken: csrfToken
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -334,9 +346,22 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
-    setAuthCookies(res, accessToken, refreshToken, req);
+    const csrfToken = setAuthCookies(res, accessToken, refreshToken, req);
     console.log(`[AUTH] Admin login SUCCESS: ${loginId}`);
-    res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        phone: user.phone, 
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        lastLoginAt: user.lastLoginAt
+      },
+      token: accessToken,
+      csrfToken: csrfToken
+    });
   } catch (error) {
     console.error('[AUTH] Admin login error:', error);
     res.status(500).json({ error: 'Server error during login', details: error.message });
@@ -361,8 +386,21 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
     await updateLastLogin(pool, user.id);
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
-    setAuthCookies(res, accessToken, refreshToken, req);
-    res.json({ success: true, user: { id: user.id, phone: user.phone, role: user.role } });
+    const csrfToken = setAuthCookies(res, accessToken, refreshToken, req);
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        phone: user.phone, 
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        lastLoginAt: user.lastLoginAt
+      },
+      token: accessToken,
+      csrfToken: csrfToken
+    });
   } catch (error) {
     console.error('Teacher login error:', error);
     res.status(500).json({ error: 'Server error during login' });
@@ -592,7 +630,18 @@ router.post('/verify', authenticate, async (req, res) => {
       clearAuthCookies(res);
       return res.status(401).json({ error: 'Invalid session' });
     }
-    res.json({ success: true, user: { id: user.id, role: user.role, phone: user.phone } });
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        role: user.role, 
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        lastLoginAt: user.lastLoginAt
+      } 
+    });
   } catch (error) {
     console.error('Verify error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -619,7 +668,19 @@ router.post('/refresh', async (req, res) => {
     const newRefresh = generateRefreshToken(user.id);
     setAuthCookies(res, newAccess, newRefresh, req);
 
-    res.json({ success: true, user: { id: user.id, role: user.role, phone: user.phone } });
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        role: user.role, 
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        lastLoginAt: user.lastLoginAt
+      },
+      token: newAccess
+    });
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       clearAuthCookies(res);
