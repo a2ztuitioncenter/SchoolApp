@@ -130,19 +130,7 @@ const startServer = async () => {
       next();
     });
 
-    // 4. Static Files & Landing Page
-    console.log('[INIT] Setting up static file serving...');
-    app.get('/', (req, res) => {
-      const indexPath = path.join(__dirname, '../../frontend/index.html');
-      res.sendFile(indexPath);
-    });
-
-    app.use(express.static(path.join(__dirname, '../../frontend')));
-    app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-    app.get('/favicon.ico', (req, res) => res.status(204).end());
-
-    // 5. Routes
+    // 5. API Routes
     console.log('[INIT] Loading API routes...');
     app.use('/api/auth', authRoutes);
     app.use('/api/student', authenticate, studentRoutes);
@@ -151,9 +139,12 @@ const startServer = async () => {
     app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);
     app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
     app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
-    app.use('/api/materials', authenticate, materialsRoutes);
     app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);
     app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
+    app.use('/api/materials', authenticate, materialsRoutes);
+    app.use('/api/notifications', authenticate, notificationsRoutes);
+    app.use('/api/timetable', authenticate, timetableRoutes);
+    app.use('/api/results', authenticate, resultsRoutes);
     app.use('/api/download', authenticate, downloadRoutes);
     app.use('/api/subjects', authenticate, subjectsRoutes);
     app.use('/api/storage', authenticate, storageRoutes);
@@ -161,6 +152,25 @@ const startServer = async () => {
     app.use('/api/content', authenticate, contentRoutes);
     app.use('/api/submissions', authenticate, submissionRoutes);
     app.use('/api/assignments', authenticate, assignmentRoutes);
+
+    // 4. Static Files & Landing Page (Fallback)
+    console.log('[INIT] Setting up static file serving...');
+    const frontendDir = path.join(__dirname, '../../frontend');
+    
+    // Explicit routes for common pages (Clean URLs)
+    app.get('/', (req, res) => res.sendFile(path.join(frontendDir, 'index.html')));
+    app.get('/login', (req, res) => res.sendFile(path.join(frontendDir, 'login.html')));
+    app.get('/register', (req, res) => res.sendFile(path.join(frontendDir, 'register.html')));
+    app.get('/admin', (req, res) => res.sendFile(path.join(frontendDir, 'admin-dashboard.html')));
+    app.get('/teacher', (req, res) => res.sendFile(path.join(frontendDir, 'teacher-dashboard.html')));
+    app.get('/staff', (req, res) => res.sendFile(path.join(frontendDir, 'teacher-dashboard.html'))); // Staff uses teacher dashboard
+    app.get('/student', (req, res) => res.sendFile(path.join(frontendDir, 'student-dashboard.html')));
+
+    // Serve static files with .html extension support
+    app.use(express.static(frontendDir, { extensions: ['html'] }));
+    app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+    app.get('/favicon.ico', (req, res) => res.status(204).end());
 
     // Public content route
     const PUBLIC_CONTENT_KEYS = ['programs', 'resources', 'contact', 'privacy', 'learn-more', 'terms', 'help', 'documentation'];

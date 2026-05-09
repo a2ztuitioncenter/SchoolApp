@@ -4,16 +4,12 @@ FROM oven/bun:1
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy root package files (if any)
-COPY package.json bun.lock* ./
-
 # Copy backend and frontend directories
 COPY backend ./backend
 COPY frontend ./frontend
 
-# Install dependencies for both
+# Install backend dependencies
 RUN cd backend && bun install
-RUN cd frontend && bun install
 
 # Set the working directory to backend for the CMD
 WORKDIR /app/backend

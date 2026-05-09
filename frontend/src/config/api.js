@@ -21,7 +21,9 @@ export const config = {
   isLocal,
   isVercel,
   isCloudflare,
-  // Default to empty string for unified deployments (relative paths)
-  // or use the global BACKEND_URL if provided by the environment
-  API_BASE_URL: window.BACKEND_URL || (isLocal ? '' : (isVercel || isCloudflare ? '' : 'https://schoolapp-ln74.onrender.com'))
+  // Default to relative paths ('') which works for:
+  // 1. Unified deployments (backend serves frontend)
+  // 2. Vercel/Local deployments with proxies
+  // Only use absolute URL if explicitly provided in window.BACKEND_URL
+  API_BASE_URL: window.BACKEND_URL || ''
 };
