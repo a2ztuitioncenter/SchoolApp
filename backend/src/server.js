@@ -143,7 +143,6 @@ const startServer = async () => {
     app.use('/api/admin/results', authenticate, authorize('admin'), resultsRoutes);
     app.use('/api/materials', authenticate, materialsRoutes);
     app.use('/api/notifications', authenticate, notificationsRoutes);
-    app.use('/api/timetable', authenticate, timetableRoutes);
     app.use('/api/results', authenticate, resultsRoutes);
     app.use('/api/download', authenticate, downloadRoutes);
     app.use('/api/subjects', authenticate, subjectsRoutes);
