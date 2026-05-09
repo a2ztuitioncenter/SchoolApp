@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!identifier || !dateOfBirth) return showError(errorDiv, 'Both fields are required');
 
             btn.disabled = true;
-            btn.textContent = 'Logging in...';
+            btn.innerHTML = '<span>Verifying...</span> <i class="fas fa-spinner fa-spin"></i>';
 
             try {
                 const response = await authAPI.login(identifier, dateOfBirth);
@@ -56,12 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showError(errorDiv, response.error || 'Login failed');
                     btn.disabled = false;
-                    btn.textContent = 'Log In as Student';
+                    btn.innerHTML = '<span>Sign In as Student</span> <i class="fas fa-arrow-right"></i>';
                 }
             } catch (error) {
                 showError(errorDiv, error.message || 'Login failed');
                 btn.disabled = false;
-                btn.textContent = 'Log In as Student';
+                btn.innerHTML = '<span>Sign In as Student</span> <i class="fas fa-arrow-right"></i>';
             }
         });
     }
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!identifier || !password) return showError(errorDiv, 'Both fields are required');
 
             btn.disabled = true;
-            btn.textContent = 'Verifying...';
+            btn.innerHTML = '<span>Verifying...</span> <i class="fas fa-spinner fa-spin"></i>';
 
             try {
                 const response = await authAPI.teacherLogin(identifier, password);
@@ -99,12 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showError(errorDiv, 'Access Denied or invalid credentials');
                     btn.disabled = false;
-                    btn.textContent = 'Log In as Teacher';
+                    btn.innerHTML = '<span>Sign In as Teacher</span> <i class="fas fa-arrow-right"></i>';
                 }
             } catch (error) {
                 showError(errorDiv, error.message || 'Login failed');
                 btn.disabled = false;
-                btn.textContent = 'Log In as Teacher';
+                btn.innerHTML = '<span>Sign In as Teacher</span> <i class="fas fa-arrow-right"></i>';
             }
         });
     }
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!identifier || !password) return showError(errorDiv, 'Both fields are required');
 
             btn.disabled = true;
-            btn.textContent = 'Verifying...';
+            btn.innerHTML = '<span>Verifying...</span> <i class="fas fa-spinner fa-spin"></i>';
 
             try {
                 const response = await authAPI.adminLogin(identifier, password);
@@ -142,12 +142,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     showError(errorDiv, 'Access Denied or invalid credentials');
                     btn.disabled = false;
-                    btn.textContent = 'Log In as Admin';
+                    btn.innerHTML = '<span>Sign In as Admin</span> <i class="fas fa-shield-halved"></i>';
                 }
             } catch (error) {
                 showError(errorDiv, error.message || 'Login failed');
                 btn.disabled = false;
-                btn.textContent = 'Log In as Admin';
+                btn.innerHTML = '<span>Sign In as Admin</span> <i class="fas fa-shield-halved"></i>';
             }
         });
     }

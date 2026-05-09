@@ -56,8 +56,13 @@ styleSheet.textContent = `
         flex: 1;
         margin: 0;
         cursor: pointer;
-        font-weight: 500;
+        font-size: 0.9rem;
         color: var(--text-main);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 `;
 document.head.appendChild(styleSheet);
@@ -66,47 +71,73 @@ let pendingUsers = [];
 let currentRejectingUserId = null;
 let currentClassAssignmentUserId = null;
 let availableClassLevels = [];
+const activeRequests = new Set(); // Guard against duplicate requests
 
 
-// 🛑 DOM GUARD: Prevent script from running if this is not the admin dashboard page
-if (document.getElementById('admin-dashboard-root')) {
-    document.addEventListener('DOMContentLoaded', () => {
-        // Prevent unauthorized execution
-        const auth = getAuth();
-        if (!auth || auth.role !== 'admin') return;
-        
-        console.log('🔄 Initializing Pending Approvals...');        
-        // Fetch pending users
-        fetchPendingUsers();
+/**
+ * Initialize Pending Approvals Tab
+ * Called by admin-dashboard.js or DOMContentLoaded
+ */
+export async function initPendingApprovalsTab() {
+    const auth = getAuth();
+    if (!auth || auth.role !== 'admin') return;
 
-        // Setup rejection modal handlers
+    console.log('🔄 Initializing Pending Approvals...');
+    
+    // Fetch pending users
+    await fetchPendingUsers();
+
+    // 🛠️ Initialize Event Listeners (only once)
+    const container = document.getElementById('pending-approvals');
+    if (container && !container.dataset.listenersInitialized) {
+        setupEventListeners();
+        container.dataset.listenersInitialized = 'true';
+    }
+}
+
+/**
+ * Setup static event listeners for modals
+ */
+function setupEventListeners() {
+    try {
         const confirmRejectBtn = document.getElementById('confirm-reject-btn');
         if (confirmRejectBtn) {
             confirmRejectBtn.addEventListener('click', async () => {
-                const reasonElement = document.getElementById('rejection-reason');
-                const reason = reasonElement ? reasonElement.value : '';
-                await rejectUser(currentRejectingUserId, reason);
+                const reason = document.getElementById('rejection-reason').value;
+                const userId = confirmRejectBtn.getAttribute('data-user-id');
+                if (userId && !activeRequests.has(userId)) {
+                    await rejectUser(userId, reason);
+                }
             });
         }
 
-        // Setup class assignment modal handler
         const confirmClassAssignmentBtn = document.getElementById('confirm-class-assignment-btn');
         if (confirmClassAssignmentBtn) {
             confirmClassAssignmentBtn.addEventListener('click', async (e) => {
-                const btn = e.currentTarget;
-                const selectedClasses = Array.from(
-                    document.querySelectorAll('#class-checkboxes-container input[type="checkbox"]:checked')
-                ).map(checkbox => checkbox.value);
+                e.preventDefault();
+                const userId = currentClassAssignmentUserId;
+                if (!userId || activeRequests.has(String(userId))) return;
+
+                const selectedClasses = Array.from(document.querySelectorAll('#class-checkboxes-container input[type="checkbox"]:checked'))
+                    .map(cb => cb.value);
 
                 if (selectedClasses.length === 0) {
                     showMessage('Please select at least one class', 'error');
                     return;
                 }
 
-                console.log(`[APPROVAL] Confirming class assignment for User ID: ${currentClassAssignmentUserId}, Classes:`, selectedClasses);
-                await approveUserWithClasses(currentClassAssignmentUserId, selectedClasses, btn);
+                await approveUserWithClasses(String(userId), selectedClasses, confirmClassAssignmentBtn);
             });
         }
+    } catch (error) {
+        console.error('Error initializing pending approvals listeners:', error);
+    }
+}
+
+// 🛑 DOM GUARD: Auto-initialize if on the right page
+if (document.getElementById('admin-dashboard-root')) {
+    document.addEventListener('DOMContentLoaded', () => {
+        initPendingApprovalsTab();
     });
 }
 
@@ -115,11 +146,11 @@ if (document.getElementById('admin-dashboard-root')) {
  */
 async function fetchPendingUsers() {
     const listContainer = document.getElementById('pending-users-list');
-    
+
     try {
         console.log('📋 Fetching pending users...');
         const response = await adminAPI.getPendingUsers();
-        
+
         console.log('📦 Response:', response);
 
         if (response && response.success) {
@@ -157,7 +188,7 @@ function renderPendingUsers() {
     const listContainer = document.getElementById('pending-users-list');
     const mobileContainer = document.getElementById('pending-users-mobile-list');
     const tableElement = document.getElementById('pending-users-table')?.closest('.table-container');
-    
+
     if (!listContainer || !mobileContainer) return;
 
     // Handle responsive visibility
@@ -242,7 +273,7 @@ function renderPendingUsers() {
         const roleIcon = roleLower === 'teacher' ? '👨‍🏫' : '👤';
 
         return `
-            <div class="card" data-user-id="${escapeAttrValue(String(user.id))}" style="padding: 1.25rem;">
+            <div class="card user-card" data-user-id="${escapeAttrValue(String(user.id))}" style="padding: 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
@@ -316,12 +347,12 @@ function renderEmptyState() {
     if (listContainer) {
         listContainer.innerHTML = `<tr><td colspan="6">${emptyHtml}</td></tr>`;
     }
-    
+
     if (mobileContainer) {
         mobileContainer.innerHTML = emptyHtml;
         mobileContainer.style.display = 'block';
     }
-    
+
     if (tableElement && window.innerWidth > 768) {
         tableElement.style.display = 'block';
     } else if (tableElement) {
@@ -332,11 +363,19 @@ function renderEmptyState() {
 /**
  * Approve user handler
  */
-window.approveUserHandler = async function(event, userId) {
+window.approveUserHandler = async function (event, userId) {
     const id = Number(userId);
+    const userIdStr = String(userId);
+    
+    // 🛡️ Request Guard
+    if (activeRequests.has(userIdStr)) {
+        console.warn(`[APPROVAL] Request already in progress for User ID: ${userIdStr}`);
+        return;
+    }
+
     const user = pendingUsers.find(u => u.id === id);
     const btn = event.currentTarget || event.target.closest('button');
-    
+
     if (!user) {
         showMessage('User not found', 'error');
         return;
@@ -353,7 +392,13 @@ window.approveUserHandler = async function(event, userId) {
         if (!confirm('Are you sure you want to approve this user?')) {
             return;
         }
-        await approveUser(id, btn);
+        
+        activeRequests.add(userIdStr);
+        try {
+            await approveUser(id, btn);
+        } finally {
+            activeRequests.delete(userIdStr);
+        }
     }
 };
 
@@ -363,31 +408,37 @@ window.approveUserHandler = async function(event, userId) {
 async function showClassAssignmentModal(userId) {
     currentClassAssignmentUserId = Number(userId);
 
-    // Use static class levels (consistent with the rest of the app)
+    // Use static class levels
     if (availableClassLevels.length === 0) {
         availableClassLevels = ['7', '8', '9', '10', '11', '12'];
     }
 
     // Populate checkboxes
     const container = document.getElementById('class-checkboxes-container');
-    container.innerHTML = availableClassLevels.map(classLevel => `
-        <div class="class-checkbox">
-            <input type="checkbox" id="class-${classLevel}" value="${classLevel}">
-            <label for="class-${classLevel}">Class ${classLevel}</label>
-        </div>
-    `).join('');
+    if (container) {
+        container.innerHTML = availableClassLevels.map(classLevel => `
+            <div class="class-checkbox">
+                <input type="checkbox" id="class-${classLevel}" value="${classLevel}">
+                <label for="class-${classLevel}">Class ${classLevel}</label>
+            </div>
+        `).join('');
+    }
 
-    // Show modal
+    // Show modal and overlay
     const modal = document.getElementById('class-assignment-modal');
-    if (modal) modal.style.display = 'flex';
+    const overlay = document.getElementById('classAssignmentDrawerOverlay');
+    if (modal) modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
 }
 
 /**
  * Close class assignment modal
  */
-window.closeClassAssignmentModal = function() {
+window.closeClassAssignmentModal = function () {
     const modal = document.getElementById('class-assignment-modal');
-    if (modal) modal.style.display = 'none';
+    const overlay = document.getElementById('classAssignmentDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
     currentClassAssignmentUserId = null;
 };
 
@@ -395,9 +446,12 @@ window.closeClassAssignmentModal = function() {
 /**
  * Show rejection modal
  */
-window.showRejectModal = function(userId) {
+window.showRejectModal = function (userId) {
     currentRejectingUserId = Number(userId);
     document.getElementById('rejection-reason').value = '';
+    const confirmRejectBtn = document.getElementById('confirm-reject-btn');
+    if (confirmRejectBtn) confirmRejectBtn.setAttribute('data-user-id', userId);
+    
     const modal = document.getElementById('reject-modal');
     if (modal) {
         modal.classList.add('active');
@@ -409,13 +463,13 @@ window.showRejectModal = function(userId) {
 /**
  * Close rejection modal
  */
-window.closeRejectModal = function() {
+window.closeRejectModal = function () {
     const modal = document.getElementById('reject-modal');
-    if (modal) {
-        modal.classList.remove('active');
-        const overlay = document.getElementById('rejectDrawerOverlay');
-        if (overlay) overlay.classList.remove('active');
-    }
+    const overlay = document.getElementById('rejectDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    const reasonInput = document.getElementById('rejection-reason');
+    if (reasonInput) reasonInput.value = '';
     currentRejectingUserId = null;
 };
 
@@ -424,7 +478,7 @@ window.closeRejectModal = function() {
  */
 async function approveUser(userId, triggerButton = null) {
     if (triggerButton) setButtonLoading(triggerButton, true);
-    
+
     try {
         console.log(`[APPROVAL] API Call: Approving User ID: ${userId}...`);
         const response = await adminAPI.approveUser(userId);
@@ -448,6 +502,10 @@ async function approveUser(userId, triggerButton = null) {
  * Approve user with class assignments (teacher/staff)
  */
 async function approveUserWithClasses(userId, classesAssigned, triggerButton = null) {
+    const userIdStr = String(userId);
+    if (activeRequests.has(userIdStr)) return;
+    
+    activeRequests.add(userIdStr);
     if (triggerButton) setButtonLoading(triggerButton, true);
 
     try {
@@ -456,8 +514,7 @@ async function approveUserWithClasses(userId, classesAssigned, triggerButton = n
         console.log('[APPROVAL] API Response:', data);
 
         if (data.success) {
-            window.closeClassAssignmentModal();
-            handleSuccess(userId, `✅ ${pendingUsers.find(u => u.id === userId)?.role || 'User'} approved with class assignments!`);
+            handleSuccess(userId, `✅ ${pendingUsers.find(u => u.id === Number(userId))?.role || 'User'} approved with class assignments!`);
         } else {
             showMessage(data.error || 'Failed to approve user', 'error');
         }
@@ -465,6 +522,7 @@ async function approveUserWithClasses(userId, classesAssigned, triggerButton = n
         console.error('[APPROVALS] Error approving user with classes:', error);
         showMessage('Error approving user: ' + error.message, 'error');
     } finally {
+        activeRequests.delete(userIdStr);
         if (triggerButton) setButtonLoading(triggerButton, false);
     }
 }
@@ -473,6 +531,10 @@ async function approveUserWithClasses(userId, classesAssigned, triggerButton = n
  * Reject user from backend
  */
 async function rejectUser(userId, reason) {
+    const userIdStr = String(userId);
+    if (activeRequests.has(userIdStr)) return;
+
+    activeRequests.add(userIdStr);
     const confirmBtn = document.getElementById('confirm-reject-btn');
     if (confirmBtn) setButtonLoading(confirmBtn, true);
 
@@ -482,7 +544,6 @@ async function rejectUser(userId, reason) {
         console.log('[APPROVAL] API Response:', response);
 
         if (response.success) {
-            window.closeRejectModal();
             const userName = response.user?.name || 'User';
             handleSuccess(userId, `❌ User ${userName} rejected successfully!`);
         } else {
@@ -492,6 +553,7 @@ async function rejectUser(userId, reason) {
         console.error('[APPROVALS] Error rejecting user:', error);
         showMessage('Error rejecting user: ' + error.message, 'error');
     } finally {
+        activeRequests.delete(userIdStr);
         if (confirmBtn) setButtonLoading(confirmBtn, false);
     }
 }
@@ -562,24 +624,33 @@ function setButtonLoading(button, isLoading) {
  * Shared helper to handle successful approval/rejection
  */
 function handleSuccess(userId, message) {
+    // Definitively close any open modals and overlays to prevent UI freeze
+    window.closeClassAssignmentModal();
+    window.closeRejectModal();
+
+    // Standardized success message
     showMessage(message, 'success');
-    
-    // Remove the card from UI
+
+    // Remove the user card from UI with a smooth transition
     const elements = document.querySelectorAll(`[data-user-id="${userId}"]`);
     elements.forEach(el => {
         el.style.transition = 'all 0.4s ease';
         el.style.opacity = '0';
         el.style.transform = 'translateX(20px)';
-        setTimeout(() => el.remove(), 400);
+        setTimeout(() => {
+            el.remove();
+            // After removal, check if we need to show empty state
+            if (document.querySelectorAll('#pending-users-list tr[data-user-id]').length === 0 &&
+                document.querySelectorAll('#pending-users-mobile-list .user-card').length === 0) {
+                renderEmptyState();
+            }
+        }, 400);
     });
 
     // Update local state
-    pendingUsers = pendingUsers.filter(u => u.id !== userId);
-    
-    // Check if list is now empty
-    if (pendingUsers.length === 0) {
-        setTimeout(() => renderEmptyState(), 500);
-    }
+    pendingUsers = pendingUsers.filter(u => u.id !== Number(userId));
+
+    console.log(`User ${userId} processed successfully.`);
 }
 
 // Make functions globally available
