@@ -1,62 +1,37 @@
-# Docker Deployment & Networking Guide - Tuition App
+# Docker Deployment Guide - Tuition App
 
-This guide explains how to build, run, and deploy the backend as a Docker container while running the frontend raw on the host machine.
+We use a **Unified Deployment** strategy for production, where a single Docker container runs the backend server and serves the frontend assets.
 
-## 1. Mixed Architecture Strategy
+## 1. Unified Architecture
+- **Root Dockerfile**: Copies both `backend` and `frontend`.
+- **Backend Server**: Acts as the API server AND serves the static frontend files.
+- **Port**: The entire application runs on port `3000`.
 
-We use a "Mixed Architecture" for local development:
-- **Backend**: Runs in a Docker container for environment isolation and database connectivity.
-- **Frontend**: Runs "raw" on your host machine using Bun for rapid development and easier debugging.
+## 2. Environment Variables
+Ensure the following are set in your deployment environment (e.g., Render Dashboard):
+- `DATABASE_URL`: Your PostgreSQL connection string.
+- `JWT_SECRET`: A secure random string for tokens.
+- `ADMIN_PHONE`, `ADMIN_PASSWORD`, `ADMIN_USERNAME`: Initial admin credentials.
+- `NODE_ENV`: Set to `production`.
 
-## 2. Environment Variable Strategy
+## 3. Deployment Commands
 
-### Backend (Docker)
-1. Ensure `backend/.env` exists.
-2. The `Dockerfile` copies `.env` into the image.
-3. Run with: `docker run -d --name backend -p 3000:3000 backend`
-
-### Frontend (Raw)
-1. Ensure `frontend/.env` exists (or use default values).
-2. The frontend `server.ts` defaults to `http://localhost:3000` for `BACKEND_URL`.
-3. Run with: `bun run dev` (from the `frontend` directory).
-
-## 3. Networking
-
-Since the backend container maps its internal port `3000` to host port `3000`, the raw frontend can reach it via `http://localhost:3000`.
-
-- **Frontend → Backend**: Frontend proxies requests to `BACKEND_URL` (default: `http://localhost:3000`).
-- **Backend CORS**: Ensure `backend/.env` allows the frontend origin (default: `http://localhost:8000`).
-    - `ALLOWED_ORIGINS=http://localhost:8000`
-
-## 4. Commands
-
-### Backend (Docker)
+### Build & Run Locally (Testing)
 ```bash
-# Navigate to backend
-cd backend
-
-# Build
-docker build -t backend .
+# Build from root
+docker build -t tuition-app .
 
 # Run
-docker run -d --name backend -p 3000:3000 backend
+docker run -p 3000:3000 tuition-app
 ```
 
-### Frontend (Raw)
-```bash
-# Navigate to frontend
-cd frontend
+### Deploying to Render
+1. Select **Web Service**.
+2. Connect your repository.
+3. Set **Docker** as the Runtime.
+4. Add environment variables.
+5. Deploy.
 
-# Install dependencies (first time only)
-bun install
-
-# Run server
-bun run dev
-```
-
-## 5. Cleanup
-To stop and remove the backend container:
-```bash
-docker stop backend
-docker rm backend
-```
+## 4. Networking
+- **Frontend → Backend**: Since they are in the same container, the frontend uses relative paths (`/api/...`) to reach the backend.
+- **CORS**: Ensure `FRONTEND_URL` in your environment matches your deployment domain to allow cross-origin requests (if any).

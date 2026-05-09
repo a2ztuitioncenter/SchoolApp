@@ -21,6 +21,7 @@ export const config = {
   isLocal,
   isVercel,
   isCloudflare,
-  // Empty string for local/vercel/cloudflare means it will use relative paths & proxy
-  API_BASE_URL: (isLocal || isVercel || isCloudflare) ? '' : 'https://schoolapp-ln74.onrender.com'
+  // Default to empty string for unified deployments (relative paths)
+  // or use the global BACKEND_URL if provided by the environment
+  API_BASE_URL: window.BACKEND_URL || (isLocal ? '' : (isVercel || isCloudflare ? '' : 'https://schoolapp-ln74.onrender.com'))
 };
