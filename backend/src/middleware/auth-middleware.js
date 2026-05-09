@@ -318,7 +318,10 @@ export const corsSecure = () => {
     const normalizedOrigin = origin ? origin.replace(/\/$/, '') : null;
 
     // Allow exact matches from allowedOrigins OR any private network IP in development
-    const isAllowed = allowedOrigins.includes(normalizedOrigin);
+    // ALSO: Trust any Vercel deployment origin if configured (common for feature branches)
+    const isVercelOrigin = normalizedOrigin && normalizedOrigin.endsWith('.vercel.app');
+    const isAllowed = allowedOrigins.includes(normalizedOrigin) || (isProd && isVercelOrigin);
+    
     const isPrivateIP = normalizedOrigin && (
       normalizedOrigin.includes('192.168.') || 
       normalizedOrigin.includes('10.') || 
