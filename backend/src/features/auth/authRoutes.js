@@ -428,6 +428,7 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
 
   try {
     const id = parseInt(userId);
+    console.log(`[AdminApprove] Attempting to approve user ID: ${id}`);
     if (isNaN(id)) {
       return res.status(400).json({ success: false, error: 'Invalid User ID format' });
     }
@@ -438,6 +439,7 @@ router.post('/admin/approve-user/:userId', authenticate, authorize('admin'), asy
     }
 
     if (user.status === 'active') {
+      console.log(`[AdminApprove] User ${id} is already active`);
       return res.status(400).json({ success: false, error: 'User is already approved' });
     }
 

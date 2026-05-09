@@ -92,17 +92,19 @@ if (document.getElementById('admin-dashboard-root')) {
         // Setup class assignment modal handler
         const confirmClassAssignmentBtn = document.getElementById('confirm-class-assignment-btn');
         if (confirmClassAssignmentBtn) {
-            confirmClassAssignmentBtn.addEventListener('click', async () => {
+            confirmClassAssignmentBtn.addEventListener('click', async (e) => {
+                const btn = e.currentTarget;
                 const selectedClasses = Array.from(
                     document.querySelectorAll('#class-checkboxes-container input[type="checkbox"]:checked')
                 ).map(checkbox => checkbox.value);
 
                 if (selectedClasses.length === 0) {
-                    alert('Please select at least one class');
+                    showMessage('Please select at least one class', 'error');
                     return;
                 }
 
-                await approveUserWithClasses(currentClassAssignmentUserId, selectedClasses);
+                console.log(`[APPROVAL] Confirming class assignment for User ID: ${currentClassAssignmentUserId}, Classes:`, selectedClasses);
+                await approveUserWithClasses(currentClassAssignmentUserId, selectedClasses, btn);
             });
         }
     });
@@ -214,7 +216,7 @@ function renderPendingUsers() {
                 <td style="font-size: 0.85rem; color: var(--text-muted);">${createdDate}</td>
                 <td>
                     <div style="display: flex; gap: 6px;">
-                        <button class="btn btn-primary btn-sm" title="Approve" onclick="approveUserHandler(${escapeAttrValue(String(user.id))})">
+                        <button class="btn btn-primary btn-sm" title="Approve" onclick="approveUserHandler(event, ${escapeAttrValue(String(user.id))})">
                             <i class="fas fa-check"></i>
                         </button>
                         <button class="btn btn-secondary btn-sm" title="Reject" onclick="showRejectModal(${escapeAttrValue(String(user.id))})" style="color: var(--danger);">
@@ -272,7 +274,7 @@ function renderPendingUsers() {
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <button class="btn btn-primary" onclick="approveUserHandler(${escapeAttrValue(String(user.id))})">
+                    <button class="btn btn-primary" onclick="approveUserHandler(event, ${escapeAttrValue(String(user.id))})">
                         <i class="fas fa-check"></i> Approve
                     </button>
                     <button class="btn btn-secondary" onclick="showRejectModal(${escapeAttrValue(String(user.id))})" style="color: var(--danger);">
@@ -330,14 +332,17 @@ function renderEmptyState() {
 /**
  * Approve user handler
  */
-window.approveUserHandler = async function(userId) {
+window.approveUserHandler = async function(event, userId) {
     const id = Number(userId);
     const user = pendingUsers.find(u => u.id === id);
+    const btn = event.currentTarget || event.target.closest('button');
     
     if (!user) {
         showMessage('User not found', 'error');
         return;
     }
+
+    console.log(`[APPROVAL] Handler triggered for User ID: ${id}, Role: ${user.role}`);
 
     // For teacher/staff, show class assignment modal
     const roleLower = (user.role || '').toLowerCase();
@@ -348,7 +353,7 @@ window.approveUserHandler = async function(userId) {
         if (!confirm('Are you sure you want to approve this user?')) {
             return;
         }
-        await approveUser(id);
+        await approveUser(id, btn);
     }
 };
 
@@ -417,70 +422,50 @@ window.closeRejectModal = function() {
 /**
  * Approve user from backend
  */
-async function approveUser(userId) {
+async function approveUser(userId, triggerButton = null) {
+    if (triggerButton) setButtonLoading(triggerButton, true);
+    
     try {
+        console.log(`[APPROVAL] API Call: Approving User ID: ${userId}...`);
         const response = await adminAPI.approveUser(userId);
+        console.log('[APPROVAL] API Response:', response);
 
         if (response.success) {
             const userName = response.user?.name || 'User';
-            showMessage(`✅ User ${userName} approved successfully!`, 'success');
-            
-            // Remove the card from UI
-            const card = document.querySelector(`[data-user-id="${userId}"]`);
-            if (card) {
-                card.style.transition = 'opacity 0.3s';
-                card.style.opacity = '0';
-                setTimeout(() => card.remove(), 300);
-            }
-
-            // Check if no more pending users
-            pendingUsers = pendingUsers.filter(u => u.id !== userId);
-            if (pendingUsers.length === 0) {
-                setTimeout(() => {
-                    renderEmptyState();
-                }, 500);
-            }
+            handleSuccess(userId, `✅ User ${userName} approved successfully!`);
         } else {
             showMessage(response.error || 'Failed to approve user', 'error');
         }
     } catch (error) {
         console.error('[APPROVALS] Error approving user:', error);
         showMessage('Error approving user: ' + error.message, 'error');
+    } finally {
+        if (triggerButton) setButtonLoading(triggerButton, false);
     }
 }
 
 /**
  * Approve user with class assignments (teacher/staff)
  */
-async function approveUserWithClasses(userId, classesAssigned) {
+async function approveUserWithClasses(userId, classesAssigned, triggerButton = null) {
+    if (triggerButton) setButtonLoading(triggerButton, true);
+
     try {
-        window.closeClassAssignmentModal();
+        console.log(`[APPROVAL] API Call: Approving Teacher/Staff ID: ${userId} with classes:`, classesAssigned);
         const data = await adminAPI.approveUser(userId, { classesAssigned });
+        console.log('[APPROVAL] API Response:', data);
 
         if (data.success) {
-            showMessage(`✅ ${pendingUsers.find(u => u.id === userId)?.role || 'User'} approved with class assignments!`, 'success');
-            
-            // Remove the card from UI
-            const card = document.querySelector(`[data-user-id="${userId}"]`);
-            if (card) {
-                card.style.transition = 'opacity 0.3s';
-                card.style.opacity = '0';
-                setTimeout(() => card.remove(), 300);
-            }
-
-            // Check if no more pending users
-            pendingUsers = pendingUsers.filter(u => u.id !== userId);
-            if (pendingUsers.length === 0) {
-                setTimeout(() => {
-                    renderEmptyState();
-                }, 500);
-            }
+            window.closeClassAssignmentModal();
+            handleSuccess(userId, `✅ ${pendingUsers.find(u => u.id === userId)?.role || 'User'} approved with class assignments!`);
         } else {
             showMessage(data.error || 'Failed to approve user', 'error');
         }
     } catch (error) {
         console.error('[APPROVALS] Error approving user with classes:', error);
         showMessage('Error approving user: ' + error.message, 'error');
+    } finally {
+        if (triggerButton) setButtonLoading(triggerButton, false);
     }
 }
 
@@ -488,37 +473,26 @@ async function approveUserWithClasses(userId, classesAssigned) {
  * Reject user from backend
  */
 async function rejectUser(userId, reason) {
+    const confirmBtn = document.getElementById('confirm-reject-btn');
+    if (confirmBtn) setButtonLoading(confirmBtn, true);
+
     try {
+        console.log(`[APPROVAL] API Call: Rejecting User ID: ${userId}, Reason: ${reason}`);
         const response = await adminAPI.rejectUser(userId, reason);
+        console.log('[APPROVAL] API Response:', response);
 
         if (response.success) {
-            const userName = response.user?.name || 'User';
-            showMessage(`❌ User ${userName} rejected successfully!`, 'success');
-            
-            // Close modal
             window.closeRejectModal();
-            
-            // Remove the card from UI
-            const card = document.querySelector(`[data-user-id="${userId}"]`);
-            if (card) {
-                card.style.transition = 'opacity 0.3s';
-                card.style.opacity = '0';
-                setTimeout(() => card.remove(), 300);
-            }
-
-            // Check if no more pending users
-            pendingUsers = pendingUsers.filter(u => u.id !== userId);
-            if (pendingUsers.length === 0) {
-                setTimeout(() => {
-                    renderEmptyState();
-                }, 500);
-            }
+            const userName = response.user?.name || 'User';
+            handleSuccess(userId, `❌ User ${userName} rejected successfully!`);
         } else {
             showMessage(response.error || 'Failed to reject user', 'error');
         }
     } catch (error) {
         console.error('[APPROVALS] Error rejecting user:', error);
         showMessage('Error rejecting user: ' + error.message, 'error');
+    } finally {
+        if (confirmBtn) setButtonLoading(confirmBtn, false);
     }
 }
 
@@ -540,6 +514,7 @@ function showMessage(message, type = 'info') {
     messageDiv.style.padding = '15px';
     messageDiv.style.borderRadius = '4px';
     messageDiv.style.marginBottom = '15px';
+    messageDiv.style.animation = 'fadeIn 0.3s ease-out';
     
     if (type === 'error') {
         messageDiv.style.backgroundColor = '#ffebee';
@@ -558,8 +533,52 @@ function showMessage(message, type = 'info') {
     // Auto-hide success messages after 5 seconds
     if (type === 'success') {
         setTimeout(() => {
-            messageDiv.style.display = 'none';
+            messageDiv.style.opacity = '0';
+            messageDiv.style.transition = 'opacity 0.5s';
+            setTimeout(() => messageDiv.remove(), 500);
         }, 5000);
+    }
+}
+
+/**
+ * Helper to set loading state on buttons
+ */
+function setButtonLoading(button, isLoading) {
+    if (!button) return;
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalHtml = button.innerHTML;
+        const text = button.innerText.trim();
+        button.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> ${text || '...'}`;
+    } else {
+        button.disabled = false;
+        if (button.dataset.originalHtml) {
+            button.innerHTML = button.dataset.originalHtml;
+        }
+    }
+}
+
+/**
+ * Shared helper to handle successful approval/rejection
+ */
+function handleSuccess(userId, message) {
+    showMessage(message, 'success');
+    
+    // Remove the card from UI
+    const elements = document.querySelectorAll(`[data-user-id="${userId}"]`);
+    elements.forEach(el => {
+        el.style.transition = 'all 0.4s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px)';
+        setTimeout(() => el.remove(), 400);
+    });
+
+    // Update local state
+    pendingUsers = pendingUsers.filter(u => u.id !== userId);
+    
+    // Check if list is now empty
+    if (pendingUsers.length === 0) {
+        setTimeout(() => renderEmptyState(), 500);
     }
 }
 
