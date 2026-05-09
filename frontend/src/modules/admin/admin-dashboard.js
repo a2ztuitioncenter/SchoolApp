@@ -1635,30 +1635,7 @@ window.toggleShowAllUsers = function () {
     filterUsersTable();
 };
 
-window.toggleAddUserForm = function () {
-    const container = document.getElementById('add-user-container');
-    const btn = document.getElementById('btn-toggle-add-user');
-
-    if (!container || !btn) return;
-
-    if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
-        // Open
-        container.style.maxHeight = '800px';
-        container.style.opacity = '1';
-        container.style.marginBottom = '2rem';
-        btn.innerHTML = '<i class="fas fa-times"></i> Close Form';
-        btn.style.backgroundColor = 'var(--text-muted)';
-        btn.style.borderColor = 'var(--text-muted)';
-    } else {
-        // Close
-        container.style.maxHeight = '0px';
-        container.style.opacity = '0';
-        container.style.marginBottom = '0';
-        btn.innerHTML = '<i class="fas fa-plus"></i> Add User';
-        btn.style.backgroundColor = '';
-        btn.style.borderColor = '';
-    }
-};
+// Legacy Add User form logic removed
 
 window.toggleUserActionsMenu = function (id, event) {
     if (event) {
@@ -4927,32 +4904,48 @@ window.deleteTimetableRecord = async function (id) {
 window.openAddUserModal = function () {
     const modal = document.getElementById('addUserModal');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        const overlay = document.getElementById('addUserDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         
         // Reset username error state
         const errDiv = document.getElementById('user-username-error');
         if (errDiv) errDiv.style.display = 'none';
+
+        // Reset form
+        const form = document.getElementById('add-user-form');
+        if (form) form.reset();
     }
 };
 
 window.closeAddUserModal = function () {
     const modal = document.getElementById('addUserModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('addUserDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
 };
 
 window.openEditUserModal = function () {
     const modal = document.getElementById('editUserModal');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        const overlay = document.getElementById('editUserDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 };
 
 window.closeEditUserModal = function () {
     const modal = document.getElementById('editUserModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('editUserDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
 };
 
