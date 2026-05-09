@@ -30,7 +30,16 @@ export const registerUser = async (client, payload) => {
 
     const normalizedRole = (role || '').toLowerCase();
     if (!['student', 'teacher', 'staff'].includes(normalizedRole)) {
-        throw new Error('Invalid role. Must be student, teacher, or staff');
+        const err = new Error('Invalid role. Must be student, teacher, or staff');
+        err.status = 400;
+        throw err;
+    }
+
+    // 1. Validate Name (Required for all roles, especially students)
+    if (!name || name.trim() === '') {
+        const err = new Error('Full name is required for registration');
+        err.status = 400;
+        throw err;
     }
 
     // 0. Default Password for Admin-Created Users or Students

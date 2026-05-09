@@ -258,6 +258,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
       if (studentCount >= 4) return res.status(409).json({ error: 'Maximum 4 students per phone' });
       
       const fullName = sanitizeText(req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(), 100);
+      req.body.name = fullName; // Ensure the service receives the computed name
       const dob = req.body.dateOfBirth;
       const classLevel = req.body.classLevel || req.body.class_level;
 
