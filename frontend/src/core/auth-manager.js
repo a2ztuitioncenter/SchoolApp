@@ -43,6 +43,7 @@ export const setAuth = (authData) => {
     userId: authData.userId || authData.user?.id,
     name: authData.name || authData.user?.name || null,
     phone: authData.phone || authData.user?.phone || null,
+    csrfToken: authData.csrfToken || null,
     timestamp: Date.now()
   };
   const serializedAuth = JSON.stringify(auth);

@@ -11,8 +11,20 @@ export const base_api_url = config.API_BASE_URL;
  * Read the CSRF token from the csrf cookie (set by backend, readable by JS)
  */
 const getCsrfToken = () => {
+  // Try cookie first (same-site)
   const match = document.cookie.match(/(?:^|;\s*)csrf=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (match) return decodeURIComponent(match[1]);
+
+  // Fallback to stored auth state (cross-site)
+  try {
+    const authStr = sessionStorage.getItem('auth') || localStorage.getItem('auth');
+    if (authStr) {
+      const auth = JSON.parse(authStr);
+      return auth.csrfToken;
+    }
+  } catch (e) {}
+  
+  return null;
 };
 
 export const checkBackendHealth = async () => true;

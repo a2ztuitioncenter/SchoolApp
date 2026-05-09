@@ -42,7 +42,8 @@ export async function handleTeacherLogin() {
         role: 'teacher',
         userId: response.user.id,
         name: response.user.name,
-        phone: phone
+        phone: phone,
+        csrfToken: response.csrfToken
       });
 
       // Sync to sessionStorage for backward compatibility

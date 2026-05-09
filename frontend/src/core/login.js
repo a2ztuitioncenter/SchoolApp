@@ -48,7 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         role: 'student',
                         userId: response.userId || response.user?.id,
                         name: response.student?.name || '',
-                        phone: response.user?.phone || identifier
+                        phone: response.user?.phone || identifier,
+                        csrfToken: response.csrfToken
                     });
                     showSuccess(successDiv, 'Verified! Redirecting...');
                     setTimeout(() => window.location.href = '/student-dashboard.html', 1000);
@@ -90,7 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         role: 'teacher',
                         userId: response.user?.id || response.userId,
                         name: response.user?.name || '',
-                        phone: response.user?.phone || identifier
+                        phone: response.user?.phone || identifier,
+                        csrfToken: response.csrfToken
                     });
                     showSuccess(successDiv, 'Verified! Redirecting...');
                     setTimeout(() => window.location.href = '/teacher-dashboard.html', 1000);
@@ -132,7 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         role: 'admin',
                         userId: response.user?.id || response.userId,
                         name: response.user?.name || '',
-                        phone: response.user?.phone || identifier
+                        phone: response.user?.phone || identifier,
+                        csrfToken: response.csrfToken
                     });
                     showSuccess(successDiv, 'Verified! Redirecting...');
                     setTimeout(() => window.location.href = '/admin-dashboard.html', 1000);

@@ -22,6 +22,6 @@ export const config = {
   isVercel,
   isCloudflare,
   // Default to relative paths ('') for unified deployments
-  // For Vercel deployments, we fallback to the known Render URL if window.BACKEND_URL is missing
-  API_BASE_URL: window.BACKEND_URL || (isVercel ? 'https://schoolapp-1-qlr5.onrender.com' : '')
+  // This ensures we use the Vercel proxy (/api/* -> Render) which avoids CSRF/CORS issues
+  API_BASE_URL: window.BACKEND_URL || ''
 };
