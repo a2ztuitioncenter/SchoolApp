@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { getAllNotifications, createNotification, deleteNotification } from './notificationsController.js';
-import { authenticate, authorize } from '../../middleware/auth.js';
+import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
