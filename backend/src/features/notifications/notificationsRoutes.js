@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { getAllNotifications, createNotification, deleteNotification } from './notificationsController.js';
+import { authenticate, authorize } from '../../middleware/auth.js';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -21,7 +22,7 @@ const upload = multer({
 const router = express.Router();
 
 router.get('/', getAllNotifications);
-router.post('/', upload.single('attachment'), createNotification);
-router.delete('/:id', deleteNotification);
+router.post('/', authorize('admin'), upload.single('attachment'), createNotification);
+router.delete('/:id', authorize('admin'), deleteNotification);
 
 export default router;

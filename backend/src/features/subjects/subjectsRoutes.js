@@ -62,6 +62,24 @@ router.delete('/admin/:id', async (req, res) => {
     }
 });
 
+// 3a. Update Master Subject (Admin Only)
+router.put('/admin/:id', async (req, res) => {
+    try {
+        if (!req.user || req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Unauthorized' });
+        }
+        const { name, code } = req.body;
+        const subject = await subjectModel.updateMaster(req.params.id, { name, code }, req.db);
+        if (!subject) {
+            return res.status(404).json({ success: false, error: 'Subject not found' });
+        }
+        res.json({ success: true, data: subject });
+    } catch (err) {
+        console.error('Update master subject error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update subject' });
+    }
+});
+
 // --- ASSIGNMENTS ---
 
 // 4. Get Assignments (Filtered by Class/Section/Teacher)

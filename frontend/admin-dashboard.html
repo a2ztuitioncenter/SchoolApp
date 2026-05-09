@@ -2043,17 +2043,26 @@
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
                     <div class="form-group">
-                        <label>Target Class <small style="color:var(--text-muted)">(leave blank for ALL)</small></label>
+                        <label>Target Class <small style="color:var(--text-muted)">(optional)</small></label>
                         <select id="notice-class">
                             <option value="">All Classes</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Target Section <small style="color:var(--text-muted)">(optional)</small></label>
+                        <select id="notice-section">
+                            <option value="">All Sections</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr; gap: 15px;">
                     <div class="form-group">
                         <label>Recipient Role <small style="color:var(--text-muted)">(optional)</small></label>
                         <select id="notice-role">
                             <option value="">All Roles</option>
                             <option value="student">Students</option>
                             <option value="teacher">Teachers</option>
+                            <option value="staff">Staff</option>
                         </select>
                     </div>
                 </div>

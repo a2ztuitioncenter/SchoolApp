@@ -95,6 +95,19 @@ export const subjectModel = {
         return res.rows[0];
     },
 
+    // 6a. Update Master Subject
+    async updateMaster(id, { name, code }, db = pool) {
+        const query = `
+            UPDATE subjects 
+            SET name = $1, code = $2, updated_at = NOW()
+            WHERE id = $3
+            RETURNING *
+        `;
+        const values = [name, code, id];
+        const res = await db.query(query, values);
+        return res.rows[0];
+    },
+
     // 7. Delete Assignment
     async deleteAssignment(assignment_id, db = pool) {
         const query = 'DELETE FROM subject_assignments WHERE id = $1 RETURNING *';

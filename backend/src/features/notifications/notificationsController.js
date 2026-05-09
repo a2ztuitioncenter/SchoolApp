@@ -2,10 +2,50 @@ import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../ut
 
 export const getAllNotifications = async (req, res) => {
   try {
-    const result = await req.db.query('SELECT * FROM notifications ORDER BY created_at DESC');
+    const { userId, role } = req.user;
+    
+    let query = `
+      SELECT n.*, u.name as creator_name 
+      FROM notifications n 
+      LEFT JOIN users u ON n.created_by = u.id
+    `;
+    let params = [];
+
+    if (role === 'admin') {
+      // Admins see everything
+      query += ' ORDER BY created_at DESC';
+    } else if (role === 'student') {
+      // Students see ALL notices, or role=student notices, filtered by class/section
+      const studentRes = await req.db.query(
+        'SELECT class_level, section FROM students WHERE user_id = $1',
+        [userId]
+      );
+      
+      if (studentRes.rows.length > 0) {
+        const { class_level, section } = studentRes.rows[0];
+        query += `
+          WHERE (recipient_role IS NULL OR LOWER(recipient_role) = 'all' OR LOWER(recipient_role) = 'student')
+          AND (class_level IS NULL OR class_level = $1)
+          AND (section IS NULL OR section = $2 OR section = 'ALL')
+        `;
+        params = [class_level, section];
+      } else {
+        query += " WHERE recipient_role IS NULL OR LOWER(recipient_role) = 'all'";
+      }
+      query += ' ORDER BY created_at DESC';
+    } else {
+      // Teachers and Staff see ALL notices, or notices specifically for their role
+      query += `
+        WHERE (recipient_role IS NULL OR LOWER(recipient_role) = 'all' OR LOWER(recipient_role) = $1)
+        ORDER BY created_at DESC
+      `;
+      params = [role.toLowerCase()];
+    }
+
+    const result = await req.db.query(query, params);
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    console.error('getAllNotifications:', err);
+    console.error('getAllNotifications ERROR:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 };

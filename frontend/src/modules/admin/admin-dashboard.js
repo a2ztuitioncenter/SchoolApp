@@ -233,6 +233,7 @@ async function initDashboard() {
         const title = document.getElementById('notice-title')?.value.trim();
         const message = document.getElementById('notice-message')?.value.trim();
         const classLevel = document.getElementById('notice-class')?.value || '';
+        const section = document.getElementById('notice-section')?.value || '';
         const recipientRole = document.getElementById('notice-role')?.value || '';
         const attachment = document.getElementById('notice-attachment')?.files[0];
 
@@ -245,6 +246,7 @@ async function initDashboard() {
         formData.append('title', title);
         formData.append('message', message);
         formData.append('classLevel', classLevel);
+        formData.append('section', section);
         formData.append('recipientRole', recipientRole);
 
         // Upload-first check
@@ -4588,7 +4590,9 @@ window.showSendNoticeModal = function () {
         // Initialize dynamic class dropdown
         populateERPFilters({
             classSelectId: 'notice-class',
-            allClassesLabel: 'All Classes'
+            sectionSelectId: 'notice-section',
+            allClassesLabel: 'All Classes',
+            allSectionsLabel: 'All Sections'
         });
     }
 };
