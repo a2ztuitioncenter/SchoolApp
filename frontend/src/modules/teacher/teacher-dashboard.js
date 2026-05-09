@@ -557,7 +557,7 @@ function renderWeeklyTimetable() {
       );
 
       return `
-        <div style="flex: 1; min-width: 350px; margin-bottom: 2rem;">
+        <div style="flex: 1; min-width: 280px; margin-bottom: 2rem;">
           <div style="background: #0052cc; color: white; padding: 12px 16px; border-radius: 6px; font-weight: 500; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
             <i class="fas fa-book"></i> Class ${classLevel}
           </div>
@@ -828,12 +828,12 @@ function renderHomeworkTable() {
     const assignedByName = hw.assignedByName || 'Teacher';
     
     return `<tr>
-      <td><strong>${hw.title}</strong></td>
-      <td><span class="status-badge status-active">${classLevel}</span></td>
-      <td><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${section}</span></td>
-      <td>${hw.subject}</td>
-      <td>${due}</td>
-      <td style="text-align: right;">
+      <td data-label="Title"><strong>${hw.title}</strong></td>
+      <td data-label="Class"><span class="status-badge status-active">${classLevel}</span></td>
+      <td data-label="Section"><span class="status-badge" style="background-color: #e0e7ff; color: #4f46e5;">${section}</span></td>
+      <td data-label="Subject">${hw.subject}</td>
+      <td data-label="Due Date">${due}</td>
+      <td data-label="Actions" style="text-align: right;">
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(this)">⋮</button>
           <div class="action-menu-dropdown" onclick="event.stopPropagation()">
@@ -1146,13 +1146,13 @@ function renderMaterialsTable() {
 
   tbody.innerHTML = toShow.map(m => `
     <tr>
-      <td><strong>${m.title}</strong></td>
-      <td>${m.subject}</td>
-      <td><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">Class ${m.classLevel}</span></td>
-      <td><span class="badge secondary">${m.section || '-'}</span></td>
-      <td>${m.uploadedBy}</td>
-      <td><small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small></td>
-      <td style="text-align: right;">
+      <td data-label="Title"><strong>${m.title}</strong></td>
+      <td data-label="Subject">${m.subject}</td>
+      <td data-label="Class"><span class="badge" style="background:var(--bg-hover); color:var(--text-main); border:1px solid var(--border-subtle);">Class ${m.classLevel}</span></td>
+      <td data-label="Section"><span class="badge secondary">${m.section || '-'}</span></td>
+      <td data-label="Author">${m.uploadedBy}</td>
+      <td data-label="Date"><small style="color: var(--text-muted);">${formatDate(m.createdAt)}</small></td>
+      <td data-label="Actions" style="text-align: right;">
         <div class="action-menu">
           <button class="action-menu-btn" onclick="toggleActionMenu(event)">⋮</button>
           <div class="action-menu-dropdown">

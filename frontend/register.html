@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - A2Z Tuition Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./src/assets/css/theme.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-background, #f9fafb);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Left side - Branding */
+        .auth-brand {
+            flex: 1;
+            background: linear-gradient(135deg, var(--color-primary, #4f46e5) 0%, var(--color-primary-dark, #3730a3) 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem;
+            position: relative;
+            overflow: hidden;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .auth-brand::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.1)" stroke-width="2" fill="none"/></svg>') center/150px;
+            opacity: 0.5;
+            animation: pulse 10s infinite linear;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .auth-brand-content {
+            position: relative;
+            z-index: 1;
+            max-width: 480px;
+        }
+
+        .auth-logo {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            color: white;
+            text-decoration: none;
+        }
+
+        .auth-brand h1 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+        }
+
+        .auth-brand p {
+            font-size: 1.125rem;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+        }
+
+        /* Right side - Form */
+        .auth-form-wrapper {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            padding: 4rem 2rem;
+            background: var(--color-surface, #ffffff);
+            align-items: center;
+        }
+
+        .auth-form-container {
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .auth-header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .auth-header h2 {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--text-primary, #111827);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .auth-header p {
+            color: var(--text-secondary, #6b7280);
+            margin: 0;
+        }
+
+        /* Role Selection */
+        .role-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .role-card {
+            flex: 1;
+            border: 2px solid var(--border-color, #e5e7eb);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .role-card.active {
+            border-color: var(--color-primary, #4f46e5);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .role-icon {
+            font-size: 2rem;
+            color: var(--color-primary, #4f46e5);
+            margin-bottom: 1rem;
+        }
+
+        .role-card h3 {
+            margin: 0;
+            font-size: 1.125rem;
+            color: var(--text-primary, #111827);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Forms */
+        .form-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            flex: 1;
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary, #374151);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color, #d1d5db);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--color-primary, #4f46e5);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary, #111827);
+            margin: 2rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1rem;
+            background: var(--color-primary, #4f46e5);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 1.5rem;
+        }
+
+        .btn-submit:hover {
+            background: var(--color-primary-dark, #4338ca);
+        }
+
+        .btn-submit:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .auth-footer {
+            margin-top: 2.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary, #6b7280);
+        }
+
+        .auth-footer a {
+            color: var(--color-primary, #4f46e5);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .message-box {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            display: none;
+        }
+
+        .message-box.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            display: block;
+        }
+
+        .message-box.success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            .auth-brand {
+                display: none;
+            }
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            .role-selector {
+                flex-direction: column;
+            }
+            .auth-form-wrapper {
+                padding: 2rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <!-- Left Side Branding -->
+        <div class="auth-brand">
+            <div class="auth-brand-content">
+                <a href="/" class="auth-logo">
+                    <i class="fa fa-graduation-cap"></i> A2Z Tuition
+                </a>
+                <h1>Join the Future of Learning</h1>
+                <p>Create your account today and unlock a world of personalized education, expert tutors, and comprehensive management tools.</p>
+            </div>
+        </div>
+
+        <!-- Right Side Form -->
+        <div class="auth-form-wrapper">
+            <div class="auth-form-container">
+                <div class="auth-header">
+                    <h2>Create an Account</h2>
+                    <p>Select your role to get started</p>
+                </div>
+
+                <div class="role-selector">
+                    <div class="role-card active" data-target="student">
+                        <div class="role-icon"><i class="fas fa-user-graduate"></i></div>
+                        <h3>Student</h3>
+                    </div>
+                    <div class="role-card" data-target="teacher">
+                        <div class="role-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <h3>Teacher / Staff</h3>
+                    </div>
+                </div>
+
+                <!-- Student Signup -->
+                <div class="form-section active" id="student-section">
+                    <div id="studentSignupError" class="message-box"></div>
+                    <div id="studentSignupSuccess" class="message-box"></div>
+                    <form id="studentSignupFormElement">
+                        <div class="form-section-title">Personal Information</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="student-first-name">First Name *</label>
+                                <input type="text" id="student-first-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-last-name">Last Name</label>
+                                <input type="text" id="student-last-name">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="student-username">Username *</label>
+                            <input type="text" id="student-username" required>
+                            <small id="student-username-status" style="display:block;margin-top:0.25rem;color:#6b7280;">Minimum 5 characters</small>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="student-dob">Date of Birth *</label>
+                                <input type="date" id="student-dob" required>
+                                <small style="display:block;margin-top:0.25rem;color:#6b7280;">Acts as your initial password.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-phone">Phone Number *</label>
+                                <input type="tel" id="student-phone" pattern="[0-9]{10}" placeholder="10-digit number" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="student-email">Email (Optional)</label>
+                            <input type="email" id="student-email">
+                        </div>
+
+                        <div class="form-section-title">Academic Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="student-class">Class Level *</label>
+                                <select id="student-class" required>
+                                    <option value="">Select Class</option>
+                                    <option value="7">Class 7</option>
+                                    <option value="8">Class 8</option>
+                                    <option value="9">Class 9</option>
+                                    <option value="10">Class 10</option>
+                                    <option value="11">Class 11</option>
+                                    <option value="12">Class 12</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-section-select">Section *</label>
+                                <select id="student-section-select" required>
+                                    <option value="">Select Section</option>
+                                    <option value="A">Section A</option>
+                                    <option value="B">Section B</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-section-title">Parent Information</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="student-father">Father's Name *</label>
+                                <input type="text" id="student-father" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-mother">Mother's Name *</label>
+                                <input type="text" id="student-mother" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="studentSignupBtn" class="btn-submit">Sign Up as Student</button>
+                    </form>
+                </div>
+
+                <!-- Teacher Signup -->
+                <div class="form-section" id="teacher-section">
+                    <div id="teacherSignupError" class="message-box"></div>
+                    <div id="teacherSignupSuccess" class="message-box"></div>
+                    <form id="teacherSignupFormElement">
+                        <div class="form-group">
+                            <label for="teacher-role">I am a *</label>
+                            <select id="teacher-role" required>
+                                <option value="teacher">Teacher</option>
+                                <option value="staff">Staff</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacher-name">Full Name *</label>
+                            <input type="text" id="teacher-name" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="teacher-username">Username *</label>
+                                <input type="text" id="teacher-username" required>
+                                <small id="teacher-username-status" style="display:block;margin-top:0.25rem;color:#6b7280;">Minimum 5 characters</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="teacher-phone">Phone Number *</label>
+                                <input type="tel" id="teacher-phone" pattern="[0-9]{10}" placeholder="10-digit number" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacher-email">Email Address *</label>
+                            <input type="email" id="teacher-email" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="teacher-password">Password *</label>
+                                <input type="password" id="teacher-password" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="teacher-confirm">Confirm Password *</label>
+                                <input type="password" id="teacher-confirm" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="teacherSignupBtn" class="btn-submit">Sign Up as Teacher / Staff</button>
+                    </form>
+                </div>
+
+                <div class="auth-footer">
+                    Already have an account? <a href="/login">Log in</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- We can reuse the registration success popup component via JS if needed -->
+    <script type="module" src="./src/core/register.js"></script>
+</body>
+</html>

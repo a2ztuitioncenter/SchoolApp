@@ -42,7 +42,10 @@ const server = Bun.serve({
       const headers = new Headers(req.headers);
       headers.set("X-Forwarded-Host", url.host);
       headers.set("X-Forwarded-Proto", url.protocol.replace(':', ''));
-      // Do NOT set "Host" to 127.0.0.1:3000 as it can break cookie domain matching
+      
+      // CRITICAL: Remove headers that Bun's fetch might conflict with when forwarding
+      headers.delete("Host");
+      headers.delete("Content-Length");
 
       console.log(`[PROXY] ${req.method} ${pathname} -> ${backendUrl}`);
       
@@ -50,7 +53,7 @@ const server = Bun.serve({
         const response = await fetch(backendUrl, {
           method: req.method,
           headers: headers,
-          body: req.body,
+          body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
           // @ts-ignore
           duplex: "half" 
         });
@@ -66,9 +69,13 @@ const server = Bun.serve({
           status: response.status,
           headers: newHeaders
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error(`[PROXY ERROR] Failed to reach backend:`, error);
-        return new Response(JSON.stringify({ error: "Backend unreachable" }), {
+        return new Response(JSON.stringify({ 
+          error: "Backend unreachable",
+          details: error.message,
+          url: backendUrl
+        }), {
           status: 502,
           headers: { "Content-Type": "application/json" }
         });
@@ -79,9 +86,24 @@ const server = Bun.serve({
     //  FORCE ROOT → INDEX
     if (pathname === "/") {
       pathname = "/index.html";
+    } else if (pathname === "/login") {
+      pathname = "/login.html";
+    } else if (pathname === "/register") {
+      pathname = "/register.html";
+    } else if (pathname === "/forgot-password") {
+      pathname = "/forgot-password.html";
     }
 
-    const filePath = path.join(publicDir, pathname);
+    let filePath = path.join(publicDir, pathname);
+
+    // If extensionless path doesn't exist, try appending .html
+    if (!fs.existsSync(filePath) && !path.extname(pathname)) {
+        const htmlPath = filePath + ".html";
+        if (fs.existsSync(htmlPath)) {
+            filePath = htmlPath;
+            pathname = pathname + ".html";
+        }
+    }
 
     //  Serve file if exists with Browser Caching
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {

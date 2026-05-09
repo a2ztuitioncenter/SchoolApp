@@ -1716,14 +1716,14 @@ function renderUsersTable(users) {
 
     tbody.innerHTML = toShow.map((u, index) => `
         <tr data-user-id="${u.id}">
-            <td>${index + 1}</td>
-            <td><code>${escapeHtml(u.teacherId || '-')}</code></td>
-            <td><strong>${escapeHtml(u.name || '-')}</strong></td>
-            <td>${escapeHtml(u.phone || '-')}</td>
-            <td>${escapeHtml(u.email || '-')}</td>
-            <td>${u.role ? escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1)) : '-'}</td>
-            <td><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${escapeHtml(u.status || (u.isActive ? 'active' : 'inactive'))}</span></td>
-            <td>
+            <td data-label="#">${index + 1}</td>
+            <td data-label="ID"><code>${escapeHtml(u.teacherId || '-')}</code></td>
+            <td data-label="Name"><strong>${escapeHtml(u.name || '-')}</strong></td>
+            <td data-label="Phone">${escapeHtml(u.phone || '-')}</td>
+            <td data-label="Email">${escapeHtml(u.email || '-')}</td>
+            <td data-label="Role">${u.role ? escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1)) : '-'}</td>
+            <td data-label="Status"><span class="status-badge ${u.status === 'active' ? 'status-active' : (u.status === 'pending' ? 'status-pending' : 'status-rejected')}">${escapeHtml(u.status || (u.isActive ? 'active' : 'inactive'))}</span></td>
+            <td data-label="Actions">
                 <div class="action-menu">
                     <button class="action-menu-btn" onclick="toggleUserMenu(event);">⋮</button>
                     <div class="action-menu-dropdown" data-user-id="${u.id}">
@@ -2059,7 +2059,9 @@ function renderStudentsTable(students) {
 window.openAddStudentModal = function () {
     const modal = document.getElementById('add-student-modal');
     if (modal) {
-        modal.style.display = 'block';
+        modal.classList.add('active');
+        const overlay = document.getElementById('addStudentDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.getElementById('add-student-form').reset();
         document.body.style.overflow = 'hidden';
 
@@ -2074,7 +2076,11 @@ window.openAddStudentModal = function () {
 
 window.closeAddStudentModal = function () {
     const modal = document.getElementById('add-student-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('addStudentDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
 };
 
@@ -2101,7 +2107,9 @@ window.openEditStudentModal = async function (id) {
         });
 
 
-        modal.style.display = 'block';
+        modal.classList.add('active');
+        const overlay = document.getElementById('editStudentDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         closeAllStudentMenus();
     }
@@ -2764,7 +2772,9 @@ function setupFeeDescriptionDropdown() {
 window.openAddFeeModal = function () {
     const modal = document.getElementById('add-fee-modal');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        const overlay = document.getElementById('addFeeDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
 
         // Reset form
@@ -2792,7 +2802,11 @@ window.openAddFeeModal = function () {
 
 window.closeAddFeeModal = function () {
     const modal = document.getElementById('add-fee-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('addFeeDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
     selectedFeeStudentId = null;
 };
@@ -3225,14 +3239,20 @@ window.showMarkPaidConfirmation = function (feeId) {
     // Show modal
     const modal = document.getElementById('mark-paid-modal');
     if (modal) {
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        const overlay = document.getElementById('markPaidDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 };
 
 window.closeMarkPaidModal = function () {
     const modal = document.getElementById('mark-paid-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('markPaidDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
     pendingMarkPaidFeeId = null;
 };
@@ -3637,7 +3657,9 @@ window.openMaterialModal = async function (material = null) {
         document.getElementById('material-id').value = '';
     }
 
-    modal.style.display = 'flex';
+    modal.classList.add('active');
+        const overlay = document.getElementById('materialDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
     closeAllMaterialMenus();
 };
@@ -3732,7 +3754,9 @@ window.loadSubjectAssignments = async function () {
 
 window.openAddSubjectModal = function () {
     const modal = document.getElementById('add-subject-modal');
-    modal.style.display = 'flex';
+    modal.classList.add('active');
+        const overlay = document.getElementById('addSubjectDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 };
 
@@ -3769,7 +3793,9 @@ window.openAssignSubjectModal = async function () {
         console.error(err);
     }
 
-    modal.style.display = 'flex';
+    modal.classList.add('active');
+        const overlay = document.getElementById('assignSubjectDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 };
 
@@ -3893,7 +3919,9 @@ window.openAddHomeworkModal = async function () {
     if (!modal) return;
 
     resetUploadProgress('hw');
-    modal.style.display = 'block';
+    modal.classList.add('active');
+        const overlay = document.getElementById('addHomeworkDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
     document.getElementById('homework-form').reset();
     document.getElementById('hw-edit-id').value = '';
     document.getElementById('hw-current-attachment').style.display = 'none';
@@ -3918,7 +3946,9 @@ window.openEditHomeworkModal = async function (id) {
     if (!hw) return;
 
     resetUploadProgress('hw');
-    document.getElementById('add-homework-modal').style.display = 'block';
+    document.getElementById('add-homework-modal').classList.add('active');
+        const overlay = document.getElementById('addHomeworkDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 
     // Populate ERP filters with defaults
@@ -4572,7 +4602,9 @@ window.showSendNoticeModal = function () {
     const modal = document.getElementById('notice-modal');
     if (modal) {
         resetUploadProgress('notice');
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        const overlay = document.getElementById('noticeDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.getElementById('notice-form')?.reset();
         document.body.style.overflow = 'hidden';
 
@@ -4586,7 +4618,11 @@ window.showSendNoticeModal = function () {
 
 window.closeNoticeModal = function () {
     const modal = document.getElementById('notice-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('noticeDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
 };
 
@@ -4615,7 +4651,9 @@ window.openAddTimetableModal = function () {
     if (modal) {
         document.getElementById('tt-id').value = '';
         document.getElementById('timetable-form').reset();
-        modal.style.display = 'flex';
+        modal.classList.add('active');
+        const overlay = document.getElementById('timetableDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         loadTimetableDropdowns();
     }
@@ -4623,7 +4661,11 @@ window.openAddTimetableModal = function () {
 
 window.closeTimetableModal = function () {
     const modal = document.getElementById('timetable-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('timetableDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.getElementById('timetable-form').reset();
     document.body.style.overflow = '';
 };
@@ -4986,7 +5028,11 @@ async function updateAdminProfileUI() {
 window.loadAuditLogs = async function () {
     const modal = document.getElementById('audit-logs-modal');
     const tbody = document.getElementById('audit-logs-tbody');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+            modal.classList.add('active');
+            const overlay = document.getElementById('auditLogsDrawerOverlay');
+            if (overlay) overlay.classList.add('active');
+        }
 
     if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Fetching logs...</td></tr>';
 
@@ -5032,7 +5078,9 @@ window.openEditProfileModal = async function () {
             document.getElementById('edit-profile-email').value = res.data.email || '';
             document.getElementById('edit-profile-designation').value = res.data.designation || '';
             document.getElementById('edit-profile-avatar').value = res.data.avatar_url || '';
-            document.getElementById('edit-profile-modal').style.display = 'flex';
+            document.getElementById('edit-profile-modal').classList.add('active');
+        const overlay = document.getElementById('editProfileDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
         }
     } catch (err) {
         showErrorAlert('Failed to fetch profile details');
@@ -5209,7 +5257,9 @@ window.cm_openEditor = async function (key) {
     if (!modal) return;
 
     document.getElementById('cm-editor-title').textContent = 'Edit: ' + meta.label;
-    modal.style.display = 'flex';
+    modal.classList.add('active');
+        const overlay = document.getElementById('cmEditorDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 
     // Default to Quill for legacy support
@@ -5264,7 +5314,11 @@ window.cm_openEditor = async function (key) {
 
 window.cm_closeEditor = function () {
     const modal = document.getElementById('cm-editor-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('cmEditorDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
 };
 
@@ -5337,7 +5391,9 @@ window.cm_previewContent = async function (key) {
             }
 
             document.getElementById('cm-preview-ts').textContent = 'Last updated: ' + new Date(res.data.updated_at).toLocaleString();
-            modal.style.display = 'flex';
+            modal.classList.add('active');
+        const overlay = document.getElementById('cmPreviewDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
         } else {
             showInfoAlert('This page has no content yet.', 3000);
@@ -5350,7 +5406,11 @@ window.cm_previewContent = async function (key) {
 
 window.cm_closePreview = function () {
     const m = document.getElementById('cm-preview-modal');
-    if (m) m.style.display = 'none';
+    if (m) {
+        m.classList.remove('active');
+        const overlay = document.getElementById('cmPreviewDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     document.body.style.overflow = '';
 };
 

@@ -9,6 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./src/assets/css/theme.css">
     <link rel="stylesheet" href="./src/assets/css/index.css">
     <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');</script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -55,11 +56,8 @@
                     </ul>
                 </nav>
                 <div class="erp-header-auth">
-                    <a class="erp-btn erp-btn-ghost" id="header-login" href="#"
-                        onclick="openAuthLoginSelector(event)">Log
-                        in</a>
-                    <a class="erp-btn erp-btn-primary" id="header-signup" href="#"
-                        onclick="openAuthSignupSelector(event)">Sign up</a>
+                    <a class="erp-btn erp-btn-ghost" id="header-login" href="/login">Log in</a>
+                    <a class="erp-btn erp-btn-primary" id="header-signup" href="/register">Sign up</a>
                 </div>
                 <button class="erp-mobile-menu-btn" aria-label="Menu"
                     onclick="document.body.classList.toggle('menu-open')">
@@ -71,8 +69,8 @@
                     <li><a href="javascript:document.body.classList.remove('menu-open');showLandingContent('programs','Programs',event)">Programs</a></li>
                     <li><a href="javascript:document.body.classList.remove('menu-open');showLandingContent('resources','Resources',event)">Resources</a></li>
                     <li><a href="javascript:document.body.classList.remove('menu-open');showLandingContent('contact','Contact Us',event)">Contact Us</a></li>
-                    <li><a href="#" onclick="document.body.classList.remove('menu-open');openAuthLoginSelector(event)">Log in</a></li>
-                    <li><a href="#" onclick="document.body.classList.remove('menu-open');openAuthSignupSelector(event)">Sign up</a></li>
+                    <li><a href="/login" onclick="document.body.classList.remove('menu-open');">Log in</a></li>
+                    <li><a href="/register" onclick="document.body.classList.remove('menu-open');">Sign up</a></li>
                 </ul>
             </div>
     </header>
@@ -86,10 +84,9 @@
                 <p class="erp-subtitle">A modern learning ecosystem designed for academic excellence. Empowering
                     students with expert tutoring and personalized progress tracking.</p>
                 <div class="erp-hero-cta">
-                    <button class="erp-btn erp-btn-primary erp-btn-large" id="btn-get-started-hero"
-                        onclick="openAuthLoginSelector(event)">
+                    <a href="/login" class="erp-btn erp-btn-primary erp-btn-large" id="btn-get-started-hero">
                         Get Started <i class="fa fa-arrow-right"></i>
-                    </button>
+                    </a>
                     <a href="#" class="erp-btn erp-btn-outline erp-btn-large"
                         onclick="showLandingContent('learn-more','About A2Z Tuition',event)">Learn More</a>
                 </div>
@@ -113,7 +110,7 @@
                             <h3>Student Portal</h3>
                             <p>Comprehensive management for student profiles, personalized learning paths, and progress
                                 tracking analytics.</p>
-                            <a href="#" class="erp-card-link" onclick="openAuthLoginSelector(event)">Explore Portal <i
+                            <a href="/login" class="erp-card-link">Explore Portal <i
                                     class="fa fa-arrow-right"></i></a>
                         </div>
                     </div>
@@ -174,362 +171,7 @@
         </section>
 
 
-        <!-- Central Auth Modal -->
-        <div class="auth-modal hidden" id="authModal">
-            <div class="modal-overlay" onclick="closeAuthModal()"></div>
-            <div class="modal-container">
-                <button class="modal-close" onclick="closeAuthModal()" aria-label="Close modal"><i
-                        class="fas fa-times"></i></button>
-                <div id="authContent"></div>
-            </div>
-        </div>
 
-        <!-- Hidden Form Containers (for modal injection) -->
-
-        <!-- Student Login Form -->
-        <template id="studentLoginForm">
-            <div class="modal-header">
-                <div class="modal-logo"><i class="fas fa-graduation-cap"></i></div>
-                <div class="student-badge">Student Login</div>
-                <h2>A2Z</h2>
-                <p class="modal-subtitle">Welcome back! Enter your details to continue.</p>
-            </div>
-            <div class="error-message" id="studentLoginError"></div>
-            <div class="success-message" id="studentLoginSuccess"></div>
-            <form id="studentLoginFormElement">
-                <div class="form-group">
-                    <label for="student-login-identifier">Phone Number or Username</label>
-                    <input type="text" id="student-login-identifier" name="identifier"
-                        placeholder="Enter phone number or username" required>
-                </div>
-                <div class="form-group">
-                    <label for="student-login-dob">Password</label>
-                    <input type="password" id="student-login-dob" name="dateOfBirth" placeholder="Enter your date of birth (DDMMYYYY)"
-                        required>
-                    <small style="color:#888;font-size:0.8rem">Your date of birth serves as your password.</small>
-                </div>
-                <button type="submit" id="studentLoginBtn" class="btn-submit">Log In</button>
-            </form>
-            <div class="modal-footer">
-                <p>Don't have an account? <a href="#" onclick="openAuthModal('signup', 'student')">Sign up</a></p>
-            </div>
-        </template>
-
-        <!-- Teacher Login Form -->
-        <template id="teacherLoginForm">
-            <div class="modal-header">
-                <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
-                <div class="teacher-badge">Teacher Portal</div>
-                <h2>A2Z</h2>
-                <p class="modal-subtitle">Educator Access Portal</p>
-            </div>
-            <div class="error-message" id="teacherLoginError"></div>
-            <div class="success-message" id="teacherLoginSuccess"></div>
-            <form id="teacherLoginFormElement">
-                <div class="form-group">
-                    <label for="teacher-login-identifier">Phone Number or Username</label>
-                    <input type="text" id="teacher-login-identifier" name="identifier"
-                        placeholder="Enter phone number or username" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-login-password">Password</label>
-                    <input type="password" id="teacher-login-password" name="password" placeholder="Enter your password"
-                        required>
-                </div>
-                <button type="button" id="teacherLoginBtn" class="btn-submit">Login as Teacher</button>
-            </form>
-            <div class="modal-footer">
-                <p>Don't have an account? <a href="#" onclick="openAuthModal('signup', 'teacher')">Sign up</a></p>
-            </div>
-        </template>
-
-        <!-- Admin Login Form -->
-        <template id="adminLoginForm">
-            <div class="modal-header">
-                <div class="modal-logo"><i class="fas fa-building"></i></div>
-                <div class="admin-badge">Admin Panel</div>
-                <h2>A2Z</h2>
-                <p class="modal-subtitle">Administrator Portal</p>
-            </div>
-            <div class="error-message" id="adminLoginError"></div>
-            <div class="success-message" id="adminLoginSuccess"></div>
-            <form id="adminLoginFormElement">
-                <div class="form-group">
-                    <label for="admin-login-identifier">Phone Number or Username</label>
-                    <input type="text" id="admin-login-identifier" name="identifier"
-                        placeholder="Enter phone number or username" required>
-                </div>
-                <div class="form-group">
-                    <label for="admin-login-password">Password</label>
-                    <input type="password" id="admin-login-password" name="password" placeholder="Enter your password"
-                        required>
-                </div>
-                <button type="button" id="adminLoginBtn" class="btn-submit">Login as Admin</button>
-            </form>
-            <div class="modal-footer">
-                <p><a href="#" onclick="openAuthModal('login', 'student')">← Back to Login</a></p>
-            </div>
-        </template> <template id="studentSignupForm">
-            <div class="modal-header modal-header-dark">
-                <div class="modal-logo"><i class="fas fa-user-plus"></i></div>
-                <h2>Student Registration</h2>
-                <p class="modal-subtitle">Join A2Z Tuition today and start your learning journey.</p>
-            </div>
-            <div class="error-message" id="studentSignupError"></div>
-            <div class="success-message" id="studentSignupSuccess"></div>
-            <form id="studentSignupFormElement">
-                <!-- Personal Information -->
-                <div class="form-section-title">Personal Information</div>
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-firstName">First Name *</label>
-                        <input type="text" id="student-signup-firstName" placeholder="First name" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-lastName">Last Name</label>
-                        <input type="text" id="student-signup-lastName" placeholder="Last name (optional)">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="student-signup-username">Username * <small style="color:#aaa">(min 5 chars, letters/numbers/underscore)</small></label>
-                    <input type="text" id="student-signup-username" placeholder="Choose a unique username" required>
-                    <div id="student-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and underscores only.</div>
-                </div>
-
-
-                <div class="form-group">
-                    <label for="student-signup-dob">Date of Birth *</label>
-                    <input type="date" id="student-signup-dob" name="dateOfBirth" required max="2020-01-01">
-                    <small style="color:#888;font-size:0.8rem">Used for login verification instead of a
-                        password.</small>
-                </div>
-
-                <!-- Academic Information -->
-                <div class="form-section-title">Academic Information</div>
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-class">Class Level *</label>
-                        <select id="student-signup-class" required>
-                            <option value="">Select</option>
-                            <option value="7">7</option>
-                            <option value="8">8</option>
-                            <option value="9">9</option>
-                            <option value="10">10</option>
-                            <option value="11">11</option>
-                            <option value="12">12</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-section">Section *</label>
-                        <select id="student-signup-section" required>
-                            <option value="">Select</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Contact & Login -->
-                <div class="form-section-title">Contact</div>
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-phone">Phone Number *</label>
-                        <input type="tel" id="student-signup-phone" placeholder="10-digit number" pattern="[0-9]{10}"
-                            required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-email">Email</label>
-                        <input type="email" id="student-signup-email" placeholder="student@a2z.local">
-                    </div>
-                </div>
-
-                <!-- Parent Information -->
-                <div class="form-section-title">Parent Information</div>
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-fatherName">Father's Name *</label>
-                        <input type="text" id="student-signup-fatherName" placeholder="Father's full name" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="student-signup-motherName">Mother's Name *</label>
-                        <input type="text" id="student-signup-motherName" placeholder="Mother's full name" required>
-                    </div>
-                </div>
-
-                <button type="submit" id="studentSignupBtn" class="btn-submit">Sign Up</button>
-            </form>
-            <div class="modal-footer">
-                <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'student')">Log in</a></p>
-            </div>
-        </template>
-
-        <!-- Teacher Signup Form -->
-        <template id="teacherSignupForm">
-            <div class="modal-header">
-                <div class="modal-logo"><i class="fas fa-chalkboard-user"></i></div>
-                <div class="teacher-badge">Teacher/Staff</div>
-                <h2>Teacher Registration</h2>
-                <p class="modal-subtitle">Join A2Z Tuition and inspire students to learn!</p>
-            </div>
-            <div class="error-message" id="teacherSignupError"></div>
-            <div class="success-message" id="teacherSignupSuccess"></div>
-            <form id="teacherSignupFormElement">
-                <div class="form-group">
-                    <label for="teacher-signup-role">I am a *</label>
-                    <select id="teacher-signup-role" required>
-                        <option value="">-- Select role --</option>
-                        <option value="teacher">Teacher</option>
-                        <option value="staff">Staff</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-signup-name">Full Name</label>
-                    <input type="text" id="teacher-signup-name" name="name" placeholder="John Smith" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-signup-username">Username * <small style="color:#aaa">(min 5 chars, letters/numbers/underscore)</small></label>
-                    <input type="text" id="teacher-signup-username" placeholder="Choose a unique username"
-                        required minlength="5" maxlength="50">
-                    <small id="teacher-signup-username-status" style="font-size:0.8rem;color:#888">Letters, numbers, and
-                        underscores only.</small>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-signup-email">Email Address</label>
-                    <input type="email" id="teacher-signup-email" name="email" placeholder="john@example.com" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-signup-phone">Phone Number</label>
-                    <input type="tel" id="teacher-signup-phone" name="phone" placeholder="10-digit number"
-                        pattern="[0-9]{10}" required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-signup-password">Password</label>
-                    <input type="password" id="teacher-signup-password" name="password" placeholder="Create a password"
-                        required>
-                </div>
-                <div class="form-group">
-                    <label for="teacher-signup-confirm">Confirm Password</label>
-                    <input type="password" id="teacher-signup-confirm" name="confirmPassword"
-                        placeholder="Confirm your password" required>
-                </div>
-                <button type="submit" id="teacherSignupBtn" class="btn-submit">Sign Up</button>
-            </form>
-            <div class="modal-footer">
-                <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'teacher')">Log in</a></p>
-            </div>
-        </template>
-
-        <!-- Unified Registration Form (Student, Teacher, Staff) -->
-        <template id="unifiedSignupForm">
-            <div class="modal-header modal-header-dark">
-                <div class="modal-logo"><i class="fas fa-user-plus"></i></div>
-                <h2>Register for A2Z Tuition</h2>
-                <p class="modal-subtitle">Select your role to get started.</p>
-            </div>
-            <div class="error-message" id="error-message"></div>
-            <div class="success-message" id="success-message"></div>
-            <form id="register-form">
-                <!-- Role Selection -->
-                <div class="form-group">
-                    <label for="role-select">Select Your Role *</label>
-                    <select id="role-select" required>
-                        <option value="">-- Choose a role --</option>
-                        <option value="student">Student</option>
-                        <option value="teacher">Teacher</option>
-                        <option value="staff">Staff</option>
-                    </select>
-                </div>
-
-                <!-- Common Fields -->
-                <div class="form-group">
-                    <label for="name-input">Full Name *</label>
-                    <input type="text" id="name-input" placeholder="Enter your full name" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="username-input">Username * <small style="color:#aaa">(min 5 chars, letters/numbers/underscore)</small></label>
-                    <input type="text" id="username-input" placeholder="Choose a unique username" required>
-                    <div id="username-input-error" class="error-text" style="display:none; font-size: 0.75rem; color: #ff6b6b; margin-top: 4px;"></div>
-                </div>
-
-                <div class="form-group">
-                    <label for="phone-input">Phone Number *</label>
-                    <input type="tel" id="phone-input" placeholder="10-digit mobile number" pattern="[0-9]{10}"
-                        required>
-                </div>
-
-                <!-- Student-Specific Fields -->
-                <div id="student-fields" style="display: none;">
-                    <div class="form-group">
-                        <label for="dob-input">Date of Birth *</label>
-                        <input type="date" id="dob-input" name="dateOfBirth" required>
-                        <small style="color:#888;font-size:0.8rem">Required for students.</small>
-                    </div>
-                    <div class="form-section-title">Academic Information</div>
-                    <div class="form-row" style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="class-level-select">Class Level *</label>
-                            <select id="class-level-select" required>
-                                <option value="">Select</option>
-                                <option value="7">7</option>
-                                <option value="8">8</option>
-                                <option value="9">9</option>
-                                <option value="10">10</option>
-                                <option value="11">11</option>
-                                <option value="12">12</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="section-select">Section *</label>
-
-                            <select id="section-select" required disabled>
-                                <option value="">Select Class First</option>
-                            </select>
-
-
-                        </div>
-                    </div>
-
-                    <div class="form-section-title">Parent Information</div>
-                    <div class="form-row" style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="father-name-input">Father's Name *</label>
-                            <input type="text" id="father-name-input" placeholder="Father's full name" required>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="mother-name-input">Mother's Name *</label>
-                            <input type="text" id="mother-name-input" placeholder="Mother's full name" required>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Teacher/Staff-Specific Fields -->
-                <div id="teacher-staff-fields" style="display: none;">
-                    <div class="form-group">
-                        <label for="email-input">Email Address *</label>
-                        <input type="email" id="email-input" placeholder="your.email@example.com" required>
-                    </div>
-                </div>
-
-                <!-- Common Password Fields -->
-                <div class="form-row" style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="password-input">Password *</label>
-                        <input type="password" id="password-input" placeholder="Create a password" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="confirm-password-input">Confirm Password *</label>
-                        <input type="password" id="confirm-password-input" placeholder="Confirm your password" required>
-                    </div>
-                </div>
-
-                <button type="submit" id="register-btn" class="btn-submit">Sign Up</button>
-            </form>
-            <div class="modal-footer">
-                <p>Already have an account? <a href="#" onclick="openAuthModal('login', 'student')">Log in</a></p>
-            </div>
-        </template>
     </main>
 
     <footer class="erp-footer">
@@ -581,37 +223,7 @@
     <script>
         document.documentElement.setAttribute('data-theme', 'light');
 
-        // Polyfill: Create placeholder functions in global scope for inline event handlers
-        // These will be replaced by actual implementations when modules load
-        // Retry counter to prevent infinite loops
-        const retryAttempt = {};
-
-        window.openAuthModal = window.openAuthModal || function (type, role) {
-            retryAttempt['openAuthModal'] = (retryAttempt['openAuthModal'] || 0) + 1;
-            if (retryAttempt['openAuthModal'] <= 2) {
-                setTimeout(() => window.openAuthModal(type, role), 100);
-            }
-        };
-        window.openAuthLoginSelector = window.openAuthLoginSelector || function (e) {
-            e?.preventDefault?.();
-            retryAttempt['openAuthLoginSelector'] = (retryAttempt['openAuthLoginSelector'] || 0) + 1;
-            if (retryAttempt['openAuthLoginSelector'] <= 2) {
-                setTimeout(() => window.openAuthLoginSelector(e), 100);
-            }
-        };
-        window.openAuthSignupSelector = window.openAuthSignupSelector || function (e) {
-            e?.preventDefault?.();
-            retryAttempt['openAuthSignupSelector'] = (retryAttempt['openAuthSignupSelector'] || 0) + 1;
-            if (retryAttempt['openAuthSignupSelector'] <= 2) {
-                setTimeout(() => window.openAuthSignupSelector(e), 100);
-            }
-        };
-        window.closeAuthModal = window.closeAuthModal || function () {
-            // No retry needed for close
-        };
     </script>
-    <script type="module" src="./src/core/auth-modal.js"></script>
-    <script type="module" src="./src/core/unified-register.js"></script>
     <script type="module" src="./src/core/index.js"></script>
 
     <!-- Landing Page Content Modal -->
@@ -706,8 +318,7 @@
             if (e.key === 'Escape') window.closeLandingContent?.();
         });
     </script>
-    <script type="module" src="./src/core/registration-success.js"></script>
-    <script type="module" src="./src/core/unified-register.js"></script>
+
 </body>
 
 

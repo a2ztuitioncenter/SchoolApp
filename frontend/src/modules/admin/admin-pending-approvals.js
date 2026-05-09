@@ -394,7 +394,11 @@ window.showRejectModal = function(userId) {
     currentRejectingUserId = Number(userId);
     document.getElementById('rejection-reason').value = '';
     const modal = document.getElementById('reject-modal');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+        modal.classList.add('active');
+        const overlay = document.getElementById('rejectDrawerOverlay');
+        if (overlay) overlay.classList.add('active');
+    }
 };
 
 /**
@@ -402,7 +406,11 @@ window.showRejectModal = function(userId) {
  */
 window.closeRejectModal = function() {
     const modal = document.getElementById('reject-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        const overlay = document.getElementById('rejectDrawerOverlay');
+        if (overlay) overlay.classList.remove('active');
+    }
     currentRejectingUserId = null;
 };
 

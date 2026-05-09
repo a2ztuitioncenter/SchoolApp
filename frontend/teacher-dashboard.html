@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>document.documentElement.setAttribute('data-theme', 'light');</script>
+    <link rel="stylesheet" href="./src/assets/css/theme.css">
     <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
     <style>
         /* Teacher-specific overrides & extra minimal styles */
@@ -377,8 +378,13 @@
         <!-- Main Content -->
         <div class="main-content">
             <header class="header">
-                <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
-                <h1>Teacher Portal</h1>
+                <div class="header-left">
+                    <button id="mobile-menu-toggle" class="mobile-toggle"><i class="fas fa-bars"></i></button>
+                    <div class="workspace-info">
+                        <span class="workspace-label">Teacher Portal</span>
+                        <h1 class="workspace-name">Classroom Overview</h1>
+                    </div>
+                </div>
 
                 <div class="admin-profile-menu" id="teacher-profile-menu">
                     <button id="teacher-profile-btn" class="profile-btn" aria-haspopup="true" aria-expanded="false">
@@ -386,28 +392,17 @@
                             <span id="teacher-avatar-initial">T</span>
                             <span class="online-indicator"></span>
                         </div>
-                        <i class="fas fa-caret-down"></i>
                     </button>
 
                     <div id="teacher-profile-dropdown" class="profile-dropdown">
                         <div class="dropdown-header">
                             <div class="user-name" id="dropdown-teacher-name">Teacher</div>
-                            <div class="user-role" id="dropdown-teacher-id" style="font-size: 0.75rem; color: var(--accent-blue); font-weight: 600; margin-top: 2px;">ID: T00000</div>
+                            <div class="user-role" id="dropdown-teacher-id">ID: T00000</div>
                             <div class="user-email" id="dropdown-teacher-email">teacher@a2z.local</div>
-                            <div class="user-phone" id="dropdown-teacher-phone" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">+91 0000000000</div>
-                        </div>
-                        <div class="dropdown-divider"></div>
-                        <div style="padding: 12px 16px;">
-                            <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">Assigned Classes</div>
-                            <div id="dropdown-teacher-classes" style="display: flex; flex-wrap: wrap; gap: 4px;">
-                                <span class="status-badge" style="font-size: 0.7rem; padding: 2px 6px;">Loading...</span>
-                            </div>
                         </div>
                         <div class="dropdown-divider"></div>
                         <button class="dropdown-item" onclick="openEditProfileModal()"><i class="fas fa-user-edit"></i> Edit Profile</button>
                         <button class="dropdown-item" onclick="openCMSModal('help_support')"><i class="fas fa-question-circle"></i> Help & Support</button>
-                        <button class="dropdown-item" onclick="openCMSModal('contact_us')"><i class="fas fa-headset"></i> Contact Us</button>
-                        <button class="dropdown-item" onclick="openCMSModal('documentation')"><i class="fas fa-book"></i> Documentation</button>
                         <div class="dropdown-divider"></div>
                         <button id="dropdown-logout-btn-teacher" class="dropdown-item text-danger">
                             <i class="fas fa-sign-out-alt"></i> Logout
@@ -435,34 +430,22 @@
                 </div>
 
                 <div class="card-grid">
-                    <!-- My Students KPI -->
-                    <div class="kpi-card kpi-info">
-                        <div class="kpi-header info">
-                            <i class="fas fa-user-graduate"></i>
-                            <span class="kpi-label">MY STUDENTS</span>
-                        </div>
-                        <div class="kpi-value" id="stat-students">0</div>
-                        <div class="kpi-footer">Total enrolled in your classes</div>
+                    <div class="card">
+                        <h3><i class="fas fa-user-graduate"></i> My Students</h3>
+                        <div class="stat-value" id="stat-students">0</div>
+                        <div class="stat-change">Total across all sections</div>
                     </div>
 
-                    <!-- Active Homework KPI -->
-                    <div class="kpi-card kpi-success">
-                        <div class="kpi-header success">
-                            <i class="fas fa-book-reader"></i>
-                            <span class="kpi-label">ACTIVE HOMEWORK</span>
-                        </div>
-                        <div class="kpi-value" id="stat-homework">0</div>
-                        <div class="kpi-footer">Pending submission items</div>
+                    <div class="card">
+                        <h3><i class="fas fa-book-open"></i> Active Homework</h3>
+                        <div class="stat-value" id="stat-homework">0</div>
+                        <div class="stat-change">Assigned and pending</div>
                     </div>
 
-                    <!-- Materials KPI -->
-                    <div class="kpi-card kpi-warning">
-                        <div class="kpi-header warning">
-                            <i class="fas fa-archive"></i>
-                            <span class="kpi-label">STUDY MATERIALS</span>
-                        </div>
-                        <div class="kpi-value" id="stat-materials">0</div>
-                        <div class="kpi-footer">Shared resources available</div>
+                    <div class="card" data-type="overdue">
+                        <h3><i class="fas fa-clock"></i> Today's Classes</h3>
+                        <div class="stat-value" id="stat-classes">0</div>
+                        <div class="stat-change">Scheduled for today</div>
                     </div>
                 </div>
 
@@ -975,12 +958,13 @@
     </div>
 
     <!-- =================== HOMEWORK MODAL =================== -->
-    <div id="hw-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="hw-modal-title">Assign Homework</h2>
-                <span class="close" onclick="closeHwModal()">&times;</span>
-            </div>
+    <div id="hwDrawerOverlay" class="drawer-overlay" onclick="closeHwModal()"></div>
+    <div id="hw-modal" class="drawer">
+        <div class="drawer-header">
+            <h2 id="hw-modal-title">Assign Homework</h2>
+            <span class="close" onclick="closeHwModal()">&times;</span>
+        </div>
+        <div class="drawer-body">
             <form id="hw-form" enctype="multipart/form-data">
                 <input type="hidden" id="hw-edit-id">
                 <div class="form-row">
@@ -1032,21 +1016,22 @@
                         <div id="hw-upload-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s ease;"></div>
                     </div>
                 </div>
-                <div class="modal-footer" style="padding:0; background:none; border:none; margin-top:2rem;">
-                    <button type="button" class="btn btn-secondary" onclick="closeHwModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Assignment</button>
-                </div>
             </form>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeHwModal()">Cancel</button>
+            <button type="submit" form="hw-form" class="btn btn-primary">Save Assignment</button>
         </div>
     </div>
 
     <!-- =================== STUDY MATERIAL MODAL =================== -->
-    <div id="material-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="material-modal-title">Add Study Material</h2>
-                <span class="close" onclick="closeMaterialModal()">&times;</span>
-            </div>
+    <div id="materialDrawerOverlay" class="drawer-overlay" onclick="closeMaterialModal()"></div>
+    <div id="material-modal" class="drawer">
+        <div class="drawer-header">
+            <h2 id="material-modal-title">Add Study Material</h2>
+            <span class="close" onclick="closeMaterialModal()">&times;</span>
+        </div>
+        <div class="drawer-body">
             <form id="material-form" enctype="multipart/form-data">
                 <input type="hidden" id="material-edit-id">
                 <input type="hidden" id="material-current-file">
@@ -1103,22 +1088,22 @@
                         <div id="material-upload-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s ease;"></div>
                     </div>
                 </div>
-
-                <div class="modal-footer" style="padding: 1.5rem 0 0 0; background: none; border-top: 1px solid var(--border-subtle); margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
-                    <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="material-submit-btn">Save Material</button>
-                </div>
             </form>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeMaterialModal()">Cancel</button>
+            <button type="submit" form="material-form" class="btn btn-primary" id="material-submit-btn">Save Material</button>
         </div>
     </div>
 
     <!-- =================== SYLLABUS MODAL =================== -->
-    <div id="syl-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Add New Chapter</h2>
-                <span class="close" onclick="closeSyllabusModal()">&times;</span>
-            </div>
+    <div id="sylDrawerOverlay" class="drawer-overlay" onclick="closeSyllabusModal()"></div>
+    <div id="syl-modal" class="drawer">
+        <div class="drawer-header">
+            <h2>Add New Chapter</h2>
+            <span class="close" onclick="closeSyllabusModal()">&times;</span>
+        </div>
+        <div class="drawer-body">
             <form id="syl-form">
                 <div class="form-row">
                     <div class="form-group">
@@ -1148,144 +1133,140 @@
                     <label>Description</label>
                     <textarea id="syl-description" class="form-control" rows="3" placeholder="Details..."></textarea>
                 </div>
-                <div class="modal-footer" style="padding:0; background:none; border:none; margin-top:2rem;">
-                    <button type="button" class="btn btn-secondary" onclick="closeSyllabusModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Chapter</button>
-                </div>
             </form>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeSyllabusModal()">Cancel</button>
+            <button type="submit" form="syl-form" class="btn btn-primary">Add Chapter</button>
         </div>
     </div>
 
     <!-- =================== MODALS =================== -->
     
     <!-- Edit Profile Modal -->
-    <div id="edit-profile-modal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-user-edit"></i> Edit Profile</h3>
-                <button class="close-modal" onclick="closeEditProfileModal()">&times;</button>
-            </div>
+    <div id="editProfileDrawerOverlay" class="drawer-overlay" onclick="closeEditProfileModal()"></div>
+    <div id="edit-profile-modal" class="drawer">
+        <div class="drawer-header">
+            <h3><i class="fas fa-user-edit"></i> Edit Profile</h3>
+            <button class="close-modal close" onclick="closeEditProfileModal()">&times;</button>
+        </div>
+        <div class="drawer-body">
             <form id="edit-profile-form">
-                <div class="modal-body">
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <div style="position: relative; display: inline-block;">
-                            <img id="profile-preview" src="./src/assets/images/default-avatar.png" alt="Profile" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); box-shadow: var(--shadow-md);">
-                            <label for="profile-upload" style="position: absolute; bottom: 0; right: 0; background: var(--accent-blue); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white;">
-                                <i class="fas fa-camera"></i>
-                            </label>
-                            <input type="file" id="profile-upload" accept=".jpg,.jpeg,.png" style="display: none;" onchange="previewProfileImage(this)">
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Max size: 200KB (.jpg, .jpeg, .png)</p>
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="position: relative; display: inline-block;">
+                        <img id="profile-preview" src="./src/assets/images/default-avatar.png" alt="Profile" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); box-shadow: var(--shadow-md);">
+                        <label for="profile-upload" style="position: absolute; bottom: 0; right: 0; background: var(--accent-blue); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid white;">
+                            <i class="fas fa-camera"></i>
+                        </label>
+                        <input type="file" id="profile-upload" accept=".jpg,.jpeg,.png" style="display: none;" onchange="previewProfileImage(this)">
                     </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Max size: 200KB (.jpg, .jpeg, .png)</p>
+                </div>
 
-                    <!-- Profile Upload Progress -->
-                    <div id="profile-upload-progress" style="display:none; margin: 15px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-subtle);">
-                        <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.85rem;">
-                            <span id="profile-upload-status" style="font-weight: 600; color: var(--text-main);">Uploading...</span>
-                            <span id="profile-upload-percent" style="color: var(--accent-blue);">0%</span>
-                        </div>
-                        <div style="width: 100%; height: 6px; background: var(--border-subtle); border-radius: 3px; overflow: hidden;">
-                            <div id="profile-upload-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s ease;"></div>
-                        </div>
+                <!-- Profile Upload Progress -->
+                <div id="profile-upload-progress" style="display:none; margin: 15px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-subtle);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                        <span id="profile-upload-status" style="font-weight: 600; color: var(--text-main);">Uploading...</span>
+                        <span id="profile-upload-percent" style="color: var(--accent-blue);">0%</span>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" id="edit-profile-name" class="form-control" required placeholder="Your full name">
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" id="edit-profile-email" class="form-control" readonly style="background: var(--bg-hover); cursor: not-allowed;" title="Email cannot be changed">
+                    <div style="width: 100%; height: 6px; background: var(--border-subtle); border-radius: 3px; overflow: hidden;">
+                        <div id="profile-upload-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s ease;"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="edit-profile-name" class="form-control" required placeholder="Your full name">
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="edit-profile-email" class="form-control" readonly style="background: var(--bg-hover); cursor: not-allowed;" title="Email cannot be changed">
                 </div>
             </form>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+            <button type="submit" form="edit-profile-form" class="btn btn-primary">Save Changes</button>
         </div>
     </div>
 
     <!-- CMS Content Modal -->
-    <div id="cms-modal" class="modal">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h3 id="cms-modal-title">Content</h3>
-                <button class="close-modal" onclick="closeCMSModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="cms-modal-body" style="line-height: 1.6; max-height: 70vh; overflow-y: auto;">
-                <p class="loading-text">Loading...</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeCMSModal()">Close</button>
-            </div>
+    <div id="cmsDrawerOverlay" class="drawer-overlay" onclick="closeCMSModal()"></div>
+    <div id="cms-modal" class="drawer">
+        <div class="drawer-header">
+            <h3 id="cms-modal-title">Content</h3>
+            <button class="close-modal close" onclick="closeCMSModal()">&times;</button>
+        </div>
+        <div class="drawer-body" id="cms-modal-body" style="line-height: 1.6;">
+            <p class="loading-text">Loading...</p>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeCMSModal()">Close</button>
         </div>
     </div>
 
     <!-- Homework Submissions Modal -->
-    <div id="homework-submissions-modal" class="modal">
-        <div class="modal-content" style="max-width: 900px; width: 95%;">
-            <div class="modal-header">
-                <div>
-                    <h3 id="sub-modal-title">Homework Submissions</h3>
-                    <p id="sub-modal-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"></p>
-                </div>
-                <button class="close-modal" onclick="closeSubmissionsModal()">&times;</button>
+    <div id="homeworkSubmissionsDrawerOverlay" class="drawer-overlay" onclick="closeSubmissionsModal()"></div>
+    <div id="homework-submissions-modal" class="drawer">
+        <div class="drawer-header">
+            <div>
+                <h3 id="sub-modal-title">Homework Submissions</h3>
+                <p id="sub-modal-subtitle" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"></p>
             </div>
-            <div class="modal-body" style="padding: 0;">
-                <div class="table-container" style="max-height: 60vh; overflow-y: auto;">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Submitted At</th>
-                                <th>Status</th>
-                                <th>Marks</th>
-                                <th style="text-align: right;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="submissions-table-body">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
+            <button class="close-modal close" onclick="closeSubmissionsModal()">&times;</button>
+        </div>
+        <div class="drawer-body" style="padding: 0;">
+            <div class="table-container" style="max-height: 60vh; overflow-y: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Submitted At</th>
+                            <th>Status</th>
+                            <th>Marks</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissions-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeSubmissionsModal()">Close</button>
-            </div>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeSubmissionsModal()">Close</button>
         </div>
     </div>
 
     <!-- Review Submission Modal -->
-    <div id="review-submission-modal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h3><i class="fas fa-edit"></i> Review Submission</h3>
-                <button class="close-modal" onclick="closeReviewModal()">&times;</button>
-            </div>
+    <div id="reviewSubmissionDrawerOverlay" class="drawer-overlay" onclick="closeReviewModal()"></div>
+    <div id="review-submission-modal" class="drawer">
+        <div class="drawer-header">
+            <h3><i class="fas fa-edit"></i> Review Submission</h3>
+            <button class="close-modal close" onclick="closeReviewModal()">&times;</button>
+        </div>
+        <div class="drawer-body">
             <form id="review-submission-form">
                 <input type="hidden" id="review-submission-id">
-                <div class="modal-body">
-                    <div id="review-student-info" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-hover); border-radius: 8px;">
-                        <p style="margin: 0; font-weight: 600; color: var(--text-main);" id="review-student-name"></p>
-                        <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted);" id="review-submitted-at"></p>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Marks / Score (Optional)</label>
-                        <input type="text" id="review-marks" class="form-control" placeholder="e.g. 85 or A+">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Remarks / Feedback *</label>
-                        <textarea id="review-remarks" class="form-control" rows="4" placeholder="Enter your feedback for the student..." required></textarea>
-                    </div>
+                <div id="review-student-info" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-hover); border-radius: 8px;">
+                    <p style="margin: 0; font-weight: 600; color: var(--text-main);" id="review-student-name"></p>
+                    <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted);" id="review-submitted-at"></p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
-                    <button type="submit" id="submit-review-btn" class="btn btn-primary">Submit Review</button>
+
+                <div class="form-group">
+                    <label>Marks / Score (Optional)</label>
+                    <input type="text" id="review-marks" class="form-control" placeholder="e.g. 85 or A+">
+                </div>
+
+                <div class="form-group">
+                    <label>Remarks / Feedback *</label>
+                    <textarea id="review-remarks" class="form-control" rows="4" placeholder="Enter your feedback for the student..." required></textarea>
                 </div>
             </form>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
+            <button type="submit" form="review-submission-form" id="submit-review-btn" class="btn btn-primary">Submit Review</button>
         </div>
     </div>
 
