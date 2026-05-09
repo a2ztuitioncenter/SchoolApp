@@ -11,9 +11,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config({ path: path.join(__dirname, '../../.env') });
-}
+// Configuration is handled globally in server.js
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
@@ -21,11 +19,11 @@ if (!process.env.DATABASE_URL) {
 
 const { Pool } = pkg;
 
+const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('db:5432') || process.env.DATABASE_URL.includes('127.0.0.1');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false }
-    : { rejectUnauthorized: false }
+  ssl: isLocal ? false : { rejectUnauthorized: false }
 });
 
 export default pool;

@@ -1,0 +1,6 @@
+# .env (Removed to allow internal reading)
+node_modules
+bun.lockb
+.git
+.planning
+dist

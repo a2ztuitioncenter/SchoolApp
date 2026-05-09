@@ -48,3 +48,54 @@ Efficiently navigate and manage your academic workflow.
 - **Profile**: Keep your email and phone updated via the Profile dropdown.
 - **Documentation**: Access the dynamic "Documentation" tab for the latest feature updates.
 - **Logout**: Always logout from shared devices using the red "Logout" button.
+
+---
+
+## 🚀 Deployment & Development Guide
+
+### 1. Local Development (Native)
+Run the services directly on your machine for the fastest development cycle.
+- **Backend**: `cd backend && bun install && bun run dev`
+- **Frontend**: `cd frontend && bun install && bun run dev`
+- **Mobile**: `cd mobile-app && bun install && npx expo start`
+
+### 2. Manual Docker Workflow (Production Ready)
+This is the recommended way to run containers separately for hosting on different platforms.
+
+#### **Backend Service**
+**Build:**
+```bash
+cd backend
+docker build -t tuition-backend .
+```
+
+**Run (Loads all variables from .env automatically):**
+```bash
+docker run -d --name tuition-backend -p 3000:3000 --env-file .env tuition-backend
+```
+
+#### **Frontend Service**
+**Build:**
+```bash
+cd frontend
+docker build -t tuition-frontend .
+```
+
+**Run:**
+```bash
+docker run -d --name tuition-frontend -p 8000:8000 tuition-frontend
+```
+
+### 3. Render Deployment
+- **Backend**: 
+  - Connect your repository.
+  - Set the Build Command to: `bun install`
+  - Set the Start Command to: `bun run src/server.js`
+  - **Environment Variables**: Add your `DATABASE_URL`, `JWT_SECRET`, etc., directly in the Render Dashboard. The app will detect these automatically.
+- **Frontend**:
+  - Deploy as a Web Service or Static Site.
+  - Port: `8000`
+
+---
+
+*Note: The `.env` file is excluded from Docker images via `.dockerignore` for security. Locally, Docker injects variables using `--env-file .env`. On Render, variables are injected automatically via the dashboard.*

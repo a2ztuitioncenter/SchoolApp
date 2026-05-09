@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load env vars as early as possible
+// Load local .env file if it exists, but do not overwrite system environment variables
+// (This supports Render dashboard vars, Docker Compose, and local dev)
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import cors from 'cors';

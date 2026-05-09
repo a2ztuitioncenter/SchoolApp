@@ -3,10 +3,7 @@ import path from "path";
 import os from "os";
 
 // Resolve frontend directory
-const publicDir = path.resolve(
-  path.dirname(import.meta.url.replace("file:///", "")).replace(/\\/g, "/"),
-  "."
-);
+const publicDir = import.meta.dir;
 
 const PORT = process.env.PORT || 8000;
 
@@ -37,9 +34,10 @@ const server = Bun.serve({
     const url = new URL(req.url);
     let pathname = url.pathname;
 
-    // Proxy API calls to the backend on port 3000
+    // Proxy API calls to the backend
     if (pathname.startsWith("/api/")) {
-      const backendUrl = `http://127.0.0.1:3000${pathname}${url.search}`;
+      const backendHost = process.env.BACKEND_URL || "http://127.0.0.1:3000";
+      const backendUrl = `${backendHost}${pathname}${url.search}`;
       
       const headers = new Headers(req.headers);
       headers.set("X-Forwarded-Host", url.host);

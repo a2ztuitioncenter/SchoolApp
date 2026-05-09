@@ -33,8 +33,8 @@ export const registerUser = async (client, payload) => {
         throw new Error('Invalid role. Must be student, teacher, or staff');
     }
 
-    // 0. Default Password for Admin-Created Users
-    if (!password && source === 'admin') {
+    // 0. Default Password for Admin-Created Users or Students
+    if (!password && (source === 'admin' || normalizedRole === 'student')) {
         // For students, use DOB as initial password. For others, use a random or default string.
         if (normalizedRole === 'student' && dateOfBirth) {
             // dateOfBirth might be ISO or DD/MM/YYYY depending on where it comes from
@@ -86,6 +86,11 @@ export const registerUser = async (client, payload) => {
         // Roll number generation if not provided (for admin flow)
         if (!rollNumber) {
             const prefix = `${classLevel}${section}`;
+            
+            // Add advisory lock to prevent concurrent roll number generation race conditions
+            const lockKey = `roll_number_${schoolId}_${prefix}`;
+            await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
+
             const maxResult = await client.query(
                 `SELECT MAX(CAST(SUBSTRING(roll_number, $2) AS INTEGER)) as max_num 
                  FROM students 

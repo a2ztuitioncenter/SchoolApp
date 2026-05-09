@@ -8,8 +8,13 @@ import { DEFAULT_CLASSES, DEFAULT_SECTIONS } from './academicDefaults.js';
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    const registerForm = document.getElementById('register-form');
     const roleSelect = document.getElementById('role-select');
+    
+    // Safety check: If role-select isn't in the DOM (e.g. still in a template), 
+    // don't try to add listeners.
+    if (!roleSelect) return;    
+
+    const registerForm = document.getElementById('register-form');
     const registerBtn = document.getElementById('register-btn');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
