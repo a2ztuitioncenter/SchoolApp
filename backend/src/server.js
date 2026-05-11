@@ -130,6 +130,18 @@ const startServer = async () => {
       next();
     });
 
+    // Production Diagnostic Logger
+    app.use('/api', (req, res, next) => {
+        const start = Date.now();
+        res.on('finish', () => {
+            const duration = Date.now() - start;
+            if (res.statusCode >= 400 || req.method !== 'GET') {
+                console.log(`[API LOG] ${new Date().toISOString()} | ${req.method} ${req.originalUrl} | Status: ${res.statusCode} | ${duration}ms | IP: ${req.ip} | UA: ${req.get('user-agent')}`);
+            }
+        });
+        next();
+    });
+
     // 5. API Routes
     console.log('[INIT] Loading API routes...');
     app.use('/api/auth', authRoutes);
@@ -199,6 +211,11 @@ const startServer = async () => {
     });
 
     // Fallback
+    app.all('/api/*', (req, res) => {
+        console.error(`[API 404] Resource not found: ${req.method} ${req.originalUrl} | IP: ${req.ip}`);
+        res.status(404).json({ error: 'Not Found', path: req.originalUrl });
+    });
+    
     app.use((req, res) => {
       const indexPath = path.join(__dirname, '../../frontend/index.html');
       res.sendFile(indexPath, (err) => {

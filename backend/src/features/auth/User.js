@@ -17,11 +17,12 @@ export const userModel = {
       teacher_id VARCHAR(20),
       approved_by INTEGER,
       rejection_reason TEXT,
-      username VARCHAR(50),
+      username VARCHAR(50) UNIQUE,
       status_updated_at TIMESTAMP,
       avatar_url TEXT,
       avatar_drive_id VARCHAR(100)
     );
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
   `,
 };
 

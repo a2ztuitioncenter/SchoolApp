@@ -167,8 +167,8 @@ export const apiCall = async (endpoint, options = {}) => {
     }
 
     if (!response.ok) {
+      console.error(`[API FAIL] ${method} ${url} | Status: ${response.status}`, data);
       const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
-      console.error(`[API] Error [${method} ${url}]: ${errorMsg}`, data);
       return { ...data, error: errorMsg, status: response.status, success: false };
     }
 

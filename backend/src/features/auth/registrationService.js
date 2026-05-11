@@ -1,4 +1,4 @@
-import { createUser, generateTeacherId } from './User.js';
+import { createUser, generateTeacherId, isUsernameTaken } from './User.js';
 import { createStudent } from '../student/Student.js';
 import { sanitizeIdentifier, sanitizeText } from '../../utils/sanitize.js';
 import { validateUsername } from '../../utils/validate.js';
@@ -61,6 +61,13 @@ export const registerUser = async (client, payload) => {
     if (username) {
         const usernameError = validateUsername(username);
         if (usernameError) throw new Error(usernameError);
+
+        const taken = await isUsernameTaken(client, username);
+        if (taken) {
+            const err = new Error(`Username '${username}' is already taken`);
+            err.status = 409;
+            throw err;
+        }
     }
 
     // 2. Base User Creation (Always starts as 'pending')

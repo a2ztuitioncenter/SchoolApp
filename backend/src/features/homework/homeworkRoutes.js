@@ -6,6 +6,7 @@ import {
   getHomeworkById, updateHomework, deleteHomework,
   getActiveAssignments
 } from './homeworkController.js';
+import { authorize } from '../../middleware/auth-middleware.js';
 
 // Multer Config
 const storage = multer.diskStorage({
@@ -36,8 +37,8 @@ const router = express.Router();
 router.get('/active', getActiveAssignments);
 router.get('/',      getAllHomework);
 router.get('/:id',   getHomeworkById);
-router.post('/',     upload.single('attachment'), createHomework);
-router.put('/:id',   upload.single('attachment'), updateHomework);
-router.delete('/:id', deleteHomework);
+router.post('/',     authorize(['teacher', 'admin']), upload.single('attachment'), createHomework);
+router.put('/:id',   authorize(['teacher', 'admin']), upload.single('attachment'), updateHomework);
+router.delete('/:id', authorize(['teacher', 'admin']), deleteHomework);
 
 export default router;

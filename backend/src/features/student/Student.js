@@ -3,7 +3,7 @@ export const studentModel = {
   schema: `
     CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
       name VARCHAR(100) NOT NULL,
       class_level VARCHAR(50) NOT NULL,
       section VARCHAR(10),
