@@ -166,6 +166,50 @@ router.post('/users/create', async (req, res) => {
 });
 
 
+router.get('/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await req.db.query(
+            `SELECT 
+                u.id, u.name, u.phone, u.email, u.role, u.status, u.username,
+                u.teacher_id, u.is_active as "isActive", u.created_at as "createdAt",
+                COALESCE(
+                    JSONB_AGG(
+                        DISTINCT JSONB_BUILD_OBJECT('class', tca.class_level, 'section', tca.section)
+                    ) FILTER (WHERE tca.class_level IS NOT NULL),
+                    '[]'::jsonb
+                ) AS "classesAssigned",
+                COALESCE(
+                    JSONB_AGG(
+                        DISTINCT JSONB_BUILD_OBJECT(
+                            'id', sa.id, 
+                            'subjectName', ms.name, 
+                            'classLevel', sa.class_level, 
+                            'section', sa.section
+                        )
+                    ) FILTER (WHERE sa.id IS NOT NULL),
+                    '[]'::jsonb
+                ) AS "subjectAssignments"
+            FROM users u
+            LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
+            LEFT JOIN subject_assignments sa ON sa.teacher_id = u.id
+            LEFT JOIN master_subjects ms ON sa.subject_id = ms.id
+            WHERE u.id = $1 AND u.school_id = $2
+            GROUP BY u.id`,
+            [id, req.user.schoolId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Fetch user detail error:', err);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
     const { name, phone, email, role, classesAssigned } = req.body;
@@ -290,6 +334,45 @@ router.get('/students', async (req, res) => {
     } catch (err) {
         console.error('[ADMIN API] Fetch students CRITICAL ERROR:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch students', details: err.message });
+    }
+});
+
+router.get('/students/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await req.db.query(
+            `SELECT 
+                s.id, s.name, s.phone, s.email, s.status, s.class_level as "classLevel", 
+                s.section, s.father_name as "fatherName", s.mother_name as "motherName",
+                s.roll_number as "rollNumber", s.date_of_birth as "dateOfBirth",
+                s.joining_date as "joiningDate", s.user_id as "userId",
+                COALESCE(
+                    JSONB_AGG(
+                        DISTINCT JSONB_BUILD_OBJECT(
+                            'id', sa.id, 
+                            'subjectName', ms.name, 
+                            'teacherName', u.name
+                        )
+                    ) FILTER (WHERE sa.id IS NOT NULL),
+                    '[]'::jsonb
+                ) AS "subjects"
+            FROM students s
+            LEFT JOIN subject_assignments sa ON sa.class_level = s.class_level AND (sa.section = s.section OR sa.section = 'ALL')
+            LEFT JOIN master_subjects ms ON sa.subject_id = ms.id
+            LEFT JOIN users u ON sa.teacher_id = u.id
+            WHERE s.id = $1 AND s.school_id = $2
+            GROUP BY s.id`,
+            [id, req.user.schoolId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Student not found' });
+        }
+
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Fetch student detail error:', err);
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 

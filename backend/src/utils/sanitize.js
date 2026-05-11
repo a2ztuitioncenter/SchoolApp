@@ -26,8 +26,9 @@ export function sanitizeNullableText(value, maxLength = 5000) {
 }
 
 export function sanitizeIdentifier(value, maxLength = 120) {
-  if (typeof value !== 'string') return null;
-  const sanitized = sanitizeText(value, maxLength);
+  if (value === null || value === undefined) return null;
+  const str = String(value);
+  const sanitized = sanitizeText(str, maxLength);
   return sanitized || null;
 }
 
