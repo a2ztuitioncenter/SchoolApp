@@ -37,6 +37,17 @@ export const apiCall = async (endpoint, options = {}) => {
   let cleanPath = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
   if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
   let url = base_api_url ? `${base_api_url}/api${cleanPath}` : `/api${cleanPath}`;
+
+  // Diagnostic Log for production troubleshooting
+  if (endpoint.includes('/auth/admin-login')) {
+    console.log("[API TRACE] Admin Login Request:", {
+      endpoint,
+      cleanPath,
+      base_api_url,
+      finalUrl: url
+    });
+  }
+
   
   if (window.location.hostname !== 'localhost') {
     console.log(`[API] ${options.method || 'GET'} ${url}`, {

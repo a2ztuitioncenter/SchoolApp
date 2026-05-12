@@ -25,3 +25,12 @@ export const config = {
   // This ensures we use the Vercel proxy (/api/* -> Render) which avoids CSRF/CORS issues
   API_BASE_URL: window.BACKEND_URL || ''
 };
+
+// Diagnostic Log for Production Debugging
+console.log("[API CONFIG] Environment Details:", {
+  isLocal,
+  isCloudflare,
+  hostname: window.location.hostname,
+  API_BASE_URL: config.API_BASE_URL || "(relative proxy)"
+});
+
