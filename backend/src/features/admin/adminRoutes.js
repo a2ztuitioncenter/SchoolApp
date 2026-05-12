@@ -25,7 +25,7 @@ router.use((req, res, next) => {
 const safeJsonParse = (value) => {
     if (value === null || value === undefined) return null;
     if (typeof value === 'object') return value;
-    
+
     try {
         // Attempt single parse
         const parsed = JSON.parse(value);
@@ -117,7 +117,7 @@ router.get('/pending-approvals', async (req, res) => {
              ORDER BY created_at DESC`,
             [req.user.schoolId]
         );
-        
+
         const mapped = result.rows.map(u => ({
             id: u.id,
             name: u.name,
@@ -234,9 +234,9 @@ router.put('/users/:id', async (req, res) => {
             }
             await assignTeacherToClasses(req.db, id, classesAssigned, schoolId);
         }
-        
+
         await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`, req.user.schoolId);
-        
+
         res.json({ success: true, data: user });
     } catch (err) {
         console.error('Update user error:', err);
@@ -247,7 +247,7 @@ router.put('/users/:id', async (req, res) => {
 router.get('/users/:id/assignments', async (req, res) => {
     try {
         const assignments = await getTeacherAssignments(req.db, req.params.id);
-        
+
         // Security check: ensure teacher belongs to the same school
         const teacher = await getUserById(req.db, req.params.id);
         if (!teacher || teacher.school_id !== req.user.schoolId) {
@@ -265,9 +265,9 @@ router.delete('/users/:id', async (req, res) => {
     try {
         const deleted = await deleteUser(req.db, req.params.id, req.user.schoolId);
         if (!deleted) return res.status(404).json({ success: false, error: 'User not found' });
-        
+
         await logAudit(req.db, req.user.userId, 'DELETE_USER', 'users', req.params.id, `Deleted user ID ${req.params.id}`, req.user.schoolId);
-        
+
         res.json({ success: true, message: 'User deleted' });
     } catch (err) {
         console.error('Delete user error:', err);
@@ -307,7 +307,7 @@ router.get('/students', async (req, res) => {
              ORDER BY s.name ASC`,
             [schoolId]
         );
-        
+
         console.log(`[ADMIN API] Fetched ${result.rows.length} students for school ${schoolId}`);
 
 
@@ -427,7 +427,7 @@ router.post('/students/create', async (req, res) => {
 router.put('/students/:id', async (req, res) => {
     const { id } = req.params;
     const { firstName, lastName, classLevel, section, fatherName, motherName, phone, email, dateOfBirth, joiningDate } = req.body;
-    
+
     // Handle split name or full name
     let name = req.body.name;
     if (firstName) {
@@ -450,7 +450,7 @@ router.put('/students/:id', async (req, res) => {
             [name, classLevel, section, fatherName, motherName, phone, email, dateOfBirth, joiningDate, id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
-        
+
         await logAudit(req.db, req.user.userId, 'UPDATE_STUDENT', 'students', id, `Updated student: ${name || result.rows[0].name}`, req.user.schoolId);
 
         res.json({ success: true, data: result.rows[0] });
@@ -467,7 +467,7 @@ router.patch('/students/:id/status', async (req, res) => {
             [req.body.status, req.params.id, req.user.schoolId]
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
-        
+
         await logAudit(req.db, req.user.userId, 'UPDATE_STUDENT_STATUS', 'students', req.params.id, `Changed status to ${req.body.status}`, req.user.schoolId);
 
         res.json({ success: true, data: result.rows[0] });
@@ -488,16 +488,16 @@ router.delete('/students/:id', async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ success: false, error: 'Student not found' });
         }
-        
+
         const userId = studentResult.rows[0].user_id;
-        
+
         // 1. Delete the specific student record
         await client.query('DELETE FROM students WHERE id = $1', [studentId]);
-        
+
         // 2. Check if other students share this user_id within the same transaction
         const sharedResult = await client.query('SELECT COUNT(*) as count FROM students WHERE user_id = $1', [userId]);
         const otherStudentsCount = parseInt(sharedResult.rows[0].count, 10);
-        
+
         if (otherStudentsCount === 0) {
             // 3. No other students, safe to delete the user account
             await client.query('DELETE FROM users WHERE id = $1', [userId]);
@@ -539,7 +539,7 @@ router.get('/financials/unpaid-fees', async (req, res) => {
              ORDER BY f.due_date ASC`,
             [req.user.schoolId]
         );
-        
+
         const mapped = result.rows.map(f => ({
             id: f.id,
             amount: f.amount,
@@ -604,10 +604,10 @@ router.get('/financials/trends', async (req, res) => {
         );
 
         // Return both 'data' and 'trends' for backward compatibility with different frontend versions
-        res.json({ 
-            success: true, 
-            data: result.rows || [], 
-            trends: result.rows || [] 
+        res.json({
+            success: true,
+            data: result.rows || [],
+            trends: result.rows || []
         });
     } catch (err) {
         console.error('Financial trends error:', err);
@@ -632,7 +632,7 @@ router.get('/timetable', async (req, res) => {
              ORDER BY t.day_of_week, t.start_time ASC`,
             [req.user.schoolId]
         );
-        
+
         const mapped = result.rows.map(t => ({
             id: t.id,
             dayOfWeek: t.day_of_week,
@@ -828,10 +828,10 @@ router.get('/classes', async (req, res) => {
             "SELECT DISTINCT class_level FROM students WHERE school_id = $1 AND class_level IS NOT NULL AND class_level != '' ORDER BY class_level ASC",
             [req.user.schoolId]
         );
-        
+
         const dbClasses = result.rows.map(r => r.class_level);
         const defaultClasses = ['7', '8', '9', '10', '11', '12'];
-        
+
         // Merge and remove duplicates, then sort numerically
         const allUniqueClasses = [...new Set([...defaultClasses, ...dbClasses])]
             .sort((a, b) => {
@@ -855,7 +855,7 @@ router.get('/classes', async (req, res) => {
 router.get('/sections', async (req, res) => {
     const { classLevel } = req.query;
     if (!classLevel) return res.status(400).json({ success: false, error: 'classLevel is required' });
-    
+
     try {
         const result = await req.db.query(
             "SELECT DISTINCT section FROM students WHERE school_id = $2 AND class_level = $1 AND section IS NOT NULL AND section != '' ORDER BY section ASC",
@@ -884,7 +884,7 @@ router.get('/teachers-by-class', async (req, res) => {
             WHERE tca.class_level = $1 AND tca.school_id = $2
         `;
         const params = [classLevel, req.user.schoolId];
-        
+
         if (section && section !== 'ALL') {
             query += " AND (tca.section = $3 OR tca.section = 'ALL')";
             params.push(section);
@@ -950,11 +950,11 @@ router.get('/profile', async (req, res) => {
              LIMIT 1`,
             [req.user.userId]
         );
-        
+
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Profile not found' });
         }
-        
+
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Fetch profile error:', err);
@@ -985,9 +985,9 @@ router.put('/profile', async (req, res) => {
              WHERE id = $1 RETURNING *`,
             [req.user.userId, name, email, avatar_url, designation]
         );
-        
+
         await logAudit(req.db, req.user.userId, 'UPDATE_PROFILE', 'users', req.user.userId, 'Updated personal profile details', req.user.schoolId);
-        
+
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {
         console.error('Update profile error:', err);
@@ -1052,7 +1052,7 @@ router.get('/content', async (req, res) => {
 router.get('/content/:key', async (req, res) => {
     const { key: rawKey } = req.params;
     const key = rawKey ? rawKey.trim() : '';
-    
+
     if (!VALID_CONTENT_KEYS.includes(key)) {
         console.warn(`[AdminAPI] Invalid content key: "${key}" (raw: "${rawKey}")`);
         return res.status(400).json({ success: false, error: 'Invalid content key' });

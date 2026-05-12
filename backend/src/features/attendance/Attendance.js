@@ -79,7 +79,7 @@ export const attendanceModel = {
       WHERE s.class_level = $1 AND s.section = $3 AND s.school_id = $4
       GROUP BY s.id, s.name, s.roll_number
       ORDER BY s.name`,
-     [classLevel, month, section, schoolId]
+      [classLevel, month, section, schoolId]
     );
     return result.rows;
   },
@@ -104,7 +104,7 @@ export const attendanceModel = {
     const result = await db.query(`SELECT DISTINCT class_level FROM students WHERE school_id = $1 ORDER BY class_level`, [schoolId]);
     const dbClasses = result.rows.map(r => r.class_level);
     const defaultClasses = ['7', '8', '9', '10', '11', '12'];
-    
+
     return [...new Set([...defaultClasses, ...dbClasses])]
       .sort((a, b) => {
         const numA = parseInt(a);
@@ -132,9 +132,9 @@ export const getAttendancePercentage = async (pool, studentId, days = 30) => {
       [studentId, parseInt(days, 10) || 30]
     );
     const row = result.rows[0];
-    return row ? { 
-      presentDays: parseInt(row.present_days), 
-      totalDays: parseInt(row.total_days), 
+    return row ? {
+      presentDays: parseInt(row.present_days),
+      totalDays: parseInt(row.total_days),
       percentage: parseFloat(row.percentage) || 0
     } : { presentDays: 0, totalDays: 0, percentage: 0 };
   } catch (err) {
@@ -162,8 +162,8 @@ export const getAttendanceByStudentId = async (pool, studentId, startDate = null
   try {
     const params = [studentId];
     let query = `SELECT * FROM attendance WHERE student_id = $1`;
-    if (startDate) { query += ` AND date >= $${ params.length + 1 } `; params.push(startDate); }
-    if (endDate) { query += ` AND date <= $${ params.length + 1 } `; params.push(endDate); }
+    if (startDate) { query += ` AND date >= $${params.length + 1} `; params.push(startDate); }
+    if (endDate) { query += ` AND date <= $${params.length + 1} `; params.push(endDate); }
     query += ` ORDER BY date DESC`;
     return (await pool.query(query, params)).rows;
   } catch (err) {

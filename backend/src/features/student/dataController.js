@@ -15,7 +15,7 @@ export const getStudentDashboard = async (req, res) => {
       console.warn(`Student not found for userId: ${userId}`);
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
-    
+
     // Student fields are already mapped to camelCase by Student.js fetch
     const { id: studentId, classLevel, section } = student;
 
@@ -36,7 +36,7 @@ export const getStudentDashboard = async (req, res) => {
       safeQuery(
         `SELECT * FROM homework 
          WHERE class_level = $1 AND (section = $2 OR section = 'ALL')
-         ORDER BY due_date ASC, created_at DESC LIMIT 15`, 
+         ORDER BY due_date ASC, created_at DESC LIMIT 15`,
         [classLevel, section]
       ),
       safeQuery(
@@ -45,7 +45,7 @@ export const getStudentDashboard = async (req, res) => {
          LEFT JOIN users u ON t.teacher_id = u.id
          LEFT JOIN subjects s ON t.subject_id = s.id
          WHERE t.class_level = $1 AND (t.section = $2 OR t.section = 'ALL') 
-         ORDER BY t.day_of_week, t.start_time ASC`, 
+         ORDER BY t.day_of_week, t.start_time ASC`,
         [classLevel, section]
       ),
       safeQuery(
@@ -72,12 +72,12 @@ export const getStudentDashboard = async (req, res) => {
 
     const allItems = (homeworkResult.rows || []).map(normalizeRow);
     const homework = allItems.filter(h => h.type === 'homework').slice(0, 5);
-    
+
     const now = new Date();
     const dailyPractice = allItems.filter(h => {
-        if (h.type !== 'daily_practice') return false;
-        const created = new Date(h.createdAt);
-        return (now - created) / (1000 * 60 * 60) <= 24;
+      if (h.type !== 'daily_practice') return false;
+      const created = new Date(h.createdAt);
+      return (now - created) / (1000 * 60 * 60) <= 24;
     });
 
     return res.json({

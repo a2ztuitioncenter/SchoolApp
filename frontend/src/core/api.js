@@ -168,6 +168,20 @@ export const apiCall = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       console.error(`[API FAIL] ${method} ${url} | Status: ${response.status}`, data);
+      
+      // Handle authentication expiration (401)
+      if (response.status === 401) {
+        console.warn('[API] 401 Unauthorized - Redirecting to login');
+        // Clear local auth and redirect (using authLogout if available, otherwise manual clear)
+        localStorage.removeItem('auth');
+        sessionStorage.removeItem('auth');
+        if (typeof window.handleLogout === 'function') {
+          window.handleLogout();
+        } else {
+          window.location.href = '/';
+        }
+      }
+
       const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
       return { ...data, error: errorMsg, status: response.status, success: false };
     }

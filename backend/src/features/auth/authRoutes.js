@@ -213,6 +213,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
         phone: user.phone,
         name: user.name,
         email: user.email,
+        teacherId: user.teacherId,
         avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
       },
@@ -357,6 +358,7 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
         role: user.role,
         name: user.name,
         email: user.email,
+        teacherId: user.teacherId,
         avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
       },
@@ -396,6 +398,7 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
         role: user.role,
         name: user.name,
         email: user.email,
+        teacherId: user.teacherId,
         avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
       },
@@ -641,6 +644,7 @@ router.post('/verify', authenticate, async (req, res) => {
         phone: user.phone,
         name: user.name,
         email: user.email,
+        teacherId: user.teacherId,
         avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
       } 
@@ -679,6 +683,7 @@ router.post('/refresh', async (req, res) => {
         phone: user.phone,
         name: user.name,
         email: user.email,
+        teacherId: user.teacherId,
         avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
       },

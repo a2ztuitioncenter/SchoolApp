@@ -179,7 +179,7 @@ class GoogleDriveService {
             });
             return {
                 ...response.data,
-                downloadLink: `/api/storage/download/${response.data.id}`
+                downloadLink: `/storage/download/${response.data.id}/${encodeURIComponent(response.data.name)}`
             };
         } catch (error) {
             if (error.message.includes('storage quota')) {

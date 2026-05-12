@@ -13,9 +13,10 @@ router.post('/upload', authenticate, authorize(['admin', 'teacher', 'student']),
 // Requirement: Accessible to authorized users (based on class/section logic in controller)
 router.get('/files', authenticate, storageController.list);
 
-// 3. Download API: GET /api/upload/download/:fileId
+// 3. Download API: GET /api/storage/download/:fileId
 // Requirement: Proxied streaming for security
 router.get('/download/:fileId', authenticate, storageController.download);
+router.get('/download/:fileId/:filename', authenticate, storageController.download);
 
 // 4. Delete API: DELETE /api/files/:id
 // Requirement: Only admin/authorized teacher can delete

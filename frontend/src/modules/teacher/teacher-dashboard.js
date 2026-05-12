@@ -279,6 +279,13 @@ function init() {
   }
 
   teacherPhone = sessionStorage.getItem('teacherPhone');
+  const teacherTid = sessionStorage.getItem('teacherTid');
+  const teacherName = getUserName();
+
+  // Immediate Profile Header Population
+  if (teacherName) setText('dropdown-teacher-name', teacherName);
+  if (teacherTid) setText('dropdown-teacher-id', `ID: ${teacherTid}`);
+  if (teacherPhone) setText('dropdown-teacher-phone', `+91 ${teacherPhone}`);
 
   const profileBtn = document.getElementById('teacher-profile-btn');
   const profileMenu = document.getElementById('teacher-profile-dropdown');
@@ -400,6 +407,7 @@ function updateDashboardUI(dashRes, matRes) {
     if (dashRes.success) {
       setText('stat-students', dashRes.stats?.totalStudents ?? '–');
       setText('stat-homework', dashRes.homework?.length ?? 0);
+      setText('stat-classes', dashRes.stats?.totalClasses ?? '0');
       allTimetable = dashRes.timetable || [];
       allHomework = dashRes.homework || [];
 
@@ -421,6 +429,18 @@ function updateDashboardUI(dashRes, matRes) {
         const initialEl = document.getElementById('teacher-avatar-initial');
         if (initialEl && teacher.name) initialEl.textContent = teacher.name.charAt(0).toUpperCase();
 
+        const ddInitialEl = document.getElementById('dropdown-teacher-initial');
+        if (ddInitialEl && teacher.name) ddInitialEl.textContent = teacher.name.charAt(0).toUpperCase();
+
+        // Set Last Login to current time if not available
+        const ddLastLogin = document.getElementById('dropdown-last-login');
+        if (ddLastLogin) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][now.getDay()];
+            ddLastLogin.textContent = `${dayStr} ${timeStr}`;
+        }
+
         // Update Profile Image
         const profileImg = document.querySelector('#teacher-profile-btn img') || document.querySelector('#teacher-profile-btn .avatar-circle');
         if (teacher.avatar_url && profileImg) {
@@ -439,6 +459,11 @@ function updateDashboardUI(dashRes, matRes) {
           }
           const modalPreview = document.getElementById('profile-preview');
           if (modalPreview) modalPreview.src = avatarUrl;
+
+          const ddAvatarLarge = document.querySelector('.avatar-large');
+          if (ddAvatarLarge) {
+              ddAvatarLarge.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Profile">`;
+          }
         }
       }
 
@@ -446,10 +471,10 @@ function updateDashboardUI(dashRes, matRes) {
       const classListEl = document.getElementById('dropdown-teacher-classes');
       if (classListEl && dashRes.classes) {
         if (dashRes.classes.length === 0) {
-          classListEl.innerHTML = '<span style="font-size: 0.75rem; color: var(--text-muted);">None assigned</span>';
+          classListEl.innerHTML = '<span class="class-badge">None assigned</span>';
         } else {
           classListEl.innerHTML = dashRes.classes.map(c => 
-            `<span class="status-badge" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(0, 82, 204, 0.1); color: var(--accent-blue);">Class ${c.classLevel}</span>`
+            `<span class="class-badge">Class ${c.classLevel}</span>`
           ).join('');
         }
       }

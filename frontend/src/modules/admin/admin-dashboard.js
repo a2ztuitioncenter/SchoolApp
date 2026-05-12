@@ -319,6 +319,33 @@ async function populateSubjectDropdown(classLevel, section = '', selectIds) {
 }
 
 
+/**
+ * Normalizes ERP data from various API formats (arrays of strings vs arrays of objects)
+ * @param {Array} data - The raw data from the API
+ * @param {string} idKey - Key to use for ID (default 'id')
+ * @param {string} nameKey - Key to use for Name/Label (default 'name')
+ * @returns {Array} - Array of { value, label } objects
+ */
+function normalizeERPData(data, idKey = 'id', nameKey = 'name') {
+    if (!Array.isArray(data)) {
+        console.warn('[ERP NORMALIZE] Input is not an array:', data);
+        return [];
+    }
+    
+    return data.map(item => {
+        if (typeof item === 'string' || typeof item === 'number') {
+            return { value: item, label: item };
+        }
+        if (item && typeof item === 'object') {
+            return {
+                value: item[idKey] !== undefined ? item[idKey] : item.value,
+                label: item[nameKey] !== undefined ? item[nameKey] : item.label || item[idKey]
+            };
+        }
+        return null;
+    }).filter(Boolean);
+}
+
 async function populateERPFilters({
     classSelectId,
     sectionSelectId,
@@ -359,18 +386,20 @@ async function populateERPFilters({
             const res = await adminAPI.getSections(classLevel);
 
             if (res.success) {
-                let sections = res.data || [];
+                let sections = normalizeERPData(res.data || []);
                 
                 // Hybrid Fallback: Ensure at least the defaults are present in specific forms
                 if (useFallback) {
                     const defaultValues = DEFAULT_SECTIONS.map(s => s.value);
-                    sections = [...new Set([...sections, ...defaultValues])].sort();
+                    const currentValues = sections.map(s => s.value);
+                    const missing = defaultValues.filter(v => !currentValues.includes(v));
+                    sections = [...sections, ...missing.map(v => ({ value: v, label: v }))];
                 }
 
                 sectionSel.innerHTML = `<option value="">${escapeHtml(allSectionsLabel)}</option>` +
-                    sections.map(s => `<option value="${escapeAttrValue(s)}">${escapeHtml(s)}</option>`).join('');
+                    sections.map(s => `<option value="${escapeAttrValue(s.value)}">${escapeHtml(s.label)}</option>`).join('');
 
-                if (targetSection && sections.includes(targetSection)) {
+                if (targetSection && sections.some(s => String(s.value) === String(targetSection))) {
                     sectionSel.value = targetSection;
                 }
             } else {
@@ -420,19 +449,24 @@ async function populateERPFilters({
     try {
         // 1. Initial Class Population
         const classRes = await adminAPI.getClasses();
-        let classes = classRes.data || [];
+        let classes = normalizeERPData(classRes.data || []);
+
+        console.log('[ERP] Raw Classes:', classRes.data);
+        console.log('[ERP] Normalized Classes:', classes);
 
         // Hybrid Fallback: Ensure at least the default classes are present in specific forms
         if (useFallback) {
-            const defaultClasses = DEFAULT_CLASSES.map(c => c.value);
-            classes = [...new Set([...classes, ...defaultClasses])].sort((a, b) => parseInt(a) - parseInt(b));
+            const defaultValues = DEFAULT_CLASSES.map(c => c.value);
+            const currentValues = classes.map(c => c.value);
+            const missing = defaultValues.filter(v => !currentValues.includes(v));
+            classes = [...classes, ...missing.map(v => ({ value: v, label: v }))];
         }
 
         classSel.innerHTML = `<option value="">${allClassesLabel}</option>` +
-            classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+            classes.map(c => `<option value="${c.value}">Class ${c.label}</option>`).join('');
 
         // 2. Set Defaults if provided
-        if (defaultClass && classes.includes(defaultClass)) {
+        if (defaultClass && classes.some(c => String(c.value) === String(defaultClass))) {
             classSel.value = defaultClass;
             await populateSections(defaultClass, defaultSection);
             if (defaultSection) {
@@ -2168,16 +2202,16 @@ window.toggleStudentStatusById = async function (id, newStatus) {
 async function populateHomeworkClassDropdown(selectId) {
     try {
         const res = await attendanceAPI.getClasses();
-        const classes = res.data || [];
+        const classes = normalizeERPData(res.data || []);
         const sel = document.getElementById(selectId);
         if (!sel) return;
 
         // Preserve current selection if any
         const currentVal = sel.value;
         sel.innerHTML = '<option value="">Select Class</option>';
-        classes.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+        classes.forEach(c => sel.innerHTML += `<option value="${c.value}">${c.label}</option>`);
 
-        if (currentVal && classes.includes(currentVal)) {
+        if (currentVal && classes.some(c => String(c.value) === String(currentVal))) {
             sel.value = currentVal;
         }
     } catch (err) {
@@ -2253,8 +2287,17 @@ window.loadAttendanceSheet = async function () {
         if (!container || !list) return;
 
         const students = studRes.data || [];
+        if (!Array.isArray(students)) {
+            console.error('[ATTENDANCE] Students data is not an array:', students);
+            showErrorAlert('Invalid student data received');
+            return;
+        }
+
         const existingMap = {};
-        (attRes.data || []).forEach(a => { existingMap[a.studentId] = a.status; });
+        const attRecords = attRes.data || [];
+        if (Array.isArray(attRecords)) {
+            attRecords.forEach(a => { existingMap[a.studentId] = a.status; });
+        }
 
         if (!students.length) {
             container.style.display = 'block';
@@ -2368,7 +2411,16 @@ window.loadAttendanceSummary = async function () {
         const data = res.data || [];
         const container = document.getElementById('summary-table-container');
         if (!container) return;
-        if (!data.length) { container.innerHTML = '<p>No data found.</p>'; return; }
+
+        console.log('[ATTENDANCE] Summary Raw Data:', res.data);
+
+        if (!Array.isArray(data)) {
+            console.error('[ATTENDANCE] Summary data is not an array:', data);
+            container.innerHTML = '<p class="error-text">Invalid summary data format.</p>';
+            return;
+        }
+
+        if (!data.length) { container.innerHTML = renderEmptyState(1, 'No attendance data found for this month.'); return; }
         container.innerHTML = `
             <table class="data-table">
                 <thead><tr><th>Name</th><th>Total</th><th>Present</th><th>Absent</th><th>Late</th><th>%</th></tr></thead>

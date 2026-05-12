@@ -43,6 +43,7 @@ export async function handleTeacherLogin() {
         userId: response.user.id,
         name: response.user.name,
         phone: phone,
+        teacherId: response.user.teacherId,
         csrfToken: response.csrfToken
       });
 

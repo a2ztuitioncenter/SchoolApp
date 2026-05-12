@@ -149,6 +149,8 @@ const startServer = async () => {
     app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
     app.use('/api/teacher', authenticate, authorize(['teacher', 'staff', 'admin']), teacherRoutes);
     app.use('/api/admin/attendance', authenticate, authorize('admin'), attendanceRoutes);
+    app.use('/api/attendance', authenticate, authorize('admin'), attendanceRoutes); // Legacy support for mobile app
+
     app.use('/api/admin/homework', authenticate, authorize('admin'), homeworkRoutes);
     app.use('/api/admin/fees', authenticate, authorize('admin'), feeRoutes);
     app.use('/api/admin/notifications', authenticate, authorize('admin'), notificationsRoutes);

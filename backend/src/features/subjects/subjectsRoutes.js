@@ -104,8 +104,9 @@ router.get('/teacher', async (req, res) => {
         if (!req.user) {
             return res.status(401).json({ success: false, error: 'Authentication required' });
         }
-        if (req.user.role !== 'teacher') {
-            return res.status(403).json({ success: false, error: 'Only teachers can access this' });
+        const userRole = (req.user.role || '').toLowerCase();
+        if (userRole !== 'teacher' && userRole !== 'staff') {
+            return res.status(403).json({ success: false, error: 'Only teachers and staff can access this' });
         }
         const subjects = await subjectModel.getTeacherSubjects(req.user.userId, req.db);
         res.json({ success: true, data: subjects });

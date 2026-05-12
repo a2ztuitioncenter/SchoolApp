@@ -43,6 +43,7 @@ export const setAuth = (authData) => {
     userId: authData.userId || authData.user?.id,
     name: authData.name || authData.user?.name || null,
     phone: authData.phone || authData.user?.phone || null,
+    teacherId: authData.teacherId || authData.user?.teacherId || null,
     csrfToken: authData.csrfToken || null,
     timestamp: Date.now()
   };
@@ -277,6 +278,7 @@ export const syncToSessionStorage = (role) => {
     sessionStorage.setItem('teacherId', auth.userId);
     sessionStorage.setItem('teacherRole', 'teacher');
     if (auth.phone) sessionStorage.setItem('teacherPhone', auth.phone);
+    if (auth.teacherId) sessionStorage.setItem('teacherTid', auth.teacherId);
   } else if (role === 'admin') {
     sessionStorage.setItem('adminUserId', auth.userId);
     sessionStorage.setItem('adminRole', 'admin');

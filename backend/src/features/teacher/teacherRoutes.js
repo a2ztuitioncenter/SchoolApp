@@ -131,9 +131,13 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       classes = ttRes.rows.map(r => r.class_level);
     }
 
-    // 3. Get Timetable
+    // 3. Get Timetable with Subject Names
     const ttRes = await pool.query(
-      'SELECT * FROM timetable WHERE teacher_id = $1 ORDER BY day_of_week, start_time',
+      `SELECT t.*, s.name as subject 
+       FROM timetable t 
+       LEFT JOIN subjects s ON t.subject_id = s.id 
+       WHERE t.teacher_id = $1 
+       ORDER BY t.day_of_week, t.start_time`,
       [teacher.id]
     );
 
@@ -144,7 +148,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
         [teacher.id]
       ),
       pool.query(
-          `SELECT COUNT(id) AS total_students FROM students 
+        `SELECT COUNT(id) AS total_students FROM students 
              WHERE (class_level, section) IN (
                SELECT class_level, section FROM subject_assignments WHERE teacher_id = $1
                UNION
@@ -155,15 +159,15 @@ router.get('/dashboard/:teacherId', async (req, res) => {
                UNION
                SELECT class_level FROM teacher_class_assignment WHERE teacher_id = $1 AND (section IS NULL OR section = 'ALL')
              )`,
-          [teacher.id]
+        [teacher.id]
       )
     ]);
 
     res.json({
       success: true,
-      teacher: { 
-        id: teacher.id, 
-        phone: teacher.phone, 
+      teacher: {
+        id: teacher.id,
+        phone: teacher.phone,
         role: teacher.role,
         name: teacher.name,
         email: teacher.email,
@@ -176,24 +180,24 @@ router.get('/dashboard/:teacherId', async (req, res) => {
       },
       classes: classes.map(c => ({ classLevel: c })),
       homework: hwRes.rows.map(h => ({
-          id: h.id,
-          title: h.title,
-          description: h.description,
-          classLevel: h.class_level,
-          section: h.section,
-          dueDate: h.due_date,
-          createdAt: h.created_at,
-          type: h.type
+        id: h.id,
+        title: h.title,
+        description: h.description,
+        classLevel: h.class_level,
+        section: h.section,
+        dueDate: h.due_date,
+        createdAt: h.created_at,
+        type: h.type
       })),
       timetable: ttRes.rows.map(t => ({
-          id: t.id,
-          classLevel: t.class_level,
-          section: t.section,
-          subjectId: t.subject_id,
-          teacherId: t.teacher_id,
-          dayOfWeek: t.day_of_week,
-          startTime: t.start_time,
-          endTime: t.end_time
+        id: t.id,
+        classLevel: t.class_level,
+        section: t.section,
+        subjectId: t.subject_id,
+        teacherId: t.teacher_id,
+        dayOfWeek: t.day_of_week,
+        startTime: t.start_time,
+        endTime: t.end_time
       })),
     });
   } catch (err) {
@@ -211,10 +215,15 @@ router.get('/timetable/:teacherId', async (req, res) => {
     if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
 
     const res2 = await pool.query(
-      `SELECT * FROM timetable WHERE teacher_id = $1 ORDER BY day_of_week, start_time`,
+      `SELECT t.*, s.name as subject 
+       FROM timetable t 
+       LEFT JOIN subjects s ON t.subject_id = s.id 
+       WHERE t.teacher_id = $1 
+       ORDER BY t.day_of_week, t.start_time`,
       [teacher.id]
     );
-    res.json({ success: true, data: res2.rows.map(t => ({
+    res.json({
+      success: true, data: res2.rows.map(t => ({
         id: t.id,
         classLevel: t.class_level,
         section: t.section,
@@ -223,7 +232,8 @@ router.get('/timetable/:teacherId', async (req, res) => {
         dayOfWeek: t.day_of_week,
         startTime: t.start_time,
         endTime: t.end_time
-    })) });
+      }))
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch timetable' });
   }
@@ -286,7 +296,7 @@ router.get('/attendance/sections', async (req, res) => {
     ]);
 
     const assignedSections = [...new Set([...subRes.rows, ...tcaRes.rows].map(r => r.section))];
-    
+
     let result;
     if (assignedSections.includes('ALL') || assignedSections.includes(null) || assignedSections.includes('')) {
       result = await pool.query(
@@ -396,7 +406,7 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       for (const r of records) {
         // Validate status: must be 'present' or 'absent'
         if (r.status !== 'present' && r.status !== 'absent') {
-           throw new Error(`Invalid attendance status: ${r.status} for student ${r.studentId}`);
+          throw new Error(`Invalid attendance status: ${r.status} for student ${r.studentId}`);
         }
         const isPresent = r.status === 'present';
         await client.query(
@@ -591,7 +601,8 @@ router.get('/materials', async (req, res) => {
       [teacher.id]
     );
 
-    res.json({ success: true, data: result.rows.map(m => ({
+    res.json({
+      success: true, data: result.rows.map(m => ({
         id: m.id,
         title: m.title,
         description: m.description,
@@ -602,7 +613,8 @@ router.get('/materials', async (req, res) => {
         uploadedById: m.uploaded_by_id,
         uploadedBy: m.uploaded_by,
         createdAt: m.created_at
-    })) });
+      }))
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch materials' });
   }
@@ -619,7 +631,7 @@ router.post('/materials', uploadMaterial.single('materialFile'), async (req, res
     const title = sanitizeText(req.body.title, 200);
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10) || null; 
+    const section = sanitizeNullableText(req.body.section, 10) || null;
     const subject = sanitizeText(req.body.subject, 100);
 
     if (!title || !classLevel || !subject) return res.status(400).json({ success: false, error: 'All fields required' });
@@ -708,7 +720,8 @@ router.get('/syllabus', async (req, res) => {
     if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
 
     const data = await getSyllabusByTeacher(pool, teacher.id);
-    res.json({ success: true, data: data.map(s => ({
+    res.json({
+      success: true, data: data.map(s => ({
         id: s.id,
         title: s.title,
         description: s.description,
@@ -717,7 +730,8 @@ router.get('/syllabus', async (req, res) => {
         classLevel: s.class_level,
         section: s.section,
         createdAt: s.created_at
-    })) });
+      }))
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch syllabus' });
   }

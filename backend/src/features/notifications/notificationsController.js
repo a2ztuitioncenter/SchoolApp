@@ -1,4 +1,5 @@
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
+import { googleDriveService } from '../../utils/googleDriveService.js';
 
 export const getAllNotifications = async (req, res) => {
   try {
@@ -58,14 +59,54 @@ export const createNotification = async (req, res) => {
     const classLevel = sanitizeNullableText(req.body.classLevel || req.body.class_level, 20);
     const section = sanitizeNullableText(req.body.section, 10);
     const createdBy = sanitizeIdentifier(req.user?.userId, 20);
+
     if (!createdBy) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    if (!title || !message)
+    if (!title || !message) {
       return res.status(400).json({ error: 'title and message required' });
+    }
 
-    const attachmentUrl = req.file ? `/uploads/notifications/${req.file.filename}` : null;
+    let attachmentUrl = null;
+    if (req.file) {
+      try {
+        let folderId;
+        if (classLevel && section) {
+          // Organize by class/section if possible
+          folderId = await googleDriveService.getFolderPath(classLevel, section, 'notifications');
+        } else {
+          // Global notifications folder
+          const rootName = process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME || 'Tuition App Storage';
+          const rootId = await googleDriveService.getOrCreateFolder(rootName);
+          folderId = await googleDriveService.getOrCreateFolder('Global_Notifications', rootId);
+        }
+
+        const uploadResult = await googleDriveService.uploadFile(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype,
+          folderId
+        );
+        attachmentUrl = uploadResult.downloadLink;
+      } catch (driveError) {
+        console.error('[DRIVE UPLOAD ERROR] Falling back to local storage:', driveError.message);
+        // Fallback to local if drive fails
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        const filename = `${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
+        const uploadDir = path.join(process.cwd(), 'uploads/notifications');
+        
+        // Ensure directory exists (defense in depth)
+        await fs.mkdir(uploadDir, { recursive: true });
+        
+        const filePath = path.join(uploadDir, filename);
+        await fs.writeFile(filePath, req.file.buffer);
+        
+        attachmentUrl = `/uploads/notifications/${filename}`;
+      }
+    }
+
     const createdByInt = createdBy ? parseInt(createdBy, 10) : null;
     if (createdByInt !== null && Number.isNaN(createdByInt)) {
       return res.status(400).json({ error: 'Invalid createdBy identifier' });

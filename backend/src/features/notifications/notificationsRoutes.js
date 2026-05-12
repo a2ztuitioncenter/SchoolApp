@@ -4,19 +4,11 @@ import path from 'path';
 import { getAllNotifications, createNotification, deleteNotification } from './notificationsController.js';
 import { authenticate, authorize } from '../../middleware/auth-middleware.js';
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/notifications/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'notice-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
 const router = express.Router();
