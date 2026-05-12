@@ -2,6 +2,9 @@ import db from '../../config/pool.js';
 
 export const submissionModel = {
     async createOrUpdate({ homeworkId, studentId, fileUrl }) {
+        // Normalize file URL: ensure it starts with / but not /api/
+        const normalizedFileUrl = fileUrl ? fileUrl.replace(/^\/api/, '') : null;
+
         const query = `
             INSERT INTO submissions (homework_id, student_id, file_url, status, submitted_at)
             VALUES ($1, $2, $3, 'submitted', NOW())
@@ -16,7 +19,7 @@ export const submissionModel = {
                 reviewed_at = NULL
             RETURNING *
         `;
-        const result = await db.query(query, [homeworkId, studentId, fileUrl]);
+        const result = await db.query(query, [homeworkId, studentId, normalizedFileUrl]);
         return result.rows[0];
     },
 

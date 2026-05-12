@@ -107,7 +107,15 @@ const startServer = async () => {
 
     // 3. Security & Middleware
     console.log('[INIT] Initializing security middleware...');
-    app.use(compression());
+    app.use(compression({
+  filter: (req, res) => {
+    // Disable compression for binary downloads to prevent corruption
+    if (req.path.includes('/storage/download') || req.path.includes('/download')) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
     app.use(corsSecure());
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));

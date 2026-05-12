@@ -69,8 +69,8 @@ export const storageController = {
                     dbId: result.rows[0].id,
                     fileName: driveFile.name,
                     webViewLink: driveFile.webViewLink,
-                    downloadLink: `/api/storage/download/${driveFile.id}`,
-                    url: `/api/storage/download/${driveFile.id}` // Alias for frontend
+                    downloadLink: `/storage/download/${driveFile.id}`,
+                    url: `/storage/download/${driveFile.id}` // Alias for frontend
                 }
             });
         } catch (error) {
@@ -111,7 +111,7 @@ export const storageController = {
                 driveFileId: row.drive_file_id,
                 name: row.file_name,
                 viewLink: row.web_view_link,
-                downloadLink: `/api/storage/download/${row.drive_file_id}`,
+                downloadLink: `/storage/download/${row.drive_file_id}`,
                 uploadedBy: row.uploader_name || 'Admin',
                 date: row.created_at,
                 type: row.file_type,

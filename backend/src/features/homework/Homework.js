@@ -81,19 +81,21 @@ export const homeworkModel = {
   },
 
   async create({ title, description, classLevel, section, subjectId, dueDate, assignedBy, attachmentUrl, subject = null }) {
+    const normalizedUrl = attachmentUrl ? attachmentUrl.replace(/^\/api/, '') : null;
     const result = await db.query(
       `INSERT INTO homework (title, description, class_level, section, subject_id, subject, due_date, teacher_id, attachment_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [title, description || null, classLevel, section || null, subjectId || null, subject || null, dueDate || null, assignedBy || null, attachmentUrl || null]
+      [title, description || null, classLevel, section || null, subjectId || null, subject || null, dueDate || null, assignedBy || null, normalizedUrl]
     );
     return this.formatRow(result.rows[0]);
   },
 
   async update(id, { title, description, classLevel, section, subjectId, subject, dueDate, attachmentUrl }) {
+    const normalizedUrl = attachmentUrl ? attachmentUrl.replace(/^\/api/, '') : null;
     const result = await db.query(
       `UPDATE homework SET title=$1, description=$2, class_level=$3, section=$4, subject_id=$5, subject=$6, due_date=$7, 
        attachment_url=COALESCE($8, attachment_url) WHERE id=$9 RETURNING *`,
-      [title, description || null, classLevel, section || null, subjectId || null, subject || null, dueDate || null, attachmentUrl || null, id]
+      [title, description || null, classLevel, section || null, subjectId || null, subject || null, dueDate || null, normalizedUrl, id]
     );
     return this.formatRow(result.rows[0]);
   },
@@ -198,19 +200,21 @@ export const getHomeworkByTeacher = async (pool, teacherId) => {
 };
 
 export const createHomework = async (pool, { teacherId, classLevel, section, title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
+  const normalizedUrl = attachmentUrl ? attachmentUrl.replace(/^\/api/, '') : null;
   const result = await pool.query(
     `INSERT INTO homework (title, description, class_level, section, subject, due_date, teacher_id, attachment_url, type)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-    [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null, attachmentUrl || null, type]
+    [title, description || null, classLevel, section || null, subject || null, dueDate || null, teacherId || null, normalizedUrl, type]
   );
   return homeworkModel.formatRow(result.rows[0]);
 };
 
 export const updateHomework = async (pool, id, { title, description, dueDate, subject, attachmentUrl, type = 'homework' }) => {
+  const normalizedUrl = attachmentUrl ? attachmentUrl.replace(/^\/api/, '') : null;
   const result = await pool.query(
     `UPDATE homework SET title=$1, description=$2, due_date=$3, subject=$4,
      attachment_url = COALESCE($5, attachment_url), type=$6 WHERE id=$7 RETURNING *`,
-    [title, description || null, dueDate || null, subject || null, attachmentUrl || null, type, id]
+    [title, description || null, dueDate || null, subject || null, normalizedUrl, type, id]
   );
   return homeworkModel.formatRow(result.rows[0]);
 };

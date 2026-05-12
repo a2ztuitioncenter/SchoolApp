@@ -13,10 +13,6 @@ export const submitHomework = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Homework ID is required' });
         }
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: 'File is required' });
-        }
-
         const student = await getStudentByUserId(req.db, userId);
         if (!student) {
             return res.status(404).json({ success: false, error: 'Student profile not found' });
@@ -32,20 +28,28 @@ export const submitHomework = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Not authorized to submit to this homework (class mismatch)' });
         }
 
-        // Upload to Google Drive
-        // Organise by Class_X/Section_Y/Submissions/fileName
-        const folderId = await googleDriveService.getFolderPath(student.classLevel, student.section || 'A', 'submissions');
-        const uploadResult = await googleDriveService.uploadFile(
-            req.file.buffer,
-            `SUB_${student.name.replace(/\s+/g, '_')}_HW${homeworkId}_${Date.now()}`,
-            req.file.mimetype,
-            folderId
-        );
+        let fileUrl = req.body.fileUrl;
+
+        if (req.file) {
+            // Upload to Google Drive only if a new physical file is provided
+            const folderId = await googleDriveService.getFolderPath(student.classLevel, student.section || 'A', 'submissions');
+            const uploadResult = await googleDriveService.uploadFile(
+                req.file.buffer,
+                `SUB_${student.name.replace(/\s+/g, '_')}_HW${homeworkId}_${Date.now()}`,
+                req.file.mimetype,
+                folderId
+            );
+            fileUrl = uploadResult.downloadLink;
+        }
+
+        if (!fileUrl) {
+            return res.status(400).json({ success: false, error: 'File is required' });
+        }
 
         const submission = await submissionModel.createOrUpdate({
             homeworkId,
             studentId: student.id,
-            fileUrl: uploadResult.downloadLink
+            fileUrl
         });
 
         res.status(201).json({

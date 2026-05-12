@@ -33,12 +33,15 @@ export async function createMaterial(db, user, payload) {
   const { classId, sectionId } = await ensureClassAndSection(db, payload.classLevel, sectionName);
   const uploaderRole = user.role === 'teacher' ? 'teacher' : 'admin';
 
+  // Normalize file URL
+  const normalizedFileUrl = payload.fileUrl ? payload.fileUrl.replace(/^\/api/, '') : null;
+
   const result = await db.query(
     `INSERT INTO study_materials
       (title, description, file_url, class_id, section_id, uploaded_by, uploader_role, subject_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id`,
-    [payload.title, payload.description || null, payload.fileUrl, classId, sectionId, user.userId, uploaderRole, payload.subjectId || null]
+    [payload.title, payload.description || null, normalizedFileUrl, classId, sectionId, user.userId, uploaderRole, payload.subjectId || null]
   );
 
   return getMaterialById(db, result.rows[0].id);
@@ -154,6 +157,10 @@ export async function updateMaterial(db, materialId, payload) {
   const sectionName = payload.section === undefined ? current.section : normalizeSection(payload.section);
   const { classId, sectionId } = await ensureClassAndSection(db, classLevel, sectionName);
 
+  // Normalize file URL
+  const fileUrl = payload.fileUrl || current.file_url;
+  const normalizedFileUrl = fileUrl ? fileUrl.replace(/^\/api/, '') : null;
+
   await db.query(
     `UPDATE study_materials
      SET title = $1,
@@ -167,7 +174,7 @@ export async function updateMaterial(db, materialId, payload) {
     [
       payload.title || current.title,
       payload.description ?? current.description,
-      payload.fileUrl || current.file_url,
+      normalizedFileUrl,
       classId,
       sectionId,
       payload.subjectId !== undefined ? payload.subjectId : current.subject_id,

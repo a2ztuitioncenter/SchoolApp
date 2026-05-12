@@ -519,7 +519,7 @@ router.post('/homework', uploadHomework.single('attachment'), async (req, res) =
       }
     }
 
-    const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : null;
+    const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : (req.body.fileUrl || null);
     const finalDueDate = type === 'daily_practice' ? null : dueDate;
     const hw = await createHomework(pool, { teacherId: teacher.id, classLevel, section, subject, title, description, dueDate: finalDueDate, attachmentUrl, type });
     res.status(201).json({ success: true, data: hw });
@@ -549,7 +549,7 @@ router.put('/homework/:id', uploadHomework.single('attachment'), async (req, res
 
     if (!canEdit) return res.status(403).json({ success: false, error: 'Not authorized to edit this homework' });
 
-    const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : undefined;
+    const attachmentUrl = req.file ? `/uploads/homework/${req.file.filename}` : (req.body.fileUrl || undefined);
     const finalDueDate = type === 'daily_practice' ? null : dueDate;
     const updated = await updateHomework(pool, id, { title, description, dueDate: finalDueDate, subject, attachmentUrl, type });
     res.json({ success: true, data: updated });
@@ -620,93 +620,7 @@ router.get('/materials', async (req, res) => {
   }
 });
 
-router.post('/materials', uploadMaterial.single('materialFile'), async (req, res) => {
-  try {
-    const { teacherId } = req.body;
-    const pool = req.db;
-    const teacher = await requireTeacher(req, teacherId);
-
-    if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
-
-    const title = sanitizeText(req.body.title, 200);
-    const description = sanitizeNullableText(req.body.description, 5000);
-    const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10) || null;
-    const subject = sanitizeText(req.body.subject, 100);
-
-    if (!title || !classLevel || !subject) return res.status(400).json({ success: false, error: 'All fields required' });
-    if (!req.file) return res.status(400).json({ success: false, error: 'File is required' });
-
-    const hasPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, section);
-    if (!hasPermission) {
-      return res.status(403).json({ success: false, error: 'Permission denied for this class' });
-    }
-
-    const fileUrl = `/uploads/materials/${req.file.filename}`;
-    const result = await pool.query(
-      `INSERT INTO materials (title, description, class_level, section, subject, file_url, uploaded_by_id, uploaded_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.id, teacher.phone]
-    );
-
-    res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to upload material' });
-  }
-});
-
-router.put('/materials/:id', uploadMaterial.single('materialFile'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { teacherId } = req.body;
-    const pool = req.db;
-    const teacher = await requireTeacher(req, teacherId);
-    if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
-
-    const title = sanitizeText(req.body.title, 200);
-    const description = sanitizeNullableText(req.body.description, 5000);
-    const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
-    const section = sanitizeNullableText(req.body.section, 10) || null;
-    const subject = sanitizeText(req.body.subject, 100);
-
-    const own = await pool.query('SELECT uploaded_by_id FROM materials WHERE id = $1', [id]);
-    if (!own.rows.length) return res.status(404).json({ success: false, error: 'Material not found' });
-    if (own.rows[0].uploaded_by_id !== teacher.id) return res.status(403).json({ success: false, error: 'Access denied' });
-
-    let fileUrl = req.body.currentFileUrl;
-    if (req.file) fileUrl = `/uploads/materials/${req.file.filename}`;
-
-    const result = await pool.query(
-      `UPDATE materials 
-       SET title=$1, description=$2, class_level=$3, section=$4, subject=$5, file_url=$6, uploaded_by=$7 
-       WHERE id=$8 RETURNING *`,
-      [title, description || null, classLevel, section || null, subject, fileUrl, teacher.phone, id]
-    );
-
-    res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to update material' });
-  }
-});
-
-router.delete('/materials/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { teacherId } = req.body;
-    const pool = req.db;
-    const teacher = await requireTeacher(req, teacherId);
-    if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
-
-    const own = await pool.query('SELECT uploaded_by_id FROM materials WHERE id = $1', [id]);
-    if (!own.rows.length) return res.status(404).json({ success: false, error: 'Material not found' });
-    if (own.rows[0].uploaded_by_id !== teacher.id) return res.status(403).json({ success: false, error: 'Access denied' });
-
-    await pool.query('DELETE FROM materials WHERE id = $1', [id]);
-    res.json({ success: true, message: 'Material deleted' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to delete material' });
-  }
-});
+// Materials routes moved to materialsRoutes.js
 
 // ============================================
 // SYLLABUS — teacher-scoped CRUD

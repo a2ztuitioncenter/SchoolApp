@@ -1071,9 +1071,9 @@ function setupFormListeners() {
     fd.append('dueDate', document.getElementById('hw-dueDate').value);
     
     const file = document.getElementById('hw-file')?.files[0];
-    if (pendingHwUpload) {
-      fd.append('attachmentId', pendingHwUpload.id);
-      fd.append('fileUrl', pendingHwUpload.url);
+    if (pendingHwUpload && pendingHwUpload.data) {
+      fd.append('attachmentId', pendingHwUpload.data.id || pendingHwUpload.data.fileId);
+      fd.append('fileUrl', pendingHwUpload.data.url || pendingHwUpload.data.downloadLink);
     } else if (file) {
       fd.append('attachment', file);
     }
@@ -1139,9 +1139,9 @@ function setupFormListeners() {
       fd.append('currentFileUrl', document.getElementById('material-current-file').value);
     }
     
-    if (pendingMaterialUpload) {
-      fd.append('attachmentId', pendingMaterialUpload.id);
-      fd.append('fileUrl', pendingMaterialUpload.url);
+    if (pendingMaterialUpload && pendingMaterialUpload.data) {
+      fd.append('attachmentId', pendingMaterialUpload.data.id || pendingMaterialUpload.data.fileId);
+      fd.append('fileUrl', pendingMaterialUpload.data.url || pendingMaterialUpload.data.downloadLink);
     } else if (file) {
       fd.append('materialFile', file);
     }

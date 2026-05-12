@@ -34,7 +34,9 @@ export const waitForBackend = async () => true;
  * Generic fetch wrapper with error handling and token injection
  */
 export const apiCall = async (endpoint, options = {}) => {
-  let url = base_api_url ? `${base_api_url}/api${endpoint}` : `/api${endpoint}`;
+  let cleanPath = endpoint.startsWith('/api') ? endpoint.slice(4) : endpoint;
+  if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+  let url = base_api_url ? `${base_api_url}/api${cleanPath}` : `/api${cleanPath}`;
   
   if (window.location.hostname !== 'localhost') {
     console.log(`[API] ${options.method || 'GET'} ${url}`, {
@@ -500,7 +502,14 @@ export const teacherAPI = {
 
 export const downloadFile = async (filePath, fileName = 'download') => {
   try {
-    const blob = await apiCall(`/download?filePath=${encodeURIComponent(filePath)}`, {
+    // If the path is already a storage download link, use it directly
+    // Otherwise wrap it in the legacy download handler for local files
+    let endpoint = filePath;
+    if (!filePath.startsWith('/storage/download/') && !filePath.startsWith('/api/storage/download/')) {
+      endpoint = `/download?filePath=${encodeURIComponent(filePath)}`;
+    }
+
+    const blob = await apiCall(endpoint, {
       method: 'GET',
       responseType: 'blob'
     });

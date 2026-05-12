@@ -67,7 +67,8 @@ export const uploadMaterial = async (req, res) => {
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
     const section = sanitizeNullableText(req.body.section, 10);
-    if (!title || !classLevel || !req.file) {
+    const fileUrl = req.file ? `/uploads/materials/${req.file.filename}` : req.body.fileUrl;
+    if (!title || !classLevel || !fileUrl) {
       return res.status(422).json({ error: 'title, classLevel, and material file are required' });
     }
 
@@ -82,7 +83,7 @@ export const uploadMaterial = async (req, res) => {
       classLevel,
       section,
       subjectId: sanitizeIdentifier(req.body.subjectId || req.body.subject_id, 20),
-      fileUrl: `/uploads/materials/${req.file.filename}`,
+      fileUrl,
     });
     res.status(201).json({ success: true, data: toApiMaterial(material) });
   } catch (error) {
@@ -117,7 +118,7 @@ export const editMaterial = async (req, res) => {
       classLevel: nextClass,
       section: nextSection,
       subjectId: sanitizeIdentifier(req.body.subjectId || req.body.subject_id, 20),
-      fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : material.file_url,
+      fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : (req.body.fileUrl || material.file_url),
     });
 
     if (req.file && material.file_url && material.file_url !== updated.file_url) {

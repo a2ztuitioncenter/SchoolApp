@@ -46,7 +46,7 @@ export const createHomework = async (req, res) => {
     const subjectId = req.body.subjectId || req.body.subject_id;
     const dueDate = req.body.dueDate || req.body.due_date;
     const assignedBy = req.user?.userId || null;
-    let attachmentUrl = null;
+    let attachmentUrl = req.body.fileUrl || req.body.attachmentUrl || null;
     if (req.file) {
       attachmentUrl = `/uploads/homework/${req.file.filename}`;
     }
@@ -122,7 +122,7 @@ export const updateHomework = async (req, res) => {
     const subjectId = req.body.subjectId || req.body.subject_id;
     const dueDate = req.body.dueDate || req.body.due_date;
 
-    let attachmentUrl = bodyAttachmentUrl || null;
+    let attachmentUrl = req.body.fileUrl || bodyAttachmentUrl || null;
     if (req.file) {
       attachmentUrl = `/uploads/homework/${req.file.filename}`;
     }
