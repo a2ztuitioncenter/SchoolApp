@@ -20,7 +20,10 @@ export const userModel = {
       username VARCHAR(50) UNIQUE,
       status_updated_at TIMESTAMP,
       avatar_url TEXT,
-      avatar_drive_id VARCHAR(100)
+      avatar_drive_id VARCHAR(100),
+      last_login_at TIMESTAMP,
+      designation VARCHAR(100),
+      password_status VARCHAR(20) DEFAULT 'verified'
     );
     CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
   `,
@@ -164,6 +167,7 @@ export const deleteUser = async (pool, id, schoolId) => {
 
     await client.query('DELETE FROM timetable WHERE teacher_id = $1', [id]);
     await client.query('DELETE FROM syllabus WHERE teacher_id = $1', [id]);
+    await client.query('DELETE FROM subject_assignments WHERE teacher_id = $1', [id]);
     await client.query('DELETE FROM teacher_class_assignment WHERE teacher_id = $1', [id]);
     await client.query('DELETE FROM students WHERE user_id = $1', [id]);
 

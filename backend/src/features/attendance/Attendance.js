@@ -15,6 +15,8 @@ export const attendanceModel = {
       created_at TIMESTAMP DEFAULT NOW(),
       UNIQUE(student_id, date)
     );
+    CREATE INDEX IF NOT EXISTS idx_attendance_date_school ON attendance(date, school_id);
+    CREATE INDEX IF NOT EXISTS idx_attendance_student_date ON attendance(student_id, date);
   `,
 
   async markBulk(records, userId, schoolId) {

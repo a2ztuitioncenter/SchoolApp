@@ -246,14 +246,13 @@ router.put('/users/:id', async (req, res) => {
 
 router.get('/users/:id/assignments', async (req, res) => {
     try {
-        const assignments = await getTeacherAssignments(req.db, req.params.id);
-
-        // Security check: ensure teacher belongs to the same school
+        // Security check first: ensure teacher belongs to the same school before fetching data
         const teacher = await getUserById(req.db, req.params.id);
-        if (!teacher || teacher.school_id !== req.user.schoolId) {
+        if (!teacher || String(teacher.schoolId) !== String(req.user.schoolId)) {
             return res.status(403).json({ success: false, error: 'Unauthorized: Teacher belongs to another school' });
         }
 
+        const assignments = await getTeacherAssignments(req.db, req.params.id);
         res.json({ success: true, data: assignments || [] });
     } catch (err) {
         console.error('Fetch assignments error:', err);
@@ -627,7 +626,7 @@ router.get('/timetable', async (req, res) => {
                     t.class_level, t.section, t.teacher_id, u.name as teacher_name
              FROM timetable t
              LEFT JOIN users u ON t.teacher_id = u.id
-             LEFT JOIN subjects s ON t.subject_id = s.id
+             LEFT JOIN master_subjects s ON t.subject_id = s.id
              WHERE t.school_id = $1
              ORDER BY t.day_of_week, t.start_time ASC`,
             [req.user.schoolId]
@@ -729,80 +728,31 @@ router.get('/stats/summary', async (req, res) => {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const currentMonth = new Date().toISOString().slice(0, 7);
 
-        // Run all count queries in parallel
-        const [
-            studentStats,
-            userStats,
-            financialStats,
-            homeworkStats,
-            attendanceStats
-        ] = await Promise.all([
-            // Student Counts
-            req.db.query(
-                `SELECT 
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN status = 'active' THEN 1 END) as active
-                 FROM students WHERE school_id = $1`,
-                [schoolId]
-            ),
-            // User Counts
-            req.db.query(
-                `SELECT 
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN role = 'teacher' THEN 1 END) as teachers,
-                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending
-                 FROM users WHERE school_id = $1`,
-                [schoolId]
-            ),
-            // Financials
-            req.db.query(
-                `SELECT 
-                    COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as paid,
-                    COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as pending,
-                    COUNT(CASE WHEN is_paid = FALSE THEN 1 END) as unpaid_count
-                 FROM fees f
-                 JOIN students s ON f.student_id = s.id
-                 WHERE s.school_id = $1`,
-                [schoolId]
-            ),
-            // Homework (last 30 days)
-            req.db.query(
-                `SELECT COUNT(*) as total FROM homework WHERE school_id = $1 AND created_at >= $2`,
-                [schoolId, thirtyDaysAgo]
-            ),
-            // Attendance (current month)
-            req.db.query(
-                `SELECT 
-                    ROUND(COUNT(CASE WHEN is_present=true THEN 1 END) * 100.0 / NULLIF(COUNT(id), 0), 1) as percentage
-                 FROM attendance
-                 WHERE school_id = $1 AND TO_CHAR(date, 'YYYY-MM') = $2`,
-                [schoolId, currentMonth]
-            )
+        // Run all count queries in parallel — allSettled so one failure doesn't crash the dashboard
+        const [studentRes, userRes, financialRes, homeworkRes, attendanceRes] = await Promise.allSettled([
+            req.db.query(`SELECT COUNT(*) as total, COUNT(CASE WHEN status = 'active' THEN 1 END) as active FROM students WHERE school_id = $1`, [schoolId]),
+            req.db.query(`SELECT COUNT(*) as total, COUNT(CASE WHEN role = 'teacher' THEN 1 END) as teachers, COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending FROM users WHERE school_id = $1`, [schoolId]),
+            req.db.query(`SELECT COALESCE(SUM(CASE WHEN is_paid = TRUE THEN amount ELSE 0 END), 0) as paid, COALESCE(SUM(CASE WHEN is_paid = FALSE THEN amount ELSE 0 END), 0) as pending, COUNT(CASE WHEN is_paid = FALSE THEN 1 END) as unpaid_count FROM fees f JOIN students s ON f.student_id = s.id WHERE s.school_id = $1`, [schoolId]),
+            req.db.query(`SELECT COUNT(*) as total FROM homework WHERE school_id = $1 AND created_at >= $2`, [schoolId, thirtyDaysAgo]),
+            req.db.query(`SELECT ROUND(COUNT(CASE WHEN is_present=true THEN 1 END) * 100.0 / NULLIF(COUNT(id), 0), 1) as percentage FROM attendance WHERE school_id = $1 AND TO_CHAR(date, 'YYYY-MM') = $2`, [schoolId, currentMonth])
         ]);
+
+        // Safe extractor with fallback defaults — handles rejected promises gracefully
+        const safeRow = (r, fb) => r.status === 'fulfilled' ? (r.value.rows[0] || fb) : fb;
+        const studentStats   = safeRow(studentRes,   { total: 0, active: 0 });
+        const userStats      = safeRow(userRes,       { total: 0, teachers: 0, pending: 0 });
+        const financialStats = safeRow(financialRes,  { paid: 0, pending: 0, unpaid_count: 0 });
+        const homeworkStats  = safeRow(homeworkRes,   { total: 0 });
+        const attendanceStats = safeRow(attendanceRes, { percentage: null });
 
         res.json({
             success: true,
             data: {
-                students: {
-                    total: parseInt(studentStats.rows[0].total),
-                    active: parseInt(studentStats.rows[0].active)
-                },
-                users: {
-                    total: parseInt(userStats.rows[0].total),
-                    teachers: parseInt(userStats.rows[0].teachers),
-                    pending: parseInt(userStats.rows[0].pending)
-                },
-                financials: {
-                    totalPaid: parseFloat(financialStats.rows[0].paid),
-                    totalPending: parseFloat(financialStats.rows[0].pending),
-                    unpaidCount: parseInt(financialStats.rows[0].unpaid_count)
-                },
-                homework: {
-                    recentCount: parseInt(homeworkStats.rows[0].total)
-                },
-                attendance: {
-                    monthlyRate: parseFloat(attendanceStats.rows[0].percentage) || 0
-                }
+                students:   { total: parseInt(studentStats.total) || 0,   active: parseInt(studentStats.active) || 0 },
+                users:      { total: parseInt(userStats.total) || 0,       teachers: parseInt(userStats.teachers) || 0, pending: parseInt(userStats.pending) || 0 },
+                financials: { totalPaid: parseFloat(financialStats.paid) || 0, totalPending: parseFloat(financialStats.pending) || 0, unpaidCount: parseInt(financialStats.unpaid_count) || 0 },
+                homework:   { recentCount: parseInt(homeworkStats.total) || 0 },
+                attendance: { monthlyRate: parseFloat(attendanceStats.percentage) || 0 }
             }
         });
     } catch (err) {

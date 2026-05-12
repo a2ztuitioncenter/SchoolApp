@@ -168,20 +168,6 @@ export const apiCall = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       console.error(`[API FAIL] ${method} ${url} | Status: ${response.status}`, data);
-      
-      // Handle authentication expiration (401)
-      if (response.status === 401) {
-        console.warn('[API] 401 Unauthorized - Redirecting to login');
-        // Clear local auth and redirect (using authLogout if available, otherwise manual clear)
-        localStorage.removeItem('auth');
-        sessionStorage.removeItem('auth');
-        if (typeof window.handleLogout === 'function') {
-          window.handleLogout();
-        } else {
-          window.location.href = '/';
-        }
-      }
-
       const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
       return { ...data, error: errorMsg, status: response.status, success: false };
     }
@@ -253,7 +239,10 @@ async function tryRefreshToken() {
   _refreshPromise = (async () => {
     try {
       const url = base_api_url ? `${base_api_url}/api/auth/refresh` : '/api/auth/refresh';
-      const resp = await fetch(url, { method: 'POST', credentials: 'include' });
+      // Include CSRF token so cross-site refresh doesn't fail with 403
+      const csrf = getCsrfToken();
+      const headers = csrf ? { 'X-CSRF-Token': csrf } : {};
+      const resp = await fetch(url, { method: 'POST', credentials: 'include', headers });
       return resp.ok;
     } catch {
       return false;

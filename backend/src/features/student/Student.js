@@ -18,6 +18,7 @@ export const studentModel = {
       school_id VARCHAR(50) NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
+    CREATE INDEX IF NOT EXISTS idx_students_class_section_school ON students(class_level, section, school_id);
   `,
 };
 

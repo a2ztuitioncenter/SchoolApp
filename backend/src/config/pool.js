@@ -23,7 +23,10 @@ const isLocal = process.env.DATABASE_URL.includes('localhost') || process.env.DA
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isLocal ? false : { rejectUnauthorized: false }
+  ssl: isLocal ? false : { rejectUnauthorized: false },
+  max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000
 });
 
 export default pool;

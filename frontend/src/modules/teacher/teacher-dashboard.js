@@ -1020,24 +1020,26 @@ window.openHwModal = async function (typeOrHw = 'homework') {
     }
   }
 
-  const modal = document.getElementById('hw-modal');
-  if (modal) {
-    modal.style.display = 'flex';
-    modal.classList.add('open');
-  }
-
   const dueDateContainer = document.getElementById('hw-dueDate-container');
   if (dueDateContainer) {
     dueDateContainer.style.display = isDpp ? 'none' : 'block';
+  }
+
+  const modal = document.getElementById('hw-modal');
+  const overlay = document.getElementById('hwDrawerOverlay');
+  if (modal) {
+    modal.classList.add('active');
+  }
+  if (overlay) {
+    overlay.classList.add('active');
   }
 };
 
 window.closeHwModal = function () {
   const modal = document.getElementById('hw-modal');
-  if (modal) {
-    modal.classList.remove('open');
-    setTimeout(() => { modal.style.display = 'none'; }, 300);
-  }
+  const overlay = document.getElementById('hwDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
 };
 
 window.editHomework = function (id) {
@@ -1331,18 +1333,20 @@ window.openMaterialModal = async function (material = null) {
   }
 
   const modal = document.getElementById('material-modal');
+  const overlay = document.getElementById('materialDrawerOverlay');
   if (modal) {
-    modal.style.display = 'flex';
-    modal.classList.add('open');
+    modal.classList.add('active');
+  }
+  if (overlay) {
+    overlay.classList.add('active');
   }
 };
 
 window.closeMaterialModal = function () {
   const modal = document.getElementById('material-modal');
-  if (modal) {
-    modal.classList.remove('open');
-    setTimeout(() => { modal.style.display = 'none'; }, 300);
-  }
+  const overlay = document.getElementById('materialDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
 };
 
 window.editMaterial = function (id) {
@@ -1505,18 +1509,18 @@ window.openSyllabusModal = () => {
   const form = document.getElementById('syl-form');
   if (form) form.reset();
   const modal = document.getElementById('syl-modal');
+  const overlay = document.getElementById('sylDrawerOverlay');
   if (modal) {
-    modal.style.display = 'flex';
-    modal.classList.add('open');
+    modal.classList.add('active');
     setupSyllabusDropdowns();
   }
+  if (overlay) overlay.classList.add('active');
 };
 window.closeSyllabusModal = () => {
   const modal = document.getElementById('syl-modal');
-  if (modal) {
-    modal.classList.remove('open');
-    setTimeout(() => { modal.style.display = 'none'; }, 300);
-  }
+  const overlay = document.getElementById('sylDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
 };
 
 window.toggleChapter = async function (id, completed) {
@@ -2046,8 +2050,9 @@ window.openEditProfileModal = async function() {
             } else {
                 document.getElementById('profile-preview').src = './src/assets/images/default-avatar.png';
             }
-            
-            modal.style.display = 'flex';
+            const overlay = document.getElementById('editProfileDrawerOverlay');
+            if (modal) modal.classList.add('active');
+            if (overlay) overlay.classList.add('active');
         }
     } catch (err) {
         hideInfo();
@@ -2057,7 +2062,9 @@ window.openEditProfileModal = async function() {
 
 window.closeEditProfileModal = function() {
     const modal = document.getElementById('edit-profile-modal');
-    if (modal) modal.style.display = 'none';
+    const overlay = document.getElementById('editProfileDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
     // Clear file input
     const fileInput = document.getElementById('profile-upload');
     if (fileInput) fileInput.value = '';
@@ -2144,7 +2151,10 @@ window.openCMSModal = async function(type) {
     
     titleEl.textContent = titles[type] || 'Information';
     bodyEl.innerHTML = '<p class="loading-text">Loading content...</p>';
-    modal.style.display = 'flex';
+    
+    const overlay = document.getElementById('cmsDrawerOverlay');
+    if (modal) modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
     
     // Helper to safely sanitize HTML
     const sanitize = (html) => {
@@ -2183,7 +2193,9 @@ window.openCMSModal = async function(type) {
 
 window.closeCMSModal = function() {
     const modal = document.getElementById('cms-modal');
-    if (modal) modal.style.display = 'none';
+    const overlay = document.getElementById('cmsDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
 };
 // ===========================
 // Submissions & Reviews Logic
@@ -2293,7 +2305,10 @@ window.viewSubmissions = async function(homeworkId, title) {
     
     subtitle.textContent = `Reviewing submissions for: ${title}`;
     tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading submissions...</td></tr>';
-    modal.style.display = 'flex';
+    
+    const overlay = document.getElementById('homeworkSubmissionsDrawerOverlay');
+    if (modal) modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
     
     try {
         const res = await submissionsAPI.getForHomework(homeworkId);
@@ -2338,7 +2353,9 @@ window.viewSubmissions = async function(homeworkId, title) {
 
 window.closeSubmissionsModal = function() {
     const modal = document.getElementById('homework-submissions-modal');
-    if (modal) modal.style.display = 'none';
+    const overlay = document.getElementById('homeworkSubmissionsDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
 };
 
 window.openReviewModal = function(id, name, date, marks, remarks) {
@@ -2351,12 +2368,16 @@ window.openReviewModal = function(id, name, date, marks, remarks) {
     document.getElementById('review-marks').value = (marks === 'null' || marks === null || marks === undefined) ? '' : marks;
     document.getElementById('review-remarks').value = (remarks === 'null' || remarks === null || remarks === undefined) ? '' : remarks;
     
-    modal.style.display = 'flex';
+    const overlay = document.getElementById('reviewSubmissionDrawerOverlay');
+    if (modal) modal.classList.add('active');
+    if (overlay) overlay.classList.add('active');
 };
 
 window.closeReviewModal = function() {
     const modal = document.getElementById('review-submission-modal');
-    if (modal) modal.style.display = 'none';
+    const overlay = document.getElementById('reviewSubmissionDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
 };
 
 // Review Form Submission
@@ -2457,17 +2478,25 @@ function resetTeacherUploadProgress(prefix) {
 
 // Close modals when clicking outside
 window.addEventListener('click', (e) => {
+    // Handle legacy .modal classes
     const modals = document.querySelectorAll('.modal');
     modals.forEach(modal => {
         if (e.target === modal) {
             modal.style.display = 'none';
-            // Clear inputs if profile modal
-            if (modal.id === 'edit-profile-modal') {
-                const fileInput = document.getElementById('profile-upload');
-                if (fileInput) fileInput.value = '';
-            }
         }
     });
+
+    // Handle new .drawer-overlay system
+    if (e.target.classList.contains('drawer-overlay')) {
+        const id = e.target.id;
+        if (id === 'hwDrawerOverlay') closeHwModal();
+        if (id === 'materialDrawerOverlay') closeMaterialModal();
+        if (id === 'sylDrawerOverlay') closeSyllabusModal();
+        if (id === 'editProfileDrawerOverlay') closeEditProfileModal();
+        if (id === 'cmsDrawerOverlay') closeCMSModal();
+        if (id === 'homeworkSubmissionsDrawerOverlay') closeSubmissionsModal();
+        if (id === 'reviewSubmissionDrawerOverlay') closeReviewModal();
+    }
 });
 
 window.closeEditProfileModal = function() {
