@@ -1,5 +1,5 @@
 import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI, uploadFileWithProgress } from '../../core/api.js';
-import { requireRole, getUserId, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
+import { requireRole, getUserId, getUserRole, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 import { escapeHtml, escapeAttr } from '../../core/sanitize.js';
 import { formatDate } from '../../core/utils.js';
 import { getCache, setCache, clearCache, CACHE_TTL } from '../../core/cache.js';
@@ -8,6 +8,7 @@ import { getCache, setCache, clearCache, CACHE_TTL } from '../../core/cache.js';
 // Request Control
 // ===========================
 let teacherDashboardAbortController = null;
+let moduleAbortController = null;
 
 // ═══════════════════════════════════════════
 // ROUTE PROTECTION - Must be first
@@ -92,9 +93,17 @@ updateClock();
 // ─── Tab Switching ────────────────────────────────────────────────────────────
 function setupTabs() {
   document.querySelectorAll('.nav-link[data-tab]').forEach(link => {
-    link.addEventListener('click', e => {
+    link.addEventListener('click', async e => {
       e.preventDefault();
       const tab = link.getAttribute('data-tab');
+      
+      // Abort any pending module loads
+      if (moduleAbortController) {
+        moduleAbortController.abort();
+      }
+      moduleAbortController = new AbortController();
+      const signal = moduleAbortController.signal;
+
       // Remove active class from all nav links
       document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
       // Hide all tab content
@@ -105,15 +114,41 @@ function setupTabs() {
       const el = document.getElementById(`tab-${tab}`);
       if (el) el.style.display = 'block';
 
-      if (tab === 'dashboard') loadDashboard();
-      if (tab === 'subjects') loadTeacherSubjects();
-      if (tab === 'homework') { loadHomework(); populateSharedDropdowns('hw'); }
-      if (tab === 'dpp') { loadHomework(); populateSharedDropdowns('dpp'); }
-      if (tab === 'materials') { loadMaterials(); populateSharedDropdowns('mat'); }
-      if (tab === 'timetable') renderWeeklyTimetable();
-      if (tab === 'syllabus') { loadSyllabus(); setupSyllabusDropdowns(); }
-      if (tab === 'attendance') { initAttendanceTab(); initSummaryTab(); }
-      if (tab === 'exam') initExamTab();
+      try {
+        if (tab === 'dashboard') loadDashboard();
+        if (tab === 'subjects') loadTeacherSubjects();
+        if (tab === 'homework') { 
+          await Promise.all([
+            loadHomework(signal), 
+            populateSharedDropdowns('hw', signal)
+          ]); 
+        }
+        if (tab === 'dpp') { 
+          await Promise.all([
+            loadHomework(signal), 
+            populateSharedDropdowns('dpp', signal)
+          ]); 
+        }
+        if (tab === 'materials') { 
+          await Promise.all([
+            loadMaterials(signal), 
+            populateSharedDropdowns('mat', signal)
+          ]); 
+        }
+        if (tab === 'timetable') renderWeeklyTimetable();
+        if (tab === 'syllabus') { 
+          loadSyllabus(signal); 
+          setupSyllabusDropdowns(); 
+        }
+        if (tab === 'attendance') { initAttendanceTab(); initSummaryTab(); }
+        if (tab === 'exam') initExamTab();
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log(`[DASHBOARD] Tab load aborted for: ${tab}`);
+          return;
+        }
+        console.error(`[DASHBOARD] Error loading tab ${tab}:`, err);
+      }
     });
   });
 }
@@ -124,26 +159,41 @@ async function loadTeacherSubjects() {
     if (!tbody) return;
 
     try {
+        console.log('[DASHBOARD] Loading subjects for teacher:', teacherId);
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+        
         const res = await subjectsAPI.getTeacherSubjects();
         const data = res.data || [];
-        
-        if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No subjects assigned to you yet.</td></tr>';
+
+        if (!res.success) {
+            console.error('[DASHBOARD] API Error loading subjects:', res.error);
+            tbody.innerHTML = `<tr><td colspan="4" class="empty-state text-danger">Error: ${res.error || 'Failed to load'}</td></tr>`;
+            return;
+        }
+
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty-state">
+                        <i class="fas fa-book-open"></i>
+                        <p>No subjects assigned to you yet.</p>
+                        <small>Contact administration if you believe this is an error.</small>
+                    </td>
+                </tr>`;
             return;
         }
 
         tbody.innerHTML = data.map(s => `
             <tr>
-
-            <td><strong>${escapeHtml(s.master_name || s.name)}</strong></td>
+                <td><strong>${escapeHtml(s.master_name || s.name || s.subject_name)}</strong></td>
                 <td><span class="badge">Class ${escapeHtml(s.class_level || s.classLevel)}</span></td>
                 <td><span class="badge secondary">${escapeHtml(s.section || 'All Sections')}</span></td>
                 <td>${formatDate(s.created_at || s.createdAt)}</td>
             </tr>
         `).join('');
     } catch (err) {
-        console.error('Failed to load teacher subjects:', err);
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state text-danger">Failed to load assigned subjects.</td></tr>';
+        console.error('[DASHBOARD] Catch error in loadTeacherSubjects:', err);
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state text-danger">Failed to load assigned subjects. Check connection.</td></tr>';
     }
 }
 
@@ -195,14 +245,14 @@ async function populateSubjectDropdown(classLevel, section, selectIds) {
     }
 }
 
-async function populateSharedDropdowns(prefix) {
+async function populateSharedDropdowns(prefix, signal = null) {
   const classSel = document.getElementById(`${prefix}-classLevel`);
   const secSel = document.getElementById(`${prefix}-section`);
   const subSelId = `${prefix}-subject`;
   if (!classSel || !secSel) return;
 
   try {
-    const res = await teacherAPI.getAttendanceClasses(teacherId || '');
+    const res = await teacherAPI.getAttendanceClasses(teacherId || '', { signal });
     if (res.success && res.data && res.data.length > 0) {
       const parsed = res.data.map(raw => {
         if (typeof raw === 'object' && raw !== null) {
@@ -418,7 +468,10 @@ function updateDashboardUI(dashRes, matRes) {
         if (ddName) ddName.textContent = teacher.name || getUserName() || 'Teacher';
         
         const ddId = document.getElementById('dropdown-teacher-id');
-        if (ddId) ddId.textContent = `ID: ${teacher.teacherId || 'N/A'}`;
+        if (ddId) {
+            const displayId = teacher.teacherId || teacher.username || `ID: ${teacher.id}`;
+            ddId.textContent = displayId.startsWith('ID:') ? displayId : `ID: ${displayId}`;
+        }
         
         const ddEmail = document.getElementById('dropdown-teacher-email');
         if (ddEmail) ddEmail.textContent = teacher.email || 'No email';
@@ -471,7 +524,12 @@ function updateDashboardUI(dashRes, matRes) {
       const classListEl = document.getElementById('dropdown-teacher-classes');
       if (classListEl && dashRes.classes) {
         if (dashRes.classes.length === 0) {
-          classListEl.innerHTML = '<span class="class-badge">None assigned</span>';
+          const userRole = getUserRole();
+          if (userRole === 'admin') {
+            classListEl.innerHTML = '<span class="class-badge admin">Full Access (Admin)</span>';
+          } else {
+            classListEl.innerHTML = '<span class="class-badge">None assigned</span>';
+          }
         } else {
           classListEl.innerHTML = dashRes.classes.map(c => 
             `<span class="class-badge">Class ${c.classLevel}</span>`
@@ -826,16 +884,26 @@ window.saveAttendance = async function () {
 };
 
 // ─── HOMEWORK ─────────────────────────────────────────────────────────────────
-async function loadHomework() {
+async function loadHomework(signal = null) {
   try {
-    const res = await teacherAPI.getHomework(teacherId);
-    allHomework = res.data || [];
-    renderHomeworkTable();
-    renderDppTable();
+    showInfo('Loading homework...');
+    const res = await teacherAPI.getHomework({ signal });
+    if (res.success) {
+      allHomework = res.data || [];
+      renderHomeworkTable();
+      renderDppTable();
+    } else {
+      showError('Failed to load homework: ' + (res.error || 'Unknown error'));
+    }
   } catch (err) {
-    showError('Failed to load homework: ' + err.message);
+    if (err.name !== 'AbortError') {
+      showError('Failed to load homework: ' + err.message);
+    }
+  } finally {
+    hideInfo();
   }
 }
+
 
 function renderHomeworkTable() {
   const tbody = document.getElementById('hw-table-body');
@@ -910,7 +978,14 @@ function renderDppTable() {
 
 window.openHwModal = async function (typeOrHw = 'homework') {
   resetTeacherUploadProgress('hw');
-  await populateSharedDropdowns('hw');
+  try {
+    showInfo('Preparing form...');
+    await populateSharedDropdowns('hw');
+    hideInfo();
+  } catch (err) {
+    hideInfo();
+    console.error('Failed to populate dropdowns:', err);
+  }
   const form = document.getElementById('hw-form');
   if (form) form.reset();
   const hw = typeof typeOrHw === 'object' ? typeOrHw : null;
@@ -1132,24 +1207,34 @@ function setupFormListeners() {
 }
 
 // ─── MATERIALS ────────────────────────────────────────────────────────────────
-async function loadMaterials() {
+async function loadMaterials(signal = null) {
   try {
+    showInfo('Loading study materials...');
     showAllMaterials = false;
-    const res = await teacherAPI.getMaterials(teacherId);
-    allMaterials = (res.data || []).map((m) => ({
-      ...m,
-      classLevel: m.classLevel || m.class_level || '-',
-      section: m.section || '',
-      subject: m.subject || 'General',
-      fileUrl: m.fileUrl || m.file_url || '',
-      uploadedBy: m.uploadedBy || m.uploaded_by || 'Admin',
-      createdAt: m.createdAt || m.created_at || null,
-    }));
-    updateMaterialsStats();
-    populateMaterialFilters();
-    renderMaterialsTable();
+    const res = await teacherAPI.getMaterials(teacherId, { signal });
+    
+    if (res.success) {
+      allMaterials = (res.data || []).map((m) => ({
+        ...m,
+        classLevel: m.classLevel || m.class_level || '-',
+        section: m.section || '',
+        subject: m.subject || 'General',
+        fileUrl: m.fileUrl || m.file_url || '',
+        uploadedBy: m.uploadedBy || m.uploaded_by || 'Admin',
+        createdAt: m.createdAt || m.created_at || null,
+      }));
+      updateMaterialsStats();
+      populateMaterialFilters();
+      renderMaterialsTable();
+    } else {
+      showError('Failed to load materials: ' + (res.error || 'Unknown error'));
+    }
   } catch (err) { 
-    showError('Failed to load materials: ' + err.message); 
+    if (err.name !== 'AbortError') {
+      showError('Failed to load materials: ' + err.message); 
+    }
+  } finally {
+    hideInfo();
   }
 }
 
@@ -1198,7 +1283,14 @@ function renderMaterialsTable() {
 }
 
 window.openMaterialModal = async function (material = null) {
-  await populateSharedDropdowns('material');
+  try {
+    showInfo('Preparing form...');
+    await populateSharedDropdowns('material');
+    hideInfo();
+  } catch (err) {
+    hideInfo();
+    console.error('Failed to populate dropdowns:', err);
+  }
   const form = document.getElementById('material-form');
   if (form) form.reset();
 
@@ -1328,12 +1420,23 @@ window.toggleShowAllTeacherMaterials = function () {
 
 
 // ─── SYLLABUS ─────────────────────────────────────────────────────────────────
-async function loadSyllabus() {
+async function loadSyllabus(signal = null) {
   try {
-    const res = await teacherAPI.getSyllabus(teacherId);
-    allSyllabus = res.data || [];
-    renderSyllabus();
-  } catch (err) { showError('Failed to load syllabus: ' + err.message); }
+    showInfo('Loading syllabus...');
+    const res = await teacherAPI.getSyllabus({ signal });
+    if (res.success) {
+      allSyllabus = res.data || [];
+      renderSyllabus();
+    } else {
+      showError('Failed to load syllabus: ' + (res.error || 'Unknown error'));
+    }
+  } catch (err) { 
+    if (err.name !== 'AbortError') {
+      showError('Failed to load syllabus: ' + err.message); 
+    }
+  } finally {
+    hideInfo();
+  }
 }
 
 function renderSyllabus() {
@@ -1418,18 +1521,28 @@ window.closeSyllabusModal = () => {
 
 window.toggleChapter = async function (id, completed) {
   try {
+    showInfo('Updating status...');
     await teacherAPI.updateSyllabus(id, { teacherId: parseInt(teacherId), completed });
+    hideInfo();
     await loadSyllabus();
-  } catch (err) { showError(err.message); }
+  } catch (err) { 
+    hideInfo();
+    showError(err.message); 
+  }
 };
 
 window.deleteChapter = async function (id) {
   if (!confirm('Delete this chapter?')) return;
   try {
+    showInfo('Deleting chapter...');
     await teacherAPI.deleteSyllabus(id, parseInt(teacherId));
+    hideInfo();
     showSuccess('Chapter deleted.');
     await loadSyllabus();
-  } catch (err) { showError(err.message); }
+  } catch (err) { 
+    hideInfo();
+    showError(err.message); 
+  }
 };
 
 // ─── ATTENDANCE SUMMARY ───────────────────────────────────────────────────────

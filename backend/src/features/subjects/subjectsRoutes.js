@@ -105,10 +105,12 @@ router.get('/teacher', async (req, res) => {
             return res.status(401).json({ success: false, error: 'Authentication required' });
         }
         const userRole = (req.user.role || '').toLowerCase();
-        if (userRole !== 'teacher' && userRole !== 'staff') {
-            return res.status(403).json({ success: false, error: 'Only teachers and staff can access this' });
+        if (userRole !== 'teacher' && userRole !== 'staff' && userRole !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Access denied: Only teachers, staff, and admins can access this' });
         }
+        
         const subjects = await subjectModel.getTeacherSubjects(req.user.userId, req.db);
+        console.log(`[API] Fetching subjects for ${userRole} ${req.user.userId}. Found: ${subjects.length}`);
         res.json({ success: true, data: subjects });
     } catch (err) {
         console.error('Fetch teacher subjects error:', err);

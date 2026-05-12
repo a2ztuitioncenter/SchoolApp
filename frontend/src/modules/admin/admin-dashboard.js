@@ -2129,8 +2129,11 @@ window.openEditStudentModal = async function (id) {
 };
 
 window.closeEditStudentModal = function () {
-    document.getElementById('edit-student-modal').style.display = 'none';
-    document.getElementById('edit-student-form').reset();
+    const modal = document.getElementById('edit-student-modal');
+    const overlay = document.getElementById('editStudentDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('edit-student-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -3792,8 +3795,11 @@ window.openAddSubjectModal = function () {
 };
 
 window.closeAddSubjectModal = function () {
-    document.getElementById('add-subject-modal').style.display = 'none';
-    document.getElementById('add-subject-form').reset();
+    const modal = document.getElementById('add-subject-modal');
+    const overlay = document.getElementById('addSubjectDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('add-subject-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -3831,8 +3837,11 @@ window.openAssignSubjectModal = async function () {
 };
 
 window.closeAssignSubjectModal = function () {
-    document.getElementById('assign-subject-modal').style.display = 'none';
-    document.getElementById('assign-subject-form').reset();
+    const modal = document.getElementById('assign-subject-modal');
+    const overlay = document.getElementById('assignSubjectDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('assign-subject-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -3906,8 +3915,11 @@ window.deleteAssignment = async function (id) {
 };
 
 window.closeMaterialModal = function () {
-    document.getElementById('material-modal').style.display = 'none';
-    document.getElementById('material-form').reset();
+    const modal = document.getElementById('material-modal');
+    const overlay = document.getElementById('materialDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('material-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -3967,8 +3979,11 @@ window.openAddHomeworkModal = async function () {
 };
 
 window.closeAddHomeworkModal = function () {
-    document.getElementById('add-homework-modal').style.display = 'none';
-    document.getElementById('homework-form').reset();
+    const modal = document.getElementById('add-homework-modal');
+    const overlay = document.getElementById('addHomeworkDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('homework-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -4021,9 +4036,11 @@ window.openEditHomeworkModal = async function (id) {
 };
 
 window.closeEditHomeworkModal = function () {
-    document.getElementById('add-homework-modal').style.display = 'none';
-    document.getElementById('homework-form').reset();
-    document.getElementById('hw-edit-id').value = '';
+    const modal = document.getElementById('edit-homework-modal');
+    const overlay = document.getElementById('editHomeworkDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('edit-homework-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -4694,12 +4711,10 @@ window.openAddTimetableModal = function () {
 
 window.closeTimetableModal = function () {
     const modal = document.getElementById('timetable-modal');
-    if (modal) {
-        modal.classList.remove('active');
-        const overlay = document.getElementById('timetableDrawerOverlay');
-        if (overlay) overlay.classList.remove('active');
-    }
-    document.getElementById('timetable-form').reset();
+    const overlay = document.getElementById('timetableDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('timetable-form')?.reset();
     document.body.style.overflow = '';
 };
 
@@ -5137,7 +5152,12 @@ window.openEditProfileModal = async function () {
 };
 
 window.closeEditProfileModal = function () {
-    document.getElementById('edit-profile-modal').style.display = 'none';
+    const modal = document.getElementById('edit-profile-modal');
+    const overlay = document.getElementById('editProfileDrawerOverlay');
+    if (modal) modal.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    document.getElementById('edit-profile-form')?.reset();
+    document.body.style.overflow = '';
 };
 
 // Global click listener to close modals when clicking outside

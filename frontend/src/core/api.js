@@ -188,6 +188,8 @@ export const apiCall = async (endpoint, options = {}) => {
 
     return { ...data, success: true, status: response.status };
   } catch (error) {
+    // Re-throw AbortError so callers can detect signal cancellation via err.name === 'AbortError'
+    if (error.name === 'AbortError') throw error;
     return { error: error.message, success: false };
   } finally {
     if (timeoutId) clearTimeout(timeoutId);

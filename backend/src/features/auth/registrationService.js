@@ -103,15 +103,18 @@ export const registerUser = async (client, payload) => {
         if (!rollNumber) {
             const prefix = `${classLevel}${section}`;
             
-            // Add advisory lock to prevent concurrent roll number generation race conditions
-            const lockKey = `roll_number_${schoolId}_${prefix}`;
+            // Add global advisory lock since the DB constraint `UNIQUE(roll_number)` is global
+            const lockKey = `roll_number_global_${prefix}`;
             await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
 
+            // Safely parse serial part to avoid regex failures if classLevel/section has special chars
+            const prefixLength = prefix.length;
             const maxResult = await client.query(
-                `SELECT MAX(CAST(SUBSTRING(roll_number, $2) AS INTEGER)) as max_num 
+                `SELECT MAX(CAST(SUBSTR(roll_number, ${prefixLength + 1}) AS INTEGER)) as max_num 
                  FROM students 
-                 WHERE roll_number ~ ('^' || $1 || '[0-9]{3}$')`,
-                [prefix, (prefix.length + 1).toString()]
+                 WHERE LEFT(roll_number, ${prefixLength}) = $1 
+                 AND SUBSTR(roll_number, ${prefixLength + 1}) ~ '^[0-9]+$'`,
+                [prefix]
             );
             const nextNum = (maxResult.rows[0].max_num || 0) + 1;
             rollNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;

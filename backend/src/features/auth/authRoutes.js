@@ -207,14 +207,22 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
 
     res.json({
       success: true,
-      user: { 
-        id: user.id, 
-        role: user.role, 
+      user: {
+        id: user.id,
+        role: user.role,
         phone: user.phone,
         name: user.name,
         email: user.email,
-        teacherId: user.teacherId,
-        avatarUrl: user.avatarUrl,
+        user: {
+          id: user.id,
+          role: user.role,
+          phone: user.phone,
+          name: user.name,
+          email: user.email,
+          ...(user.teacherId && { teacherId: user.teacherId }),
+          avatarUrl: user.avatarUrl,
+          lastLoginAt: user.lastLoginAt
+        }, avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
       },
       student: studentData ? {
@@ -257,7 +265,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     if (normalizedRole === 'student') {
       const studentCount = await countStudentsByPhone(pool, sanitizedPhone);
       if (studentCount >= 4) return res.status(409).json({ error: 'Maximum 4 students per phone' });
-      
+
       const fullName = sanitizeText(req.body.name || `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim(), 100);
       req.body.name = fullName; // Ensure the service receives the computed name
       const dob = req.body.dateOfBirth;
@@ -270,7 +278,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
           const [dd, mm, yy] = dparts;
           const year = yy.length === 2 ? (parseInt(yy) > 30 ? `19${yy}` : `20${yy}`) : yy;
           const dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-          
+
           if (await isDuplicateStudent(pool, sanitizedPhone, fullName, classLevel.toString(), dobISO)) {
             return res.status(409).json({ error: 'Student already registered' });
           }
@@ -290,7 +298,7 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      
+
       const result = await registerUser(client, {
         ...req.body,
         role: normalizedRole,
@@ -350,11 +358,11 @@ router.post('/admin-login', validateBody(adminLoginSchema), async (req, res) => 
     const refreshToken = generateRefreshToken(user.id);
     const csrfToken = setAuthCookies(res, accessToken, refreshToken, req);
     console.log(`[AUTH] Admin login SUCCESS: ${loginId}`);
-    res.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        phone: user.phone, 
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        phone: user.phone,
         role: user.role,
         name: user.name,
         email: user.email,
@@ -390,11 +398,11 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
     const accessToken = generateToken(user.id, user.role, user.phone, user.schoolId);
     const refreshToken = generateRefreshToken(user.id);
     const csrfToken = setAuthCookies(res, accessToken, refreshToken, req);
-    res.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        phone: user.phone, 
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        phone: user.phone,
         role: user.role,
         name: user.name,
         email: user.email,
@@ -636,18 +644,18 @@ router.post('/verify', authenticate, async (req, res) => {
       clearAuthCookies(res);
       return res.status(401).json({ error: 'Invalid session' });
     }
-    res.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        role: user.role, 
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        role: user.role,
         phone: user.phone,
         name: user.name,
         email: user.email,
         teacherId: user.teacherId,
         avatarUrl: user.avatarUrl,
         lastLoginAt: user.lastLoginAt
-      } 
+      }
     });
   } catch (error) {
     console.error('Verify error:', error);
@@ -675,11 +683,11 @@ router.post('/refresh', async (req, res) => {
     const newRefresh = generateRefreshToken(user.id);
     setAuthCookies(res, newAccess, newRefresh, req);
 
-    res.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        role: user.role, 
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        role: user.role,
         phone: user.phone,
         name: user.name,
         email: user.email,

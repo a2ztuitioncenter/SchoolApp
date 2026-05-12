@@ -120,7 +120,7 @@ router.get('/dashboard/:teacherId', async (req, res) => {
 
     // Merge results
     const mergedAssignments = [...subAssignRes.rows, ...tcaAssignRes.rows];
-    let classes = [...new Set(mergedAssignments.map(r => r.class_level))];
+    let classes = [...new Set(mergedAssignments.map(r => r.class_level).filter(c => c !== null && c !== undefined && c !== ''))];
 
     // 2. Fallback: If no assignments found, get from timetable
     if (classes.length === 0) {
