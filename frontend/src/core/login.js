@@ -23,6 +23,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Password toggle visibility logic
+    const toggles = document.querySelectorAll('.password-toggle');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const wrapper = toggle.closest('.password-wrapper');
+            if (!wrapper) return;
+            const input = wrapper.querySelector('input');
+            const icon = toggle.querySelector('i');
+            
+            if (input && icon) {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fa-regular fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fa-regular fa-eye';
+                }
+            }
+        });
+    });
+
     // Student Login
     const studentForm = document.getElementById('studentLoginFormElement');
     if (studentForm) {

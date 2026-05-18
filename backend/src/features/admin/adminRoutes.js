@@ -193,7 +193,7 @@ router.get('/users/:id', async (req, res) => {
             FROM users u
             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
             LEFT JOIN subject_assignments sa ON sa.teacher_id = u.id
-            LEFT JOIN master_subjects ms ON sa.subject_id = ms.id
+            LEFT JOIN subjects ms ON sa.subject_id = ms.id
             WHERE u.id = $1 AND u.school_id = $2
             GROUP BY u.id`,
             [id, req.user.schoolId]
@@ -357,7 +357,7 @@ router.get('/students/:id', async (req, res) => {
                 ) AS "subjects"
             FROM students s
             LEFT JOIN subject_assignments sa ON sa.class_level = s.class_level AND (sa.section = s.section OR sa.section = 'ALL')
-            LEFT JOIN master_subjects ms ON sa.subject_id = ms.id
+            LEFT JOIN subjects ms ON sa.subject_id = ms.id
             LEFT JOIN users u ON sa.teacher_id = u.id
             WHERE s.id = $1 AND s.school_id = $2
             GROUP BY s.id`,
@@ -626,7 +626,7 @@ router.get('/timetable', async (req, res) => {
                     t.class_level, t.section, t.teacher_id, u.name as teacher_name
              FROM timetable t
              LEFT JOIN users u ON t.teacher_id = u.id
-             LEFT JOIN master_subjects s ON t.subject_id = s.id
+             LEFT JOIN subjects s ON t.subject_id = s.id
              WHERE t.school_id = $1
              ORDER BY t.day_of_week, t.start_time ASC`,
             [req.user.schoolId]
@@ -739,19 +739,19 @@ router.get('/stats/summary', async (req, res) => {
 
         // Safe extractor with fallback defaults — handles rejected promises gracefully
         const safeRow = (r, fb) => r.status === 'fulfilled' ? (r.value.rows[0] || fb) : fb;
-        const studentStats   = safeRow(studentRes,   { total: 0, active: 0 });
-        const userStats      = safeRow(userRes,       { total: 0, teachers: 0, pending: 0 });
-        const financialStats = safeRow(financialRes,  { paid: 0, pending: 0, unpaid_count: 0 });
-        const homeworkStats  = safeRow(homeworkRes,   { total: 0 });
+        const studentStats = safeRow(studentRes, { total: 0, active: 0 });
+        const userStats = safeRow(userRes, { total: 0, teachers: 0, pending: 0 });
+        const financialStats = safeRow(financialRes, { paid: 0, pending: 0, unpaid_count: 0 });
+        const homeworkStats = safeRow(homeworkRes, { total: 0 });
         const attendanceStats = safeRow(attendanceRes, { percentage: null });
 
         res.json({
             success: true,
             data: {
-                students:   { total: parseInt(studentStats.total) || 0,   active: parseInt(studentStats.active) || 0 },
-                users:      { total: parseInt(userStats.total) || 0,       teachers: parseInt(userStats.teachers) || 0, pending: parseInt(userStats.pending) || 0 },
+                students: { total: parseInt(studentStats.total) || 0, active: parseInt(studentStats.active) || 0 },
+                users: { total: parseInt(userStats.total) || 0, teachers: parseInt(userStats.teachers) || 0, pending: parseInt(userStats.pending) || 0 },
                 financials: { totalPaid: parseFloat(financialStats.paid) || 0, totalPending: parseFloat(financialStats.pending) || 0, unpaidCount: parseInt(financialStats.unpaid_count) || 0 },
-                homework:   { recentCount: parseInt(homeworkStats.total) || 0 },
+                homework: { recentCount: parseInt(homeworkStats.total) || 0 },
                 attendance: { monthlyRate: parseFloat(attendanceStats.percentage) || 0 }
             }
         });

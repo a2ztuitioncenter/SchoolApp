@@ -211,6 +211,44 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
+        /* Password input with toggle button wrapper */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 3rem !important;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            background: none;
+            border: none;
+            padding: 0;
+            color: var(--text-tertiary, #9ca3af);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .password-toggle:hover {
+            color: var(--color-primary, #4f46e5);
+            transform: scale(1.08);
+        }
+
+        .password-toggle:focus {
+            outline: none;
+            color: var(--color-primary, #4f46e5);
+        }
+
         .form-section-title {
             font-size: 1.125rem;
             font-weight: 600;
@@ -443,11 +481,21 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="teacher-password">Password *</label>
-                                <input type="password" id="teacher-password" required>
+                                <div class="password-wrapper">
+                                    <input type="password" id="teacher-password" required>
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="teacher-confirm">Confirm Password *</label>
-                                <input type="password" id="teacher-confirm" required>
+                                <div class="password-wrapper">
+                                    <input type="password" id="teacher-confirm" required>
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

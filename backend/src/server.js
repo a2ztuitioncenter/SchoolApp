@@ -34,7 +34,7 @@ import submissionRoutes from './features/submissions/submissionRoutes.js';
 import assignmentRoutes from './features/homework/assignmentRoutes.js';
 import { authenticate, authorize, rateLimiter, validateInput, corsSecure, securityLogger, csrfProtection } from './middleware/auth-middleware.js';
 
-import { initializeDatabase } from './config/database.js';
+import { initializeDatabase, createDefaultAdmin } from './config/database.js';
 
 import fs from 'fs';
 import pool from './config/pool.js';
@@ -98,6 +98,10 @@ const startServer = async () => {
       const client = await pool.connect();
       console.log('[INIT] PostgreSQL Database connected successfully');
       client.release();
+
+      // Automatically sync/update admin credentials from .env file on every startup
+      console.log('[INIT] Synchronizing admin credentials from environment variables...');
+      await createDefaultAdmin();
     } catch (dbError) {
       console.error('[FATAL] DATABASE CONNECTION FAILED:');
       console.error(dbError.message);
@@ -211,11 +215,10 @@ const startServer = async () => {
     // Health check
     app.get('/health', async (req, res) => {
       try {
-        const client = await pool.connect();
-        await client.query('SELECT NOW()');
-        client.release();
+        await pool.query('SELECT NOW()');
         res.json({ status: 'Healthy', timestamp: new Date().toISOString() });
       } catch (error) {
+        console.error('[HEALTH CHECK FAILED]', error.message);
         res.status(503).json({ status: 'Unhealthy' });
       }
     });

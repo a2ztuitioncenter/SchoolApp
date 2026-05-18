@@ -5,8 +5,6 @@ function init() {
   setupGetStartedHandler();
   setupHeaderSignupHandler();
   setupLoginCardHandlers();
-  setupHeaderLoginHandler();
-
 }
 
 if (document.readyState === 'loading') {
@@ -184,21 +182,6 @@ function setupLoginCardHandlers() {
       handleLoginCardClick(loginType);
     });
   });
-}
-
-/**
- * Setup header login button handler
- */
-function setupHeaderLoginHandler() {
-  const headerLoginBtn = document.getElementById('header-login');
-  if (headerLoginBtn) {
-    headerLoginBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-
-      // Open auth modal with login selector
-      openAuthLoginSelector(e);
-    });
-  }
 }
 
 /**

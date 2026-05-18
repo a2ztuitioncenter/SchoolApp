@@ -558,27 +558,40 @@ function showTab(tabName) {
 
 window.showTab = showTab;
 
+let tabLoadingFlags = {};
+
 async function loadTabContent(tabName) {
-    switch (tabName) {
-        case 'dashboard': await loadDashboardData(); break;
-        case 'pending-approvals': await initPendingApprovalsTab(); break;
-        case 'users': await loadUsers(); break;
-        case 'students': await loadStudents(); break;
-        case 'attendance': await initAttendanceTab(); break;
-        case 'homework': await loadAllHomework(); break;
-        case 'fees': await initFeesTab(); break;
-        case 'materials': await loadMaterials(); break;
-        case 'timetable': await loadTimetable(); break;
-        case 'notifications': await loadNotifications(); break;
-        case 'results':
-            if (typeof window.initExamResults === 'function') {
-                await window.initExamResults();
-            } else {
-                console.warn('⚠️ initExamResults not found');
-            }
-            break;
-        case 'subjects': await loadSubjects(); break;
-        case 'content-management': await loadContentManagement(); break;
+    if (tabLoadingFlags[tabName]) {
+        console.log(`[TAB DUP GUARD] Tab ${tabName} is already loading. Skipping duplicate request.`);
+        return;
+    }
+    tabLoadingFlags[tabName] = true;
+    try {
+        switch (tabName) {
+            case 'dashboard': await loadDashboardData(); break;
+            case 'pending-approvals': await initPendingApprovalsTab(); break;
+            case 'users': await loadUsers(); break;
+            case 'students': await loadStudents(); break;
+            case 'attendance': await initAttendanceTab(); break;
+            case 'homework': await loadAllHomework(); break;
+            case 'fees': await initFeesTab(); break;
+            case 'materials': await loadMaterials(); break;
+            case 'timetable': await loadTimetable(); break;
+            case 'notifications': await loadNotifications(); break;
+            case 'results':
+                if (typeof window.initExamResults === 'function') {
+                    await window.initExamResults();
+                } else {
+                    console.warn('⚠️ initExamResults not found');
+                }
+                break;
+            case 'subjects': await loadSubjects(); break;
+            case 'content-management': await loadContentManagement(); break;
+        }
+    } catch (err) {
+        console.error(`Error loading tab content for ${tabName}:`, err);
+    } finally {
+        tabLoadingFlags[tabName] = false;
     }
 }
 
@@ -718,13 +731,8 @@ async function fetchTrendDataSafe() {
  */
 async function fetchLatestStudents() {
     try {
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Fetch timeout')), 3000)
-        );
-
-        const res = await Promise.race([adminAPI.getStudents(), timeoutPromise]);
-        if (res?.data && res.data.length > 0) {
-            return res.data
+        if (dashboardData.students && dashboardData.students.length > 0) {
+            return [...dashboardData.students]
                 .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                 .slice(0, 3);
         }

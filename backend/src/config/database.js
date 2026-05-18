@@ -71,7 +71,7 @@ async function seedContentPages() {
     }
 }
 
-async function createDefaultAdmin() {
+export async function createDefaultAdmin() {
     const adminPhone = process.env.ADMIN_PHONE;
     const adminPassword = process.env.ADMIN_PASSWORD;
     const adminUsername = process.env.ADMIN_USERNAME;
@@ -81,11 +81,12 @@ async function createDefaultAdmin() {
     }
 
     const maskedPhone = adminPhone.slice(0, -2).replace(/./g, '*') + adminPhone.slice(-2);
-    console.log(`Configuring Admin Account for phone: ${maskedPhone}...`);
+    console.log(`Configuring Admin Account...`);
 
     try {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
-        const exists = await pool.query('SELECT id, role FROM users WHERE phone = $1', [adminPhone]);
+        // Find if an admin user already exists in the database
+        const exists = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
 
         if (exists.rows.length === 0) {
             await pool.query(
@@ -94,11 +95,12 @@ async function createDefaultAdmin() {
             );
             console.log(`SUCCESS: Admin account created with phone ${maskedPhone}, username: ${adminUsername}`);
         } else {
+            const adminId = exists.rows[0].id;
             await pool.query(
-                `UPDATE users SET password = $1, role = 'admin', is_active = $3, username = COALESCE(NULLIF($4, ''), username, CONCAT('user_', id)) WHERE phone = $2`,
-                [hashedPassword, adminPhone, true, adminUsername]
+                `UPDATE users SET phone = $1, password = $2, is_active = true, username = $3 WHERE id = $4`,
+                [adminPhone, hashedPassword, adminUsername, adminId]
             );
-            console.log(`SUCCESS: Admin credentials updated for ${maskedPhone}`);
+            console.log(`SUCCESS: Admin credentials synchronized to match env file (username: ${adminUsername})`);
         }
     } catch (err) {
         console.error('ERROR configuring admin account:', err.message);

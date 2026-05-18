@@ -26,11 +26,14 @@ export const config = {
   API_BASE_URL: window.BACKEND_URL || ''
 };
 
-// Diagnostic Log for Production Debugging
-console.log("[API CONFIG] Environment Details:", {
-  isLocal,
-  isCloudflare,
-  hostname: window.location.hostname,
-  API_BASE_URL: config.API_BASE_URL || "(relative proxy)"
-});
+// Diagnostic Log for Production Debugging (only on localhost or with ?debug=true)
+if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.search.includes('debug=true'))) {
+  console.log("[API CONFIG] Environment Details:", {
+    isLocal,
+    isCloudflare,
+    hostname: window.location.hostname,
+    API_BASE_URL: config.API_BASE_URL || "(relative proxy)"
+  });
+}
+
 

@@ -38,8 +38,10 @@ export const apiCall = async (endpoint, options = {}) => {
   if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
   let url = base_api_url ? `${base_api_url}/api${cleanPath}` : `/api${cleanPath}`;
 
-  // Diagnostic Log for production troubleshooting
-  if (endpoint.includes('/auth/admin-login')) {
+  // Diagnostic Log for production troubleshooting (only if on localhost or explicitly requested via debug param)
+  const isDebug = typeof window !== 'undefined' && (window.location.search.includes('debug=true') || window.location.hostname === 'localhost');
+  
+  if (endpoint.includes('/auth/admin-login') && isDebug) {
     console.log("[API TRACE] Admin Login Request:", {
       endpoint,
       cleanPath,
@@ -47,14 +49,14 @@ export const apiCall = async (endpoint, options = {}) => {
       finalUrl: url
     });
   }
-
   
-  if (window.location.hostname !== 'localhost') {
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && isDebug) {
     console.log(`[API] ${options.method || 'GET'} ${url}`, {
       base: base_api_url,
       endpoint
     });
   }
+
 
   const headers = { ...options.headers };
   if (!(options.body instanceof FormData)) {
@@ -136,20 +138,26 @@ export const apiCall = async (endpoint, options = {}) => {
     }
 
     if (response.status === 403) {
-      let isOwnershipViolation = false;
+      let isAuthMismatch = false;
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         try {
           const clonedResponse = response.clone();
           const errBody = await clonedResponse.json();
-          if (errBody?.code === 'OWNERSHIP_VIOLATION') isOwnershipViolation = true;
+          const errorMsg = errBody?.error || errBody?.message || '';
+          if (
+            errBody?.code === 'FORBIDDEN' ||
+            (errorMsg.toLowerCase().includes('user role') && errorMsg.toLowerCase().includes('does not have access'))
+          ) {
+            isAuthMismatch = true;
+          }
         } catch (e) {
           // ignore parsing error
         }
       }
       
-      if (isOwnershipViolation) {
-        console.warn(`[AUTH] 403 OWNERSHIP_VIOLATION: Cache mismatch. Clearing session and reloading.`);
+      if (isAuthMismatch) {
+        console.warn(`[AUTH] 403 Forbidden/Mismatch: Clearing session and reloading. Path: ${window.location.pathname}`);
         setTimeout(() => {
           const path = window.location.pathname;
           const isLandingPage = path === '/' || path === '/index.html' || path === '';

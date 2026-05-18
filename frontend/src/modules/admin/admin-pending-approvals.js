@@ -144,7 +144,11 @@ if (document.getElementById('admin-dashboard-root')) {
 /**
  * Fetch all pending users from backend
  */
+let isFetchingPendingUsers = false;
+
 async function fetchPendingUsers() {
+    if (isFetchingPendingUsers) return;
+    isFetchingPendingUsers = true;
     const listContainer = document.getElementById('pending-users-list');
 
     try {
@@ -177,6 +181,8 @@ async function fetchPendingUsers() {
         const errorMsg = 'Error loading pending users: ' + error.message;
         showMessage(errorMsg, 'error');
         listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;"><p>${escapeHtml(errorMsg)}</p><p style="font-size: 0.9em; margin-top: 10px;">Make sure the backend server is running.</p></div>`;
+    } finally {
+        isFetchingPendingUsers = false;
     }
 }
 

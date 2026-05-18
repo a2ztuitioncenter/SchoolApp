@@ -365,9 +365,15 @@ async function loadDashboardData(userId) {
   }
 }
 
+let isMaterialsLoading = false;
 async function loadMaterials(classLevel, section = '') {
+    if (isMaterialsLoading) return;
+    isMaterialsLoading = true;
     const container = document.getElementById('materials-container');
-    if (!container) return;
+    if (!container) {
+        isMaterialsLoading = false;
+        return;
+    }
     
     try {
         container.innerHTML = '<div class="loading">Loading materials...</div>';
@@ -416,12 +422,20 @@ async function loadMaterials(classLevel, section = '') {
     } catch (err) {
         console.error('[MATERIALS] Error loading materials:', err);
         container.innerHTML = `<p class="error" style="color:#e53e3e;">Failed to load materials: ${err.message || 'Unknown error'}</p>`;
+    } finally {
+        isMaterialsLoading = false;
     }
 }
 
+let isSyllabusLoading = false;
 async function loadSyllabus(userId) {
+    if (isSyllabusLoading) return;
+    isSyllabusLoading = true;
     const container = document.getElementById('syllabus-container');
-    if (!container) return;
+    if (!container) {
+        isSyllabusLoading = false;
+        return;
+    }
 
     try {
         container.innerHTML = '<p class="loading-text">Loading syllabus...</p>';
@@ -461,12 +475,20 @@ async function loadSyllabus(userId) {
     } catch (err) {
         console.error('Error loading syllabus:', err);
         container.innerHTML = '<p class="error" style="color:#e53e3e;">Failed to load syllabus. Please try again.</p>';
+    } finally {
+        isSyllabusLoading = false;
     }
 }
 
+let isSubjectsLoading = false;
 async function loadSubjects(classLevel, section = '') {
+    if (isSubjectsLoading) return;
+    isSubjectsLoading = true;
     const container = document.getElementById('subjects-container');
-    if (!container) return;
+    if (!container) {
+        isSubjectsLoading = false;
+        return;
+    }
     
     try {
         container.innerHTML = '<div class="loading">Loading subjects...</div>';
@@ -516,6 +538,8 @@ async function loadSubjects(classLevel, section = '') {
     } catch (err) {
         console.error('[SUBJECTS] Error loading subjects:', err);
         container.innerHTML = `<p class="error" style="color: #e53e3e; text-align: center; padding: 1rem;">Failed to load subjects: ${err.message || 'Unknown error'}</p>`;
+    } finally {
+        isSubjectsLoading = false;
     }
 }
 
@@ -1350,9 +1374,15 @@ window.closeCMSModal = function() {
 // Submissions Logic
 // ===========================
 
+let isSubmissionsLoading = false;
 async function loadSubmissions(userId) {
+    if (isSubmissionsLoading) return;
+    isSubmissionsLoading = true;
     const container = document.getElementById('submissions-list-container');
-    if (!container) return;
+    if (!container) {
+        isSubmissionsLoading = false;
+        return;
+    }
 
     try {
         container.innerHTML = '<p class="loading-text">Loading your submissions...</p>';
@@ -1417,6 +1447,8 @@ async function loadSubmissions(userId) {
     } catch (err) {
         console.error('[SUBMISSIONS] Error loading submissions:', err);
         container.innerHTML = `<p class="error" style="color: #e53e3e; text-align: center; padding: 1rem;">Failed to load submissions: ${err.message || 'Unknown error'}</p>`;
+    } finally {
+        isSubmissionsLoading = false;
     }
 }
 
