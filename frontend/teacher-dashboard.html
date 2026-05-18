@@ -13,6 +13,12 @@
     <link rel="stylesheet" href="./src/assets/css/admin-dashboard.css">
     <style>
         /* Teacher-specific overrides & extra minimal styles */
+        /* Fix for mobile horizontal overflow inside flex cards */
+        .card .table-container {
+            min-width: 0;
+            max-width: 100%;
+        }
+
         .syllabus-subject-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-subtle);

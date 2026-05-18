@@ -126,9 +126,33 @@ export const storageController = {
     },
 
     async download(req, res) {
+        const { fileId } = req.params;
+        const isLocalMode = !process.env.GOOGLE_DRIVE_PARENT_ID;
+        
+        console.log(`[STORAGE DOWNLOAD] Initiating download request. fileId: ${fileId} | Mode: ${isLocalMode ? 'Local uploads directory' : 'Google Drive'}`);
+        
         try {
-            const { fileId } = req.params;
-            const metadata = await googleDriveService.getFileMetadata(fileId);
+            let metadata;
+            try {
+                metadata = await googleDriveService.getFileMetadata(fileId);
+            } catch (metaError) {
+                console.error(`[STORAGE DOWNLOAD] Metadata fetch failed for fileId: ${fileId}. Error:`, metaError);
+                
+                const message = metaError.message || '';
+                const code = metaError.code;
+                const status = metaError.status;
+                const isNotFound = message.toLowerCase().includes('not found') || 
+                                   code === 404 || 
+                                   status === 404 || 
+                                   message.includes('ENOENT');
+
+                if (isNotFound) {
+                    console.warn(`[STORAGE DOWNLOAD] [404] File not found: ${fileId}`);
+                    return res.status(404).json({ success: false, error: 'File not found' });
+                }
+                
+                return res.status(500).json({ success: false, error: 'Failed to retrieve file metadata' });
+            }
 
             // RFC 5987 encoding for Content-Disposition (Security & Character Support)
             const filename = metadata.name || 'download';
@@ -142,11 +166,29 @@ export const storageController = {
                 res.setHeader('Content-Length', metadata.size);
             }
 
-            const stream = await googleDriveService.getFileStream(fileId);
+            console.log(`[STORAGE DOWNLOAD] Metadata resolved. filename: ${filename} | size: ${metadata.size} bytes | mimeType: ${metadata.mimeType}`);
+
+            let stream;
+            try {
+                stream = await googleDriveService.getFileStream(fileId);
+            } catch (streamError) {
+                console.error(`[STORAGE DOWNLOAD] Stream initialization failed for fileId: ${fileId}. Error:`, streamError);
+                if (!res.headersSent) {
+                    const message = streamError.message || '';
+                    const isNotFound = message.toLowerCase().includes('not found') || 
+                                       streamError.code === 404 || 
+                                       streamError.status === 404;
+                    if (isNotFound) {
+                        return res.status(404).json({ success: false, error: 'File not found' });
+                    }
+                    return res.status(500).json({ success: false, error: 'Failed to initialize file stream' });
+                }
+                return res.end();
+            }
 
             // Handle stream errors to prevent partial corrupted files
             stream.on('error', (err) => {
-                console.error('Stream error during download:', err);
+                console.error('[STORAGE DOWNLOAD] Stream error during pipe/download:', err);
                 if (!res.headersSent) {
                     res.status(500).json({ success: false, error: 'Download stream failed' });
                 } else {
@@ -154,11 +196,12 @@ export const storageController = {
                 }
             });
 
+            console.log(`[STORAGE DOWNLOAD] Piping file stream to response for fileId: ${fileId}`);
             stream.pipe(res);
         } catch (error) {
-            console.error('Download Error:', error);
+            console.error('[STORAGE DOWNLOAD] [CRITICAL] Download controller error:', error);
             if (!res.headersSent) {
-                res.status(500).json({ success: false, error: 'Failed to download file from Google Drive' });
+                res.status(500).json({ success: false, error: 'Internal server error during download' });
             }
         }
     },

@@ -353,7 +353,7 @@ const subjectsAPI = {
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return apiCall(`/subjects${suffix}`, { method: 'GET' });
   },
-  getTeacherSubjects: () => apiCall('/subjects/teacher', { method: 'GET' }),
+  getTeacherSubjects: () => apiCall(`/subjects/teacher?_t=${Date.now()}`, { method: 'GET' }),
   assign: (data) => apiCall('/subjects/assign', { method: 'POST', body: JSON.stringify(data) }),
   deleteAssignment: (id) => apiCall(`/subjects/assign/${id}`, { method: 'DELETE' }),
 
