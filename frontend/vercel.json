@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://schoolapp-1-qlr5.onrender.com/api/$1"
+      "destination": "https://schoolapp-q0ih.onrender.com/api/$1"
     }
   ]
 }
