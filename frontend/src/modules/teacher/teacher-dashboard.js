@@ -1,4 +1,4 @@
-import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI, uploadFileWithProgress } from '../../core/api.js';
+import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI, uploadFileWithProgress, authAPI } from '../../core/api.js';
 import { requireRole, getUserId, getUserRole, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 import { escapeHtml, escapeAttr } from '../../core/sanitize.js';
 import { formatDate } from '../../core/utils.js';
@@ -495,27 +495,22 @@ function updateDashboardUI(dashRes, matRes) {
       }
 
       // Update Profile Image
-      const profileImg = document.querySelector('#teacher-profile-btn img') || document.querySelector('#teacher-profile-btn .avatar-circle');
-      if (teacher.avatar_url && profileImg) {
+      if (teacher.avatar_url) {
         const avatarUrl = teacher.avatar_url;
-        if (profileImg.tagName === 'IMG') {
-          profileImg.src = avatarUrl;
-        } else {
-          const btn = document.getElementById('teacher-profile-btn');
-          const caret = btn.querySelector('.fa-caret-down');
-          if (btn && caret) {
-            btn.innerHTML = `
-                  <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
-                  ${caret.outerHTML}
-                `;
-          }
+        const btn = document.getElementById('teacher-profile-btn');
+        if (btn) {
+          btn.innerHTML = `
+            <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <span class="online-indicator" style="bottom: 2px; right: 2px;"></span>
+          `;
         }
+        
         const modalPreview = document.getElementById('profile-preview');
         if (modalPreview) modalPreview.src = avatarUrl;
 
         const ddAvatarLarge = document.querySelector('.avatar-large');
         if (ddAvatarLarge) {
-          ddAvatarLarge.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Profile">`;
+          ddAvatarLarge.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">`;
         }
       }
     }
@@ -2045,6 +2040,14 @@ window.openEditProfileModal = async function () {
       document.getElementById('edit-profile-name').value = t.name || '';
       document.getElementById('edit-profile-email').value = t.email || '';
 
+      // Reset password fields
+      const currentPw = document.getElementById('edit-profile-current-password');
+      if (currentPw) currentPw.value = '';
+      const newPw = document.getElementById('edit-profile-new-password');
+      if (newPw) newPw.value = '';
+      const confirmPw = document.getElementById('edit-profile-confirm-password');
+      if (confirmPw) confirmPw.value = '';
+
       if (t.avatar_url) {
         document.getElementById('profile-preview').src = t.avatar_url;
       } else {
@@ -2074,9 +2077,9 @@ window.previewProfileImage = function (input) {
   if (input.files && input.files[0]) {
     const file = input.files[0];
 
-    // Validation: Size (2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      showError('Image size exceeds 2MB limit.');
+    // Validation: Size (200KB)
+    if (file.size > 200 * 1024) {
+      showError('Image size exceeds 200KB limit.');
       input.value = '';
       return;
     }
@@ -2101,37 +2104,121 @@ window.previewProfileImage = function (input) {
 document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const name = document.getElementById('edit-profile-name').value;
+  const name = document.getElementById('edit-profile-name').value.trim();
   const fileInput = document.getElementById('profile-upload');
   const file = fileInput.files[0];
 
-  const formData = new FormData();
-  formData.append('name', name);
-  if (pendingProfileUpload) {
-    formData.append('avatarUrl', pendingProfileUpload.url);
-    formData.append('attachmentId', pendingProfileUpload.id);
-  } else if (file) {
-    formData.append('avatar', file);
+  const currentPassword = document.getElementById('edit-profile-current-password').value;
+  const newPassword = document.getElementById('edit-profile-new-password').value;
+  const confirmPassword = document.getElementById('edit-profile-confirm-password').value;
+
+  // Dynamically query submit button in a null-safe manner
+  const btn = document.querySelector('button[type="submit"][form="edit-profile-form"]');
+
+  // 1. Password Validations
+  const hasPasswordInput = currentPassword || newPassword || confirmPassword;
+  if (hasPasswordInput) {
+    if (!currentPassword) {
+      showError('Please enter your current password to change it.');
+      return;
+    }
+    if (!newPassword) {
+      showError('Please enter a new password.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showError('New passwords do not match.');
+      return;
+    }
+  }
+
+  // 2. File Validations
+  if (file) {
+    if (file.size > 200 * 1024) {
+      showError('Profile photo size exceeds 200KB limit.');
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      showError('Only JPG, JPEG, and PNG images are allowed.');
+      return;
+    }
   }
 
   try {
-    showInfo('Updating profile...');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+    }
+
+    // 3. Process Password Change if requested
+    if (hasPasswordInput) {
+      showInfo('Changing password...');
+      const pwRes = await authAPI.changePassword({ currentPassword, newPassword });
+      if (!pwRes.success) {
+        showError(pwRes.error || 'Failed to change password');
+        return;
+      }
+    }
+
+    // 4. Process Profile Update (Name & Photo)
+    showInfo('Saving profile...');
+    const formData = new FormData();
+    formData.append('name', name);
+    if (file) {
+      formData.append('avatar', file);
+    }
+
     const res = await profileAPI.update(formData);
     hideInfo();
 
     if (res.success) {
       showSuccess('Profile updated successfully!');
       closeEditProfileModal();
-      // Refresh dashboard to show changes
+      
+      // Update UI elements immediately
+      if (res.user) {
+        if (res.user.avatarUrl) {
+          const profileBtnImg = document.querySelector('#teacher-profile-btn img');
+          if (profileBtnImg) profileBtnImg.src = res.user.avatarUrl;
+          
+          const modalPreviewImg = document.getElementById('profile-preview');
+          if (modalPreviewImg) modalPreviewImg.src = res.user.avatarUrl;
+        }
+        
+        const dropdownName = document.getElementById('dropdown-teacher-name');
+        if (dropdownName) dropdownName.textContent = res.user.name;
+        
+        const headerName = document.getElementById('header-teacher-name');
+        if (headerName) headerName.textContent = res.user.name;
+      }
+
+      // Clear password fields
+      document.getElementById('edit-profile-current-password').value = '';
+      document.getElementById('edit-profile-new-password').value = '';
+      document.getElementById('edit-profile-confirm-password').value = '';
+      fileInput.value = '';
+
+      // Refresh dashboard to persist changes
       clearCache(getUserId(), 'teacher_dashboard');
       loadDashboard();
     } else {
-      showError(res.message || 'Failed to update profile');
+      showError(res.error || res.message || 'Failed to update profile');
     }
   } catch (err) {
     hideInfo();
     console.error('Profile update error:', err);
-    showError('An error occurred while updating profile');
+    showError(err.error || 'An error occurred while updating profile');
+  } finally {
+    hideInfo();
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+    }
   }
 });
 
@@ -2496,79 +2583,6 @@ window.addEventListener('click', (e) => {
     if (id === 'cmsDrawerOverlay') closeCMSModal();
     if (id === 'homeworkSubmissionsDrawerOverlay') closeSubmissionsModal();
     if (id === 'reviewSubmissionDrawerOverlay') closeReviewModal();
-  }
-});
-
-window.previewProfileImage = function (input) {
-  if (input.files && input.files[0]) {
-    const file = input.files[0];
-
-    if (file.size > 200 * 1024) {
-      showError('Image size exceeds 200KB limit.');
-      input.value = '';
-      return;
-    }
-
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    if (!allowedTypes.includes(file.type)) {
-      showError('Only JPG, JPEG, and PNG files are allowed.');
-      input.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      document.getElementById('profile-preview').src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-
-    // Upload to storage immediately to get Drive ID
-    handleTeacherFileUpload(file, 'profile', null, 'profile_pic').then(result => {
-      if (result && result.success) {
-        pendingProfileUpload = {
-          url: result.data.url,
-          id: result.data.id
-        };
-      }
-    });
-  }
-};
-
-document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const name = document.getElementById('edit-profile-name').value;
-  const btn = e.target.querySelector('button[type="submit"]');
-
-  const formData = new FormData();
-  formData.append('name', name);
-  if (pendingProfileUpload) {
-    formData.append('avatarUrl', pendingProfileUpload.url);
-    formData.append('avatarDriveId', pendingProfileUpload.id);
-  }
-
-  try {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-
-    const res = await profileAPI.update(formData);
-    if (res.success) {
-      showSuccess('Profile updated successfully!');
-      closeEditProfileModal();
-      // Refresh UI
-      if (res.user && res.user.avatarUrl) {
-        document.querySelector('#teacher-profile-btn img').src = res.user.avatarUrl;
-        document.getElementById('dropdown-teacher-name').textContent = res.user.name;
-      }
-    } else {
-      showError(res.error || 'Failed to update profile');
-    }
-  } catch (err) {
-    console.error('Profile update error:', err);
-    showError('An error occurred while updating profile');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Changes';
   }
 });
 
