@@ -2235,13 +2235,15 @@ async function initAttendanceTab() {
         // Initialize Daily Attendance Filters
         await populateERPFilters({
             classSelectId: 'att-class-select',
-            sectionSelectId: 'att-section-select'
+            sectionSelectId: 'att-section-select',
+            useFallback: true
         });
 
         // Initialize Summary Filters
         await populateERPFilters({
             classSelectId: 'summary-class-select',
-            sectionSelectId: 'summary-section-select'
+            sectionSelectId: 'summary-section-select',
+            useFallback: true
         });
 
         const today = new Date().toISOString().split('T')[0];

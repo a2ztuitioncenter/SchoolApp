@@ -14,8 +14,8 @@ export async function getTeacherAssignments(db, teacherId) {
   // Merge results and normalize to camelCase
   const assignments = [...subRes.rows, ...legacyRes.rows];
   return assignments.map(r => ({
-      classLevel: r.class_level,
-      section: r.section
+      classLevel: r.class_level !== undefined ? r.class_level : (r.classLevel !== undefined ? r.classLevel : null),
+      section: r.section !== undefined ? r.section : null
   }));
 }
 
@@ -38,7 +38,7 @@ export async function getStudentScope(db, userId) {
   );
   if (!result.rows[0]) return null;
   return {
-      classLevel: result.rows[0].class_level,
-      section: result.rows[0].section
+      classLevel: result.rows[0].class_level !== undefined ? result.rows[0].class_level : (result.rows[0].classLevel !== undefined ? result.rows[0].classLevel : null),
+      section: result.rows[0].section !== undefined ? result.rows[0].section : null
   };
 }

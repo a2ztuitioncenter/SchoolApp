@@ -53,6 +53,7 @@ export const listMaterials = async (req, res) => {
     res.json({ success: true, data: rows.map(toApiMaterial) });
   } catch (error) {
     console.error('listMaterials error:', error);
+    import('fs').then(fs => fs.appendFileSync('error.log', new Date().toISOString() + ' ' + error.stack + '\\n'));
     res.status(500).json({ error: 'Failed to fetch materials' });
   }
 };

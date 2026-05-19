@@ -19,6 +19,20 @@
             max-width: 100%;
         }
 
+        /* Fix for excessive vertical stretch and nested scroll on mobile Subjects tab */
+        @media (max-width: 768px) {
+            #tab-subjects .card {
+                height: auto !important;
+                min-height: 0 !important;
+                flex: none !important;
+                margin-top: 1rem;
+            }
+            #tab-subjects .table-container {
+                overflow-y: visible !important;
+                max-height: none !important;
+            }
+        }
+
         .syllabus-subject-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-subtle);
