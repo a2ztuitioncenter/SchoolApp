@@ -96,7 +96,7 @@ function setupTabs() {
     link.addEventListener('click', async e => {
       e.preventDefault();
       const tab = link.getAttribute('data-tab');
-      
+
       // Abort any pending module loads
       if (moduleAbortController) {
         moduleAbortController.abort();
@@ -117,28 +117,28 @@ function setupTabs() {
       try {
         if (tab === 'dashboard') loadDashboard();
         if (tab === 'subjects') loadTeacherSubjects();
-        if (tab === 'homework') { 
+        if (tab === 'homework') {
           await Promise.all([
-            loadHomework(signal), 
+            loadHomework(signal),
             populateSharedDropdowns('hw', signal)
-          ]); 
+          ]);
         }
-        if (tab === 'dpp') { 
+        if (tab === 'dpp') {
           await Promise.all([
-            loadHomework(signal), 
+            loadHomework(signal),
             populateSharedDropdowns('dpp', signal)
-          ]); 
+          ]);
         }
-        if (tab === 'materials') { 
+        if (tab === 'materials') {
           await Promise.all([
-            loadMaterials(signal), 
+            loadMaterials(signal),
             populateSharedDropdowns('mat', signal)
-          ]); 
+          ]);
         }
         if (tab === 'timetable') renderWeeklyTimetable();
-        if (tab === 'syllabus') { 
-          loadSyllabus(signal); 
-          setupSyllabusDropdowns(); 
+        if (tab === 'syllabus') {
+          loadSyllabus(signal);
+          setupSyllabusDropdowns();
         }
         if (tab === 'attendance') { initAttendanceTab(); initSummaryTab(); }
         if (tab === 'exam') initExamTab();
@@ -155,24 +155,24 @@ function setupTabs() {
 
 // ─── TEACHER SUBJECTS ──────────────────────────────────────────────────────────
 async function loadTeacherSubjects() {
-    const tbody = document.getElementById('teacher-subjects-body');
-    if (!tbody) return;
+  const tbody = document.getElementById('teacher-subjects-body');
+  if (!tbody) return;
 
-    try {
-        console.log('[DASHBOARD] Loading subjects for teacher:', teacherId);
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
-        
-        const res = await subjectsAPI.getTeacherSubjects();
-        const data = res.data || [];
+  try {
+    console.log('[DASHBOARD] Loading subjects for teacher:', teacherId);
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
 
-        if (!res.success) {
-            console.error('[DASHBOARD] API Error loading subjects:', res.error);
-            tbody.innerHTML = `<tr><td colspan="4" class="empty-state text-danger">Error: ${res.error || 'Failed to load'}</td></tr>`;
-            return;
-        }
+    const res = await subjectsAPI.getTeacherSubjects();
+    const data = res.data || [];
 
-        if (data.length === 0) {
-            tbody.innerHTML = `
+    if (!res.success) {
+      console.error('[DASHBOARD] API Error loading subjects:', res.error);
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-state text-danger">Error: ${res.error || 'Failed to load'}</td></tr>`;
+      return;
+    }
+
+    if (data.length === 0) {
+      tbody.innerHTML = `
                 <tr>
                     <td colspan="4" class="empty-state">
                         <i class="fas fa-book-open"></i>
@@ -180,10 +180,10 @@ async function loadTeacherSubjects() {
                         <small>Contact administration if you believe this is an error.</small>
                     </td>
                 </tr>`;
-            return;
-        }
+      return;
+    }
 
-        tbody.innerHTML = data.map(s => `
+    tbody.innerHTML = data.map(s => `
             <tr>
                 <td><strong>${escapeHtml(s.master_name || s.name || s.subject_name)}</strong></td>
                 <td><span class="badge">Class ${escapeHtml(s.class_level || s.classLevel)}</span></td>
@@ -191,58 +191,58 @@ async function loadTeacherSubjects() {
                 <td>${formatDate(s.created_at || s.createdAt)}</td>
             </tr>
         `).join('');
-    } catch (err) {
-        console.error('[DASHBOARD] Catch error in loadTeacherSubjects:', err);
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state text-danger">Failed to load assigned subjects. Check connection.</td></tr>';
-    }
+  } catch (err) {
+    console.error('[DASHBOARD] Catch error in loadTeacherSubjects:', err);
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state text-danger">Failed to load assigned subjects. Check connection.</td></tr>';
+  }
 }
 
 /**
  * Populate subject dropdown based on class and section
  */
 async function populateSubjectDropdown(classLevel, section, selectIds) {
-    const ids = Array.isArray(selectIds) ? selectIds : [selectIds];
-    if (!classLevel) {
-        ids.forEach(id => {
-            const sel = typeof id === 'string' ? document.getElementById(id) : id;
-            if (sel) sel.innerHTML = '<option value="">-- Select Class First --</option>';
-        });
-        return;
-    }
+  const ids = Array.isArray(selectIds) ? selectIds : [selectIds];
+  if (!classLevel) {
+    ids.forEach(id => {
+      const sel = typeof id === 'string' ? document.getElementById(id) : id;
+      if (sel) sel.innerHTML = '<option value="">-- Select Class First --</option>';
+    });
+    return;
+  }
 
-    try {
-        const res = await subjectsAPI.getTeacherSubjects();
-        const allSubjects = res.data || [];
-        
-        // Filter by class and (optionally) section
-        const filtered = allSubjects.filter(s => {
-            const classMatch = s.class_level === classLevel || s.classLevel === classLevel;
-            const sectionMatch = !s.section || s.section === section;
-            return classMatch && sectionMatch;
-        });
+  try {
+    const res = await subjectsAPI.getTeacherSubjects();
+    const allSubjects = res.data || [];
 
-        ids.forEach(id => {
-            const sel = typeof id === 'string' ? document.getElementById(id) : id;
-            if (!sel) return;
-            
-            const currentVal = sel.value;
-            if (filtered.length === 0) {
-                sel.innerHTML = '<option value="">No subjects found</option>';
-            } else {
-                sel.innerHTML = '<option value="">Select Subject</option>';
-                const uniqueNames = [...new Set(filtered.map(s => s.name))];
-                uniqueNames.forEach(name => {
-                    sel.innerHTML += `<option value="${name}">${name}</option>`;
-                });
-            }
-            
-            if (currentVal && filtered.some(s => s.name === currentVal)) {
-                sel.value = currentVal;
-            }
+    // Filter by class and (optionally) section
+    const filtered = allSubjects.filter(s => {
+      const classMatch = s.class_level === classLevel || s.classLevel === classLevel;
+      const sectionMatch = !s.section || s.section === section;
+      return classMatch && sectionMatch;
+    });
+
+    ids.forEach(id => {
+      const sel = typeof id === 'string' ? document.getElementById(id) : id;
+      if (!sel) return;
+
+      const currentVal = sel.value;
+      if (filtered.length === 0) {
+        sel.innerHTML = '<option value="">No subjects found</option>';
+      } else {
+        sel.innerHTML = '<option value="">Select Subject</option>';
+        const uniqueNames = [...new Set(filtered.map(s => s.name))];
+        uniqueNames.forEach(name => {
+          sel.innerHTML += `<option value="${name}">${name}</option>`;
         });
-    } catch (err) {
-        console.error('Failed to populate subjects:', err);
-    }
+      }
+
+      if (currentVal && filtered.some(s => s.name === currentVal)) {
+        sel.value = currentVal;
+      }
+    });
+  } catch (err) {
+    console.error('Failed to populate subjects:', err);
+  }
 }
 
 async function populateSharedDropdowns(prefix, signal = null) {
@@ -277,7 +277,7 @@ async function populateSharedDropdowns(prefix, signal = null) {
       const renderSectionsAndSubjects = async () => {
         const selectedClass = classSel.value;
         const selectedSection = secSel.value;
-        
+
         if (!selectedClass) {
           secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>';
           populateSubjectDropdown('', '', subSelId);
@@ -285,7 +285,7 @@ async function populateSharedDropdowns(prefix, signal = null) {
         }
 
         let sections = sectionsByClass[selectedClass] ? [...sectionsByClass[selectedClass]].sort() : [];
-        
+
         // If no sections found locally (e.g. assigned to 'ALL'), fetch from API
         if (sections.length === 0) {
           try {
@@ -298,16 +298,16 @@ async function populateSharedDropdowns(prefix, signal = null) {
 
         secSel.innerHTML = '<option value="">-- Select Section (Optional) --</option>' +
           sections.map(s => `<option value="${s}">${s}</option>`).join('');
-          
+
         if (selectedSection) secSel.value = selectedSection;
-        
+
         // Update subjects
         populateSubjectDropdown(selectedClass, secSel.value, subSelId);
       };
 
       classSel.onchange = renderSectionsAndSubjects;
       secSel.onchange = () => populateSubjectDropdown(classSel.value, secSel.value, subSelId);
-      
+
       await renderSectionsAndSubjects();
     } else {
       classSel.innerHTML = '<option value="">-- Select Class --</option>';
@@ -421,11 +421,11 @@ async function loadDashboard() {
     // 1. Check Cache (Stale-While-Revalidate)
     const cachedDash = getCache(userId, 'teacher_dashboard');
     const cachedMat = getCache(userId, 'teacher_materials');
-    
+
     if (cachedDash && cachedMat) {
-        console.log('[DASHBOARD] Using cached teacher dashboard data');
-        updateDashboardUI(cachedDash.data, cachedMat.data);
-        if (!cachedDash.isStale && !cachedMat.isStale) return;
+      console.log('[DASHBOARD] Using cached teacher dashboard data');
+      updateDashboardUI(cachedDash.data, cachedMat.data);
+      if (!cachedDash.isStale && !cachedMat.isStale) return;
     }
 
     showInfo('Loading dashboard...');
@@ -447,103 +447,103 @@ async function loadDashboard() {
     const cachedDash = getCache(userId, 'teacher_dashboard');
     const cachedMat = getCache(userId, 'teacher_materials');
     if (cachedDash && cachedMat) {
-        updateDashboardUI(cachedDash.data, cachedMat.data);
+      updateDashboardUI(cachedDash.data, cachedMat.data);
     }
   }
 }
 
 function updateDashboardUI(dashRes, matRes) {
 
-    if (dashRes.success) {
-      setText('stat-students', dashRes.stats?.totalStudents ?? '–');
-      setText('stat-homework', dashRes.homework?.length ?? 0);
-      setText('stat-classes', dashRes.stats?.totalClasses ?? '0');
-      allTimetable = dashRes.timetable || [];
-      allHomework = dashRes.homework || [];
+  if (dashRes.success) {
+    setText('stat-students', dashRes.stats?.totalStudents ?? '–');
+    setText('stat-homework', dashRes.homework?.length ?? 0);
+    setText('stat-classes', dashRes.stats?.totalClasses ?? '0');
+    allTimetable = dashRes.timetable || [];
+    allHomework = dashRes.homework || [];
 
-      // Update Profile Information
-      const teacher = dashRes.teacher;
-      if (teacher) {
-        const ddName = document.getElementById('dropdown-teacher-name');
-        if (ddName) ddName.textContent = teacher.name || getUserName() || 'Teacher';
-        
-        const ddId = document.getElementById('dropdown-teacher-id');
-        if (ddId) {
-            const displayId = teacher.teacherId || teacher.username || `ID: ${teacher.id}`;
-            ddId.textContent = displayId.startsWith('ID:') ? displayId : `ID: ${displayId}`;
-        }
-        
-        const ddEmail = document.getElementById('dropdown-teacher-email');
-        if (ddEmail) ddEmail.textContent = teacher.email || 'No email';
-        
-        const ddPhone = document.getElementById('dropdown-teacher-phone');
-        if (ddPhone) ddPhone.textContent = `+91 ${teacher.phone || 'N/A'}`;
+    // Update Profile Information
+    const teacher = dashRes.teacher;
+    if (teacher) {
+      const ddName = document.getElementById('dropdown-teacher-name');
+      if (ddName) ddName.textContent = teacher.name || getUserName() || 'Teacher';
 
-        const initialEl = document.getElementById('teacher-avatar-initial');
-        if (initialEl && teacher.name) initialEl.textContent = teacher.name.charAt(0).toUpperCase();
+      const ddId = document.getElementById('dropdown-teacher-id');
+      if (ddId) {
+        const displayId = teacher.teacherId || teacher.username || `ID: ${teacher.id}`;
+        ddId.textContent = displayId.startsWith('ID:') ? displayId : `ID: ${displayId}`;
+      }
 
-        const ddInitialEl = document.getElementById('dropdown-teacher-initial');
-        if (ddInitialEl && teacher.name) ddInitialEl.textContent = teacher.name.charAt(0).toUpperCase();
+      const ddEmail = document.getElementById('dropdown-teacher-email');
+      if (ddEmail) ddEmail.textContent = teacher.email || 'No email';
 
-        // Set Last Login to current time if not available
-        const ddLastLogin = document.getElementById('dropdown-last-login');
-        if (ddLastLogin) {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const dayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][now.getDay()];
-            ddLastLogin.textContent = `${dayStr} ${timeStr}`;
-        }
+      const ddPhone = document.getElementById('dropdown-teacher-phone');
+      if (ddPhone) ddPhone.textContent = `+91 ${teacher.phone || 'N/A'}`;
 
-        // Update Profile Image
-        const profileImg = document.querySelector('#teacher-profile-btn img') || document.querySelector('#teacher-profile-btn .avatar-circle');
-        if (teacher.avatar_url && profileImg) {
-          const avatarUrl = teacher.avatar_url;
-          if (profileImg.tagName === 'IMG') {
-            profileImg.src = avatarUrl;
-          } else {
-            const btn = document.getElementById('teacher-profile-btn');
-            const caret = btn.querySelector('.fa-caret-down');
-            if (btn && caret) {
-                btn.innerHTML = `
+      const initialEl = document.getElementById('teacher-avatar-initial');
+      if (initialEl && teacher.name) initialEl.textContent = teacher.name.charAt(0).toUpperCase();
+
+      const ddInitialEl = document.getElementById('dropdown-teacher-initial');
+      if (ddInitialEl && teacher.name) ddInitialEl.textContent = teacher.name.charAt(0).toUpperCase();
+
+      // Set Last Login to current time if not available
+      const ddLastLogin = document.getElementById('dropdown-last-login');
+      if (ddLastLogin) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][now.getDay()];
+        ddLastLogin.textContent = `${dayStr} ${timeStr}`;
+      }
+
+      // Update Profile Image
+      const profileImg = document.querySelector('#teacher-profile-btn img') || document.querySelector('#teacher-profile-btn .avatar-circle');
+      if (teacher.avatar_url && profileImg) {
+        const avatarUrl = teacher.avatar_url;
+        if (profileImg.tagName === 'IMG') {
+          profileImg.src = avatarUrl;
+        } else {
+          const btn = document.getElementById('teacher-profile-btn');
+          const caret = btn.querySelector('.fa-caret-down');
+          if (btn && caret) {
+            btn.innerHTML = `
                   <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: 0 0 0 1px var(--border-subtle);">
                   ${caret.outerHTML}
                 `;
-            }
-          }
-          const modalPreview = document.getElementById('profile-preview');
-          if (modalPreview) modalPreview.src = avatarUrl;
-
-          const ddAvatarLarge = document.querySelector('.avatar-large');
-          if (ddAvatarLarge) {
-              ddAvatarLarge.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Profile">`;
           }
         }
-      }
+        const modalPreview = document.getElementById('profile-preview');
+        if (modalPreview) modalPreview.src = avatarUrl;
 
-      // Update Assigned Classes in Dropdown
-      const classListEl = document.getElementById('dropdown-teacher-classes');
-      if (classListEl && dashRes.classes) {
-        if (dashRes.classes.length === 0) {
-          const userRole = getUserRole();
-          if (userRole === 'admin') {
-            classListEl.innerHTML = '<span class="class-badge admin">Full Access (Admin)</span>';
-          } else {
-            classListEl.innerHTML = '<span class="class-badge">None assigned</span>';
-          }
+        const ddAvatarLarge = document.querySelector('.avatar-large');
+        if (ddAvatarLarge) {
+          ddAvatarLarge.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Profile">`;
+        }
+      }
+    }
+
+    // Update Assigned Classes in Dropdown
+    const classListEl = document.getElementById('dropdown-teacher-classes');
+    if (classListEl && dashRes.classes) {
+      if (dashRes.classes.length === 0) {
+        const userRole = getUserRole();
+        if (userRole === 'admin') {
+          classListEl.innerHTML = '<span class="class-badge admin">Full Access (Admin)</span>';
         } else {
-          classListEl.innerHTML = dashRes.classes.map(c => 
-            `<span class="class-badge">Class ${c.classLevel}</span>`
-          ).join('');
+          classListEl.innerHTML = '<span class="class-badge">None assigned</span>';
         }
+      } else {
+        classListEl.innerHTML = dashRes.classes.map(c =>
+          `<span class="class-badge">Class ${c.classLevel}</span>`
+        ).join('');
       }
     }
+  }
 
-    if (matRes.success) {
-      allMaterials = matRes.data || [];
-      setText('stat-materials', allMaterials.length);
-    }
+  if (matRes.success) {
+    allMaterials = matRes.data || [];
+    setText('stat-materials', allMaterials.length);
+  }
 
-    renderTodayTimetable();
+  renderTodayTimetable();
 }
 
 function renderTodayTimetable() {
@@ -683,32 +683,32 @@ function renderWeeklyTimetable() {
 }
 
 // ─── ATTENDANCE SUB-TAB SWITCHING ──────────────────────────────────────────
-window.switchAttendanceSubTab = function(subtab) {
-    // Update button states
-    document.querySelectorAll('.att-subtab').forEach(btn => {
-        if (btn.dataset.subtab === subtab) {
-            btn.classList.add('active');
-            btn.style.color = 'var(--text-main)';
-            btn.style.borderBottom = '3px solid var(--accent-blue)';
-        } else {
-            btn.classList.remove('active');
-            btn.style.color = 'var(--text-muted)';
-            btn.style.borderBottom = '3px solid transparent';
-        }
-    });
-
-    // Toggle content sections
-    const markSection = document.getElementById('att-subtab-mark');
-    const reportSection = document.getElementById('att-subtab-report');
-    
-    if (subtab === 'mark') {
-        if (markSection) markSection.style.display = 'block';
-        if (reportSection) reportSection.style.display = 'none';
+window.switchAttendanceSubTab = function (subtab) {
+  // Update button states
+  document.querySelectorAll('.att-subtab').forEach(btn => {
+    if (btn.dataset.subtab === subtab) {
+      btn.classList.add('active');
+      btn.style.color = 'var(--text-main)';
+      btn.style.borderBottom = '3px solid var(--accent-blue)';
     } else {
-        if (markSection) markSection.style.display = 'none';
-        if (reportSection) reportSection.style.display = 'block';
-        initSummaryTab(); // Re-init summary if needed
+      btn.classList.remove('active');
+      btn.style.color = 'var(--text-muted)';
+      btn.style.borderBottom = '3px solid transparent';
     }
+  });
+
+  // Toggle content sections
+  const markSection = document.getElementById('att-subtab-mark');
+  const reportSection = document.getElementById('att-subtab-report');
+
+  if (subtab === 'mark') {
+    if (markSection) markSection.style.display = 'block';
+    if (reportSection) reportSection.style.display = 'none';
+  } else {
+    if (markSection) markSection.style.display = 'none';
+    if (reportSection) reportSection.style.display = 'block';
+    initSummaryTab(); // Re-init summary if needed
+  }
 };
 
 // ─── ATTENDANCE ───────────────────────────────────────────────────────────────
@@ -731,7 +731,7 @@ async function initAttendanceTab() {
   }
 }
 
-let attendanceData = {}; 
+let attendanceData = {};
 
 window.onAttClassChange = async function () {
   const classLevel = document.getElementById('att-class-select').value;
@@ -748,7 +748,7 @@ window.onAttClassChange = async function () {
   try {
     const res = await teacherAPI.getSectionsByClass(classLevel);
     const sections = res.data || [];
-    
+
     if (sections.length === 0) {
       sectionGroup.style.display = 'none';
       sectionSel.innerHTML = '<option value="">-- Choose Section --</option>';
@@ -763,41 +763,41 @@ window.onAttClassChange = async function () {
 };
 
 window.loadAttendanceSheet = async function () {
-    const classLevel = document.getElementById('att-class-select').value;
-    const date = document.getElementById('att-date').value;
-    if (!classLevel || !date) { showError('Please select a class and date.'); return; }
+  const classLevel = document.getElementById('att-class-select').value;
+  const date = document.getElementById('att-date').value;
+  if (!classLevel || !date) { showError('Please select a class and date.'); return; }
 
-    try {
-        const section = document.getElementById('att-section-select')?.value || '';
-        showInfo('Loading students...');
-        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date, section);
-        hideInfo();
+  try {
+    const section = document.getElementById('att-section-select')?.value || '';
+    showInfo('Loading students...');
+    const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date, section);
+    hideInfo();
 
-        const container = document.getElementById('att-sheet-container');
-        const list = document.getElementById('att-list-container');
-        if (!container || !list) return;
-        
-        const students = res.students || [];
-        const existingMap = res.existing || {};
+    const container = document.getElementById('att-sheet-container');
+    const list = document.getElementById('att-list-container');
+    if (!container || !list) return;
 
-        if (!students.length) {
-            container.style.display = 'block';
-            list.innerHTML = renderEmptyState(1, 'No students found in this class.');
-            return;
-        }
+    const students = res.students || [];
+    const existingMap = res.existing || {};
 
-        attendanceData = {};
-        list.innerHTML = "";
-        const totalCountEl = document.getElementById('att-total-count');
-        if (totalCountEl) totalCountEl.textContent = students.length;
+    if (!students.length) {
+      container.style.display = 'block';
+      list.innerHTML = renderEmptyState(1, 'No students found in this class.');
+      return;
+    }
 
-        students.forEach(s => {
-            const currentStatus = existingMap[s.id] || null;
-            attendanceData[s.id] = currentStatus;
+    attendanceData = {};
+    list.innerHTML = "";
+    const totalCountEl = document.getElementById('att-total-count');
+    if (totalCountEl) totalCountEl.textContent = students.length;
 
-            const card = document.createElement('div');
-            card.className = 'att-student-card';
-            card.innerHTML = `
+    students.forEach(s => {
+      const currentStatus = existingMap[s.id] || null;
+      attendanceData[s.id] = currentStatus;
+
+      const card = document.createElement('div');
+      card.className = 'att-student-card';
+      card.innerHTML = `
                 <div class="att-student-info">
                     <div>
                         <div class="att-student-name">${s.name}</div>
@@ -810,77 +810,77 @@ window.loadAttendanceSheet = async function () {
                     <button class="att-toggle-btn ${currentStatus === 'late' ? 'active' : ''}" data-id="${s.id}" data-status="late">L</button>
                 </div>`;
 
-            const buttons = card.querySelectorAll('.att-toggle-btn');
-            buttons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    buttons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    attendanceData[s.id] = btn.dataset.status;
-                    updateAttStats();
-                });
-            });
-            list.appendChild(card);
+      const buttons = card.querySelectorAll('.att-toggle-btn');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          attendanceData[s.id] = btn.dataset.status;
+          updateAttStats();
         });
+      });
+      list.appendChild(card);
+    });
 
-        container.style.display = 'block';
-        updateAttStats();
+    container.style.display = 'block';
+    updateAttStats();
 
-        const markAllBtn = document.getElementById('btn-mark-all-present');
-        if (markAllBtn) {
-            markAllBtn.onclick = () => {
-                document.querySelectorAll('.att-toggle-btn[data-status="present"]').forEach(btn => {
-                    if (!btn.classList.contains('active')) btn.click();
-                });
-            };
-        }
-    } catch (err) {
-        hideInfo();
-        showError('Failed to load attendance: ' + err.message);
+    const markAllBtn = document.getElementById('btn-mark-all-present');
+    if (markAllBtn) {
+      markAllBtn.onclick = () => {
+        document.querySelectorAll('.att-toggle-btn[data-status="present"]').forEach(btn => {
+          if (!btn.classList.contains('active')) btn.click();
+        });
+      };
     }
+  } catch (err) {
+    hideInfo();
+    showError('Failed to load attendance: ' + err.message);
+  }
 };
 
 function updateAttStats() {
-    let p = 0, a = 0;
-    Object.values(attendanceData).forEach(status => {
-        if (status === 'present' || status === 'late') p++;
-        if (status === 'absent') a++;
-    });
-    const pEl = document.getElementById('att-present-count');
-    const aEl = document.getElementById('att-absent-count');
-    if (pEl) pEl.textContent = p;
-    if (aEl) aEl.textContent = a;
+  let p = 0, a = 0;
+  Object.values(attendanceData).forEach(status => {
+    if (status === 'present' || status === 'late') p++;
+    if (status === 'absent') a++;
+  });
+  const pEl = document.getElementById('att-present-count');
+  const aEl = document.getElementById('att-absent-count');
+  if (pEl) pEl.textContent = p;
+  if (aEl) aEl.textContent = a;
 }
 
 window.saveAttendance = async function () {
-    const classLevel = document.getElementById('att-class-select').value;
-    const date = document.getElementById('att-date').value;
-    
-    const pendingCount = Object.values(attendanceData).filter(v => v === null).length;
-    if (pendingCount > 0) {
-        showError(`Please mark attendance for all students (${pendingCount} remaining).`);
-        return;
-    }
+  const classLevel = document.getElementById('att-class-select').value;
+  const date = document.getElementById('att-date').value;
 
-    const section = document.getElementById('att-section-select')?.value || '';
-    const records = Object.entries(attendanceData).map(([id, status]) => ({
-        studentId: parseInt(id),
-        classLevel,
-        section: section || null,
-        date,
-        status
-    }));
+  const pendingCount = Object.values(attendanceData).filter(v => v === null).length;
+  if (pendingCount > 0) {
+    showError(`Please mark attendance for all students (${pendingCount} remaining).`);
+    return;
+  }
 
-    if (!records.length) { showError('No students to save.'); return; }
+  const section = document.getElementById('att-section-select')?.value || '';
+  const records = Object.entries(attendanceData).map(([id, status]) => ({
+    studentId: parseInt(id),
+    classLevel,
+    section: section || null,
+    date,
+    status
+  }));
 
-    try {
-        showInfo('Saving attendance...');
-        await teacherAPI.markBulkAttendance(teacherId, records);
-        hideInfo();
-        showSuccess(`Successfully saved attendance for ${records.length} students.`);
-    } catch (err) {
-        hideInfo();
-        showError('Failed to save attendance: ' + err.message);
-    }
+  if (!records.length) { showError('No students to save.'); return; }
+
+  try {
+    showInfo('Saving attendance...');
+    await teacherAPI.markBulkAttendance(teacherId, records);
+    hideInfo();
+    showSuccess(`Successfully saved attendance for ${records.length} students.`);
+  } catch (err) {
+    hideInfo();
+    showError('Failed to save attendance: ' + err.message);
+  }
 };
 
 // ─── HOMEWORK ─────────────────────────────────────────────────────────────────
@@ -913,13 +913,13 @@ function renderHomeworkTable() {
     tbody.innerHTML = renderEmptyState(5, 'No homework yet. Add one!');
     return;
   }
-  
+
   tbody.innerHTML = onlyHws.map(hw => {
     const due = formatDate(hw.dueDate);
     const classLevel = hw.classLevel || '-';
     const section = hw.section || '-';
     const assignedByName = hw.assignedByName || 'Teacher';
-    
+
     return `<tr>
       <td data-label="Title"><strong>${hw.title}</strong></td>
       <td data-label="Class"><span class="status-badge status-active">${classLevel}</span></td>
@@ -949,12 +949,12 @@ function renderDppTable() {
     tbody.innerHTML = renderEmptyState(5, 'No practice sheets yet.');
     return;
   }
-  
+
   tbody.innerHTML = onlyDpps.map(hw => {
     const posted = formatDate(hw.createdAt);
     const classLevel = hw.classLevel || '-';
     const section = hw.section || '-';
-    
+
     return `<tr>
       <td><strong>${hw.title}</strong></td>
       <td><span class="status-badge status-active">${classLevel}</span></td>
@@ -994,10 +994,10 @@ window.openHwModal = async function (typeOrHw = 'homework') {
 
   const editId = document.getElementById('hw-edit-id');
   if (editId) editId.value = hw?.id || '';
-  
+
   const titleEl = document.getElementById('hw-modal-title');
   if (titleEl) titleEl.textContent = hw ? `Edit ${isDpp ? 'Practice' : 'Homework'}` : `Add ${isDpp ? 'Practice' : 'Homework'}`;
-  
+
   const typeEl = document.getElementById('hw-type');
   if (typeEl) typeEl.value = type;
 
@@ -1069,7 +1069,7 @@ function setupFormListeners() {
     fd.append('title', document.getElementById('hw-title').value);
     fd.append('description', document.getElementById('hw-description').value);
     fd.append('dueDate', document.getElementById('hw-dueDate').value);
-    
+
     const file = document.getElementById('hw-file')?.files[0];
     if (pendingHwUpload && pendingHwUpload.data) {
       fd.append('attachmentId', pendingHwUpload.data.id || pendingHwUpload.data.fileId);
@@ -1092,7 +1092,7 @@ function setupFormListeners() {
 
   document.getElementById('material-form')?.addEventListener('submit', async e => {
     e.preventDefault();
-    
+
     const classLevel = document.getElementById('material-classLevel')?.value;
     const section = document.getElementById('material-section')?.value;
     const subject = document.getElementById('material-subject')?.value;
@@ -1115,12 +1115,12 @@ function setupFormListeners() {
     if (file) {
       const maxSize = 20 * 1024 * 1024; // 20MB
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-      
+
       if (!allowedTypes.includes(file.type)) {
         showError(`Invalid file type. Only PDF, JPG, PNG allowed.`);
         return;
       }
-      
+
       if (file.size > maxSize) {
         showError(`File too large. Max 20MB.`);
         return;
@@ -1134,11 +1134,11 @@ function setupFormListeners() {
     if (subject) fd.append('subject', subject);
     fd.append('title', title);
     fd.append('description', description);
-    
+
     if (id) {
       fd.append('currentFileUrl', document.getElementById('material-current-file').value);
     }
-    
+
     if (pendingMaterialUpload && pendingMaterialUpload.data) {
       fd.append('attachmentId', pendingMaterialUpload.data.id || pendingMaterialUpload.data.fileId);
       fd.append('fileUrl', pendingMaterialUpload.data.url || pendingMaterialUpload.data.downloadLink);
@@ -1158,9 +1158,9 @@ function setupFormListeners() {
       closeMaterialModal();
       clearCache(getUserId(), 'teacher_materials');
       await loadMaterials();
-    } catch (err) { 
-      hideInfo(); 
-      showError(err.message); 
+    } catch (err) {
+      hideInfo();
+      showError(err.message);
     }
   });
 
@@ -1214,7 +1214,7 @@ async function loadMaterials(signal = null) {
     showInfo('Loading study materials...');
     showAllMaterials = false;
     const res = await teacherAPI.getMaterials(teacherId, { signal });
-    
+
     if (res.success) {
       allMaterials = (res.data || []).map((m) => ({
         ...m,
@@ -1231,9 +1231,9 @@ async function loadMaterials(signal = null) {
     } else {
       showError('Failed to load materials: ' + (res.error || 'Unknown error'));
     }
-  } catch (err) { 
+  } catch (err) {
     if (err.name !== 'AbortError') {
-      showError('Failed to load materials: ' + err.message); 
+      showError('Failed to load materials: ' + err.message);
     }
   } finally {
     hideInfo();
@@ -1434,9 +1434,9 @@ async function loadSyllabus(signal = null) {
     } else {
       showError('Failed to load syllabus: ' + (res.error || 'Unknown error'));
     }
-  } catch (err) { 
+  } catch (err) {
     if (err.name !== 'AbortError') {
-      showError('Failed to load syllabus: ' + err.message); 
+      showError('Failed to load syllabus: ' + err.message);
     }
   } finally {
     hideInfo();
@@ -1529,9 +1529,9 @@ window.toggleChapter = async function (id, completed) {
     await teacherAPI.updateSyllabus(id, { teacherId: parseInt(teacherId), completed });
     hideInfo();
     await loadSyllabus();
-  } catch (err) { 
+  } catch (err) {
     hideInfo();
-    showError(err.message); 
+    showError(err.message);
   }
 };
 
@@ -1543,9 +1543,9 @@ window.deleteChapter = async function (id) {
     hideInfo();
     showSuccess('Chapter deleted.');
     await loadSyllabus();
-  } catch (err) { 
+  } catch (err) {
     hideInfo();
-    showError(err.message); 
+    showError(err.message);
   }
 };
 
@@ -1561,9 +1561,9 @@ async function initSummaryTab() {
         const val = c.class_level || c;
         return `<option value="${val}">${val}</option>`;
       }).join('');
-    
+
     sel.onchange = onSumClassChange;
-    
+
     const monthEl = document.getElementById('sum-month');
     if (monthEl && !monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
   } catch { /* silent */ }
@@ -1584,7 +1584,7 @@ window.onSumClassChange = async function () {
   try {
     const res = await teacherAPI.getSectionsByClass(classLevel);
     const sections = res.data || [];
-    
+
     if (sections.length === 0) {
       sectionGroup.style.display = 'none';
       sectionSel.innerHTML = '<option value="">-- Choose Section --</option>';
@@ -1602,7 +1602,7 @@ window.loadAttendanceSummary = async function () {
   const classLevel = document.getElementById('sum-class-select').value;
   const month = document.getElementById('sum-month').value;
   const section = document.getElementById('sum-section-select')?.value || '';
-  
+
   if (!classLevel || !month) { showError('Select class and month.'); return; }
 
   try {
@@ -1662,7 +1662,7 @@ function renderEmptyState(colspan, message, icon = 'fa-inbox') {
 window.toggleActionMenu = function (e) {
   const btn = e.currentTarget || (e.target && e.target.closest('.action-menu-btn')) || (e instanceof HTMLElement ? e : null);
   if (!btn) return;
-  
+
   // Find or create dropdown reference
   let dropdown = btn._dropdown;
   if (!dropdown) {
@@ -1671,10 +1671,10 @@ window.toggleActionMenu = function (e) {
       btn._dropdown = dropdown;
     }
   }
-  
+
   if (!dropdown) return;
 
-  
+
   // Close all other menus
   document.querySelectorAll('.action-menu-dropdown.active').forEach(d => {
     if (d !== dropdown) d.classList.remove('active');
@@ -1684,39 +1684,39 @@ window.toggleActionMenu = function (e) {
 
   // Store original parent for restoration
   if (!dropdown._originalParent && dropdown.parentElement !== document.body) {
-      dropdown._originalParent = dropdown.parentElement;
-      dropdown._originalNextSibling = dropdown.nextElementSibling;
+    dropdown._originalParent = dropdown.parentElement;
+    dropdown._originalNextSibling = dropdown.nextElementSibling;
   }
 
   // Helper to return dropdown to original position
   const restoreDropdown = () => {
-      dropdown.classList.remove('active');
-      if (dropdown._originalParent) {
-          if (dropdown._originalNextSibling) {
-              dropdown._originalParent.insertBefore(dropdown, dropdown._originalNextSibling);
-          } else {
-              dropdown._originalParent.appendChild(dropdown);
-          }
+    dropdown.classList.remove('active');
+    if (dropdown._originalParent) {
+      if (dropdown._originalNextSibling) {
+        dropdown._originalParent.insertBefore(dropdown, dropdown._originalNextSibling);
+      } else {
+        dropdown._originalParent.appendChild(dropdown);
       }
+    }
   };
 
   if (!isActive) {
     // Teleport to body to escape transform/overflow constraints
     if (dropdown.parentElement !== document.body) {
-        document.body.appendChild(dropdown);
+      document.body.appendChild(dropdown);
     }
-    
+
     dropdown.classList.add('active');
-    
+
     // Position logically
     const rect = btn.getBoundingClientRect();
     const dropdownHeight = dropdown.offsetHeight || 120;
     const dropdownWidth = dropdown.offsetWidth || 160;
     const viewportHeight = window.innerHeight;
-    
+
     dropdown.style.position = 'fixed';
     dropdown.style.zIndex = '9999999';
-    
+
     // Vertical position (auto-flip)
     if (rect.bottom + dropdownHeight > viewportHeight - 10 && rect.top > dropdownHeight) {
       dropdown.style.top = (rect.top - dropdownHeight) + 'px';
@@ -1725,24 +1725,24 @@ window.toggleActionMenu = function (e) {
       dropdown.style.top = rect.bottom + 'px';
       dropdown.classList.remove('drop-up');
     }
-    
+
     // Horizontal position (align right to button with collision detection)
     let leftPos = rect.right - dropdownWidth;
     const viewportWidth = window.innerWidth;
-    
+
     if (leftPos < 10) leftPos = 10; // Keep 10px from left edge
     if (leftPos + dropdownWidth > viewportWidth - 10) {
       leftPos = viewportWidth - dropdownWidth - 10;
     }
-    
+
     dropdown.style.left = leftPos + 'px';
-    
+
     // Handle click outside to close
     const closeMenu = (event) => {
-        if (!dropdown.contains(event.target) && event.target !== btn) {
-            restoreDropdown();
-            document.removeEventListener('click', closeMenu);
-        }
+      if (!dropdown.contains(event.target) && event.target !== btn) {
+        restoreDropdown();
+        document.removeEventListener('click', closeMenu);
+      }
     };
     setTimeout(() => document.addEventListener('click', closeMenu), 0);
   } else {
@@ -1757,11 +1757,11 @@ async function initExamTab() {
   const sel = document.getElementById('exam-class-select');
   if (!sel) return;
   if (sel.options.length > 1) { loadExamResults(); return; }
-  
+
   try {
     const res = await teacherAPI.getAttendanceClasses(teacherId);
     const rawData = res.data || [];
-    
+
     // Normalize and unique classes
     const classes = [...new Set(rawData.map(c => {
       if (typeof c === 'object' && c !== null) return String(c.class_level || '');
@@ -1772,112 +1772,112 @@ async function initExamTab() {
 
     sel.innerHTML = '<option value="">Select Class</option>' +
       classes.map(c => `<option value="${c}">${c}</option>`).join('');
-    
+
     document.getElementById('exam-add-subject-btn')?.addEventListener('click', createExamSubjectRow);
     document.getElementById('exam-submit-btn')?.addEventListener('click', submitExamResult);
-    
+
     const container = document.getElementById('exam-subjects-container');
     if (container && container.children.length === 0) createExamSubjectRow();
-    
+
     loadExamResults();
   } catch (err) {
     showError('Failed to load exam classes: ' + err.message);
   }
 }
 
-window.onExamClassChange = async function() {
-    const classLevel = document.getElementById('exam-class-select').value;
-    const sectionSel = document.getElementById('exam-section-select');
-    const rollSelect = document.getElementById('exam-roll-select');
-    const nameInput = document.getElementById('exam-name-input');
-    
-    if (rollSelect) rollSelect.innerHTML = '<option value="">Select Roll No.</option>';
-    if (nameInput) nameInput.value = '';
-    examStudents = [];
+window.onExamClassChange = async function () {
+  const classLevel = document.getElementById('exam-class-select').value;
+  const sectionSel = document.getElementById('exam-section-select');
+  const rollSelect = document.getElementById('exam-roll-select');
+  const nameInput = document.getElementById('exam-name-input');
 
-    // Update all subject dropdowns
-    updateAllExamSubjectDropdowns();
+  if (rollSelect) rollSelect.innerHTML = '<option value="">Select Roll No.</option>';
+  if (nameInput) nameInput.value = '';
+  examStudents = [];
 
-    if (!classLevel) {
-        if (sectionSel) sectionSel.innerHTML = '<option value="">Select Section</option>';
-        return;
+  // Update all subject dropdowns
+  updateAllExamSubjectDropdowns();
+
+  if (!classLevel) {
+    if (sectionSel) sectionSel.innerHTML = '<option value="">Select Section</option>';
+    return;
+  }
+
+  try {
+    // Load sections for this class
+    const secRes = await teacherAPI.getSectionsByClass(classLevel);
+    const sections = secRes.data || [];
+    if (sectionSel) {
+      sectionSel.innerHTML = sections.map(s => `<option value="${s}">${s}</option>`).join('');
+      if (sections.length === 0) {
+        sectionSel.innerHTML = '<option value="">N/A</option>';
+      }
     }
 
-    try {
-        // Load sections for this class
-        const secRes = await teacherAPI.getSectionsByClass(classLevel);
-        const sections = secRes.data || [];
-        if (sectionSel) {
-            sectionSel.innerHTML = sections.map(s => `<option value="${s}">${s}</option>`).join('');
-            if (sections.length === 0) {
-                sectionSel.innerHTML = '<option value="">N/A</option>';
-            }
-        }
-        
-        // Trigger student load for the first/selected section
-        onExamSectionChange();
-    } catch (err) {
-        console.error('Error fetching sections:', err);
-        onExamSectionChange(); // Fallback to current section
-    }
+    // Trigger student load for the first/selected section
+    onExamSectionChange();
+  } catch (err) {
+    console.error('Error fetching sections:', err);
+    onExamSectionChange(); // Fallback to current section
+  }
 };
 
 async function updateAllExamSubjectDropdowns() {
-    const classLevel = document.getElementById('exam-class-select').value;
-    const section = document.getElementById('exam-section-select').value;
-    const selects = document.querySelectorAll('.sub-name');
-    if (selects.length > 0) {
-        populateSubjectDropdown(classLevel, section, Array.from(selects));
-    }
+  const classLevel = document.getElementById('exam-class-select').value;
+  const section = document.getElementById('exam-section-select').value;
+  const selects = document.querySelectorAll('.sub-name');
+  if (selects.length > 0) {
+    populateSubjectDropdown(classLevel, section, Array.from(selects));
+  }
 }
 
-window.onExamSectionChange = async function() {
-    const classLevel = document.getElementById('exam-class-select').value;
-    const section = document.getElementById('exam-section-select').value;
-    const rollSelect = document.getElementById('exam-roll-select');
-    const nameInput = document.getElementById('exam-name-input');
-    
-    // Update all subject dropdowns
-    updateAllExamSubjectDropdowns();
+window.onExamSectionChange = async function () {
+  const classLevel = document.getElementById('exam-class-select').value;
+  const section = document.getElementById('exam-section-select').value;
+  const rollSelect = document.getElementById('exam-roll-select');
+  const nameInput = document.getElementById('exam-name-input');
 
-    if (!classLevel) return;
+  // Update all subject dropdowns
+  updateAllExamSubjectDropdowns();
 
-    try {
-        showInfo('Loading students...');
-        const date = new Date().toISOString().split('T')[0];
-        const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date, section);
-        hideInfo();
-        
-        examStudents = res.students || [];
-        if (rollSelect) {
-            rollSelect.innerHTML = '<option value="">Select Roll No.</option>' +
-                examStudents.map(s => `<option value="${s.id}">${s.rollNumber || 'ID:'+s.id}</option>`).join('');
-        }
-        if (examStudents.length === 0) {
-            showInfo('No students found for this class/section');
-        }
-    } catch (err) {
-        hideInfo();
-        showError('Failed to fetch students: ' + err.message);
+  if (!classLevel) return;
+
+  try {
+    showInfo('Loading students...');
+    const date = new Date().toISOString().split('T')[0];
+    const res = await teacherAPI.getAttendanceSheet(teacherId, classLevel, date, section);
+    hideInfo();
+
+    examStudents = res.students || [];
+    if (rollSelect) {
+      rollSelect.innerHTML = '<option value="">Select Roll No.</option>' +
+        examStudents.map(s => `<option value="${s.id}">${s.rollNumber || 'ID:' + s.id}</option>`).join('');
     }
+    if (examStudents.length === 0) {
+      showInfo('No students found for this class/section');
+    }
+  } catch (err) {
+    hideInfo();
+    showError('Failed to fetch students: ' + err.message);
+  }
 };
 
-window.onExamRollChange = function() {
-    const studentId = document.getElementById('exam-roll-select').value;
-    const nameInput = document.getElementById('exam-name-input');
-    if (!nameInput) return;
-    const student = examStudents.find(s => String(s.id) === studentId);
-    nameInput.value = student ? student.name : '';
+window.onExamRollChange = function () {
+  const studentId = document.getElementById('exam-roll-select').value;
+  const nameInput = document.getElementById('exam-name-input');
+  if (!nameInput) return;
+  const student = examStudents.find(s => String(s.id) === studentId);
+  nameInput.value = student ? student.name : '';
 };
 
 function createExamSubjectRow() {
-    const container = document.getElementById('exam-subjects-container');
-    if (!container) return;
-    const row = document.createElement('div');
-    row.className = 'subject-row-entry card';
-    row.style.cssText = 'padding: 1.5rem; margin-bottom: 1rem; border: 1px dashed var(--border-subtle); background: var(--bg-primary);';
-    
-    row.innerHTML = `
+  const container = document.getElementById('exam-subjects-container');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'subject-row-entry card';
+  row.style.cssText = 'padding: 1.5rem; margin-bottom: 1rem; border: 1px dashed var(--border-subtle); background: var(--bg-primary);';
+
+  row.innerHTML = `
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
             <div class="filter-group">
                 <label>Subject Name</label>
@@ -1902,115 +1902,115 @@ function createExamSubjectRow() {
             </button>
         </div>`;
 
-    row.querySelector('.remove-sub-btn').addEventListener('click', () => {
-        if (container.children.length > 1) { row.remove(); calculateExamTotals(); }
-        else { showError("At least one subject is required."); }
-    });
-    container.appendChild(row);
+  row.querySelector('.remove-sub-btn').addEventListener('click', () => {
+    if (container.children.length > 1) { row.remove(); calculateExamTotals(); }
+    else { showError("At least one subject is required."); }
+  });
+  container.appendChild(row);
 
-    // Initial subject population for this new row
-    const classLevel = document.getElementById('exam-class-select').value;
-    const section = document.getElementById('exam-section-select').value;
-    if (classLevel) {
-        populateSubjectDropdown(classLevel, section, row.querySelector('.sub-name'));
-    }
+  // Initial subject population for this new row
+  const classLevel = document.getElementById('exam-class-select').value;
+  const section = document.getElementById('exam-section-select').value;
+  if (classLevel) {
+    populateSubjectDropdown(classLevel, section, row.querySelector('.sub-name'));
+  }
 }
 
-window.calculateExamTotals = function() {
-    const rows = document.querySelectorAll('.subject-row-entry');
-    let tSum = 0, oSum = 0;
-    rows.forEach(row => {
-        const t = parseFloat(row.querySelector('.sub-total').value || 0);
-        const o = parseFloat(row.querySelector('.sub-obtained').value || 0);
-        tSum += t; oSum += o;
-        const gradeInput = row.querySelector('.sub-grade');
-        if (t > 0) {
-            const perc = (o / t) * 100;
-            let grade = 'F';
-            if (perc >= 90) grade = 'A+';
-            else if (perc >= 80) grade = 'A';
-            else if (perc >= 70) grade = 'B+';
-            else if (perc >= 60) grade = 'B';
-            else if (perc >= 50) grade = 'C+';
-            else if (perc >= 40) grade = 'C';
-            else if (perc >= 33) grade = 'D';
-            gradeInput.value = grade;
-            gradeInput.style.color = (grade === 'F') ? 'var(--danger)' : (grade.startsWith('A') ? 'var(--success)' : 'var(--accent-blue)');
-        } else { gradeInput.value = '-'; }
-    });
-    const submitBtn = document.getElementById('exam-submit-btn');
-    if (submitBtn) submitBtn.innerHTML = `<i class="fas fa-check-circle"></i> Submit Marks (${oSum} / ${tSum})`;
+window.calculateExamTotals = function () {
+  const rows = document.querySelectorAll('.subject-row-entry');
+  let tSum = 0, oSum = 0;
+  rows.forEach(row => {
+    const t = parseFloat(row.querySelector('.sub-total').value || 0);
+    const o = parseFloat(row.querySelector('.sub-obtained').value || 0);
+    tSum += t; oSum += o;
+    const gradeInput = row.querySelector('.sub-grade');
+    if (t > 0) {
+      const perc = (o / t) * 100;
+      let grade = 'F';
+      if (perc >= 90) grade = 'A+';
+      else if (perc >= 80) grade = 'A';
+      else if (perc >= 70) grade = 'B+';
+      else if (perc >= 60) grade = 'B';
+      else if (perc >= 50) grade = 'C+';
+      else if (perc >= 40) grade = 'C';
+      else if (perc >= 33) grade = 'D';
+      gradeInput.value = grade;
+      gradeInput.style.color = (grade === 'F') ? 'var(--danger)' : (grade.startsWith('A') ? 'var(--success)' : 'var(--accent-blue)');
+    } else { gradeInput.value = '-'; }
+  });
+  const submitBtn = document.getElementById('exam-submit-btn');
+  if (submitBtn) submitBtn.innerHTML = `<i class="fas fa-check-circle"></i> Submit Marks (${oSum} / ${tSum})`;
 }
 
 async function submitExamResult() {
-    const classLevel = document.getElementById('exam-class-select').value;
-    const section = document.getElementById('exam-section-select').value;
-    const studentId = document.getElementById('exam-roll-select').value;
-    const student = examStudents.find(s => String(s.id) === studentId);
-    const rollNumber = student ? student.rollNumber : '';
-    const studentName = document.getElementById('exam-name-input').value;
-    const examTitle = document.getElementById('exam-title-input').value;
+  const classLevel = document.getElementById('exam-class-select').value;
+  const section = document.getElementById('exam-section-select').value;
+  const studentId = document.getElementById('exam-roll-select').value;
+  const student = examStudents.find(s => String(s.id) === studentId);
+  const rollNumber = student ? student.rollNumber : '';
+  const studentName = document.getElementById('exam-name-input').value;
+  const examTitle = document.getElementById('exam-title-input').value;
 
-    if (!classLevel || !studentId || !studentName || !examTitle) { showError("Please fill all student details and exam title."); return; }
+  if (!classLevel || !studentId || !studentName || !examTitle) { showError("Please fill all student details and exam title."); return; }
 
-    const rows = document.querySelectorAll('.subject-row-entry');
-    const subjects = [];
-    let totalMarks = 0, obtainedMarks = 0;
+  const rows = document.querySelectorAll('.subject-row-entry');
+  const subjects = [];
+  let totalMarks = 0, obtainedMarks = 0;
 
-    for (const row of rows) {
-        const name = row.querySelector('.sub-name').value.trim();
-        const total = parseFloat(row.querySelector('.sub-total').value);
-        const obtained = parseFloat(row.querySelector('.sub-obtained').value);
-        const grade = row.querySelector('.sub-grade').value.trim();
-        if (!name) { showError("Subject name is required for all rows."); return; }
-        subjects.push({ name, total, obtained, grade });
-        totalMarks += total; obtainedMarks += obtained;
-    }
+  for (const row of rows) {
+    const name = row.querySelector('.sub-name').value.trim();
+    const total = parseFloat(row.querySelector('.sub-total').value);
+    const obtained = parseFloat(row.querySelector('.sub-obtained').value);
+    const grade = row.querySelector('.sub-grade').value.trim();
+    if (!name) { showError("Subject name is required for all rows."); return; }
+    subjects.push({ name, total, obtained, grade });
+    totalMarks += total; obtainedMarks += obtained;
+  }
 
-    const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
-    const remarks = percentage >= 33 ? 'Pass' : 'Fail';
+  const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
+  const remarks = percentage >= 33 ? 'Pass' : 'Fail';
 
-    try {
-        showInfo('Submitting results...');
-        await teacherAPI.createExamResult({ 
-            classLevel, 
-            section, 
-            studentId,
-            rollNumber, 
-            studentName, 
-            examTitle, 
-            subjects, 
-            totalMarks, 
-            obtainedMarks, 
-            percentage: parseFloat(percentage.toFixed(2)), 
-            remarks 
-        });
-        hideInfo();
-        showSuccess("Exam result submitted successfully!");
-        document.getElementById('exam-roll-select').value = '';
-        document.getElementById('exam-name-input').value = '';
-        const container = document.getElementById('exam-subjects-container');
-        if (container) container.innerHTML = '';
-        createExamSubjectRow();
-        loadExamResults();
-    } catch (err) { hideInfo(); showError("Failed to submit results: " + err.message); }
+  try {
+    showInfo('Submitting results...');
+    await teacherAPI.createExamResult({
+      classLevel,
+      section,
+      studentId,
+      rollNumber,
+      studentName,
+      examTitle,
+      subjects,
+      totalMarks,
+      obtainedMarks,
+      percentage: parseFloat(percentage.toFixed(2)),
+      remarks
+    });
+    hideInfo();
+    showSuccess("Exam result submitted successfully!");
+    document.getElementById('exam-roll-select').value = '';
+    document.getElementById('exam-name-input').value = '';
+    const container = document.getElementById('exam-subjects-container');
+    if (container) container.innerHTML = '';
+    createExamSubjectRow();
+    loadExamResults();
+  } catch (err) { hideInfo(); showError("Failed to submit results: " + err.message); }
 }
 
 async function loadExamResults() {
-    try {
-        const res = await teacherAPI.getExamResults();
-        renderExamResults(res.data || []);
-    } catch (err) { console.error("Failed to load exam results", err); }
+  try {
+    const res = await teacherAPI.getExamResults();
+    renderExamResults(res.data || []);
+  } catch (err) { console.error("Failed to load exam results", err); }
 }
 
 function renderExamResults(results) {
-    const tbody = document.getElementById('exam-table-body');
-    if (!tbody) return;
-    if (!results.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>`; return; }
+  const tbody = document.getElementById('exam-table-body');
+  if (!tbody) return;
+  if (!results.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No exam results recorded yet.</td></tr>`; return; }
 
-    tbody.innerHTML = results.map((r, index) => {
-        const subs = Array.isArray(r.subjects) ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${r.subjects.map(s => `<li>${s.name}: ${Number(s.obtained)}/${Number(s.total)} (${s.grade || '-'})</li>`).join('')}</ul>` : '-';
-        return `
+  tbody.innerHTML = results.map((r, index) => {
+    const subs = Array.isArray(r.subjects) ? `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${r.subjects.map(s => `<li>${s.name}: ${Number(s.obtained)}/${Number(s.total)} (${s.grade || '-'})</li>`).join('')}</ul>` : '-';
+    return `
             <tr>
                 <td>${index + 1}</td>
                 <td>${r.classLevel} / ${r.section || '-'}</td>
@@ -2021,7 +2021,7 @@ function renderExamResults(results) {
                 <td><div style="font-weight:700; color:var(--accent-blue);">${Number(r.obtainedMarks)} / ${Number(r.totalMarks)}</div></td>
                 <td><span class="badge ${r.remarks === 'Pass' ? 'badge-success' : 'badge-danger'}" style="background: ${r.remarks === 'Pass' ? 'rgba(36,134,54,0.1)' : 'rgba(215,58,73,0.1)'}; color: ${r.remarks === 'Pass' ? 'var(--success)' : 'var(--danger)'};">${r.remarks}</span></td>
             </tr>`;
-    }).join('');
+  }).join('');
 }
 
 export { loadDashboard, loadHomework, loadMaterials, loadSyllabus, initExamTab };
@@ -2029,173 +2029,173 @@ export { loadDashboard, loadHomework, loadMaterials, loadSyllabus, initExamTab }
 // PROFILE & CMS LOGIC
 // ═══════════════════════════════════════════
 
-window.openEditProfileModal = async function() {
-    const modal = document.getElementById('edit-profile-modal');
-    if (!modal) return;
-    
-    resetTeacherUploadProgress('profile');
-    
-    try {
-        showInfo('Loading profile...');
-        const res = await teacherAPI.getDashboard(teacherId);
-        hideInfo();
-        
-        if (res.success && res.teacher) {
-            const t = res.teacher;
-            document.getElementById('edit-profile-name').value = t.name || '';
-            document.getElementById('edit-profile-email').value = t.email || '';
-            
-            if (t.avatar_url) {
-                document.getElementById('profile-preview').src = t.avatar_url;
-            } else {
-                document.getElementById('profile-preview').src = './src/assets/images/default-avatar.png';
-            }
-            const overlay = document.getElementById('editProfileDrawerOverlay');
-            if (modal) modal.classList.add('active');
-            if (overlay) overlay.classList.add('active');
-        }
-    } catch (err) {
-        hideInfo();
-        showError('Failed to load profile details');
+window.openEditProfileModal = async function () {
+  const modal = document.getElementById('edit-profile-modal');
+  if (!modal) return;
+
+  resetTeacherUploadProgress('profile');
+
+  try {
+    showInfo('Loading profile...');
+    const res = await teacherAPI.getDashboard(teacherId);
+    hideInfo();
+
+    if (res.success && res.teacher) {
+      const t = res.teacher;
+      document.getElementById('edit-profile-name').value = t.name || '';
+      document.getElementById('edit-profile-email').value = t.email || '';
+
+      if (t.avatar_url) {
+        document.getElementById('profile-preview').src = t.avatar_url;
+      } else {
+        document.getElementById('profile-preview').src = './src/assets/images/default-avatar.png';
+      }
+      const overlay = document.getElementById('editProfileDrawerOverlay');
+      if (modal) modal.classList.add('active');
+      if (overlay) overlay.classList.add('active');
     }
+  } catch (err) {
+    hideInfo();
+    showError('Failed to load profile details');
+  }
 };
 
-window.closeEditProfileModal = function() {
-    const modal = document.getElementById('edit-profile-modal');
-    const overlay = document.getElementById('editProfileDrawerOverlay');
-    if (modal) modal.classList.remove('active');
-    if (overlay) overlay.classList.remove('active');
-    // Clear file input
-    const fileInput = document.getElementById('profile-upload');
-    if (fileInput) fileInput.value = '';
+window.closeEditProfileModal = function () {
+  const modal = document.getElementById('edit-profile-modal');
+  const overlay = document.getElementById('editProfileDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
+  // Clear file input
+  const fileInput = document.getElementById('profile-upload');
+  if (fileInput) fileInput.value = '';
 };
 
-window.previewProfileImage = function(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Validation: Size (2MB)
-        if (file.size > 2 * 1024 * 1024) {
-            showError('Image size exceeds 2MB limit.');
-            input.value = '';
-            return;
-        }
-        
-        // Validation: Type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-        if (!allowedTypes.includes(file.type)) {
-            showError('Only JPG, JPEG, and PNG files are allowed.');
-            input.value = '';
-            return;
-        }
+window.previewProfileImage = function (input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('profile-preview').src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+    // Validation: Size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showError('Image size exceeds 2MB limit.');
+      input.value = '';
+      return;
     }
+
+    // Validation: Type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      showError('Only JPG, JPEG, and PNG files are allowed.');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      document.getElementById('profile-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
 };
 
 // Handle Profile Form Submission
 document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const name = document.getElementById('edit-profile-name').value;
-    const fileInput = document.getElementById('profile-upload');
-    const file = fileInput.files[0];
-    
-    const formData = new FormData();
-    formData.append('name', name);
-    if (pendingProfileUpload) {
-        formData.append('avatarUrl', pendingProfileUpload.url);
-        formData.append('attachmentId', pendingProfileUpload.id);
-    } else if (file) {
-        formData.append('avatar', file);
+  e.preventDefault();
+
+  const name = document.getElementById('edit-profile-name').value;
+  const fileInput = document.getElementById('profile-upload');
+  const file = fileInput.files[0];
+
+  const formData = new FormData();
+  formData.append('name', name);
+  if (pendingProfileUpload) {
+    formData.append('avatarUrl', pendingProfileUpload.url);
+    formData.append('attachmentId', pendingProfileUpload.id);
+  } else if (file) {
+    formData.append('avatar', file);
+  }
+
+  try {
+    showInfo('Updating profile...');
+    const res = await profileAPI.update(formData);
+    hideInfo();
+
+    if (res.success) {
+      showSuccess('Profile updated successfully!');
+      closeEditProfileModal();
+      // Refresh dashboard to show changes
+      clearCache(getUserId(), 'teacher_dashboard');
+      loadDashboard();
+    } else {
+      showError(res.message || 'Failed to update profile');
     }
-    
-    try {
-        showInfo('Updating profile...');
-        const res = await profileAPI.update(formData);
-        hideInfo();
-        
-        if (res.success) {
-            showSuccess('Profile updated successfully!');
-            closeEditProfileModal();
-            // Refresh dashboard to show changes
-            clearCache(getUserId(), 'teacher_dashboard');
-            loadDashboard();
-        } else {
-            showError(res.message || 'Failed to update profile');
-        }
-    } catch (err) {
-        hideInfo();
-        console.error('Profile update error:', err);
-        showError('An error occurred while updating profile');
-    }
+  } catch (err) {
+    hideInfo();
+    console.error('Profile update error:', err);
+    showError('An error occurred while updating profile');
+  }
 });
 
 // CMS Logic
-window.openCMSModal = async function(type) {
-    const modal = document.getElementById('cms-modal');
-    const titleEl = document.getElementById('cms-modal-title');
-    const bodyEl = document.getElementById('cms-modal-body');
-    if (!modal || !bodyEl) return;
-    
-    const titles = {
-        'help_support': 'Help & Support',
-        'contact_us': 'Contact Us',
-        'documentation': 'Documentation Guide',
-        'about_us': 'About Us'
-    };
-    
-    titleEl.textContent = titles[type] || 'Information';
-    bodyEl.innerHTML = '<p class="loading-text">Loading content...</p>';
-    
-    const overlay = document.getElementById('cmsDrawerOverlay');
-    if (modal) modal.classList.add('active');
-    if (overlay) overlay.classList.add('active');
-    
-    // Helper to safely sanitize HTML
-    const sanitize = (html) => {
-        if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
-        // Fallback: strip all tags if DOMPurify unavailable
-        const div = document.createElement('div');
-        div.textContent = html;
-        return div.innerHTML;
-    };
+window.openCMSModal = async function (type) {
+  const modal = document.getElementById('cms-modal');
+  const titleEl = document.getElementById('cms-modal-title');
+  const bodyEl = document.getElementById('cms-modal-body');
+  if (!modal || !bodyEl) return;
 
-    try {
-        const res = await contentAPI.get(type);
-        if (res.success && res.data) {
-            const rawContent = res.data.content || '';
-            const m = window.marked;
-            if (m) {
-                try {
-                    const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
-                    const clean = sanitize(parsed);
-                    bodyEl.innerHTML = `<div class="markdown-content">${clean}</div>`;
-                } catch (e) {
-                    console.error('Markdown error:', e);
-                    bodyEl.innerHTML = sanitize(rawContent);
-                }
-            } else {
-                bodyEl.innerHTML = sanitize(rawContent) || '<p class="empty-state">No content available.</p>';
-            }
-        } else {
-            bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
+  const titles = {
+    'help_support': 'Help & Support',
+    'contact_us': 'Contact Us',
+    'documentation': 'Documentation Guide',
+    'about_us': 'About Us'
+  };
+
+  titleEl.textContent = titles[type] || 'Information';
+  bodyEl.innerHTML = '<p class="loading-text">Loading content...</p>';
+
+  const overlay = document.getElementById('cmsDrawerOverlay');
+  if (modal) modal.classList.add('active');
+  if (overlay) overlay.classList.add('active');
+
+  // Helper to safely sanitize HTML
+  const sanitize = (html) => {
+    if (typeof DOMPurify !== 'undefined') return DOMPurify.sanitize(html);
+    // Fallback: strip all tags if DOMPurify unavailable
+    const div = document.createElement('div');
+    div.textContent = html;
+    return div.innerHTML;
+  };
+
+  try {
+    const res = await contentAPI.get(type);
+    if (res.success && res.data) {
+      const rawContent = res.data.content || '';
+      const m = window.marked;
+      if (m) {
+        try {
+          const parsed = (typeof m.parse === 'function') ? m.parse(rawContent) : m(rawContent);
+          const clean = sanitize(parsed);
+          bodyEl.innerHTML = `<div class="markdown-content">${clean}</div>`;
+        } catch (e) {
+          console.error('Markdown error:', e);
+          bodyEl.innerHTML = sanitize(rawContent);
         }
-    } catch (err) {
-        console.error('CMS load error:', err);
-        bodyEl.innerHTML = '<p class="empty-state text-danger">Failed to load content. Please try again later.</p>';
+      } else {
+        bodyEl.innerHTML = sanitize(rawContent) || '<p class="empty-state">No content available.</p>';
+      }
+    } else {
+      bodyEl.innerHTML = '<p class="empty-state">Content not found.</p>';
     }
+  } catch (err) {
+    console.error('CMS load error:', err);
+    bodyEl.innerHTML = '<p class="empty-state text-danger">Failed to load content. Please try again later.</p>';
+  }
 };
 
-window.closeCMSModal = function() {
-    const modal = document.getElementById('cms-modal');
-    const overlay = document.getElementById('cmsDrawerOverlay');
-    if (modal) modal.classList.remove('active');
-    if (overlay) overlay.classList.remove('active');
+window.closeCMSModal = function () {
+  const modal = document.getElementById('cms-modal');
+  const overlay = document.getElementById('cmsDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
 };
 // ===========================
 // Submissions & Reviews Logic
@@ -2203,66 +2203,66 @@ window.closeCMSModal = function() {
 
 let allTeacherSubmissions = [];
 
-window.toggleHomeworkSubmissionsView = function() {
-    const mainView = document.getElementById('homework-main-view');
-    const subView = document.getElementById('homework-submissions-view');
-    const btn = document.getElementById('toggle-submissions-btn');
-    
-    if (subView.style.display === 'none') {
-        mainView.style.display = 'none';
-        subView.style.display = 'block';
-        if (btn) btn.innerHTML = '<i class="fas fa-arrow-left"></i> Back to Homework';
-        loadTeacherSubmissions();
-    } else {
-        subView.style.display = 'none';
-        mainView.style.display = 'block';
-        if (btn) btn.innerHTML = '<i class="fas fa-list"></i> View Submissions';
-    }
+window.toggleHomeworkSubmissionsView = function () {
+  const mainView = document.getElementById('homework-main-view');
+  const subView = document.getElementById('homework-submissions-view');
+  const btn = document.getElementById('toggle-submissions-btn');
+
+  if (subView.style.display === 'none') {
+    mainView.style.display = 'none';
+    subView.style.display = 'block';
+    if (btn) btn.innerHTML = '<i class="fas fa-arrow-left"></i> Back to Homework';
+    loadTeacherSubmissions();
+  } else {
+    subView.style.display = 'none';
+    mainView.style.display = 'block';
+    if (btn) btn.innerHTML = '<i class="fas fa-list"></i> View Submissions';
+  }
 };
 
-window.loadTeacherSubmissions = async function() {
-    const tbody = document.getElementById('teacher-all-submissions-body');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading submissions...</td></tr>';
-    
-    try {
-        const res = await submissionsAPI.getTeacherSubmissions();
-        if (!res.success) throw new Error(res.error || 'Failed to load');
-        
-        allTeacherSubmissions = res.data || [];
-        renderTeacherSubmissions(allTeacherSubmissions);
-    } catch (err) {
-        console.error('Failed to load teacher submissions:', err);
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state text-danger">Error: ${err.message}</td></tr>`;
-    }
+window.loadTeacherSubmissions = async function () {
+  const tbody = document.getElementById('teacher-all-submissions-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading submissions...</td></tr>';
+
+  try {
+    const res = await submissionsAPI.getTeacherSubmissions();
+    if (!res.success) throw new Error(res.error || 'Failed to load');
+
+    allTeacherSubmissions = res.data || [];
+    renderTeacherSubmissions(allTeacherSubmissions);
+  } catch (err) {
+    console.error('Failed to load teacher submissions:', err);
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state text-danger">Error: ${err.message}</td></tr>`;
+  }
 };
 
-window.filterSubmissions = function() {
-    const search = document.getElementById('submission-search')?.value.toLowerCase() || '';
-    const status = document.getElementById('submission-status-filter')?.value || '';
-    
-    const filtered = allTeacherSubmissions.filter(s => {
-        const matchSearch = s.student_name?.toLowerCase().includes(search) || 
-                            s.homework_title?.toLowerCase().includes(search) ||
-                            s.student_id?.toString().includes(search);
-        const matchStatus = status ? s.status === status : true;
-        return matchSearch && matchStatus;
-    });
-    
-    renderTeacherSubmissions(filtered);
+window.filterSubmissions = function () {
+  const search = document.getElementById('submission-search')?.value.toLowerCase() || '';
+  const status = document.getElementById('submission-status-filter')?.value || '';
+
+  const filtered = allTeacherSubmissions.filter(s => {
+    const matchSearch = s.student_name?.toLowerCase().includes(search) ||
+      s.homework_title?.toLowerCase().includes(search) ||
+      s.student_id?.toString().includes(search);
+    const matchStatus = status ? s.status === status : true;
+    return matchSearch && matchStatus;
+  });
+
+  renderTeacherSubmissions(filtered);
 };
 
 function renderTeacherSubmissions(subs) {
-    const tbody = document.getElementById('teacher-all-submissions-body');
-    if (!tbody) return;
-    
-    if (subs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No submissions found.</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = subs.map(s => `
+  const tbody = document.getElementById('teacher-all-submissions-body');
+  if (!tbody) return;
+
+  if (subs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No submissions found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = subs.map(s => `
         <tr>
             <td>
                 <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(s.student_name)}</div>
@@ -2296,31 +2296,31 @@ function renderTeacherSubmissions(subs) {
 }
 
 
-window.viewSubmissions = async function(homeworkId, title) {
-    const modal = document.getElementById('homework-submissions-modal');
-    const tbody = document.getElementById('submissions-table-body');
-    const subtitle = document.getElementById('sub-modal-subtitle');
-    
-    if (!modal || !tbody) return;
-    
-    subtitle.textContent = `Reviewing submissions for: ${title}`;
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading submissions...</td></tr>';
-    
-    const overlay = document.getElementById('homeworkSubmissionsDrawerOverlay');
-    if (modal) modal.classList.add('active');
-    if (overlay) overlay.classList.add('active');
-    
-    try {
-        const res = await submissionsAPI.getForHomework(homeworkId);
-        if (!res.success) throw new Error(res.error);
-        
-        const subs = res.data || [];
-        if (subs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No student has submitted this homework yet.</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = subs.map(s => `
+window.viewSubmissions = async function (homeworkId, title) {
+  const modal = document.getElementById('homework-submissions-modal');
+  const tbody = document.getElementById('submissions-table-body');
+  const subtitle = document.getElementById('sub-modal-subtitle');
+
+  if (!modal || !tbody) return;
+
+  subtitle.textContent = `Reviewing submissions for: ${title}`;
+  tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading submissions...</td></tr>';
+
+  const overlay = document.getElementById('homeworkSubmissionsDrawerOverlay');
+  if (modal) modal.classList.add('active');
+  if (overlay) overlay.classList.add('active');
+
+  try {
+    const res = await submissionsAPI.getForHomework(homeworkId);
+    if (!res.success) throw new Error(res.error);
+
+    const subs = res.data || [];
+    if (subs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No student has submitted this homework yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = subs.map(s => `
             <tr>
                 <td>
                     <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(s.student_name)}</div>
@@ -2345,250 +2345,250 @@ window.viewSubmissions = async function(homeworkId, title) {
                 </td>
             </tr>
         `).join('');
-    } catch (err) {
-        console.error('Failed to load submissions:', err);
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state text-danger">Error: ${err.message}</td></tr>`;
-    }
+  } catch (err) {
+    console.error('Failed to load submissions:', err);
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state text-danger">Error: ${err.message}</td></tr>`;
+  }
 };
 
-window.closeSubmissionsModal = function() {
-    const modal = document.getElementById('homework-submissions-modal');
-    const overlay = document.getElementById('homeworkSubmissionsDrawerOverlay');
-    if (modal) modal.classList.remove('active');
-    if (overlay) overlay.classList.remove('active');
+window.closeSubmissionsModal = function () {
+  const modal = document.getElementById('homework-submissions-modal');
+  const overlay = document.getElementById('homeworkSubmissionsDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
 };
 
-window.openReviewModal = function(id, name, date, marks, remarks) {
-    const modal = document.getElementById('review-submission-modal');
-    if (!modal) return;
-    
-    document.getElementById('review-submission-id').value = id;
-    document.getElementById('review-student-name').textContent = name;
-    document.getElementById('review-submitted-at').textContent = `Submitted: ${date}`;
-    document.getElementById('review-marks').value = (marks === 'null' || marks === null || marks === undefined) ? '' : marks;
-    document.getElementById('review-remarks').value = (remarks === 'null' || remarks === null || remarks === undefined) ? '' : remarks;
-    
-    const overlay = document.getElementById('reviewSubmissionDrawerOverlay');
-    if (modal) modal.classList.add('active');
-    if (overlay) overlay.classList.add('active');
+window.openReviewModal = function (id, name, date, marks, remarks) {
+  const modal = document.getElementById('review-submission-modal');
+  if (!modal) return;
+
+  document.getElementById('review-submission-id').value = id;
+  document.getElementById('review-student-name').textContent = name;
+  document.getElementById('review-submitted-at').textContent = `Submitted: ${date}`;
+  document.getElementById('review-marks').value = (marks === 'null' || marks === null || marks === undefined) ? '' : marks;
+  document.getElementById('review-remarks').value = (remarks === 'null' || remarks === null || remarks === undefined) ? '' : remarks;
+
+  const overlay = document.getElementById('reviewSubmissionDrawerOverlay');
+  if (modal) modal.classList.add('active');
+  if (overlay) overlay.classList.add('active');
 };
 
-window.closeReviewModal = function() {
-    const modal = document.getElementById('review-submission-modal');
-    const overlay = document.getElementById('reviewSubmissionDrawerOverlay');
-    if (modal) modal.classList.remove('active');
-    if (overlay) overlay.classList.remove('active');
+window.closeReviewModal = function () {
+  const modal = document.getElementById('review-submission-modal');
+  const overlay = document.getElementById('reviewSubmissionDrawerOverlay');
+  if (modal) modal.classList.remove('active');
+  if (overlay) overlay.classList.remove('active');
 };
 
 // Review Form Submission
 document.getElementById('review-submission-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const id = document.getElementById('review-submission-id').value;
-    const marks = document.getElementById('review-marks').value;
-    const remarks = document.getElementById('review-remarks').value;
-    const btn = document.getElementById('submit-review-btn');
-    
-    try {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        
-        const res = await submissionsAPI.review(id, { marks, remarks });
-        
-        if (res.success) {
-            showSuccess('Review submitted successfully!');
-            closeReviewModal();
-            clearCache(getUserId(), 'teacher_dashboard');
-            // Refresh submissions lists
-            if (typeof loadTeacherSubmissions === 'function') {
-                loadTeacherSubmissions(); // Update global submissions list
-            }
-            // For modal list, if the modal is open we might want to refresh it.
-            // But since we just added the global list, loadTeacherSubmissions covers it.
-        } else {
-            showError(res.error || 'Failed to submit review');
-        }
-    } catch (err) {
-        console.error('Review error:', err);
-        showError('An error occurred. Please try again.');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Submit Review';
+  e.preventDefault();
+
+  const id = document.getElementById('review-submission-id').value;
+  const marks = document.getElementById('review-marks').value;
+  const remarks = document.getElementById('review-remarks').value;
+  const btn = document.getElementById('submit-review-btn');
+
+  try {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+    const res = await submissionsAPI.review(id, { marks, remarks });
+
+    if (res.success) {
+      showSuccess('Review submitted successfully!');
+      closeReviewModal();
+      clearCache(getUserId(), 'teacher_dashboard');
+      // Refresh submissions lists
+      if (typeof loadTeacherSubmissions === 'function') {
+        loadTeacherSubmissions(); // Update global submissions list
+      }
+      // For modal list, if the modal is open we might want to refresh it.
+      // But since we just added the global list, loadTeacherSubmissions covers it.
+    } else {
+      showError(res.error || 'Failed to submit review');
     }
+  } catch (err) {
+    console.error('Review error:', err);
+    showError('An error occurred. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Review';
+  }
 });
 
 /**
  * Handle teacher file uploads with progress
  */
 async function handleTeacherFileUpload(file, prefix, submitBtnId, type = 'material') {
-    const container = document.getElementById(`${prefix}-upload-progress`);
-    const statusText = document.getElementById(`${prefix}-upload-status`);
-    const percentText = document.getElementById(`${prefix}-upload-percent`);
-    const progressBar = document.getElementById(`${prefix}-upload-bar`);
-    const submitBtn = submitBtnId ? document.getElementById(submitBtnId) : null;
+  const container = document.getElementById(`${prefix}-upload-progress`);
+  const statusText = document.getElementById(`${prefix}-upload-status`);
+  const percentText = document.getElementById(`${prefix}-upload-percent`);
+  const progressBar = document.getElementById(`${prefix}-upload-bar`);
+  const submitBtn = submitBtnId ? document.getElementById(submitBtnId) : null;
 
-    if (container) container.style.display = 'block';
-    if (submitBtn) submitBtn.disabled = true;
+  if (container) container.style.display = 'block';
+  if (submitBtn) submitBtn.disabled = true;
 
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', type); // Required by backend storageController
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type); // Required by backend storageController
 
-        const result = await uploadFileWithProgress('/storage/upload', formData, (percent) => {
-            if (percentText) percentText.textContent = `${percent}%`;
-            if (progressBar) progressBar.style.width = `${percent}%`;
-        });
+    const result = await uploadFileWithProgress('/storage/upload', formData, (percent) => {
+      if (percentText) percentText.textContent = `${percent}%`;
+      if (progressBar) progressBar.style.width = `${percent}%`;
+    });
 
-        if (statusText) statusText.textContent = 'Upload Complete';
-        if (submitBtn) submitBtn.disabled = false;
-        return result;
-    } catch (err) {
-        if (statusText) statusText.textContent = 'Upload Failed';
-        if (progressBar) progressBar.style.background = 'var(--danger)';
-        if (submitBtn) submitBtn.disabled = false;
-        console.error('Upload error:', err);
-        showError('Upload failed: ' + (err.error || err.message));
-        return null;
-    }
+    if (statusText) statusText.textContent = 'Upload Complete';
+    if (submitBtn) submitBtn.disabled = false;
+    return result;
+  } catch (err) {
+    if (statusText) statusText.textContent = 'Upload Failed';
+    if (progressBar) progressBar.style.background = 'var(--danger)';
+    if (submitBtn) submitBtn.disabled = false;
+    console.error('Upload error:', err);
+    showError('Upload failed: ' + (err.error || err.message));
+    return null;
+  }
 }
 
 /**
  * Reset upload progress UI and pending state
  */
 function resetTeacherUploadProgress(prefix) {
-    const container = document.getElementById(`${prefix}-upload-progress`);
-    const statusText = document.getElementById(`${prefix}-upload-status`);
-    const percentText = document.getElementById(`${prefix}-upload-percent`);
-    const progressBar = document.getElementById(`${prefix}-upload-bar`);
-    
-    if (container) container.style.display = 'none';
-    if (statusText) statusText.textContent = 'Uploading...';
-    if (percentText) percentText.textContent = '0%';
-    if (progressBar) {
-        progressBar.style.width = '0%';
-        progressBar.style.background = 'var(--accent-blue)';
-    }
-    
-    // Clear pending state
-    if (prefix === 'hw') pendingHwUpload = null;
-    if (prefix === 'material') pendingMaterialUpload = null;
-    if (prefix === 'profile') pendingProfileUpload = null;
+  const container = document.getElementById(`${prefix}-upload-progress`);
+  const statusText = document.getElementById(`${prefix}-upload-status`);
+  const percentText = document.getElementById(`${prefix}-upload-percent`);
+  const progressBar = document.getElementById(`${prefix}-upload-bar`);
+
+  if (container) container.style.display = 'none';
+  if (statusText) statusText.textContent = 'Uploading...';
+  if (percentText) percentText.textContent = '0%';
+  if (progressBar) {
+    progressBar.style.width = '0%';
+    progressBar.style.background = 'var(--accent-blue)';
+  }
+
+  // Clear pending state
+  if (prefix === 'hw') pendingHwUpload = null;
+  if (prefix === 'material') pendingMaterialUpload = null;
+  if (prefix === 'profile') pendingProfileUpload = null;
 }
 
 // Close modals when clicking outside
 window.addEventListener('click', (e) => {
-    // Handle legacy .modal classes
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
-
-    // Handle new .drawer-overlay system
-    if (e.target.classList.contains('drawer-overlay')) {
-        const id = e.target.id;
-        if (id === 'hwDrawerOverlay') closeHwModal();
-        if (id === 'materialDrawerOverlay') closeMaterialModal();
-        if (id === 'sylDrawerOverlay') closeSyllabusModal();
-        if (id === 'editProfileDrawerOverlay') closeEditProfileModal();
-        if (id === 'cmsDrawerOverlay') closeCMSModal();
-        if (id === 'homeworkSubmissionsDrawerOverlay') closeSubmissionsModal();
-        if (id === 'reviewSubmissionDrawerOverlay') closeReviewModal();
+  // Handle legacy .modal classes
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
     }
+  });
+
+  // Handle new .drawer-overlay system
+  if (e.target.classList.contains('drawer-overlay')) {
+    const id = e.target.id;
+    if (id === 'hwDrawerOverlay') closeHwModal();
+    if (id === 'materialDrawerOverlay') closeMaterialModal();
+    if (id === 'sylDrawerOverlay') closeSyllabusModal();
+    if (id === 'editProfileDrawerOverlay') closeEditProfileModal();
+    if (id === 'cmsDrawerOverlay') closeCMSModal();
+    if (id === 'homeworkSubmissionsDrawerOverlay') closeSubmissionsModal();
+    if (id === 'reviewSubmissionDrawerOverlay') closeReviewModal();
+  }
 });
 
-window.closeEditProfileModal = function() {
-    const modal = document.getElementById('edit-profile-modal');
-    if (modal) modal.style.display = 'none';
-    const fileInput = document.getElementById('profile-upload');
-    if (fileInput) fileInput.value = '';
+window.closeEditProfileModal = function () {
+  const modal = document.getElementById('edit-profile-modal');
+  if (modal) modal.style.display = 'none';
+  const fileInput = document.getElementById('profile-upload');
+  if (fileInput) fileInput.value = '';
 };
 
-window.openEditProfileModal = function() {
-    const modal = document.getElementById('edit-profile-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        // Pre-fill data from UI or session
-        document.getElementById('edit-profile-name').value = document.getElementById('dropdown-teacher-name').textContent;
-        document.getElementById('edit-profile-email').value = document.getElementById('dropdown-teacher-email').textContent;
-        const currentAvatar = document.querySelector('#teacher-profile-btn img')?.src || document.getElementById('profile-preview').src;
-        document.getElementById('profile-preview').src = currentAvatar;
+window.openEditProfileModal = function () {
+  const modal = document.getElementById('edit-profile-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    // Pre-fill data from UI or session
+    document.getElementById('edit-profile-name').value = document.getElementById('dropdown-teacher-name').textContent;
+    document.getElementById('edit-profile-email').value = document.getElementById('dropdown-teacher-email').textContent;
+    const currentAvatar = document.querySelector('#teacher-profile-btn img')?.src || document.getElementById('profile-preview').src;
+    document.getElementById('profile-preview').src = currentAvatar;
+  }
+};
+
+window.previewProfileImage = function (input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+
+    if (file.size > 200 * 1024) {
+      showError('Image size exceeds 200KB limit.');
+      input.value = '';
+      return;
     }
-};
 
-window.previewProfileImage = function(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        if (file.size > 200 * 1024) {
-            showError('Image size exceeds 200KB limit.');
-            input.value = '';
-            return;
-        }
-        
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-        if (!allowedTypes.includes(file.type)) {
-            showError('Only JPG, JPEG, and PNG files are allowed.');
-            input.value = '';
-            return;
-        }
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      showError('Only JPG, JPEG, and PNG files are allowed.');
+      input.value = '';
+      return;
+    }
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('profile-preview').src = e.target.result;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      document.getElementById('profile-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to storage immediately to get Drive ID
+    handleTeacherFileUpload(file, 'profile', null, 'profile_pic').then(result => {
+      if (result && result.success) {
+        pendingProfileUpload = {
+          url: result.data.url,
+          id: result.data.id
         };
-        reader.readAsDataURL(file);
-
-        // Upload to storage immediately to get Drive ID
-        handleTeacherFileUpload(file, 'profile', null, 'profile_pic').then(result => {
-            if (result && result.success) {
-                pendingProfileUpload = {
-                    url: result.data.url,
-                    id: result.data.id
-                };
-            }
-        });
-    }
+      }
+    });
+  }
 };
 
 document.getElementById('edit-profile-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const name = document.getElementById('edit-profile-name').value;
-    const btn = e.target.querySelector('button[type="submit"]');
-    
-    const formData = new FormData();
-    formData.append('name', name);
-    if (pendingProfileUpload) {
-        formData.append('avatarUrl', pendingProfileUpload.url);
-        formData.append('avatarDriveId', pendingProfileUpload.id);
+  e.preventDefault();
+
+  const name = document.getElementById('edit-profile-name').value;
+  const btn = e.target.querySelector('button[type="submit"]');
+
+  const formData = new FormData();
+  formData.append('name', name);
+  if (pendingProfileUpload) {
+    formData.append('avatarUrl', pendingProfileUpload.url);
+    formData.append('avatarDriveId', pendingProfileUpload.id);
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const res = await profileAPI.update(formData);
+    if (res.success) {
+      showSuccess('Profile updated successfully!');
+      closeEditProfileModal();
+      // Refresh UI
+      if (res.user && res.user.avatarUrl) {
+        document.querySelector('#teacher-profile-btn img').src = res.user.avatarUrl;
+        document.getElementById('dropdown-teacher-name').textContent = res.user.name;
+      }
+    } else {
+      showError(res.error || 'Failed to update profile');
     }
-    
-    try {
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
-        
-        const res = await profileAPI.update(formData);
-        if (res.success) {
-            showSuccess('Profile updated successfully!');
-            closeEditProfileModal();
-            // Refresh UI
-            if (res.user && res.user.avatarUrl) {
-                document.querySelector('#teacher-profile-btn img').src = res.user.avatarUrl;
-                document.getElementById('dropdown-teacher-name').textContent = res.user.name;
-            }
-        } else {
-            showError(res.error || 'Failed to update profile');
-        }
-    } catch (err) {
-        console.error('Profile update error:', err);
-        showError('An error occurred while updating profile');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save Changes';
-    }
+  } catch (err) {
+    console.error('Profile update error:', err);
+    showError('An error occurred while updating profile');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  }
 });
 
 

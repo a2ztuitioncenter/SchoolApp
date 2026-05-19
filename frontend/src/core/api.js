@@ -22,8 +22,8 @@ const getCsrfToken = () => {
       const auth = JSON.parse(authStr);
       return auth.csrfToken;
     }
-  } catch (e) {}
-  
+  } catch (e) { }
+
   return null;
 };
 
@@ -40,7 +40,7 @@ export const apiCall = async (endpoint, options = {}) => {
 
   // Diagnostic Log for production troubleshooting (only if on localhost or explicitly requested via debug param)
   const isDebug = typeof window !== 'undefined' && (window.location.search.includes('debug=true') || window.location.hostname === 'localhost');
-  
+
   if (endpoint.includes('/auth/admin-login') && isDebug) {
     console.log("[API TRACE] Admin Login Request:", {
       endpoint,
@@ -49,7 +49,7 @@ export const apiCall = async (endpoint, options = {}) => {
       finalUrl: url
     });
   }
-  
+
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && isDebug) {
     console.log(`[API] ${options.method || 'GET'} ${url}`, {
       base: base_api_url,
@@ -94,13 +94,13 @@ export const apiCall = async (endpoint, options = {}) => {
           // Retry the original request once with a fresh timeout/signal
           const retryController = new AbortController();
           const retryTimeoutId = setTimeout(() => retryController.abort(), 15000);
-          
+
           try {
-            const retryResp = await fetch(url, { 
-              ...options, 
-              headers, 
-              signal: retryController.signal, 
-              credentials: 'include' 
+            const retryResp = await fetch(url, {
+              ...options,
+              headers,
+              signal: retryController.signal,
+              credentials: 'include'
             });
             clearTimeout(retryTimeoutId);
 
@@ -122,11 +122,11 @@ export const apiCall = async (endpoint, options = {}) => {
         console.warn(`[AUTH] 401 Failure: Redirecting to login. 
           Endpoint: ${endpoint}
           Path: ${window.location.pathname}`);
-        
+
         setTimeout(() => {
           const path = window.location.pathname;
           const isLandingPage = path === '/' || path === '/index.html' || path === '';
-          
+
           if (!isLandingPage) {
             console.log('[AUTH] Clearing local auth state and returning to landing page');
             sessionStorage.removeItem('auth');
@@ -155,7 +155,7 @@ export const apiCall = async (endpoint, options = {}) => {
           // ignore parsing error
         }
       }
-      
+
       if (isAuthMismatch) {
         console.warn(`[AUTH] 403 Forbidden/Mismatch: Clearing session and reloading. Path: ${window.location.pathname}`);
         setTimeout(() => {
