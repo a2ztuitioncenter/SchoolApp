@@ -1,4 +1,6 @@
+import path from 'path';
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
+import { r2StorageService } from '../../utils/r2StorageService.js';
 import { removeStoredFile } from './materialsStorage.js';
 import {
   canManageMaterial,
@@ -9,6 +11,19 @@ import {
   updateMaterial,
 } from './materialsService.js';
 import { getTeacherAssignments, isTeacherAssignedTo } from './materialsPolicy.js';
+
+// Helper: upload a multer memory-buffer to Cloudflare R2
+async function uploadMaterialFileToR2(file, classLevel, section, userId) {
+  const ext = path.extname(file.originalname || '');
+  const safeName = `MAT_${classLevel}_${section || 'ALL'}_${Date.now()}${ext}`;
+  const key = r2StorageService.buildKey('materials', classLevel || 'General', section || 'ALL', safeName);
+  
+  console.log(`[UPLOAD START] User: ${userId} | Study Material: ${file.originalname} | Size: ${file.size} bytes`);
+  const result = await r2StorageService.uploadFile(file.buffer, key, file.mimetype);
+  console.log(`[UPLOAD SUCCESS] Key: ${result.key} | Size: ${result.size}`);
+  
+  return result.downloadLink; // '/storage/download/<encoded-key>'
+}
 
 function toApiMaterial(row) {
   return {
@@ -68,7 +83,12 @@ export const uploadMaterial = async (req, res) => {
     const description = sanitizeNullableText(req.body.description, 5000);
     const classLevel = sanitizeIdentifier(req.body.classLevel || req.body.class_level, 20);
     const section = sanitizeNullableText(req.body.section, 10);
-    const fileUrl = req.file ? `/uploads/materials/${req.file.filename}` : req.body.fileUrl;
+
+    const rawFileUrl = req.file
+      ? await uploadMaterialFileToR2(req.file, classLevel, section, req.user?.userId)
+      : req.body.fileUrl;
+    const fileUrl = rawFileUrl;
+
     if (!title || !classLevel || !fileUrl) {
       return res.status(422).json({ error: 'title, classLevel, and material file are required' });
     }
@@ -113,13 +133,17 @@ export const editMaterial = async (req, res) => {
       return res.status(403).json({ error: 'Permission denied for target class/section' });
     }
 
+    const newFileUrl = req.file
+      ? await uploadMaterialFileToR2(req.file, nextClass, nextSection, req.user?.userId)
+      : (req.body.fileUrl || material.file_url);
+
     const updated = await updateMaterial(req.db, id, {
       title: sanitizeText(req.body.title, 200) || undefined,
       description: sanitizeNullableText(req.body.description, 5000),
       classLevel: nextClass,
       section: nextSection,
       subjectId: sanitizeIdentifier(req.body.subjectId || req.body.subject_id, 20),
-      fileUrl: req.file ? `/uploads/materials/${req.file.filename}` : (req.body.fileUrl || material.file_url),
+      fileUrl: newFileUrl,
     });
 
     if (req.file && material.file_url && material.file_url !== updated.file_url) {

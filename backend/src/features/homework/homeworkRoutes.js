@@ -35,10 +35,10 @@ const upload = multer({
 const router = express.Router();
 
 router.get('/active', getActiveAssignments);
-router.get('/',      getAllHomework);
-router.get('/:id',   getHomeworkById);
-router.post('/',     authorize(['teacher', 'admin']), upload.single('attachment'), createHomework);
-router.put('/:id',   authorize(['teacher', 'admin']), upload.single('attachment'), updateHomework);
+router.get('/', getAllHomework);
+router.get('/:id', getHomeworkById);
+router.post('/', authorize(['teacher', 'admin']), upload.single('attachment'), createHomework);
+router.put('/:id', authorize(['teacher', 'admin']), upload.single('attachment'), updateHomework);
 router.delete('/:id', authorize(['teacher', 'admin']), deleteHomework);
 
 export default router;

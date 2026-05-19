@@ -31,6 +31,111 @@
                 overflow-y: visible !important;
                 max-height: none !important;
             }
+
+            /* Responsive layout for homework submissions tab & modal lists */
+            #homework-submissions-view .data-table,
+            #homework-submissions-modal .data-table {
+                font-size: 0.85rem;
+            }
+            #homework-submissions-view .data-table thead,
+            #homework-submissions-modal .data-table thead {
+                display: none;
+            }
+            #homework-submissions-view .data-table tbody tr,
+            #homework-submissions-modal .data-table tbody tr {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                padding: 1rem;
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+                background: var(--bg-secondary);
+                margin-bottom: 1rem;
+            }
+            #homework-submissions-view .data-table td,
+            #homework-submissions-modal .data-table td {
+                display: grid;
+                grid-template-columns: 120px 1fr;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.25rem 0;
+                border: none;
+                text-align: left !important;
+            }
+            #homework-submissions-view .data-table td::before,
+            #homework-submissions-modal .data-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--text-muted);
+                font-size: 0.75rem;
+                text-transform: uppercase;
+            }
+            #homework-submissions-view .data-table td:last-child,
+            #homework-submissions-modal .data-table td:last-child {
+                justify-content: flex-start !important;
+            }
+            #homework-submissions-view .data-table td:last-child div,
+            #homework-submissions-modal .data-table td:last-child div {
+                justify-content: flex-start !important;
+            }
+
+            /* Responsive layout for homework list items in Homework Manager */
+            #homework-main-view .data-table {
+                font-size: 0.85rem;
+                display: block;
+                width: 100%;
+            }
+            #homework-main-view .data-table thead {
+                display: none;
+            }
+            #homework-main-view .data-table tbody {
+                display: block;
+                width: 100%;
+            }
+            #homework-main-view .data-table tbody tr {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                padding: 1.25rem;
+                border: 1px solid var(--border-subtle);
+                border-radius: 8px;
+                background: var(--bg-secondary);
+                margin-bottom: 1.25rem;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+                width: 100%;
+                box-sizing: border-box;
+            }
+            #homework-main-view .data-table td {
+                display: grid;
+                grid-template-columns: 120px 1fr;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.25rem 0;
+                border: none;
+                text-align: left !important;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            #homework-main-view .data-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--text-muted);
+                font-size: 0.75rem;
+                text-transform: uppercase;
+            }
+            #homework-main-view .data-table td:last-child {
+                justify-content: flex-start !important;
+                border-top: 1px solid var(--border-subtle);
+                padding-top: 0.75rem;
+                margin-top: 0.25rem;
+            }
+            #homework-main-view .data-table td:last-child::before {
+                align-self: center;
+            }
+            #homework-main-view .data-table td:last-child .action-menu {
+                display: inline-block;
+                text-align: left;
+            }
         }
 
         .syllabus-subject-card {
@@ -512,6 +617,379 @@
 
             .dropdown-item:last-child, .action-menu-item:last-child {
                 border-bottom: none !important;
+            }
+
+            /* ==========================================================================
+               RESPONSIVE MOBILE TEACHER SUBJECTS CARDS REFIT
+               ========================================================================== */
+            #tab-subjects .card {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin-top: 0 !important;
+            }
+
+            #tab-subjects .table-container {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                overflow: visible !important;
+            }
+
+            #tab-subjects table.data-table {
+                display: block !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                border: none !important;
+                background: transparent !important;
+            }
+
+            #tab-subjects thead {
+                display: none !important;
+            }
+
+            #tab-subjects tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+
+            #tab-subjects tr {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 8px !important;
+                background: var(--bg-card, #ffffff) !important;
+                border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06)) !important;
+                border-radius: 16px !important;
+                padding: 16px !important;
+                width: 100% !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02) !important;
+                margin-bottom: 0 !important;
+                box-sizing: border-box !important;
+                position: relative;
+                transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            #tab-subjects tr:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05) !important;
+            }
+
+            #tab-subjects td {
+                display: block !important;
+                width: 100% !important;
+                padding: 0 !important;
+                border: none !important;
+                text-align: left !important;
+                background: transparent !important;
+                box-sizing: border-box !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+            }
+
+            /* Subject Name Style */
+            #tab-subjects td:nth-child(1) {
+                font-size: 1.1rem !important;
+                font-weight: 600 !important;
+                color: var(--text-main, #1a202c) !important;
+                line-height: 1.4 !important;
+                min-width: 0 !important;
+            }
+
+            #tab-subjects td:nth-child(1) strong {
+                font-weight: 600 !important;
+                color: var(--text-main, #1a202c) !important;
+            }
+
+            /* Badges Container Styling */
+            #tab-subjects td:nth-child(2),
+            #tab-subjects td:nth-child(3) {
+                display: inline-block !important;
+                width: auto !important;
+                margin-right: 6px !important;
+            }
+
+            #tab-subjects td:nth-child(2) .badge,
+            #tab-subjects td:nth-child(3) .badge {
+                display: inline-flex !important;
+                align-items: center !important;
+                padding: 6px 12px !important;
+                font-size: 0.8rem !important;
+                font-weight: 600 !important;
+                border-radius: 8px !important;
+                line-height: 1 !important;
+            }
+
+            #tab-subjects td:nth-child(2) .badge {
+                background: rgba(0, 82, 204, 0.06) !important;
+                color: var(--accent-blue, #0052cc) !important;
+                border: 1px solid rgba(0, 82, 204, 0.08) !important;
+            }
+
+            #tab-subjects td:nth-child(3) .badge.secondary {
+                background: rgba(16, 185, 129, 0.06) !important;
+                color: var(--accent-green, #10b981) !important;
+                border: 1px solid rgba(16, 185, 129, 0.08) !important;
+            }
+
+            /* Assignment Date Style */
+            #tab-subjects td:nth-child(4) {
+                font-size: 0.8rem !important;
+                color: var(--text-muted, #718096) !important;
+                margin-top: 6px !important;
+                padding-top: 10px !important;
+                border-top: 1px dashed var(--border-subtle, rgba(0, 0, 0, 0.06)) !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+            }
+
+            #tab-subjects td:nth-child(4)::before {
+                content: "Assigned on " !important;
+                font-weight: 500 !important;
+                color: var(--text-muted, #718096) !important;
+            }
+
+            /* Empty state handling */
+            #tab-subjects td.empty-state {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 32px 16px !important;
+                text-align: center !important;
+                border: 1px dashed var(--border-subtle, rgba(0, 0, 0, 0.1)) !important;
+                border-radius: 16px !important;
+                background: var(--bg-card, #ffffff) !important;
+                width: 100% !important;
+            }
+
+            #tab-subjects td.empty-state i {
+                font-size: 2rem !important;
+                color: var(--text-muted, #a0aec0) !important;
+                margin-bottom: 8px !important;
+            }
+        }
+
+        @media (max-width: 360px) {
+            #tab-subjects tr {
+                padding: 12px !important;
+            }
+            #tab-subjects td:nth-child(1) {
+                font-size: 0.95rem !important;
+            }
+            #tab-subjects td:nth-child(2) .badge,
+            #tab-subjects td:nth-child(3) .badge {
+                padding: 4px 8px !important;
+                font-size: 0.75rem !important;
+            }
+        }
+
+        /* ==========================================================================
+           DRAWER MODAL — MOBILE RESPONSIVE FIXES
+           Targets: #hw-modal, #material-modal, #syl-modal and all .drawer panels
+           Fixes: dropdown overlap, form spacing, footer clipping, overflow
+           ========================================================================== */
+
+        /* ── Base drawer structure: ensure footer never overlaps body ─────────── */
+        .drawer {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drawer-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        .drawer-footer {
+            flex-shrink: 0; /* Footer never gets squeezed off-screen */
+        }
+
+        /* ── Mobile-specific drawer overrides ────────────────────────────────── */
+        @media (max-width: 768px) {
+
+            /* Full-height drawer, uses dvh for address-bar-aware height on mobile */
+            .drawer {
+                height: 100vh;
+                height: 100dvh;
+                max-width: 100% !important;
+                border-radius: 0;
+            }
+
+            /* Tighter header on mobile */
+            .drawer-header {
+                padding: 1rem 1.25rem !important;
+                min-height: 56px;
+            }
+
+            .drawer-header h2 {
+                font-size: 1.1rem !important;
+                margin: 0;
+            }
+
+            /* Body: safe padding, no horizontal overflow */
+            .drawer-body {
+                padding: 1rem 1.25rem !important;
+                box-sizing: border-box;
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
+            /* Footer: stack buttons on very small screens, full-width */
+            .drawer-footer {
+                padding: 0.875rem 1.25rem !important;
+                /* Add bottom safe-area padding for iPhone home-indicator */
+                padding-bottom: max(0.875rem, env(safe-area-inset-bottom)) !important;
+                gap: 0.625rem !important;
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: stretch !important;
+                align-items: center !important;
+            }
+
+            .drawer-footer .btn {
+                flex: 1 1 0 !important;
+                min-width: 0 !important;
+                white-space: nowrap !important;
+                text-align: center !important;
+                padding: 0.75rem 0.5rem !important;
+                font-size: 0.9rem !important;
+            }
+
+            /* ── Form layout ───────────────────────────────────────────────────── */
+
+            /* Force single-column inside drawers — prevents side-by-side fields
+               from being squeezed and causing native select to push content */
+            .drawer .form-row {
+                grid-template-columns: 1fr !important;
+                gap: 0 !important;
+                margin-bottom: 0 !important;
+            }
+
+            .drawer .form-group {
+                margin-bottom: 1rem !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            .drawer .form-group:last-child {
+                margin-bottom: 0 !important;
+            }
+
+            .drawer .form-group label {
+                display: block !important;
+                font-size: 0.8rem !important;
+                font-weight: 600 !important;
+                margin-bottom: 0.4rem !important;
+                color: var(--text-main) !important;
+            }
+
+            /* ── All inputs, selects, textareas, file pickers ──────────────────── */
+            .drawer .form-control,
+            .drawer input[type="text"],
+            .drawer input[type="date"],
+            .drawer input[type="month"],
+            .drawer input[type="file"],
+            .drawer select,
+            .drawer textarea {
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                font-size: 16px !important; /* Prevents iOS auto-zoom */
+                padding: 0.7rem 0.875rem !important;
+                border-radius: 10px !important;
+                border: 1px solid var(--border-subtle) !important;
+                background: var(--bg-primary, #f8fafc) !important;
+                color: var(--text-main) !important;
+                min-height: 46px !important; /* Touch-friendly tap target */
+                -webkit-appearance: none !important;
+                appearance: none !important;
+                line-height: 1.4 !important;
+            }
+
+            /* Re-add dropdown arrow since appearance:none removes it */
+            .drawer select {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") !important;
+                background-repeat: no-repeat !important;
+                background-position: right 0.875rem center !important;
+                background-size: 12px !important;
+                padding-right: 2.5rem !important;
+            }
+
+            /* Date inputs: override native calendar icon area */
+            .drawer input[type="date"],
+            .drawer input[type="month"] {
+                padding-right: 0.875rem !important;
+            }
+
+            /* File inputs: style as a soft upload zone */
+            .drawer input[type="file"] {
+                padding: 0.6rem 0.875rem !important;
+                cursor: pointer !important;
+                font-size: 0.85rem !important;
+            }
+
+            /* Textarea: comfortable height, no horizontal resize */
+            .drawer textarea {
+                min-height: 90px !important;
+                resize: vertical !important;
+            }
+
+            /* ── Upload progress bar inside drawer ─────────────────────────────── */
+            #hw-upload-progress,
+            #material-upload-progress {
+                box-sizing: border-box !important;
+                width: 100% !important;
+                margin: 0.75rem 0 !important;
+            }
+        }
+
+        /* ── Extra tight: 320–375px very small phones ─────────────────────────── */
+        @media (max-width: 375px) {
+            .drawer-header {
+                padding: 0.875rem 1rem !important;
+            }
+
+            .drawer-body {
+                padding: 0.875rem 1rem !important;
+            }
+
+            .drawer-footer {
+                padding: 0.75rem 1rem !important;
+                padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
+            }
+
+            .drawer-footer .btn {
+                font-size: 0.82rem !important;
+                padding: 0.65rem 0.4rem !important;
+            }
+
+            .drawer .form-group {
+                margin-bottom: 0.875rem !important;
+            }
+
+            .drawer .form-control,
+            .drawer select,
+            .drawer input,
+            .drawer textarea {
+                font-size: 15px !important;
+                padding: 0.625rem 0.75rem !important;
+                min-height: 44px !important;
+            }
+
+            .drawer select {
+                padding-right: 2.25rem !important;
             }
         }
     </style>

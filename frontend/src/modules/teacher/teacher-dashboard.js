@@ -162,7 +162,7 @@ async function loadTeacherSubjects() {
     console.log('[DASHBOARD] Loading subjects for teacher:', teacherId);
     tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
 
-    const res = await subjectsAPI.getTeacherSubjects();
+    const res = await subjectsAPI.getTeacherSubjects(teacherId);
     const data = res.data || [];
 
     if (!res.success) {
@@ -211,7 +211,7 @@ async function populateSubjectDropdown(classLevel, section, selectIds) {
   }
 
   try {
-    const res = await subjectsAPI.getTeacherSubjects();
+    const res = await subjectsAPI.getTeacherSubjects(teacherId);
     const allSubjects = res.data || [];
 
     // Filter by class and (optionally) section
@@ -289,7 +289,7 @@ async function populateSharedDropdowns(prefix, signal = null) {
         // If no sections found locally (e.g. assigned to 'ALL'), fetch from API
         if (sections.length === 0) {
           try {
-            const secRes = await teacherAPI.getSectionsByClass(selectedClass);
+            const secRes = await teacherAPI.getSectionsByClass(selectedClass, teacherId);
             sections = secRes.data || [];
           } catch (err) {
             console.error('Failed to fetch sections for HW modal:', err);
@@ -746,7 +746,7 @@ window.onAttClassChange = async function () {
   }
 
   try {
-    const res = await teacherAPI.getSectionsByClass(classLevel);
+    const res = await teacherAPI.getSectionsByClass(classLevel, teacherId);
     const sections = res.data || [];
 
     if (sections.length === 0) {
@@ -2264,24 +2264,24 @@ function renderTeacherSubmissions(subs) {
 
   tbody.innerHTML = subs.map(s => `
         <tr>
-            <td>
+            <td data-label="Student">
                 <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(s.student_name)}</div>
             </td>
-            <td>${escapeHtml(s.class_level || '-')}</td>
-            <td>${escapeHtml(s.section || '-')}</td>
-            <td>${escapeHtml(s.roll_number || s.student_id || '-')}</td>
-            <td class="wrap-text">
+            <td data-label="Class">${escapeHtml(s.class_level || '-')}</td>
+            <td data-label="Section">${escapeHtml(s.section || '-')}</td>
+            <td data-label="Roll">${escapeHtml(s.roll_number || s.student_id || '-')}</td>
+            <td data-label="Assignment" class="wrap-text">
                 <div style="font-size: 0.9rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${escapeAttr(s.homework_title || s.title || '')}">
                     ${escapeHtml(s.homework_title || s.title || '-')}
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">${formatDate(s.submitted_at)}</div>
             </td>
-            <td>
+            <td data-label="Status">
                 <span class="status-badge ${s.status === 'reviewed' ? 'status-active' : 'status-pending'}">
                     ${s.status}
                 </span>
             </td>
-            <td style="text-align: right;">
+            <td data-label="Action" style="text-align: right;">
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="background: #ebf4ff; color: #2b6cb0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;" title="View File">
                         <i class="fas fa-eye"></i> View
@@ -2322,18 +2322,18 @@ window.viewSubmissions = async function (homeworkId, title) {
 
     tbody.innerHTML = subs.map(s => `
             <tr>
-                <td>
+                <td data-label="Student">
                     <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(s.student_name)}</div>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Roll ID: #${s.student_id}</div>
                 </td>
-                <td>${formatDate(s.submitted_at)}</td>
-                <td>
+                <td data-label="Submitted At">${formatDate(s.submitted_at)}</td>
+                <td data-label="Status">
                     <span class="status-badge ${s.status === 'reviewed' ? 'status-active' : 'status-pending'}">
                         ${s.status}
                     </span>
                 </td>
-                <td>${s.marks || '--'}</td>
-                <td style="text-align: right;">
+                <td data-label="Marks">${s.marks || '--'}</td>
+                <td data-label="Action" style="text-align: right;">
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
                         <button onclick="downloadFile('${escapeAttr(s.file_url)}', 'submission.pdf')" class="btn-sm" style="background: #ebf4ff; color: #2b6cb0; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
                             <i class="fas fa-eye"></i> View
@@ -2498,25 +2498,6 @@ window.addEventListener('click', (e) => {
     if (id === 'reviewSubmissionDrawerOverlay') closeReviewModal();
   }
 });
-
-window.closeEditProfileModal = function () {
-  const modal = document.getElementById('edit-profile-modal');
-  if (modal) modal.style.display = 'none';
-  const fileInput = document.getElementById('profile-upload');
-  if (fileInput) fileInput.value = '';
-};
-
-window.openEditProfileModal = function () {
-  const modal = document.getElementById('edit-profile-modal');
-  if (modal) {
-    modal.style.display = 'flex';
-    // Pre-fill data from UI or session
-    document.getElementById('edit-profile-name').value = document.getElementById('dropdown-teacher-name').textContent;
-    document.getElementById('edit-profile-email').value = document.getElementById('dropdown-teacher-email').textContent;
-    const currentAvatar = document.querySelector('#teacher-profile-btn img')?.src || document.getElementById('profile-preview').src;
-    document.getElementById('profile-preview').src = currentAvatar;
-  }
-};
 
 window.previewProfileImage = function (input) {
   if (input.files && input.files[0]) {

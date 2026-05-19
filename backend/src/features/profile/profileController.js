@@ -1,6 +1,7 @@
-import { googleDriveService } from '../../utils/googleDriveService.js';
+import { r2StorageService } from '../../utils/r2StorageService.js';
 import { getUserById } from '../auth/User.js';
 import { fileTypeFromBuffer } from 'file-type';
+import path from 'path';
 
 export const updateProfile = async (req, res) => {
     const { name, email, avatarUrl: bodyAvatarUrl, avatarDriveId: bodyAvatarDriveId } = req.body;
@@ -15,49 +16,44 @@ export const updateProfile = async (req, res) => {
         }
 
         let avatarUrl = user.avatarUrl || user.avatar_url;
-        let avatarDriveId = user.avatarDriveId || user.avatar_drive_id;
+        let avatarDriveId = user.avatarDriveId || user.avatar_drive_id; // now stores R2 key
 
         // Handle file upload if present
         if (req.file) {
             // 0. Validate actual file content (signatures)
             const typeInfo = await fileTypeFromBuffer(req.file.buffer);
             const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-            
+
             if (!typeInfo || !allowedMimeTypes.includes(typeInfo.mime)) {
                 return res.status(400).json({ success: false, error: 'Invalid file content. Only JPG and PNG images are allowed.' });
             }
 
-            console.log('[PROFILE] Uploading new profile picture...');
+            console.log('[PROFILE] Uploading new profile picture to R2...');
 
-            // 1. Get or create Profile Pictures folder
-            const rootName = process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME || 'Tuition App Storage';
-            const rootId = await googleDriveService.getOrCreateFolder(rootName);
-            const profilesFolderId = await googleDriveService.getOrCreateFolder('Profile_Pictures', rootId);
-
-            // 2. Upload new file
+            // 1. Upload new file to R2
             const extIndex = req.file.originalname.lastIndexOf('.');
             const ext = extIndex !== -1 ? req.file.originalname.substring(extIndex) : '';
             const fileName = `profile_${userId}_${Date.now()}${ext}`;
-            const uploadResult = await googleDriveService.uploadFile(
+            const key = r2StorageService.buildKey('profile-images', 'users', String(userId), fileName);
+
+            const uploadResult = await r2StorageService.uploadFile(
                 req.file.buffer,
-                fileName,
-                req.file.mimetype,
-                profilesFolderId
+                key,
+                req.file.mimetype
             );
 
-            // 3. Delete old file from Drive if it exists
+            // 2. Delete old file from R2 if it exists (avatarDriveId now stores the R2 key)
             if (avatarDriveId) {
                 try {
-                    console.log(`[PROFILE] Deleting old profile picture: ${avatarDriveId}`);
-                    await googleDriveService.deleteFile(avatarDriveId);
+                    console.log(`[PROFILE] Deleting old profile picture from R2: ${avatarDriveId}`);
+                    await r2StorageService.deleteFile(avatarDriveId);
                 } catch (delErr) {
-                    console.warn('Failed to delete old avatar from Drive:', delErr.message);
+                    console.warn('Failed to delete old avatar from R2:', delErr.message);
                 }
             }
 
-            avatarDriveId = uploadResult.id;
-            // Construct download link via our Google Drive download API
-            avatarUrl = `/api/storage/download/${avatarDriveId}`;
+            avatarDriveId = uploadResult.key;          // store R2 key for future deletion
+            avatarUrl = uploadResult.downloadLink;     // proxy download URL
         } else {
             // Fallback to body-provided values if no new file is uploaded
             if (bodyAvatarUrl) avatarUrl = bodyAvatarUrl;
@@ -75,14 +71,13 @@ export const updateProfile = async (req, res) => {
             }
         }
 
-        // 4. Update database
-        // We use a flexible update that only touches provided fields
+        // 3. Update database
         const result = await pool.query(
-            `UPDATE users 
-             SET name = COALESCE($2, name), 
-                 email = COALESCE($3, email), 
-                 avatar_url = $4, 
-                 avatar_drive_id = $5 
+            `UPDATE users
+             SET name = COALESCE($2, name),
+                 email = COALESCE($3, email),
+                 avatar_url = $4,
+                 avatar_drive_id = $5
              WHERE id = $1 RETURNING *`,
             [userId, name, email, avatarUrl, avatarDriveId]
         );

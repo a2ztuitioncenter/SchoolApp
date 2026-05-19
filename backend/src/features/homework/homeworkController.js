@@ -1,5 +1,20 @@
 import { homeworkModel } from './Homework.js';
 import { getStudentByUserId } from '../student/Student.js';
+import { r2StorageService } from '../../utils/r2StorageService.js';
+import path from 'path';
+
+// Helper: upload a multer memory-buffer to Cloudflare R2
+async function uploadHomeworkFileToR2(file, classLevel, section, userId) {
+  const ext = path.extname(file.originalname || '');
+  const safeName = `HW_${classLevel}_${section || 'ALL'}_${Date.now()}${ext}`;
+  const key = r2StorageService.buildKey('homework', classLevel, section || 'ALL', safeName);
+  
+  console.log(`[UPLOAD START] User: ${userId} | File: ${file.originalname} | Size: ${file.size} bytes`);
+  const result = await r2StorageService.uploadFile(file.buffer, key, file.mimetype);
+  console.log(`[UPLOAD SUCCESS] Key: ${result.key} | Size: ${result.size}`);
+  
+  return result.downloadLink; // '/storage/download/<encoded-key>'
+}
 
 export const getActiveAssignments = async (req, res) => {
   try {
@@ -48,7 +63,7 @@ export const createHomework = async (req, res) => {
     const assignedBy = req.user?.userId || null;
     let attachmentUrl = req.body.fileUrl || req.body.attachmentUrl || null;
     if (req.file) {
-      attachmentUrl = `/uploads/homework/${req.file.filename}`;
+      attachmentUrl = await uploadHomeworkFileToR2(req.file, classLevel || 'General', section || 'ALL', req.user?.userId);
     }
 
     // Comprehensive validation with specific error messages
@@ -124,7 +139,20 @@ export const updateHomework = async (req, res) => {
 
     let attachmentUrl = req.body.fileUrl || bodyAttachmentUrl || null;
     if (req.file) {
-      attachmentUrl = `/uploads/homework/${req.file.filename}`;
+      // Clean up old attachment file from R2 to prevent orphans
+      try {
+        const oldHw = await homeworkModel.getById(req.params.id);
+        if (oldHw && oldHw.attachmentUrl) {
+          const oldKey = r2StorageService.extractKeyFromUrl(oldHw.attachmentUrl);
+          if (oldKey) {
+            console.log(`[HOMEWORK] Deleting old attachment from R2: ${oldKey}`);
+            await r2StorageService.deleteFile(oldKey);
+          }
+        }
+      } catch (err) {
+        console.warn('[HOMEWORK] Failed to clean up old attachment:', err.message);
+      }
+      attachmentUrl = await uploadHomeworkFileToR2(req.file, classLevel || 'General', section || 'ALL', req.user?.userId);
     }
 
     // Comprehensive validation
@@ -162,8 +190,27 @@ export const updateHomework = async (req, res) => {
 
 export const deleteHomework = async (req, res) => {
   try {
+    // 1. Fetch homework details before deleting so we can clean up R2 attachment
+    const hw = await homeworkModel.getById(req.params.id);
+    if (!hw) return res.status(404).json({ success: false, error: 'Not found' });
+
+    // 2. Perform DB delete
     const deleted = await homeworkModel.delete(req.params.id);
     if (!deleted) return res.status(404).json({ success: false, error: 'Not found' });
+
+    // 3. Clean up the R2 file (non-blocking)
+    if (hw.attachmentUrl) {
+      const oldKey = r2StorageService.extractKeyFromUrl(hw.attachmentUrl);
+      if (oldKey) {
+        console.log(`[HOMEWORK DELETE] Deleting orphaned R2 file key: ${oldKey}`);
+        try {
+          await r2StorageService.deleteFile(oldKey);
+        } catch (delErr) {
+          console.warn(`[HOMEWORK DELETE ERROR] Failed to delete from R2: ${oldKey}`, delErr.message);
+        }
+      }
+    }
+
     res.json({ success: true, message: 'Homework deleted' });
   } catch (err) {
     console.error('deleteHomework:', err);

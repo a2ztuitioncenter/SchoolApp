@@ -1,5 +1,6 @@
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
-import { googleDriveService } from '../../utils/googleDriveService.js';
+import { r2StorageService } from '../../utils/r2StorageService.js';
+import path from 'path';
 
 export const getAllNotifications = async (req, res) => {
   try {
@@ -71,39 +72,25 @@ export const createNotification = async (req, res) => {
     let attachmentUrl = null;
     if (req.file) {
       try {
-        let folderId;
-        if (classLevel && section) {
-          // Organize by class/section if possible
-          folderId = await googleDriveService.getFolderPath(classLevel, section, 'notifications');
-        } else {
-          // Global notifications folder
-          const rootName = process.env.GOOGLE_DRIVE_ROOT_FOLDER_NAME || 'Tuition App Storage';
-          const rootId = await googleDriveService.getOrCreateFolder(rootName);
-          folderId = await googleDriveService.getOrCreateFolder('Global_Notifications', rootId);
-        }
-
-        const uploadResult = await googleDriveService.uploadFile(
-          req.file.buffer,
-          req.file.originalname,
-          req.file.mimetype,
-          folderId
+        const ext = path.extname(req.file.originalname || '');
+        const safeName = `NOTIF_${Date.now()}${ext}`;
+        const key = r2StorageService.buildKey(
+          'notifications',
+          classLevel || 'global',
+          section || 'all',
+          safeName
         );
+        console.log(`[UPLOAD START] User: ${createdBy} | Notification Attachment: ${req.file.originalname} | Size: ${req.file.size} bytes`);
+        const uploadResult = await r2StorageService.uploadFile(
+          req.file.buffer,
+          key,
+          req.file.mimetype
+        );
+        console.log(`[UPLOAD SUCCESS] Key: ${uploadResult.key} | Size: ${uploadResult.size}`);
         attachmentUrl = uploadResult.downloadLink;
-      } catch (driveError) {
-        console.error('[DRIVE UPLOAD ERROR] Falling back to local storage:', driveError.message);
-        // Fallback to local if drive fails
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        const filename = `${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
-        const uploadDir = path.join(process.cwd(), 'uploads/notifications');
-        
-        // Ensure directory exists (defense in depth)
-        await fs.mkdir(uploadDir, { recursive: true });
-        
-        const filePath = path.join(uploadDir, filename);
-        await fs.writeFile(filePath, req.file.buffer);
-        
-        attachmentUrl = `/uploads/notifications/${filename}`;
+      } catch (uploadError) {
+        console.error('[R2 UPLOAD ERROR] Notification attachment upload failed:', uploadError.message);
+        return res.status(500).json({ error: 'File upload failed' });
       }
     }
 
@@ -127,6 +114,25 @@ export const createNotification = async (req, res) => {
 export const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // 1. Fetch notification before deletion to clean up R2 attachment
+    const notifQuery = await req.db.query('SELECT attachment_url FROM notifications WHERE id = $1', [id]);
+    if (notifQuery.rows.length > 0) {
+      const attachmentUrl = notifQuery.rows[0].attachment_url;
+      if (attachmentUrl) {
+        const key = r2StorageService.extractKeyFromUrl(attachmentUrl);
+        if (key) {
+          console.log(`[NOTIFICATION DELETE] Deleting orphaned R2 file key: ${key}`);
+          try {
+            await r2StorageService.deleteFile(key);
+          } catch (delErr) {
+            console.warn(`[NOTIFICATION DELETE ERROR] Failed to delete from R2: ${key}`, delErr.message);
+          }
+        }
+      }
+    }
+
+    // 2. Perform DB delete
     await req.db.query('DELETE FROM notifications WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {

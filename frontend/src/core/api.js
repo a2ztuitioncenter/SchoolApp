@@ -170,6 +170,28 @@ export const apiCall = async (endpoint, options = {}) => {
       }
     }
 
+    if (!response.ok) {
+      let errData;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const text = await response.text();
+          errData = text ? JSON.parse(text) : {};
+        } else {
+          errData = await response.text();
+        }
+      } catch (parseError) {
+        errData = { error: 'Invalid response format' };
+      }
+      console.error(`[API FAIL] ${method} ${url} | Status: ${response.status}`, errData);
+      const errorMsg = errData?.error || errData?.message || `HTTP ${response.status}`;
+      
+      if (options.responseType === 'blob') {
+        throw new Error(errorMsg);
+      }
+      return { ...errData, error: errorMsg, status: response.status, success: false };
+    }
+
     if (options.responseType === 'blob') {
       return await response.blob();
     }
@@ -187,16 +209,11 @@ export const apiCall = async (endpoint, options = {}) => {
       data = { error: 'Invalid response format' };
     }
 
-    if (!response.ok) {
-      console.error(`[API FAIL] ${method} ${url} | Status: ${response.status}`, data);
-      const errorMsg = data?.error || data?.message || `HTTP ${response.status}`;
-      return { ...data, error: errorMsg, status: response.status, success: false };
-    }
-
     return { ...data, success: true, status: response.status };
   } catch (error) {
     // Re-throw AbortError so callers can detect signal cancellation via err.name === 'AbortError'
     if (error.name === 'AbortError') throw error;
+    if (options.responseType === 'blob') throw error;
     return { error: error.message, success: false };
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
@@ -353,7 +370,10 @@ const subjectsAPI = {
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return apiCall(`/subjects${suffix}`, { method: 'GET' });
   },
-  getTeacherSubjects: () => apiCall(`/subjects/teacher?_t=${Date.now()}`, { method: 'GET' }),
+  getTeacherSubjects: (teacherId = '') => {
+    const suffix = teacherId ? `&teacherId=${encodeURIComponent(teacherId)}` : '';
+    return apiCall(`/subjects/teacher?_t=${Date.now()}${suffix}`, { method: 'GET' });
+  },
   assign: (data) => apiCall('/subjects/assign', { method: 'POST', body: JSON.stringify(data) }),
   deleteAssignment: (id) => apiCall(`/subjects/assign/${id}`, { method: 'DELETE' }),
 
@@ -500,9 +520,9 @@ export const teacherAPI = {
   getTimetable: (teacherId, options = {}) => apiCall(`/teacher/timetable/${teacherId || 'me'}`, { method: 'GET', ...options }),
   getAttendanceClasses: (teacherId, options = {}) => apiCall(`/teacher/attendance/classes${teacherId ? '?teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET', ...options }),
   getSectionsByClass: (classLevel, teacherId, options = {}) => apiCall(`/teacher/attendance/sections?classLevel=${encodeURIComponent(classLevel)}${teacherId ? '&teacherId=' + encodeURIComponent(teacherId) : ''}`, { method: 'GET', ...options }),
-  getAttendanceSheet: (_teacherId, classLevel, date, section = 'A', options = {}) => apiCall(`/teacher/attendance/sheet?classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET', ...options }),
+  getAttendanceSheet: (teacherId, classLevel, date, section = 'A', options = {}) => apiCall(`/teacher/attendance/sheet?teacherId=${encodeURIComponent(teacherId)}&classLevel=${encodeURIComponent(classLevel)}&date=${date}&section=${encodeURIComponent(section)}`, { method: 'GET', ...options }),
   markBulkAttendance: (teacherId, records, options = {}) => apiCall('/teacher/attendance/mark-bulk', { method: 'POST', body: JSON.stringify({ teacherId, records }), ...options }),
-  getAttendanceSummary: (_teacherId, classLevel, month, section = 'A', options = {}) => apiCall(`/teacher/attendance/summary?classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET', ...options }),
+  getAttendanceSummary: (teacherId, classLevel, month, section = 'A', options = {}) => apiCall(`/teacher/attendance/summary?teacherId=${encodeURIComponent(teacherId)}&classLevel=${encodeURIComponent(classLevel)}&month=${month}&section=${encodeURIComponent(section)}`, { method: 'GET', ...options }),
   getHomework: (options = {}) => apiCall('/teacher/homework', { method: 'GET', ...options }),
   createHomework: (formData, options = {}) => apiCall('/teacher/homework', { method: 'POST', body: formData, ...options }),
   updateHomework: (id, formData, options = {}) => apiCall(`/teacher/homework/${id}`, { method: 'PUT', body: formData, ...options }),
@@ -520,6 +540,12 @@ export const teacherAPI = {
 };
 
 export const downloadFile = async (filePath, fileName = 'download') => {
+  if (!filePath || filePath === 'undefined' || filePath === 'null') {
+    console.warn('[DOWNLOAD] Blocked download request because filePath is null or undefined.');
+    alert('This item does not have any attached files.');
+    return;
+  }
+
   try {
     // If the path is already a storage download link, use it directly
     // Otherwise wrap it in the legacy download handler for local files
@@ -543,6 +569,7 @@ export const downloadFile = async (filePath, fileName = 'download') => {
     document.body.removeChild(a);
   } catch (err) {
     console.error('Download failed:', err.message);
+    alert(`Download failed: ${err.message}`);
     throw err;
   }
 };

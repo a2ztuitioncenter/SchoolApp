@@ -1,4 +1,5 @@
-import { googleDriveService } from '../../utils/googleDriveService.js';
+import path from 'path';
+import { r2StorageService } from '../../utils/r2StorageService.js';
 import pool from '../../config/pool.js';
 
 export const storageController = {
@@ -9,7 +10,6 @@ export const storageController = {
 
             if (!file) return res.status(400).json({ success: false, error: 'No file uploaded' });
 
-            // Type is required to organize the storage
             if (!type) {
                 return res.status(400).json({ success: false, error: 'Missing file type (e.g., material, homework, submission)' });
             }
@@ -18,45 +18,42 @@ export const storageController = {
             if (!classLevel) classLevel = 'General';
             if (!section) section = 'All';
 
-            // 1. Get/Create Folder Path (Class > Section > Type)
-            const folderId = await googleDriveService.getFolderPath(classLevel, section, type);
+            // 1. Build organized R2 key (type/class/section/filename)
+            const ext = path.extname(file.originalname || '');
+            const uniqueName = `${type}_${classLevel}_${section}_${Date.now()}${ext}`;
+            const key = r2StorageService.buildKey(type, classLevel, section, uniqueName);
 
-            // 2. Upload to Drive
-            const driveFile = await googleDriveService.uploadFile(
-                file.buffer,
-                file.originalname,
-                file.mimetype,
-                folderId
-            );
+            // 2. Upload to R2
+            const r2File = await r2StorageService.uploadFile(file.buffer, key, file.mimetype);
 
             // 3. Save to Database
             let result;
             try {
                 result = await pool.query(
-                    `INSERT INTO app_files 
+                    `INSERT INTO app_files
                     (drive_file_id, file_name, class_level, section, uploaded_by, file_type, mime_type, file_size, web_view_link, download_link)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     RETURNING *`,
                     [
-                        driveFile.id,
-                        driveFile.name,
+                        r2File.key,                   // reuse drive_file_id column to store R2 key
+                        file.originalname || uniqueName,
                         classLevel,
                         section,
                         req.user?.userId || null,
                         type,
                         file.mimetype,
-                        driveFile.size,
-                        driveFile.webViewLink,
-                        driveFile.webContentLink
+                        r2File.size,
+                        r2File.url,                   // public URL if configured
+                        r2File.downloadLink            // proxy download URL
                     ]
                 );
             } catch (dbError) {
-                // Compensate: remove orphaned Drive file
-                console.error('DB insert failed, cleaning up Drive file:', driveFile.id);
+                // Compensate: remove orphaned R2 file
+                console.error('DB insert failed, cleaning up R2 file:', key);
                 try {
-                    await googleDriveService.deleteFile(driveFile.id);
+                    await r2StorageService.deleteFile(key);
                 } catch (cleanupError) {
-                    console.error('Failed to cleanup orphaned Drive file:', cleanupError.message);
+                    console.error('Failed to cleanup orphaned R2 file:', cleanupError.message);
                 }
                 throw dbError;
             }
@@ -64,13 +61,13 @@ export const storageController = {
             res.status(201).json({
                 success: true,
                 data: {
-                    fileId: driveFile.id,
-                    id: driveFile.id, // Alias for frontend
+                    fileId: r2File.key,
+                    id: r2File.key,         // alias for frontend
                     dbId: result.rows[0].id,
-                    fileName: driveFile.name,
-                    webViewLink: driveFile.webViewLink,
-                    downloadLink: `/storage/download/${driveFile.id}`,
-                    url: `/storage/download/${driveFile.id}` // Alias for frontend
+                    fileName: file.originalname || uniqueName,
+                    webViewLink: r2File.url,
+                    downloadLink: r2File.downloadLink,
+                    url: r2File.downloadLink // alias for frontend
                 }
             });
         } catch (error) {
@@ -108,10 +105,10 @@ export const storageController = {
 
             const files = result.rows.map(row => ({
                 id: row.id,
-                driveFileId: row.drive_file_id,
+                r2Key: row.drive_file_id,   // R2 object key stored in this column
                 name: row.file_name,
                 viewLink: row.web_view_link,
-                downloadLink: `/storage/download/${row.drive_file_id}`,
+                downloadLink: `/storage/download/${encodeURIComponent(row.drive_file_id)}`,
                 uploadedBy: row.uploader_name || 'Admin',
                 date: row.created_at,
                 type: row.file_type,
@@ -126,80 +123,73 @@ export const storageController = {
     },
 
     async download(req, res) {
-        const { fileId } = req.params;
-        const isLocalMode = !process.env.GOOGLE_DRIVE_PARENT_ID;
-        
-        console.log(`[STORAGE DOWNLOAD] Initiating download request. fileId: ${fileId} | Mode: ${isLocalMode ? 'Local uploads directory' : 'Google Drive'}`);
-        
+        // Express 5 named wildcard: req.params.key holds everything after /download/
+        const rawKey = req.params.key || '';
+        const key = decodeURIComponent(rawKey);
+
+        console.log(`[STORAGE DOWNLOAD] key: ${key}`);
+
         try {
+            // 1. Get metadata (content-type, size, filename)
             let metadata;
             try {
-                metadata = await googleDriveService.getFileMetadata(fileId);
+                metadata = await r2StorageService.getFileMetadata(key);
             } catch (metaError) {
-                console.error(`[STORAGE DOWNLOAD] Metadata fetch failed for fileId: ${fileId}. Error:`, metaError);
-                
-                const message = metaError.message || '';
-                const code = metaError.code;
-                const status = metaError.status;
-                const isNotFound = message.toLowerCase().includes('not found') || 
-                                   code === 404 || 
-                                   status === 404 || 
-                                   message.includes('ENOENT');
+                const msg = metaError.message || '';
+                const isNotFound =
+                    metaError.name === 'NoSuchKey' ||
+                    msg.toLowerCase().includes('not found') ||
+                    metaError.$metadata?.httpStatusCode === 404;
 
                 if (isNotFound) {
-                    console.warn(`[STORAGE DOWNLOAD] [404] File not found: ${fileId}`);
                     return res.status(404).json({ success: false, error: 'File not found' });
                 }
-                
+                console.error('[STORAGE DOWNLOAD] Metadata error:', metaError.message);
                 return res.status(500).json({ success: false, error: 'Failed to retrieve file metadata' });
             }
 
-            // RFC 5987 encoding for Content-Disposition (Security & Character Support)
+            // 2. Set response headers
             const filename = metadata.name || 'download';
             const asciiName = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
-            const utf8Name = encodeURIComponent(filename).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+            const utf8Name = encodeURIComponent(filename).replace(/[!'()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 
-            res.setHeader('Content-Type', metadata.mimeType || 'application/octet-stream');
+            res.setHeader('Content-Type', metadata.mimeType);
             res.setHeader('Content-Disposition', `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`);
+            if (metadata.size) res.setHeader('Content-Length', metadata.size);
 
-            if (metadata.size) {
-                res.setHeader('Content-Length', metadata.size);
-            }
-
-            console.log(`[STORAGE DOWNLOAD] Metadata resolved. filename: ${filename} | size: ${metadata.size} bytes | mimeType: ${metadata.mimeType}`);
-
+            // 3. Stream the file
             let stream;
             try {
-                stream = await googleDriveService.getFileStream(fileId);
+                stream = await r2StorageService.getFileStream(key);
             } catch (streamError) {
-                console.error(`[STORAGE DOWNLOAD] Stream initialization failed for fileId: ${fileId}. Error:`, streamError);
                 if (!res.headersSent) {
-                    const message = streamError.message || '';
-                    const isNotFound = message.toLowerCase().includes('not found') || 
-                                       streamError.code === 404 || 
-                                       streamError.status === 404;
-                    if (isNotFound) {
-                        return res.status(404).json({ success: false, error: 'File not found' });
-                    }
-                    return res.status(500).json({ success: false, error: 'Failed to initialize file stream' });
+                    return res.status(500).json({ success: false, error: 'Failed to stream file' });
                 }
                 return res.end();
             }
 
-            // Handle stream errors to prevent partial corrupted files
-            stream.on('error', (err) => {
-                console.error('[STORAGE DOWNLOAD] Stream error during pipe/download:', err);
-                if (!res.headersSent) {
-                    res.status(500).json({ success: false, error: 'Download stream failed' });
-                } else {
-                    res.end();
-                }
-            });
-
-            console.log(`[STORAGE DOWNLOAD] Piping file stream to response for fileId: ${fileId}`);
-            stream.pipe(res);
+            // stream is a Web ReadableStream from the AWS SDK — pipe it to Express response
+            if (stream.pipe) {
+                // Node.js Readable stream
+                stream.on('error', err => {
+                    console.error('[STORAGE DOWNLOAD] Stream error:', err);
+                    if (!res.headersSent) res.status(500).end();
+                    else res.end();
+                });
+                stream.pipe(res);
+            } else {
+                // Web ReadableStream (AWS SDK v3) — convert to Node stream
+                const { Readable } = await import('stream');
+                const nodeStream = Readable.fromWeb(stream);
+                nodeStream.on('error', err => {
+                    console.error('[STORAGE DOWNLOAD] Stream error:', err);
+                    if (!res.headersSent) res.status(500).end();
+                    else res.end();
+                });
+                nodeStream.pipe(res);
+            }
         } catch (error) {
-            console.error('[STORAGE DOWNLOAD] [CRITICAL] Download controller error:', error);
+            console.error('[STORAGE DOWNLOAD] Critical error:', error);
             if (!res.headersSent) {
                 res.status(500).json({ success: false, error: 'Internal server error during download' });
             }
@@ -207,11 +197,10 @@ export const storageController = {
     },
 
     async delete(req, res) {
-        let driveFileId = null;
         const { id } = req.params;
 
         try {
-            // 1. Delete from DB first to prevent dangling references if DB fails
+            // 1. Remove from DB, get R2 key
             const result = await pool.query(
                 'DELETE FROM app_files WHERE id = $1 RETURNING drive_file_id',
                 [id]
@@ -221,22 +210,18 @@ export const storageController = {
                 return res.status(404).json({ success: false, error: 'File not found in database' });
             }
 
-            driveFileId = result.rows[0].drive_file_id;
-            console.log(`[Storage] DB record ${id} deleted successfully. Proceeding to Drive cleanup for: ${driveFileId}`);
+            const r2Key = result.rows[0].drive_file_id;
 
-            // 2. Attempt to delete from Drive
+            // 2. Delete from R2 (non-blocking — DB is already clean)
             try {
-                await googleDriveService.deleteFile(driveFileId);
-                console.log(`[Storage] Drive file ${driveFileId} deleted successfully.`);
-            } catch (driveError) {
-                // If Drive fails, we log it as a warning but don't fail the request 
-                // since the DB is already clean. The file is orphaned but recoverable/ignorable.
-                console.error(`[Storage] [WARNING] Orphaned Drive file detected: ${driveFileId}. Drive delete failed:`, driveError.message);
+                await r2StorageService.deleteFile(r2Key);
+            } catch (r2Error) {
+                console.error(`[Storage] Orphaned R2 object "${r2Key}" — could not delete:`, r2Error.message);
             }
 
             res.json({ success: true, message: 'File deleted successfully' });
         } catch (error) {
-            console.error('[Storage] [CRITICAL] Delete Error (DB phase):', error);
+            console.error('[Storage] Delete Error:', error);
             res.status(500).json({ success: false, error: 'Database operation failed. File was not deleted.' });
         }
     }

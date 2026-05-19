@@ -1,8 +1,9 @@
 import { submissionModel } from './Submissions.js';
-import { googleDriveService } from '../../utils/googleDriveService.js';
+import { r2StorageService } from '../../utils/r2StorageService.js';
 import { getStudentByUserId } from '../student/Student.js';
 import { homeworkModel } from '../homework/Homework.js';
 import { subjectModel } from '../subjects/subjectModel.js';
+import path from 'path';
 
 export const submitHomework = async (req, res) => {
     try {
@@ -31,14 +32,32 @@ export const submitHomework = async (req, res) => {
         let fileUrl = req.body.fileUrl;
 
         if (req.file) {
-            // Upload to Google Drive only if a new physical file is provided
-            const folderId = await googleDriveService.getFolderPath(student.classLevel, student.section || 'A', 'submissions');
-            const uploadResult = await googleDriveService.uploadFile(
+            // Clean up old submission file from R2 to prevent orphans
+            try {
+                const existingSubmission = await submissionModel.getStudentSubmission(homeworkId, student.id);
+                if (existingSubmission && existingSubmission.file_url) {
+                    const oldKey = r2StorageService.extractKeyFromUrl(existingSubmission.file_url);
+                    if (oldKey) {
+                        console.log(`[SUBMISSION] Deleting old submission file from R2: ${oldKey}`);
+                        await r2StorageService.deleteFile(oldKey);
+                    }
+                }
+            } catch (err) {
+                console.warn('[SUBMISSION] Failed to clean up old file (non-blocking):', err.message);
+            }
+
+            // Upload to Cloudflare R2 — preserve original extension for correct MIME type
+            const ext = path.extname(req.file.originalname || '');
+            const safeName = `SUB_${student.name.replace(/\s+/g, '_')}_HW${homeworkId}_${Date.now()}${ext}`;
+            const key = r2StorageService.buildKey('submissions', student.classLevel, student.section || 'A', safeName);
+            
+            console.log(`[UPLOAD START] User: ${userId} | File: ${req.file.originalname} | Size: ${req.file.size} bytes`);
+            const uploadResult = await r2StorageService.uploadFile(
                 req.file.buffer,
-                `SUB_${student.name.replace(/\s+/g, '_')}_HW${homeworkId}_${Date.now()}`,
-                req.file.mimetype,
-                folderId
+                key,
+                req.file.mimetype
             );
+            console.log(`[UPLOAD SUCCESS] Key: ${uploadResult.key} | Size: ${uploadResult.size}`);
             fileUrl = uploadResult.downloadLink;
         }
 
