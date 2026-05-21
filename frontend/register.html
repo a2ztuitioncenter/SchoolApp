@@ -395,7 +395,7 @@
                             <div class="form-group">
                                 <label for="student-dob">Date of Birth *</label>
                                 <input type="date" id="student-dob" required>
-                                <small style="display:block;margin-top:0.25rem;color:#6b7280;">Acts as your initial password.</small>
+                                <small style="display:block;margin-top:0.25rem;color:#6b7280;">Your date of birth.</small>
                             </div>
                             <div class="form-group">
                                 <label for="student-phone">Phone Number *</label>
@@ -440,6 +440,29 @@
                             <div class="form-group">
                                 <label for="student-mother">Mother's Name *</label>
                                 <input type="text" id="student-mother" required>
+                            </div>
+                        </div>
+
+                        <div class="form-section-title">Security Credentials</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="student-password">Password *</label>
+                                <div class="password-wrapper">
+                                    <input type="password" id="student-password" required>
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small id="student-password-status" style="display:block;margin-top:0.25rem;color:#6b7280;">Minimum 6 characters</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-confirm">Confirm Password *</label>
+                                <div class="password-wrapper">
+                                    <input type="password" id="student-confirm" required>
+                                    <button type="button" class="password-toggle" aria-label="Toggle password visibility">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

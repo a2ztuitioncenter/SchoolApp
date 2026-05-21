@@ -110,6 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const section = document.getElementById('student-section-select').value;
             const fatherName = document.getElementById('student-father').value.trim();
             const motherName = document.getElementById('student-mother').value.trim();
+            const password = document.getElementById('student-password').value;
+            const confirmPassword = document.getElementById('student-confirm').value;
 
             const errorDiv = document.getElementById('studentSignupError');
             const successDiv = document.getElementById('studentSignupSuccess');
@@ -119,6 +121,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!username || username.length < 5 || !/^[a-zA-Z0-9_]+$/.test(username)) {
                 return showError(errorDiv, 'Invalid username. Must be at least 5 chars, letters/numbers/underscores only.');
+            }
+
+            if (!password) {
+                return showError(errorDiv, 'Password is required.');
+            }
+
+            if (password.length < 6) {
+                return showError(errorDiv, 'Password must be at least 6 characters long.');
+            }
+
+            if (password !== confirmPassword) {
+                return showError(errorDiv, 'Passwords do not match.');
             }
 
             // Format YYYY-MM-DD -> DD/MM/YY
@@ -135,7 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await authAPI.register({
                     role: 'student',
                     firstName, lastName, phone, email: email || null,
-                    dateOfBirth, classLevel, section, fatherName, motherName, username
+                    dateOfBirth, classLevel, section, fatherName, motherName, username,
+                    password, confirmPassword
                 });
 
                 if (response.success) {

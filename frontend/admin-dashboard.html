@@ -834,28 +834,12 @@
                             </div>
                         </div>
 
-                        <!-- Date of Birth (used for student login instead of password) -->
+                        <!-- Date of Birth -->
                         <div class="form-section-title">Date of Birth</div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Date of Birth * <small style="font-weight:400;color:#888">(used for
-                                        login)</small></label>
+                                <label>Date of Birth *</label>
                                 <input type="date" id="student-dob" required max="2020-01-01">
-                            </div>
-                        </div>
-
-                        <!-- Security Credentials -->
-                        <div class="form-section-title">Security Credentials</div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Password * <small style="color:var(--text-muted)">(min 6 chars)</small></label>
-                                <input type="password" id="student-password" placeholder="Enter password" required>
-                                <div id="student-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Confirm Password *</label>
-                                <input type="password" id="student-confirmPassword" placeholder="Confirm password" required>
-                                <div id="student-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
                             </div>
                         </div>
 
@@ -871,6 +855,21 @@
                                 <label>Mother's Name *</label>
                                 <input type="text" id="student-motherName" placeholder="Mother's full name"
                                     required>
+                            </div>
+                        </div>
+
+                        <!-- Security Credentials -->
+                        <div class="form-section-title">Security Credentials</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Password * <small style="color:var(--text-muted)">(min 6 chars)</small></label>
+                                <input type="password" id="student-password" placeholder="Enter password" required>
+                                <div id="student-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm Password *</label>
+                                <input type="password" id="student-confirmPassword" placeholder="Confirm password" required>
+                                <div id="student-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
                             </div>
                         </div>
                     </form>
@@ -931,21 +930,6 @@
                             </div>
                         </div>
 
-                        <!-- Security Credentials -->
-                        <div class="form-section-title">Security Credentials</div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>New Password <small style="color:var(--text-muted)">(min 6 chars, optional)</small></label>
-                                <input type="password" id="edit-student-password" placeholder="Leave blank to keep unchanged">
-                                <div id="edit-student-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
-                            </div>
-                            <div class="form-group">
-                                <label>Confirm Password</label>
-                                <input type="password" id="edit-student-confirmPassword" placeholder="Confirm new password">
-                                <div id="edit-student-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
-                            </div>
-                        </div>
-
                         <!-- Parent Information -->
                         <div class="form-section-title">Parent Information</div>
                         <div class="form-row">
@@ -958,6 +942,21 @@
                                 <label>Mother's Name *</label>
                                 <input type="text" id="edit-student-motherName" placeholder="Mother's full name"
                                     required>
+                            </div>
+                        </div>
+
+                        <!-- Security Credentials -->
+                        <div class="form-section-title">Security Credentials</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>New Password <small style="color:var(--text-muted)">(min 6 chars, optional)</small></label>
+                                <input type="password" id="edit-student-password" placeholder="Leave blank to keep unchanged">
+                                <div id="edit-student-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm Password</label>
+                                <input type="password" id="edit-student-confirmPassword" placeholder="Confirm new password">
+                                <div id="edit-student-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
                             </div>
                         </div>
                     </form>

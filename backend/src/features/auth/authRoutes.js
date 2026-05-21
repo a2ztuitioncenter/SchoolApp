@@ -238,6 +238,17 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     const sanitizedPhone = sanitizeIdentifier(phone, 15);
     const sanitizedEmail = sanitizeNullableText(req.body.email, 255);
 
+    // Enforce matching, secure passwords for all public portal registrations
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
     // 1. Initial Checks (Duplicate Detection)
     if (username && await isUsernameTaken(pool, username)) {
       return res.status(409).json({ error: 'Username already taken' });
@@ -269,9 +280,6 @@ router.post('/register', validateBody(registerSchema), async (req, res) => {
     } else {
       if (await getUserByPhone(pool, sanitizedPhone)) {
         return res.status(409).json({ error: 'Phone number already registered' });
-      }
-      if (password !== confirmPassword) {
-        return res.status(400).json({ error: 'Passwords do not match' });
       }
     }
 
