@@ -77,7 +77,7 @@ export function validateBody(schema) {
 export const loginSchema = {
   identifier: { type: 'string', max: 50 },
   phone: { type: 'string', max: 15 },
-  dateOfBirth: { type: 'string', required: true, max: 20 },
+  password: { type: 'string', required: true, min: 1, max: 128 },
   __oneOf: ['identifier', 'phone']
 };
 

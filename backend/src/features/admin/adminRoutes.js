@@ -7,6 +7,7 @@ import { registerUser } from '../auth/registrationService.js';
 import { getPendingFees, getAllStudentFees, getFeesSummary } from '../fees/Fee.js';
 import { getMonthlyOverallAttendance } from '../attendance/attendanceController.js';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -212,7 +213,7 @@ router.get('/users/:id', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, phone, email, role, classesAssigned } = req.body;
+    const { name, phone, email, role, classesAssigned, password, confirmPassword } = req.body;
     try {
         // Check email uniqueness if email is being changed
         if (email) {
@@ -225,6 +226,17 @@ router.put('/users/:id', async (req, res) => {
             }
         }
 
+        if (password) {
+            if (password.length < 6) {
+                return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+            }
+            if (password !== confirmPassword) {
+                return res.status(400).json({ success: false, error: 'Passwords do not match' });
+            }
+            const hashedPassword = await bcrypt.hash(password, 12);
+            await req.db.query('UPDATE users SET password = $1 WHERE id = $2 AND school_id = $3', [hashedPassword, id, req.user.schoolId]);
+        }
+
         const user = await updateUser(req.db, id, { name, phone, email, role }, req.user.schoolId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         const schoolId = user.schoolId || req.user.schoolId;
@@ -235,7 +247,7 @@ router.put('/users/:id', async (req, res) => {
             await assignTeacherToClasses(req.db, id, classesAssigned, schoolId);
         }
 
-        await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}`, req.user.schoolId);
+        await logAudit(req.db, req.user.userId, 'UPDATE_USER', 'users', id, `Updated info for ${user.name}${password ? ' (including password)' : ''}`, req.user.schoolId);
 
         res.json({ success: true, data: user });
     } catch (err) {
@@ -376,9 +388,18 @@ router.get('/students/:id', async (req, res) => {
 });
 
 router.post('/students/create', async (req, res) => {
-    const { firstName, lastName, phone, email, dateOfBirth, classLevel, section, fatherName, motherName, joiningDate, username } = req.body;
+    const { firstName, lastName, phone, email, dateOfBirth, classLevel, section, fatherName, motherName, joiningDate, username, password, confirmPassword } = req.body;
     const pool = req.db;
     try {
+        if (!password || password.trim() === '') {
+            return res.status(400).json({ success: false, error: 'Password is required' });
+        }
+        if (password !== confirmPassword) {
+            return res.status(400).json({ success: false, error: 'Passwords do not match' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+        }
 
         const fullName = `${firstName} ${lastName || ''}`.trim();
 
@@ -425,7 +446,7 @@ router.post('/students/create', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
     const { id } = req.params;
-    const { firstName, lastName, classLevel, section, fatherName, motherName, phone, email, dateOfBirth, joiningDate } = req.body;
+    const { firstName, lastName, classLevel, section, fatherName, motherName, phone, email, dateOfBirth, joiningDate, password, confirmPassword } = req.body;
 
     // Handle split name or full name
     let name = req.body.name;
@@ -434,6 +455,31 @@ router.put('/students/:id', async (req, res) => {
     }
 
     try {
+        if (password) {
+            if (password.length < 6) {
+                return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+            }
+            if (password !== confirmPassword) {
+                return res.status(400).json({ success: false, error: 'Passwords do not match' });
+            }
+            // Resolve the student's user_id from students table
+            const studentCheck = await req.db.query(
+                'SELECT user_id FROM students WHERE id = $1 AND school_id = $2',
+                [id, req.user.schoolId]
+            );
+            if (studentCheck.rows.length === 0) {
+                return res.status(404).json({ success: false, error: 'Student not found' });
+            }
+            const userId = studentCheck.rows[0].user_id;
+
+            // Hash new password
+            const hashedPassword = await bcrypt.hash(password, 12);
+            await req.db.query(
+                'UPDATE users SET password = $1 WHERE id = $2 AND school_id = $3',
+                [hashedPassword, userId, req.user.schoolId]
+            );
+        }
+
         const result = await req.db.query(
             `UPDATE students 
              SET name = COALESCE($1, name),
@@ -450,7 +496,7 @@ router.put('/students/:id', async (req, res) => {
         );
         if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Student not found' });
 
-        await logAudit(req.db, req.user.userId, 'UPDATE_STUDENT', 'students', id, `Updated student: ${name || result.rows[0].name}`, req.user.schoolId);
+        await logAudit(req.db, req.user.userId, 'UPDATE_STUDENT', 'students', id, `Updated student: ${name || result.rows[0].name}${password ? ' (including password)' : ''}`, req.user.schoolId);
 
         res.json({ success: true, data: result.rows[0] });
     } catch (err) {

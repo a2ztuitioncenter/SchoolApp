@@ -664,6 +664,19 @@
                                 </select>
                             </div>
 
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>New Password <small style="color:var(--text-muted)">(min 6 chars, optional)</small></label>
+                                    <input type="password" id="edit-user-password" placeholder="Leave blank to keep unchanged">
+                                    <div id="edit-user-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirm Password</label>
+                                    <input type="password" id="edit-user-confirmPassword" placeholder="Confirm new password">
+                                    <div id="edit-user-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                                </div>
+                            </div>
+
                             <!-- New: Class Assignment Section for Teachers/Staff -->
                             <div id="edit-user-assignment-section"
                                 style="display: none; margin-top: 1.5rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
@@ -691,7 +704,7 @@
                     </div>
                     <div class="drawer-footer">
                         <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Cancel</button>
-                        <button type="submit" form="edit-user-form" class="btn btn-primary">Save Changes</button>
+                        <button type="submit" id="edit-user-save-btn" form="edit-user-form" class="btn btn-primary">Save Changes</button>
                     </div>
                 </div>
             </div>
@@ -831,6 +844,21 @@
                             </div>
                         </div>
 
+                        <!-- Security Credentials -->
+                        <div class="form-section-title">Security Credentials</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Password * <small style="color:var(--text-muted)">(min 6 chars)</small></label>
+                                <input type="password" id="student-password" placeholder="Enter password" required>
+                                <div id="student-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm Password *</label>
+                                <input type="password" id="student-confirmPassword" placeholder="Confirm password" required>
+                                <div id="student-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                            </div>
+                        </div>
+
                         <!-- Parent Information -->
                         <div class="form-section-title">Parent Information</div>
                         <div class="form-row">
@@ -850,7 +878,7 @@
                 <div class="drawer-footer">
                     <button type="button" class="btn btn-secondary"
                         onclick="closeAddStudentModal()">Cancel</button>
-                    <button type="submit" form="add-student-form" class="btn btn-primary">Add Student</button>
+                    <button type="submit" id="student-submit-btn" form="add-student-form" class="btn btn-primary">Add Student</button>
                 </div>
             </div>
 
@@ -903,6 +931,21 @@
                             </div>
                         </div>
 
+                        <!-- Security Credentials -->
+                        <div class="form-section-title">Security Credentials</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>New Password <small style="color:var(--text-muted)">(min 6 chars, optional)</small></label>
+                                <input type="password" id="edit-student-password" placeholder="Leave blank to keep unchanged">
+                                <div id="edit-student-password-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm Password</label>
+                                <input type="password" id="edit-student-confirmPassword" placeholder="Confirm new password">
+                                <div id="edit-student-confirmPassword-error" class="error-text" style="display:none; font-size: 0.75rem; color: var(--danger); margin-top: 4px;"></div>
+                            </div>
+                        </div>
+
                         <!-- Parent Information -->
                         <div class="form-section-title">Parent Information</div>
                         <div class="form-row">
@@ -922,7 +965,7 @@
                 <div class="drawer-footer">
                     <button type="button" class="btn btn-secondary"
                         onclick="closeEditStudentModal()">Cancel</button>
-                    <button type="submit" form="edit-student-form" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" id="edit-student-save-btn" form="edit-student-form" class="btn btn-primary">Save Changes</button>
                 </div>
             </div>
 

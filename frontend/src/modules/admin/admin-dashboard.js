@@ -2086,6 +2086,17 @@ window.openAddStudentModal = function () {
         document.getElementById('add-student-form').reset();
         document.body.style.overflow = 'hidden';
 
+        // Clear password errors and disable submit button initially
+        const passError = document.getElementById('student-password-error');
+        const confirmError = document.getElementById('student-confirmPassword-error');
+        const studentUsernameError = document.getElementById('student-username-error');
+        if (passError) passError.style.display = 'none';
+        if (confirmError) confirmError.style.display = 'none';
+        if (studentUsernameError) studentUsernameError.style.display = 'none';
+        
+        const submitBtn = document.getElementById('student-submit-btn');
+        if (submitBtn) submitBtn.disabled = true;
+
         // Initialize dynamic dropdowns with fallback enabled for Add Student form
         populateERPFilters({
             classSelectId: 'student-classLevel',
@@ -2142,6 +2153,12 @@ window.closeEditStudentModal = function () {
     if (modal) modal.classList.remove('active');
     if (overlay) overlay.classList.remove('active');
     document.getElementById('edit-student-form')?.reset();
+    const pwError = document.getElementById('edit-student-password-error');
+    const confError = document.getElementById('edit-student-confirmPassword-error');
+    if (pwError) pwError.style.display = 'none';
+    if (confError) confError.style.display = 'none';
+    const saveBtn = document.getElementById('edit-student-save-btn');
+    if (saveBtn) saveBtn.disabled = false;
     document.body.style.overflow = '';
 };
 
@@ -4409,12 +4426,21 @@ function setupForms() {
             ).map(cb => cb.value);
         }
 
+        const password = document.getElementById('edit-user-password')?.value;
+        const confirmPassword = document.getElementById('edit-user-confirmPassword')?.value;
+
         const payload = {
             phone: document.getElementById('edit-user-phone')?.value,
             email: document.getElementById('edit-user-email')?.value,
             role: role,
             classesAssigned: classesAssigned
         };
+
+        if (password) {
+            payload.password = password;
+            payload.confirmPassword = confirmPassword;
+        }
+
         try {
             showInfoAlert('Updating user...');
             const res = await adminAPI.updateUser(id, payload);
@@ -4428,6 +4454,170 @@ function setupForms() {
             }
         } catch (err) { showErrorAlert(err.message); }
     });
+
+    // Realtime Password Validation for Students
+    const studentPasswordInput = document.getElementById('student-password');
+    const studentConfirmPasswordInput = document.getElementById('student-confirmPassword');
+    const studentPasswordError = document.getElementById('student-password-error');
+    const studentConfirmPasswordError = document.getElementById('student-confirmPassword-error');
+    const studentSubmitBtn = document.getElementById('student-submit-btn');
+
+    function validateStudentPasswords() {
+        if (!studentPasswordInput || !studentConfirmPasswordInput) return;
+
+        const password = studentPasswordInput.value;
+        const confirmPassword = studentConfirmPasswordInput.value;
+        let isPasswordValid = true;
+        let isConfirmValid = true;
+
+        // 1. Password validation
+        if (password.length === 0) {
+            if (studentPasswordError) {
+                studentPasswordError.textContent = 'Password is required';
+                studentPasswordError.style.display = 'block';
+            }
+            isPasswordValid = false;
+        } else if (password.length < 6) {
+            if (studentPasswordError) {
+                studentPasswordError.textContent = 'Password must be at least 6 characters';
+                studentPasswordError.style.display = 'block';
+            }
+            isPasswordValid = false;
+        } else {
+            if (studentPasswordError) {
+                studentPasswordError.style.display = 'none';
+            }
+        }
+
+        // 2. Confirm password validation
+        if (confirmPassword.length === 0) {
+            if (studentConfirmPasswordError) {
+                studentConfirmPasswordError.textContent = 'Please confirm password';
+                studentConfirmPasswordError.style.display = 'block';
+            }
+            isConfirmValid = false;
+        } else if (password !== confirmPassword) {
+            if (studentConfirmPasswordError) {
+                studentConfirmPasswordError.textContent = 'Passwords do not match';
+                studentConfirmPasswordError.style.display = 'block';
+            }
+            isConfirmValid = false;
+        } else {
+            if (studentConfirmPasswordError) {
+                studentConfirmPasswordError.style.display = 'none';
+            }
+        }
+
+        // Enable/Disable submit button
+        if (studentSubmitBtn) {
+            studentSubmitBtn.disabled = !(isPasswordValid && isConfirmValid);
+        }
+    }
+
+    if (studentPasswordInput && studentConfirmPasswordInput) {
+        studentPasswordInput.addEventListener('input', validateStudentPasswords);
+        studentConfirmPasswordInput.addEventListener('input', validateStudentPasswords);
+    }
+
+    // Realtime Password Validation for Editing Users
+    const editUserPasswordInput = document.getElementById('edit-user-password');
+    const editUserConfirmPasswordInput = document.getElementById('edit-user-confirmPassword');
+    const editUserPasswordError = document.getElementById('edit-user-password-error');
+    const editUserConfirmPasswordError = document.getElementById('edit-user-confirmPassword-error');
+    const editUserSaveBtn = document.getElementById('edit-user-save-btn');
+
+    function validateEditUserPasswords() {
+        if (!editUserPasswordInput || !editUserConfirmPasswordInput) return;
+
+        const password = editUserPasswordInput.value;
+        const confirmPassword = editUserConfirmPasswordInput.value;
+        let isPasswordValid = true;
+        let isConfirmValid = true;
+
+        if (password.length === 0 && confirmPassword.length === 0) {
+            if (editUserPasswordError) editUserPasswordError.style.display = 'none';
+            if (editUserConfirmPasswordError) editUserConfirmPasswordError.style.display = 'none';
+        } else {
+            if (password.length < 6) {
+                if (editUserPasswordError) {
+                    editUserPasswordError.textContent = 'Password must be at least 6 characters';
+                    editUserPasswordError.style.display = 'block';
+                }
+                isPasswordValid = false;
+            } else {
+                if (editUserPasswordError) editUserPasswordError.style.display = 'none';
+            }
+
+            if (password !== confirmPassword) {
+                if (editUserConfirmPasswordError) {
+                    editUserConfirmPasswordError.textContent = 'Passwords do not match';
+                    editUserConfirmPasswordError.style.display = 'block';
+                }
+                isConfirmValid = false;
+            } else {
+                if (editUserConfirmPasswordError) editUserConfirmPasswordError.style.display = 'none';
+            }
+        }
+
+        if (editUserSaveBtn) {
+            editUserSaveBtn.disabled = !(isPasswordValid && isConfirmValid);
+        }
+    }
+
+    if (editUserPasswordInput && editUserConfirmPasswordInput) {
+        editUserPasswordInput.addEventListener('input', validateEditUserPasswords);
+        editUserConfirmPasswordInput.addEventListener('input', validateEditUserPasswords);
+    }
+
+    // Realtime Password Validation for Editing Students
+    const editStudentPasswordInput = document.getElementById('edit-student-password');
+    const editStudentConfirmPasswordInput = document.getElementById('edit-student-confirmPassword');
+    const editStudentPasswordError = document.getElementById('edit-student-password-error');
+    const editStudentConfirmPasswordError = document.getElementById('edit-student-confirmPassword-error');
+    const editStudentSaveBtn = document.getElementById('edit-student-save-btn');
+
+    function validateEditStudentPasswords() {
+        if (!editStudentPasswordInput || !editStudentConfirmPasswordInput) return;
+
+        const password = editStudentPasswordInput.value;
+        const confirmPassword = editStudentConfirmPasswordInput.value;
+        let isPasswordValid = true;
+        let isConfirmValid = true;
+
+        if (password.length === 0 && confirmPassword.length === 0) {
+            if (editStudentPasswordError) editStudentPasswordError.style.display = 'none';
+            if (editStudentConfirmPasswordError) editStudentConfirmPasswordError.style.display = 'none';
+        } else {
+            if (password.length < 6) {
+                if (editStudentPasswordError) {
+                    editStudentPasswordError.textContent = 'Password must be at least 6 characters';
+                    editStudentPasswordError.style.display = 'block';
+                }
+                isPasswordValid = false;
+            } else {
+                if (editStudentPasswordError) editStudentPasswordError.style.display = 'none';
+            }
+
+            if (password !== confirmPassword) {
+                if (editStudentConfirmPasswordError) {
+                    editStudentConfirmPasswordError.textContent = 'Passwords do not match';
+                    editStudentConfirmPasswordError.style.display = 'block';
+                }
+                isConfirmValid = false;
+            } else {
+                if (editStudentConfirmPasswordError) editStudentConfirmPasswordError.style.display = 'none';
+            }
+        }
+
+        if (editStudentSaveBtn) {
+            editStudentSaveBtn.disabled = !(isPasswordValid && isConfirmValid);
+        }
+    }
+
+    if (editStudentPasswordInput && editStudentConfirmPasswordInput) {
+        editStudentPasswordInput.addEventListener('input', validateEditStudentPasswords);
+        editStudentConfirmPasswordInput.addEventListener('input', validateEditStudentPasswords);
+    }
 
     // Centralized Username Checker for Students
     const studentUsernameError = document.getElementById('student-username-error');
@@ -4499,6 +4689,19 @@ function setupForms() {
         const dateOfBirth = `${dd}/${mm}/${yy}`;
 
         const username = document.getElementById('student-username')?.value.trim();
+        
+        const password = document.getElementById('student-password')?.value;
+        const confirmPassword = document.getElementById('student-confirmPassword')?.value;
+
+        if (!password || password.length < 6) {
+            showErrorAlert('Password must be at least 6 characters!');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showErrorAlert('Passwords do not match!');
+            return;
+        }
 
         const payload = {
             firstName,
@@ -4512,7 +4715,9 @@ function setupForms() {
             motherName: document.getElementById('student-motherName')?.value,
             dateOfBirth,
             joiningDate: new Date().toISOString().split('T')[0],
-            status: 'active'
+            status: 'active',
+            password,
+            confirmPassword
         };
 
         try {
@@ -4546,6 +4751,9 @@ function setupForms() {
     document.getElementById('edit-student-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('edit-student-id')?.value;
+        const password = document.getElementById('edit-student-password')?.value;
+        const confirmPassword = document.getElementById('edit-student-confirmPassword')?.value;
+
         const payload = {
             name: document.getElementById('edit-student-name')?.value,
             classLevel: document.getElementById('edit-student-classLevel')?.value,
@@ -4555,6 +4763,12 @@ function setupForms() {
             fatherName: document.getElementById('edit-student-fatherName')?.value,
             motherName: document.getElementById('edit-student-motherName')?.value,
         };
+
+        if (password) {
+            payload.password = password;
+            payload.confirmPassword = confirmPassword;
+        }
+
         try {
             showInfoAlert('Updating student...');
             const res = await adminAPI.updateStudent(id, payload);
@@ -5027,6 +5241,13 @@ window.closeEditUserModal = function () {
         const overlay = document.getElementById('editUserDrawerOverlay');
         if (overlay) overlay.classList.remove('active');
     }
+    document.getElementById('edit-user-form')?.reset();
+    const pwError = document.getElementById('edit-user-password-error');
+    const confError = document.getElementById('edit-user-confirmPassword-error');
+    if (pwError) pwError.style.display = 'none';
+    if (confError) confError.style.display = 'none';
+    const saveBtn = document.getElementById('edit-user-save-btn');
+    if (saveBtn) saveBtn.disabled = false;
     document.body.style.overflow = '';
 };
 

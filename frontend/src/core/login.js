@@ -50,19 +50,19 @@ document.addEventListener('DOMContentLoaded', () => {
         studentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const identifier = document.getElementById('student-login-identifier').value.trim();
-            const dateOfBirth = document.getElementById('student-login-dob').value.trim();
+            const password = document.getElementById('student-login-password').value.trim();
             const errorDiv = document.getElementById('studentLoginError');
             const successDiv = document.getElementById('studentLoginSuccess');
             const btn = document.getElementById('studentLoginBtn');
 
             clearMessages(errorDiv, successDiv);
-            if (!identifier || !dateOfBirth) return showError(errorDiv, 'Both fields are required');
+            if (!identifier || !password) return showError(errorDiv, 'Both fields are required');
 
             btn.disabled = true;
             btn.innerHTML = '<span>Verifying...</span> <i class="fas fa-spinner fa-spin"></i>';
 
             try {
-                const response = await authAPI.login(identifier, dateOfBirth);
+                const response = await authAPI.login(identifier, password);
                 if (response.success) {
                     setAuth({
                         isLoggedIn: true,

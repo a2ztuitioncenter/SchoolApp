@@ -123,30 +123,13 @@ router.get('/check-username', async (req, res) => {
 });
 
 router.post('/login', validateBody(loginSchema), async (req, res) => {
-  const { phone, identifier, dateOfBirth } = req.body;
+  const { phone, identifier, password } = req.body;
   const loginId = sanitizeIdentifier(identifier || phone, 50);
   const pool = req.db;
 
   try {
-    if (!loginId || !dateOfBirth) {
-      return res.status(400).json({ error: 'Phone/Username and date of birth are required' });
-    }
-
-    let dobISO;
-    const parts = dateOfBirth.split('/');
-    if (parts.length === 3) {
-      const [dd, mm, yy] = parts;
-      const pivotYear = (new Date().getFullYear() % 100) + 10;
-      const year = yy.length === 2 ? (parseInt(yy) > pivotYear ? `19${yy}` : `20${yy}`) : yy;
-      dobISO = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-
-      // Semantic validation: Ensure the date actually exists (e.g. Feb 31st is invalid)
-      const parsedDate = new Date(dobISO);
-      if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== dobISO) {
-        return res.status(400).json({ error: 'Invalid date of birth' });
-      }
-    } else {
-      return res.status(400).json({ error: 'Invalid date format. Use DD/MM/YY' });
+    if (!loginId || !password) {
+      return res.status(400).json({ error: 'Phone/Username and password are required' });
     }
 
     // Support multiple students sharing the same phone number
@@ -154,26 +137,27 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     let user, studentData;
 
     if (isPhone) {
-      // Find all student users with this phone and match by DOB
-      const allUsers = await getUsersByPhone(pool, loginId);
-      const studentUsers = allUsers.filter(u => u.role?.toLowerCase() === 'student');
+      // Find all student users with this phone number including password field
+      const allUsersResult = await pool.query("SELECT * FROM users WHERE phone = $1", [loginId]);
+      const studentUsers = allUsersResult.rows
+        .map(u => ({ ...MAP_USER(u), password: u.password }))
+        .filter(u => u.role?.toLowerCase() === 'student');
+
       if (studentUsers.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
 
-      // Try each student user to find one whose DOB matches
+      // Try each student user to find one whose password matches
       for (const candidate of studentUsers) {
         if (candidate.status === 'pending') continue;
         if (candidate.status === 'rejected') continue;
         if (candidate.isActive === false) continue;
 
-        const dobCheck = await pool.query(
-          `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
-          [candidate.id, dobISO]
-        );
-        if (dobCheck.rows.length > 0) {
+        const isMatch = await bcrypt.compare(password, candidate.password);
+        if (isMatch) {
           user = candidate;
           break;
         }
       }
+
       if (!user) {
         const pending = studentUsers.find(u => u.status === 'pending');
         if (pending) return res.status(403).json({ error: 'Your account is awaiting admin approval.' });
@@ -183,7 +167,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
       }
     } else {
       // Username login
-      user = await getUserByPhoneOrUsername(pool, loginId);
+      user = await getUserByPhoneOrUsername(pool, loginId, true);
       if (!user) return res.status(401).json({ error: 'Invalid credentials' });
       const userRole = user.role ? user.role.toLowerCase() : '';
       if (userRole !== 'student') return res.status(403).json({ error: 'Unauthorized role' });
@@ -191,11 +175,8 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
       if (user.status === 'rejected') return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
       if (user.isActive === false) return res.status(403).json({ error: 'Your account has been deactivated. Please contact admin.' });
 
-      const dobResult = await pool.query(
-        `SELECT id FROM students WHERE user_id = $1 AND date_of_birth = $2 LIMIT 1`,
-        [user.id, dobISO]
-      );
-      if (dobResult.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     studentData = await getStudentByUserId(pool, user.id);
