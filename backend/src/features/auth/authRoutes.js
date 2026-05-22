@@ -133,7 +133,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     }
 
     // Support multiple students sharing the same phone number
-    const isPhone = /^\d{10}$/.test(loginId);
+    const isPhone = /^\+?\d{10,15}$/.test(loginId);
     let user, studentData;
 
     if (isPhone) {

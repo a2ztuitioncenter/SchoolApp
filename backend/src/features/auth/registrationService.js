@@ -16,6 +16,7 @@ export const registerUser = async (client, payload) => {
         password, 
         username,
         schoolId = 'school-001',
+        status,
         // Student specific
         classLevel,
         section = 'A',
@@ -70,7 +71,7 @@ export const registerUser = async (client, payload) => {
         }
     }
 
-    // 2. Base User Creation (Always starts as 'pending')
+    // 2. Base User Creation (Always starts as 'pending' unless admin-specified)
     const userPayload = {
         name: sanitizeText(name, 100),
         phone: sanitizeIdentifier(phone, 15),
@@ -79,7 +80,7 @@ export const registerUser = async (client, payload) => {
         role: normalizedRole,
         schoolId,
         username: username || null,
-        status: 'pending', // UNIFIED: Always pending
+        status: status || 'pending',
         passwordStatus: source === 'admin' ? 'generated' : 'verified'
     };
 
@@ -131,7 +132,7 @@ export const registerUser = async (client, payload) => {
             email: user.email,
             joiningDate: joiningDate || new Date().toISOString().split('T')[0],
             dateOfBirth: dateOfBirth, // Should be in ISO already or handled by DB
-            status: 'pending', // Sync with user status
+            status: user.status, // Sync with user status
             rollNumber,
             schoolId
         });
@@ -140,6 +141,6 @@ export const registerUser = async (client, payload) => {
     return {
         user,
         student,
-        status: 'pending'
+        status: user.status
     };
 };

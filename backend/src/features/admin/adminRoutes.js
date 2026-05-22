@@ -70,6 +70,7 @@ const logAudit = async (db, userId, action, entity, entityId, details, schoolId)
 
 router.get('/users', async (req, res) => {
     try {
+        console.log('[DEBUG /users] req.user:', req.user);
         const result = await req.db.query(
             `SELECT 
                 u.id, u.name, u.phone, u.email, u.role, u.status, 
@@ -84,7 +85,7 @@ router.get('/users', async (req, res) => {
             FROM users u
             LEFT JOIN teacher_class_assignment tca ON tca.teacher_id = u.id
             WHERE u.role IN ($1, $2) AND u.school_id = $3
-            GROUP BY u.id
+            GROUP BY u.id, u.name, u.phone, u.email, u.role, u.status, u.teacher_id, u.is_active, u.created_at
             ORDER BY u.created_at DESC`,
             ['teacher', 'staff', req.user.schoolId]
         );
@@ -196,7 +197,7 @@ router.get('/users/:id', async (req, res) => {
             LEFT JOIN subject_assignments sa ON sa.teacher_id = u.id
             LEFT JOIN subjects ms ON sa.subject_id = ms.id
             WHERE u.id = $1 AND u.school_id = $2
-            GROUP BY u.id`,
+            GROUP BY u.id, u.name, u.phone, u.email, u.role, u.status, u.username, u.teacher_id, u.is_active, u.created_at`,
             [id, req.user.schoolId]
         );
 
@@ -372,7 +373,7 @@ router.get('/students/:id', async (req, res) => {
             LEFT JOIN subjects ms ON sa.subject_id = ms.id
             LEFT JOIN users u ON sa.teacher_id = u.id
             WHERE s.id = $1 AND s.school_id = $2
-            GROUP BY s.id`,
+            GROUP BY s.id, s.name, s.phone, s.email, s.status, s.class_level, s.section, s.father_name, s.mother_name, s.roll_number, s.date_of_birth, s.joining_date, s.user_id`,
             [id, req.user.schoolId]
         );
 
@@ -424,13 +425,13 @@ router.post('/students/create', async (req, res) => {
                 dateOfBirth: dobISO,
                 role: 'student',
                 schoolId: req.user.schoolId,
-                status: 'pending',
+                status: req.body.status || 'active',
                 source: 'admin'
             });
 
             await logAudit(client, req.user.userId, 'CREATE_STUDENT', 'students', result.student.id, `Enrolled student: ${fullName}`, req.user.schoolId);
             await client.query('COMMIT');
-            res.status(201).json({ success: true, data: result.student, message: 'Student enrolled and pending approval.' });
+            res.status(201).json({ success: true, data: result.student, message: 'Student enrolled successfully.' });
         } catch (err) {
             await client.query('ROLLBACK');
             throw err;

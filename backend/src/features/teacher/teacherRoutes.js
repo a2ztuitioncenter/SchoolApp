@@ -400,6 +400,25 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission for this class/section' });
     }
 
+    // Verify all student IDs exist, are in the correct class/section, and share the school boundary
+    const uniqueStudentIds = [...new Set(records.map(r => r.studentId))];
+    let studentCheckQuery = `SELECT COUNT(*) as count FROM students 
+                             WHERE id = ANY($1) 
+                               AND class_level = $2 
+                               AND school_id = $3`;
+    let studentCheckParams = [uniqueStudentIds, classLevel, req.user.schoolId];
+    if (section) {
+      studentCheckQuery += ` AND (section = $4 OR (section IS NULL AND $4 = 'A'))`;
+      studentCheckParams.push(section);
+    } else {
+      studentCheckQuery += ` AND (section IS NULL OR section = 'A')`;
+    }
+
+    const studentCheckRes = await pool.query(studentCheckQuery, studentCheckParams);
+    if (parseInt(studentCheckRes.rows[0].count, 10) !== uniqueStudentIds.length) {
+      return res.status(403).json({ success: false, error: 'Forbidden: One or more students do not belong to the authorized class, section, or school boundary' });
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

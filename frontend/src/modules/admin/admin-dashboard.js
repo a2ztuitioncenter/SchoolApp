@@ -4733,7 +4733,7 @@ function setupForms() {
                     username: res.data?.username,
                     rollNumber: res.data?.rollNumber,
                     title: 'Student Enrolled',
-                    message: 'The student has been successfully enrolled and is now pending final approval.',
+                    message: 'The student has been successfully enrolled and can log in immediately.',
                     showNote: false
                 });
             }
