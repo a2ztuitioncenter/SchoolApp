@@ -544,16 +544,39 @@ async function loadSubjects(classLevel, section = '') {
 }
 
 function populateProfile(profile) {
-  const nameElement = document.getElementById('student-name');
-  const classElement = document.getElementById('dropdown-student-class');
-  const sectionElement = document.getElementById('dropdown-student-section');
+  // Update name in all elements with id/class dropdown-student-name
+  const nameEls = document.querySelectorAll('#dropdown-student-name');
+  nameEls.forEach(el => el.textContent = profile.name || 'Student');
   
+  // Also update `#student-name` if it exists
+  const nameElement = document.getElementById('student-name');
   if (nameElement && profile.name) nameElement.textContent = profile.name;
-  if (classElement && profile.classLevel) {
-    classElement.textContent = `Class: ${profile.classLevel}`;
+  
+  // Update class
+  const classElement = document.getElementById('dropdown-student-class');
+  if (classElement) {
+    classElement.textContent = `Class: ${profile.classLevel || '--'}`;
   }
-  if (sectionElement && profile.section) {
-    sectionElement.textContent = profile.section;
+  
+  // Update section
+  const sectionElement = document.getElementById('dropdown-student-section');
+  if (sectionElement) {
+    sectionElement.textContent = profile.section || 'N/A';
+  }
+  
+  // Update Roll Number / ID
+  const idEl = document.getElementById('dropdown-student-id');
+  if (idEl) {
+    idEl.textContent = profile.rollNumber || profile.id || 'N/A';
+  }
+  
+  // Update avatar initial
+  const initialEl = document.getElementById('student-avatar-initial');
+  if (initialEl) {
+    const nameParts = (profile.name || 'S').trim().split(' ');
+    if (nameParts.length > 0 && nameParts[0]) {
+      initialEl.textContent = nameParts[0].charAt(0).toUpperCase();
+    }
   }
 
   // Update Profile Image
@@ -565,11 +588,13 @@ function populateProfile(profile) {
     } else if (profileImg) {
       // Replace circle with img
       const btn = document.getElementById('student-profile-btn');
-      const caret = btn.querySelector('.fa-caret-down');
-      btn.innerHTML = `
-        <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
-        ${caret.outerHTML}
-      `;
+      if (btn) {
+        const caret = btn.querySelector('.fa-caret-down');
+        btn.innerHTML = `
+          <img src="${escapeAttr(avatarUrl)}" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid white;">
+          ${caret ? caret.outerHTML : '<i class="fas fa-caret-down"></i>'}
+        `;
+      }
     }
     // Also update modal preview
     const modalPreview = document.getElementById('profile-preview');
@@ -1232,6 +1257,21 @@ window.openEditProfileModal = async function() {
             document.getElementById('edit-profile-name').value = p.name || '';
             document.getElementById('edit-profile-email').value = p.email || '';
             
+            const fatherEl = document.getElementById('edit-profile-father-name');
+            if (fatherEl) fatherEl.value = p.fatherName || '';
+            
+            const motherEl = document.getElementById('edit-profile-mother-name');
+            if (motherEl) motherEl.value = p.motherName || '';
+            
+            const dobEl = document.getElementById('edit-profile-dob');
+            if (dobEl) {
+                let dobVal = '';
+                if (p.dateOfBirth) {
+                    dobVal = p.dateOfBirth.split('T')[0];
+                }
+                dobEl.value = dobVal;
+            }
+            
             if (p.avatar_url) {
                 document.getElementById('profile-preview').src = p.avatar_url;
             } else {
@@ -1291,11 +1331,18 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
     e.preventDefault();
     
     const name = document.getElementById('edit-profile-name').value;
+    const fatherName = document.getElementById('edit-profile-father-name')?.value || '';
+    const motherName = document.getElementById('edit-profile-mother-name')?.value || '';
+    const dateOfBirth = document.getElementById('edit-profile-dob')?.value || '';
     const fileInput = document.getElementById('profile-upload');
     const file = fileInput.files[0];
     
     const formData = new FormData();
     formData.append('name', name);
+    formData.append('fatherName', fatherName);
+    formData.append('motherName', motherName);
+    formData.append('dateOfBirth', dateOfBirth);
+    
     if (pendingProfileUpload) {
         formData.append('avatarUrl', pendingProfileUpload.url);
         formData.append('avatarDriveId', pendingProfileUpload.id);
@@ -1307,7 +1354,7 @@ document.getElementById('edit-profile-form')?.addEventListener('submit', async (
             alert('Profile updated successfully!');
             closeEditProfileModal();
             const userId = sessionStorage.getItem('studentUserId');
-            clearCache(userId, 'student_dashboard');
+            clearCache(userId, 'dashboard');
             loadDashboardData(userId);
         } else {
             alert(res.message || 'Failed to update profile');
@@ -1706,7 +1753,7 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
             subModal.style.display = 'none';
             // Clear cache to reflect submission in dashboard stats/list
             const userId = sessionStorage.getItem('studentUserId');
-            clearCache(userId, 'student_dashboard');
+            clearCache(userId, 'dashboard');
             
             // Dynamically update map to avoid immediate refetch
             window.studentSubmissionsMap.set(parseInt(hwId), { 

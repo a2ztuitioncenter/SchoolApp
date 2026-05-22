@@ -2,9 +2,10 @@ import { r2StorageService } from '../../utils/r2StorageService.js';
 import { getUserById } from '../auth/User.js';
 import { fileTypeFromBuffer } from 'file-type';
 import path from 'path';
+import fs from 'fs';
 
 export const updateProfile = async (req, res) => {
-    const { name, email, avatarUrl: bodyAvatarUrl, avatarDriveId: bodyAvatarDriveId } = req.body;
+    const { name, email, avatarUrl: bodyAvatarUrl, avatarDriveId: bodyAvatarDriveId, fatherName, motherName, dateOfBirth } = req.body;
     const userId = req.user.userId;
     const pool = req.db;
 
@@ -84,6 +85,39 @@ export const updateProfile = async (req, res) => {
 
         const updatedUser = result.rows[0];
 
+        // 3.1. Update students table if the user is a student
+        if (req.user.role === 'student') {
+            const updates = [];
+            const values = [userId];
+            let paramIdx = 2;
+            
+            if (name !== undefined) {
+                updates.push(`name = $${paramIdx++}`);
+                values.push(name);
+            }
+            if (fatherName !== undefined) {
+                updates.push(`father_name = $${paramIdx++}`);
+                values.push(fatherName || null);
+            }
+            if (motherName !== undefined) {
+                updates.push(`mother_name = $${paramIdx++}`);
+                values.push(motherName || null);
+            }
+            if (dateOfBirth !== undefined) {
+                updates.push(`date_of_birth = $${paramIdx++}`);
+                values.push(dateOfBirth || null);
+            }
+            
+            if (updates.length > 0) {
+                await pool.query(
+                    `UPDATE students
+                     SET ${updates.join(', ')}
+                     WHERE user_id = $1`,
+                    values
+                );
+            }
+        }
+
         res.json({
             success: true,
             message: 'Profile updated successfully',
@@ -97,6 +131,11 @@ export const updateProfile = async (req, res) => {
         });
     } catch (error) {
         console.error('[PROFILE] Update Error:', error);
+        try {
+            fs.writeFileSync('m:\\WebDev\\projects\\tuition-app\\backend\\error.log', `[${new Date().toISOString()}] Profile Update Error:\n${error.stack || error}\n\nRequest body:\n${JSON.stringify(req.body, null, 2)}\n\nUser:\n${JSON.stringify(req.user, null, 2)}\n`);
+        } catch (logErr) {
+            console.error('Failed to write to error.log:', logErr);
+        }
         res.status(500).json({ success: false, error: 'Failed to update profile' });
     }
 };
