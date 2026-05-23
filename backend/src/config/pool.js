@@ -26,7 +26,7 @@ const pool = new Pool({
   ssl: isLocal ? false : { rejectUnauthorized: false },
   max: parseInt(process.env.DB_POOL_SIZE || '10', 10),
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000
+  connectionTimeoutMillis: 30000
 });
 
 export default pool;

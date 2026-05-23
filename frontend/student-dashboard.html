@@ -98,6 +98,7 @@
                 <a href="#" class="nav-link" data-tab="notifications"><i class="fas fa-bell"></i> <span>Alerts</span></a>
                 <a href="#" class="nav-link" data-tab="submissions"><i class="fas fa-file-upload"></i> <span>Submissions</span></a>
                 <a href="#" class="nav-link" data-tab="results"><i class="fas fa-chart-bar"></i> <span>Results</span></a>
+                <a href="#" class="nav-link" data-tab="doubts"><i class="fas fa-question-circle"></i> <span>Ask Doubt</span></a>
             </nav>
         </aside>
 
@@ -251,6 +252,81 @@
                     <div id="submissions-list-container" class="submissions-list">
                         <p class="loading-text">Loading submissions...</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Ask Doubt Tab -->
+            <div id="tab-doubts" class="tab-content hidden-tab">
+                <div class="dashboard-grid">
+                    <section class="left-col">
+                        <div class="dashboard-card">
+                            <div class="submissions-header-center" style="margin-bottom: 20px;">
+                                <h2><i class="fas fa-question-circle"></i> Ask a Doubt</h2>
+                            </div>
+                            <form id="ask-doubt-form">
+                                <div class="form-group">
+                                    <label class="form-label-legacy">Select Subject</label>
+                                    <select id="doubt-subject-select" class="form-input-legacy" required>
+                                        <option value="">-- Choose Subject --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label-legacy">Assigned Teacher</label>
+                                    <select id="doubt-teacher-select" class="form-input-legacy cursor-not-allowed" required disabled>
+                                        <option value="">-- Auto-selected Teacher --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label-legacy">Doubt Title</label>
+                                    <input type="text" id="doubt-title" class="form-input-legacy" placeholder="e.g. Can't understand integration by parts" required max="200">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label-legacy">Doubt Description</label>
+                                    <textarea id="doubt-description" class="form-input-legacy" rows="5" placeholder="Explain your doubt in detail..." required style="resize: vertical;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label-legacy">Attach File (Optional: Image or PDF)</label>
+                                    <div class="file-upload-zone" id="doubt-drop-zone">
+                                        <i class="fas fa-cloud-upload-alt file-zone-icon"></i>
+                                        <p class="file-zone-text">Click or Drag & Drop</p>
+                                        <p class="file-zone-subtext">Max size: 10MB (PDF, JPG, PNG, DOCX)</p>
+                                        <input type="file" id="doubt-file-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" class="d-none">
+                                    </div>
+                                    <div id="doubt-upload-progress" style="display:none; margin: 15px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                                            <span id="doubt-upload-status" style="font-weight: 600; color: var(--text-main);">Uploading...</span>
+                                            <span id="doubt-upload-percent" style="color: var(--student-accent);">0%</span>
+                                        </div>
+                                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                                            <div id="doubt-upload-bar" style="width: 0%; height: 100%; background: var(--student-accent); transition: width 0.3s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div id="doubt-selected-file-info" class="hidden-tab file-display-box">
+                                        <div class="file-display-content">
+                                            <div class="file-display-item">
+                                                <i class="fas fa-file-pdf file-display-icon-pdf" id="doubt-file-icon"></i>
+                                                <span id="doubt-file-name-display" class="file-display-name">file_name.pdf</span>
+                                            </div>
+                                            <button type="button" id="doubt-remove-file-btn" class="file-remove-btn"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" id="submit-doubt-btn" class="btn-submit-assignment" style="width: 100%; margin-top: 15px;">
+                                    <i class="fas fa-paper-plane"></i> Submit Doubt
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                    <section class="right-col">
+                        <div class="dashboard-card">
+                            <div class="submissions-header-center" style="margin-bottom: 20px;">
+                                <h2><i class="fas fa-history"></i> Your Doubts History</h2>
+                            </div>
+                            <div id="student-doubts-list" class="submissions-list">
+                                <p class="loading-text">Loading doubts...</p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
 

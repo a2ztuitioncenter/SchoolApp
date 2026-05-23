@@ -1094,6 +1094,7 @@
                 <a href="#" class="nav-link" data-tab="timetable"><i class="fas fa-calendar-alt"></i> Timetable</a>
                 <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> Syllabus</a>
                 <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> Exam Result</a>
+                <a href="#" class="nav-link" data-tab="doubts"><i class="fas fa-question-circle"></i> Doubts</a>
             </nav>
             <!-- Mobile-only Bottom Navigation Bar -->
             <nav class="bottom-nav">
@@ -1106,6 +1107,7 @@
                 <a href="#" class="nav-link" data-tab="materials"><i class="fas fa-folder-open"></i> <span>Materials</span></a>
                 <a href="#" class="nav-link" data-tab="syllabus"><i class="fas fa-graduation-cap"></i> <span>Syllabus</span></a>
                 <a href="#" class="nav-link" data-tab="exam"><i class="fas fa-file-signature"></i> <span>Exam</span></a>
+                <a href="#" class="nav-link" data-tab="doubts"><i class="fas fa-question-circle"></i> <span>Doubts</span></a>
             </nav>
         </aside>
 
@@ -1721,6 +1723,28 @@
                     </div>
                 </div>
             </div>
+
+            <!-- =================== DOUBTS TAB =================== -->
+            <div id="tab-doubts" class="tab-content" style="display:none;">
+                <div class="section-header">
+                    <div>
+                        <h2><i class="fas fa-question-circle"></i> Student Doubts</h2>
+                        <p class="section-subtitle">View and answer doubts asked by your students</p>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 2rem; padding: 1.2rem;">
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-filter-doubt active-filter" id="btn-filter-all-doubts" onclick="filterTeacherDoubts('all')" style="padding: 6px 16px; border-radius: 20px;">All</button>
+                        <button class="btn btn-secondary btn-filter-doubt" id="btn-filter-pending-doubts" onclick="filterTeacherDoubts('pending')" style="padding: 6px 16px; border-radius: 20px;">Pending</button>
+                        <button class="btn btn-secondary btn-filter-doubt" id="btn-filter-answered-doubts" onclick="filterTeacherDoubts('answered')" style="padding: 6px 16px; border-radius: 20px;">Answered</button>
+                    </div>
+                </div>
+
+                <div id="teacher-doubts-list" class="submissions-list">
+                    <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading doubts...</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2050,6 +2074,78 @@
         <div class="drawer-footer">
             <button type="button" class="btn btn-secondary" onclick="closeReviewModal()">Cancel</button>
             <button type="submit" form="review-submission-form" id="submit-review-btn" class="btn btn-primary">Submit Review</button>
+        </div>
+    </div>
+
+    <!-- =================== DOUBT REPLY MODAL =================== -->
+    <div id="doubtReplyDrawerOverlay" class="drawer-overlay" onclick="closeDoubtReplyModal()"></div>
+    <div id="doubt-reply-modal" class="drawer">
+        <div class="drawer-header">
+            <h3><i class="fas fa-reply"></i> Answer Doubt</h3>
+            <button class="close-modal close" onclick="closeDoubtReplyModal()">&times;</button>
+        </div>
+        <div class="drawer-body">
+            <form id="doubt-reply-form">
+                <input type="hidden" id="reply-doubt-id">
+                
+                <div id="reply-doubt-student-info" style="margin-bottom: 1.5rem; padding: 1.2rem; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--ghost-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <span style="font-weight: 700; color: var(--text-main); font-size: 1rem;" id="reply-student-name">Student Name</span>
+                        <span class="badge" id="reply-doubt-status" style="font-size: 0.75rem;">Pending</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; display: flex; gap: 15px; flex-wrap: wrap;">
+                        <span><i class="fas fa-user-graduation"></i> Class: <span id="reply-student-class">-</span></span>
+                        <span><i class="fas fa-hashtag"></i> Roll: <span id="reply-student-roll">-</span></span>
+                        <span><i class="fas fa-book"></i> Subject: <span id="reply-doubt-subject">-</span></span>
+                    </div>
+                    <div style="border-top: 1px solid var(--ghost-border); padding-top: 10px; margin-top: 5px;">
+                        <h4 style="margin: 0 0 6px 0; color: var(--text-main); font-size: 0.9rem;" id="reply-doubt-title">Doubt Title</h4>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; white-space: pre-wrap;" id="reply-doubt-description">Doubt Description</p>
+                    </div>
+                    <div id="reply-doubt-attachment-wrapper" style="margin-top: 10px; display: none;">
+                        <button type="button" id="btn-download-student-attachment" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <i class="fas fa-paperclip"></i> View Student Attachment
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Solution / Explanation *</label>
+                    <textarea id="reply-solution-text" class="form-control" rows="5" placeholder="Explain your answer/solution in detail..." required style="resize: vertical;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Attach Solution File (Optional: Image or PDF)</label>
+                    <div class="file-upload-zone" id="teacher-doubt-drop-zone" style="border: 2px dashed var(--ghost-border); padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.3s ease;">
+                        <i class="fas fa-cloud-upload-alt file-zone-icon" style="font-size: 1.8rem; margin-bottom: 8px; color: var(--text-muted);"></i>
+                        <p class="file-zone-text" style="margin: 0; font-weight: 500; color: var(--text-main);">Click or Drag & Drop</p>
+                        <p class="file-zone-subtext" style="margin: 4px 0 0; font-size: 0.75rem; color: var(--text-muted);">Max size: 10MB (PDF, JPG, PNG, DOCX)</p>
+                        <input type="file" id="teacher-doubt-file-input" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" class="d-none">
+                    </div>
+                    <div id="teacher-doubt-upload-progress" style="display:none; margin: 15px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                            <span id="teacher-doubt-upload-status" style="font-weight: 600; color: var(--text-main);">Uploading...</span>
+                            <span id="teacher-doubt-upload-percent" style="color: var(--accent-blue);">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                            <div id="teacher-doubt-upload-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <div id="teacher-doubt-selected-file-info" class="hidden-tab file-display-box" style="display: none; margin-top: 10px; background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div class="file-display-content" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="file-display-item" style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-file-pdf file-display-icon-pdf" id="teacher-doubt-file-icon" style="color: #ff4d4d; font-size: 1.2rem;"></i>
+                                <span id="teacher-doubt-file-name-display" class="file-display-name" style="font-size: 0.85rem; color: var(--text-main); font-weight: 500;">solution.pdf</span>
+                            </div>
+                            <button type="button" id="teacher-doubt-remove-file-btn" class="file-remove-btn" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px;"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="drawer-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDoubtReplyModal()">Cancel</button>
+            <button type="submit" form="doubt-reply-form" id="submit-doubt-reply-btn" class="btn btn-primary">Submit Solution</button>
         </div>
     </div>
 

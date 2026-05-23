@@ -29,7 +29,7 @@ export const userModel = {
   `,
 };
 
-const MAP_USER = (u) => {
+export const MAP_USER = (u) => {
     if (!u) return null;
     return {
         id: u.id,

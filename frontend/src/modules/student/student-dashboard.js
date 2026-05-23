@@ -3,7 +3,7 @@
  * Fetches data on page load and populates DOM elements
  */
 
-import { studentAPI, downloadFile, materialsAPI, waitForBackend, profileAPI, contentAPI, submissionsAPI, assignmentsAPI, uploadFileWithProgress } from '../../core/api.js';
+import { studentAPI, downloadFile, materialsAPI, waitForBackend, profileAPI, contentAPI, submissionsAPI, assignmentsAPI, uploadFileWithProgress, doubtsAPI } from '../../core/api.js';
 import { requireRole, getUserId, syncToSessionStorage, logout as authLogout } from '../../core/auth-manager.js';
 import { escapeAttr, escapeHtml, safeFileName } from '../../core/sanitize.js';
 import { getCache, setCache, clearCache, CACHE_TTL } from '../../core/cache.js';
@@ -242,6 +242,10 @@ function setupTabSwitching() {
       if (tabId === 'submissions') {
         const userId = sessionStorage.getItem('studentUserId');
         if (userId) loadSubmissions(userId);
+      }
+
+      if (tabId === 'doubts') {
+        loadStudentDoubtsTab();
       }
     });
   });
@@ -1735,8 +1739,10 @@ document.getElementById('homework-submission-form')?.addEventListener('submit', 
     const formData = new FormData();
     formData.append('homeworkId', hwId);
     if (pendingSubmissionUpload) {
-        formData.append('attachmentId', pendingSubmissionUpload.id);
-        formData.append('fileUrl', pendingSubmissionUpload.url);
+        const attachmentId = pendingSubmissionUpload.data?.id || pendingSubmissionUpload.data?.fileId || pendingSubmissionUpload.id;
+        const fileUrl = pendingSubmissionUpload.data?.url || pendingSubmissionUpload.data?.downloadLink || pendingSubmissionUpload.url;
+        formData.append('attachmentId', attachmentId);
+        formData.append('fileUrl', fileUrl);
     } else if (file) {
         // Fallback for safety, though UI should prevent this
         formData.append('submission', file);
@@ -2087,4 +2093,299 @@ window.addEventListener('click', (e) => {
         }
     });
 });
+
+// ============================================
+// DOUBTS MODULE (STUDENT SIDE)
+// ============================================
+
+let pendingDoubtUpload = null;
+
+async function loadStudentDoubtsTab() {
+  try {
+    const doubtsList = document.getElementById('student-doubts-list');
+    if (doubtsList) {
+      doubtsList.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading doubts...</p>';
+    }
+
+    // Load subjects to populate dropdown
+    const classEl = document.getElementById('dropdown-student-class');
+    const sectionEl = document.getElementById('dropdown-student-section');
+    const classText = classEl ? classEl.textContent : '';
+    const sectionText = sectionEl ? sectionEl.textContent : '';
+    
+    const classMatch = classText.match(/Class: (\d+)/i);
+    const studentClass = classMatch ? classMatch[1] : '';
+    const studentSection = sectionText !== 'N/A' ? sectionText : '';
+
+    const { subjectsAPI } = await import('../../core/api.js');
+    const subjectsRes = await subjectsAPI.getAll(studentClass, studentSection);
+
+    if (subjectsRes && subjectsRes.success) {
+      window.studentSubjectsList = subjectsRes.data || [];
+      const subjectSelect = document.getElementById('doubt-subject-select');
+      if (subjectSelect) {
+        subjectSelect.innerHTML = '<option value="">-- Choose Subject --</option>';
+        window.studentSubjectsList.forEach(assignment => {
+          const opt = document.createElement('option');
+          opt.value = assignment.subject_id;
+          opt.textContent = `${assignment.name || assignment.master_name} (${assignment.teacher_name || 'No Teacher'})`;
+          subjectSelect.appendChild(opt);
+        });
+      }
+    }
+
+    // Load Past Doubts
+    const doubtsRes = await doubtsAPI.getStudentDoubts();
+    if (doubtsRes && doubtsRes.success) {
+      renderStudentDoubtsList(doubtsRes.data || []);
+    } else {
+      if (doubtsList) {
+        doubtsList.innerHTML = `<p class="empty-state" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Failed to load doubts: ${doubtsRes.error || 'Unknown error'}</p>`;
+      }
+    }
+  } catch (err) {
+    console.error('Error loading doubts tab:', err);
+  }
+}
+
+function renderStudentDoubtsList(doubts) {
+  const container = document.getElementById('student-doubts-list');
+  if (!container) return;
+
+  if (doubts.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 40px 20px; text-align: center;">
+        <i class="fas fa-question-circle" style="font-size: 3rem; color: var(--text-muted); opacity: 0.3; margin-bottom: 15px;"></i>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">You have not asked any doubts yet. Ask your first doubt using the form!</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = doubts.map(d => {
+    const isAnswered = d.status === 'answered';
+    return `
+      <div class="homework-item" style="flex-direction: column; align-items: stretch; padding: 1.5rem; border: 1px solid var(--ghost-border); border-radius: var(--radius-sm); background: var(--bg-secondary); margin-bottom: 15px; box-shadow: var(--shadow);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; gap: 10px;">
+          <span class="notification-badge ${isAnswered ? 'global' : ''}" style="margin: 0; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: uppercase;">
+            ${isAnswered ? '<i class="fas fa-check-circle"></i> Answered' : '<i class="fas fa-clock"></i> Pending'}
+          </span>
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums;">
+            ${formatDate(d.createdAt)}
+          </span>
+        </div>
+        <h4 style="margin: 0 0 8px 0; font-size: 1.05rem; color: var(--text-main); font-weight: 600;">${escapeHtml(d.title)}</h4>
+        <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 10px;">
+          Subject: <span style="color: var(--text-main); font-weight: 500;">${escapeHtml(d.subjectName || 'Unknown Subject')}</span> | 
+          Teacher: <span style="color: var(--text-main); font-weight: 500;">${escapeHtml(d.teacherName || 'Not Assigned')}</span>
+        </p>
+        <p style="font-size: 0.9rem; color: var(--text-main); margin-bottom: 12px; background: var(--bg-primary); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-blue); line-height: 1.4; white-space: pre-wrap;">${escapeHtml(d.description)}</p>
+        
+        ${d.attachmentUrl ? `
+          <button onclick="downloadFile('${escapeAttr(d.attachmentUrl)}', 'doubt_attachment')" class="btn-secondary" style="align-self: flex-start; margin-bottom: 10px; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.03); border: 1px solid var(--ghost-border); cursor: pointer; color: var(--text-main);">
+            <i class="fas fa-paperclip"></i> View Attached File
+          </button>
+        ` : ''}
+
+        ${isAnswered ? `
+          <div style="margin-top: 15px; padding: 15px; background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 8px;">
+            <h5 style="color: var(--accent-green); margin: 0 0 8px 0; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+              <i class="fas fa-comment-dots"></i> Teacher's Reply (${formatDate(d.answeredAt)}):
+            </h5>
+            <p style="font-size: 0.9rem; color: var(--text-main); margin-bottom: 10px; line-height: 1.4; white-space: pre-wrap;">${escapeHtml(d.solutionText)}</p>
+            ${d.solutionAttachmentUrl ? `
+              <button onclick="downloadFile('${escapeAttr(d.solutionAttachmentUrl)}', 'solution_file')" class="btn-submit-assignment" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; background: var(--gradient-primary); color: white; border: none;">
+                <i class="fas fa-download"></i> Download Solution Attachment
+              </button>
+            ` : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// Subject select event listener to auto-populate teacher
+const doubtSubjectSelect = document.getElementById('doubt-subject-select');
+if (doubtSubjectSelect) {
+  doubtSubjectSelect.addEventListener('change', (e) => {
+    const selectedSubId = e.target.value;
+    const teacherSelect = document.getElementById('doubt-teacher-select');
+    
+    if (!selectedSubId || !window.studentSubjectsList) {
+      if (teacherSelect) {
+        teacherSelect.innerHTML = '<option value="">-- Auto-selected Teacher --</option>';
+        teacherSelect.disabled = true;
+        teacherSelect.classList.add('cursor-not-allowed');
+      }
+      return;
+    }
+
+    const assignment = window.studentSubjectsList.find(a => String(a.subject_id) === String(selectedSubId));
+    if (teacherSelect && assignment) {
+      teacherSelect.innerHTML = `<option value="${assignment.teacher_id}" selected>${escapeHtml(assignment.teacher_name || 'No assigned teacher')}</option>`;
+      teacherSelect.disabled = false;
+      teacherSelect.classList.remove('cursor-not-allowed');
+    }
+  });
+}
+
+// File upload drag & drop for doubts
+const doubtFileInput = document.getElementById('doubt-file-input');
+const doubtDropZone = document.getElementById('doubt-drop-zone');
+const doubtRemoveFileBtn = document.getElementById('doubt-remove-file-btn');
+
+if (doubtDropZone) {
+  doubtDropZone.onclick = () => doubtFileInput.click();
+  
+  doubtDropZone.ondragover = (e) => {
+    e.preventDefault();
+    doubtDropZone.classList.add('drop-zone-active');
+  };
+  
+  doubtDropZone.ondragleave = () => {
+    doubtDropZone.classList.remove('drop-zone-active');
+  };
+  
+  doubtDropZone.ondrop = (e) => {
+    e.preventDefault();
+    doubtDropZone.classList.remove('drop-zone-active');
+    if (e.dataTransfer.files.length) {
+      doubtFileInput.files = e.dataTransfer.files;
+      handleDoubtFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+}
+
+if (doubtFileInput) {
+  doubtFileInput.onchange = async (e) => {
+    if (e.target.files.length) {
+      const file = e.target.files[0];
+      const valid = handleDoubtFileSelect(file);
+      if (valid) {
+        // Immediate upload to R2
+        const result = await handleStudentFileUpload(file, 'doubt', 'submit-doubt-btn', 'doubt');
+        if (result) {
+          pendingDoubtUpload = result;
+        }
+      }
+    }
+  };
+}
+
+function handleDoubtFileSelect(file) {
+  const infoZone = document.getElementById('doubt-selected-file-info');
+  const dropZone = document.getElementById('doubt-drop-zone');
+  const nameDisplay = document.getElementById('doubt-file-name-display');
+  const icon = document.getElementById('doubt-file-icon');
+  
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File size exceeds 10MB limit.');
+    if (doubtFileInput) doubtFileInput.value = '';
+    return false;
+  }
+  
+  const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx'];
+  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  if (!allowedExtensions.includes(ext)) {
+    alert('Only PDF, JPG, PNG, WEBP and DOC/DOCX files are allowed.');
+    if (doubtFileInput) doubtFileInput.value = '';
+    return false;
+  }
+  
+  if (nameDisplay) nameDisplay.textContent = file.name;
+  if (icon) {
+    if (ext === '.pdf') {
+      icon.className = 'fas fa-file-pdf file-display-icon-pdf';
+    } else if (ext === '.doc' || ext === '.docx') {
+      icon.className = 'fas fa-file-word file-display-icon-word';
+    } else {
+      icon.className = 'fas fa-file-image file-display-icon-img';
+    }
+  }
+  
+  if (dropZone) dropZone.style.display = 'none';
+  if (infoZone) {
+    infoZone.classList.remove('hidden-tab');
+    infoZone.classList.add('d-block');
+  }
+  return true;
+}
+
+if (doubtRemoveFileBtn) {
+  doubtRemoveFileBtn.onclick = (e) => {
+    e.stopPropagation();
+    const infoZone = document.getElementById('doubt-selected-file-info');
+    const dropZone = document.getElementById('doubt-drop-zone');
+    
+    if (doubtFileInput) doubtFileInput.value = '';
+    pendingDoubtUpload = null;
+    resetStudentUploadProgress('doubt');
+    
+    if (infoZone) {
+      infoZone.classList.add('hidden-tab');
+      infoZone.classList.remove('d-block');
+    }
+    if (dropZone) dropZone.style.display = 'flex';
+  };
+}
+
+// Handle ask doubt form submit
+const askDoubtForm = document.getElementById('ask-doubt-form');
+if (askDoubtForm) {
+  askDoubtForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const subjectId = document.getElementById('doubt-subject-select').value;
+    const teacherId = document.getElementById('doubt-teacher-select').value;
+    const title = document.getElementById('doubt-title').value;
+    const description = document.getElementById('doubt-description').value;
+    const submitBtn = document.getElementById('submit-doubt-btn');
+
+    if (!subjectId || !teacherId || !title.trim() || !description.trim()) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    }
+
+    try {
+      const payload = {
+        subjectId,
+        teacherId,
+        title,
+        description,
+        attachmentUrl: pendingDoubtUpload ? (pendingDoubtUpload.data?.url || pendingDoubtUpload.data?.downloadLink || pendingDoubtUpload.url) : null
+      };
+
+      const res = await doubtsAPI.create(payload);
+      if (res && res.success) {
+        alert('Doubt submitted successfully!');
+        
+        // Reset form
+        askDoubtForm.reset();
+        
+        // Trigger remove file behavior to clear drop zone
+        if (doubtRemoveFileBtn) doubtRemoveFileBtn.click();
+        
+        // Reload list
+        loadStudentDoubtsTab();
+      } else {
+        alert('Failed to submit doubt: ' + (res.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Error submitting doubt:', err);
+      alert('An error occurred while submitting your doubt.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Doubt';
+      }
+    }
+  });
+}
+
 

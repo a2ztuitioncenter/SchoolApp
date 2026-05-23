@@ -1,4 +1,4 @@
-import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI, uploadFileWithProgress, authAPI } from '../../core/api.js';
+import { teacherAPI, subjectsAPI, downloadFile, profileAPI, contentAPI, submissionsAPI, uploadFileWithProgress, authAPI, doubtsAPI } from '../../core/api.js';
 import { requireRole, getUserId, getUserRole, syncToSessionStorage, logout as authLogout, getUserName } from '../../core/auth-manager.js';
 import { escapeHtml, escapeAttr } from '../../core/sanitize.js';
 import { formatDate } from '../../core/utils.js';
@@ -46,6 +46,9 @@ let showAllMaterials = false;
 let pendingHwUpload = null;
 let pendingMaterialUpload = null;
 let pendingProfileUpload = null;
+let pendingTeacherDoubtUpload = null;
+let allTeacherDoubts = [];
+let activeDoubtFilter = 'all';
 
 // ─── Day helpers ──────────────────────────────────────────────────────────────
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -142,6 +145,7 @@ function setupTabs() {
         }
         if (tab === 'attendance') { initAttendanceTab(); initSummaryTab(); }
         if (tab === 'exam') initExamTab();
+        if (tab === 'doubts') loadTeacherDoubtsTab(signal);
       } catch (err) {
         if (err.name === 'AbortError') {
           console.log(`[DASHBOARD] Tab load aborted for: ${tab}`);
@@ -2561,6 +2565,7 @@ function resetTeacherUploadProgress(prefix) {
   if (prefix === 'hw') pendingHwUpload = null;
   if (prefix === 'material') pendingMaterialUpload = null;
   if (prefix === 'profile') pendingProfileUpload = null;
+  if (prefix === 'teacher-doubt') pendingTeacherDoubtUpload = null;
 }
 
 // Close modals when clicking outside
@@ -2583,8 +2588,334 @@ window.addEventListener('click', (e) => {
     if (id === 'cmsDrawerOverlay') closeCMSModal();
     if (id === 'homeworkSubmissionsDrawerOverlay') closeSubmissionsModal();
     if (id === 'reviewSubmissionDrawerOverlay') closeReviewModal();
+    if (id === 'doubtReplyDrawerOverlay') closeDoubtReplyModal();
   }
 });
+
+// ─── STUDENT DOUBTS ────────────────────────────────────────────────────────────
+
+// Load doubts tab
+async function loadTeacherDoubtsTab(signal) {
+  const container = document.getElementById('teacher-doubts-list');
+  if (!container) return;
+
+  container.innerHTML = `<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading doubts...</p>`;
+
+  try {
+    const res = await doubtsAPI.getTeacherDoubts({ signal });
+    if (res && res.success) {
+      allTeacherDoubts = res.data || [];
+      renderTeacherDoubtsList(allTeacherDoubts);
+    } else {
+      container.innerHTML = `<p class="empty-state" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> ${res.error || 'Failed to load doubts'}</p>`;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    console.error('Error loading teacher doubts:', err);
+    container.innerHTML = `<p class="empty-state" style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> An error occurred while loading doubts.</p>`;
+  }
+}
+
+// Render student doubts cards
+function renderTeacherDoubtsList(doubts) {
+  const container = document.getElementById('teacher-doubts-list');
+  if (!container) return;
+
+  // Filter based on active filter
+  const filtered = doubts.filter(d => {
+    if (activeDoubtFilter === 'pending') return d.status === 'pending';
+    if (activeDoubtFilter === 'answered') return d.status === 'answered';
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state-card card" style="padding: 2.5rem; text-align: center;">
+      <i class="fas fa-question-circle" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 15px; opacity: 0.5;"></i>
+      <p style="color: var(--text-main); font-weight: 600; margin-bottom: 5px;">No Doubts Found</p>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">No doubts match the current selection.</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(d => {
+    const isAnswered = d.status === 'answered';
+    const statusBadge = isAnswered 
+      ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="fas fa-check-circle"></i> Answered</span>`
+      : `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;"><i class="fas fa-clock"></i> Pending</span>`;
+
+    let attachmentBtn = '';
+    if (d.attachmentUrl) {
+      attachmentBtn = `
+        <button onclick="downloadFile('${escapeAttr(d.attachmentUrl)}', 'doubt_attachment')" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; cursor: pointer;">
+          <i class="fas fa-paperclip"></i> View Attachment
+        </button>
+      `;
+    }
+
+    let solutionBlock = '';
+    if (isAnswered) {
+      let solAttachmentBtn = '';
+      if (d.solutionAttachmentUrl) {
+        solAttachmentBtn = `
+          <button onclick="downloadFile('${escapeAttr(d.solutionAttachmentUrl)}', 'solution_attachment')" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; cursor: pointer;">
+            <i class="fas fa-file-download"></i> View Solution File
+          </button>
+        `;
+      }
+      solutionBlock = `
+        <div style="margin-top: 15px; padding: 12px; background: rgba(16, 185, 129, 0.05); border-left: 3px solid #10b981; border-radius: 4px;">
+          <p style="margin: 0 0 5px 0; font-weight: 700; color: var(--text-main); font-size: 0.85rem;"><i class="fas fa-check-circle" style="color: #10b981;"></i> Your Answer:</p>
+          <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); white-space: pre-wrap; line-height: 1.4;">${escapeHtml(d.solutionText)}</p>
+          ${solAttachmentBtn}
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; text-align: right;">
+            Answered on: ${formatDate(d.answeredAt)}
+          </div>
+        </div>
+      `;
+    }
+
+    const actionBtn = isAnswered
+      ? ''
+      : `<button onclick="openDoubtReplyModal(${d.id})" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.85rem; cursor: pointer;"><i class="fas fa-reply"></i> Answer Doubt</button>`;
+
+    return `
+      <div class="card doubt-card" style="margin-bottom: 1.5rem; transition: transform 0.2s ease;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--ghost-border); padding-bottom: 12px; margin-bottom: 12px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+              <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-main); font-weight: 700;">${escapeHtml(d.title)}</h3>
+              ${statusBadge}
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; gap: 15px; flex-wrap: wrap;">
+              <span><i class="fas fa-user-graduation"></i> <strong>${escapeHtml(d.studentName)}</strong> (Roll: ${d.studentRollNumber})</span>
+              <span><i class="fas fa-school"></i> Class ${escapeHtml(d.studentClassLevel)} - ${escapeHtml(d.studentSection)}</span>
+              <span><i class="fas fa-book"></i> ${escapeHtml(d.subjectName)}</span>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right;">
+            Asked: ${formatDate(d.createdAt)}
+          </div>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin: 0; white-space: pre-wrap;">${escapeHtml(d.description)}</p>
+        
+        ${attachmentBtn}
+        
+        ${solutionBlock}
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 15px; border-top: 1px solid var(--ghost-border); padding-top: 12px;">
+          ${actionBtn}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Global filter handler
+window.filterTeacherDoubts = function(status) {
+  activeDoubtFilter = status;
+  
+  // Update buttons classes
+  document.querySelectorAll('.btn-filter-doubt').forEach(btn => {
+    btn.classList.remove('active-filter');
+  });
+
+  if (status === 'all') document.getElementById('btn-filter-all-doubts')?.classList.add('active-filter');
+  if (status === 'pending') document.getElementById('btn-filter-pending-doubts')?.classList.add('active-filter');
+  if (status === 'answered') document.getElementById('btn-filter-answered-doubts')?.classList.add('active-filter');
+
+  renderTeacherDoubtsList(allTeacherDoubts);
+};
+
+// Modal functions
+window.openDoubtReplyModal = function(id) {
+  const doubt = allTeacherDoubts.find(d => d.id === id);
+  if (!doubt) return;
+
+  document.getElementById('reply-doubt-id').value = doubt.id;
+  document.getElementById('reply-student-name').textContent = doubt.studentName;
+  document.getElementById('reply-student-class').textContent = `${doubt.studentClassLevel} - ${doubt.studentSection}`;
+  document.getElementById('reply-student-roll').textContent = doubt.studentRollNumber;
+  document.getElementById('reply-doubt-subject').textContent = doubt.subjectName;
+  document.getElementById('reply-doubt-title').textContent = doubt.title;
+  document.getElementById('reply-doubt-description').textContent = doubt.description;
+
+  const statusBadge = document.getElementById('reply-doubt-status');
+  if (statusBadge) {
+    statusBadge.textContent = 'Pending';
+    statusBadge.className = 'badge';
+    statusBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+    statusBadge.style.color = '#f59e0b';
+  }
+
+  // Handle student attachment view button
+  const attachWrapper = document.getElementById('reply-doubt-attachment-wrapper');
+  const attachBtn = document.getElementById('btn-download-student-attachment');
+  if (doubt.attachmentUrl && attachWrapper && attachBtn) {
+    attachWrapper.style.display = 'block';
+    attachBtn.onclick = () => downloadFile(doubt.attachmentUrl, 'student_attachment');
+  } else if (attachWrapper) {
+    attachWrapper.style.display = 'none';
+  }
+
+  // Reset form
+  document.getElementById('reply-solution-text').value = '';
+  pendingTeacherDoubtUpload = null;
+  resetTeacherUploadProgress('teacher-doubt');
+  
+  // Hide selected file display
+  const fileInfo = document.getElementById('teacher-doubt-selected-file-info');
+  if (fileInfo) fileInfo.style.display = 'none';
+
+  // Show overlay and drawer
+  document.getElementById('doubtReplyDrawerOverlay').style.display = 'block';
+  document.getElementById('doubt-reply-modal').classList.add('open');
+};
+
+window.closeDoubtReplyModal = function() {
+  document.getElementById('doubtReplyDrawerOverlay').style.display = 'none';
+  document.getElementById('doubt-reply-modal').classList.remove('open');
+};
+
+// Form submission handler
+document.getElementById('doubt-reply-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('reply-doubt-id').value;
+  const solutionText = document.getElementById('reply-solution-text').value;
+
+  if (!solutionText || solutionText.trim() === '') {
+    showError('Solution explanation is required.');
+    return;
+  }
+
+  const btn = document.getElementById('submit-doubt-reply-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    const payload = {
+      solutionText,
+      solutionAttachmentUrl: pendingTeacherDoubtUpload
+    };
+
+    const res = await doubtsAPI.answer(id, payload);
+    if (res && res.success) {
+      showSuccess('Doubt answered successfully!');
+      closeDoubtReplyModal();
+      
+      // Reload doubts
+      if (moduleAbortController) {
+        moduleAbortController.abort();
+      }
+      moduleAbortController = new AbortController();
+      loadTeacherDoubtsTab(moduleAbortController.signal);
+    } else {
+      showError(res.error || 'Failed to submit solution.');
+    }
+  } catch (err) {
+    console.error('Error submitting doubt solution:', err);
+    showError('An error occurred. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit Solution';
+  }
+});
+
+// Drag & drop file upload for solutions
+function initDoubtReplyUploader() {
+  const fileInput = document.getElementById('teacher-doubt-file-input');
+  const dropZone = document.getElementById('teacher-doubt-drop-zone');
+  const removeFileBtn = document.getElementById('teacher-doubt-remove-file-btn');
+
+  if (dropZone && fileInput) {
+    dropZone.onclick = () => fileInput.click();
+
+    dropZone.ondragover = (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--accent-blue)';
+      dropZone.style.background = 'var(--bg-hover)';
+    };
+
+    dropZone.ondragleave = () => {
+      dropZone.style.borderColor = 'var(--ghost-border)';
+      dropZone.style.background = 'none';
+    };
+
+    dropZone.ondrop = async (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--ghost-border)';
+      dropZone.style.background = 'none';
+
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        fileInput.files = e.dataTransfer.files;
+        await triggerDoubtSolutionUpload(e.dataTransfer.files[0]);
+      }
+    };
+
+    fileInput.onchange = async () => {
+      if (fileInput.files && fileInput.files[0]) {
+        await triggerDoubtSolutionUpload(fileInput.files[0]);
+      }
+    };
+  }
+
+  if (removeFileBtn) {
+    removeFileBtn.onclick = (e) => {
+      e.stopPropagation();
+      pendingTeacherDoubtUpload = null;
+      if (fileInput) fileInput.value = '';
+      resetTeacherUploadProgress('teacher-doubt');
+      
+      const fileInfo = document.getElementById('teacher-doubt-selected-file-info');
+      if (fileInfo) fileInfo.style.display = 'none';
+    };
+  }
+}
+
+async function triggerDoubtSolutionUpload(file) {
+  if (file.size > 10 * 1024 * 1024) {
+    showError('File exceeds the 10MB limit.');
+    const fileInput = document.getElementById('teacher-doubt-file-input');
+    if (fileInput) fileInput.value = '';
+    return;
+  }
+
+  const result = await handleTeacherFileUpload(file, 'teacher-doubt', 'submit-doubt-reply-btn', 'solution');
+  if (result && result.success) {
+    pendingTeacherDoubtUpload = result.data?.url || result.data?.downloadLink || result.downloadUrl;
+    
+    // Show selected file box
+    const fileInfo = document.getElementById('teacher-doubt-selected-file-info');
+    const nameDisplay = document.getElementById('teacher-doubt-file-name-display');
+    const icon = document.getElementById('teacher-doubt-file-icon');
+
+    if (fileInfo && nameDisplay && icon) {
+      nameDisplay.textContent = file.name;
+      
+      // Select appropriate icon
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+        icon.className = 'fas fa-file-image';
+        icon.style.color = '#4caf50';
+      } else if (['doc', 'docx'].includes(ext)) {
+        icon.className = 'fas fa-file-word';
+        icon.style.color = '#2196f3';
+      } else {
+        icon.className = 'fas fa-file-pdf';
+        icon.style.color = '#ff4d4d';
+      }
+
+      fileInfo.style.display = 'block';
+    }
+  } else {
+    pendingTeacherDoubtUpload = null;
+    const fileInput = document.getElementById('teacher-doubt-file-input');
+    if (fileInput) fileInput.value = '';
+  }
+}
+
+// Initialize on script execution
+initDoubtReplyUploader();
 
 
 

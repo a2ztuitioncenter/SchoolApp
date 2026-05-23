@@ -510,6 +510,16 @@ export const assignmentsAPI = {
 };
 
 /**
+ * Doubts API
+ */
+export const doubtsAPI = {
+  create: (data, options = {}) => apiCall('/doubts', { method: 'POST', body: JSON.stringify(data), ...options }),
+  getStudentDoubts: (options = {}) => apiCall('/doubts/student', { method: 'GET', ...options }),
+  getTeacherDoubts: (options = {}) => apiCall('/doubts/teacher', { method: 'GET', ...options }),
+  answer: (id, data, options = {}) => apiCall(`/doubts/${id}/answer`, { method: 'PUT', body: JSON.stringify(data), ...options }),
+};
+
+/**
  * Teacher APIs
  */
 /**

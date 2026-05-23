@@ -15,6 +15,8 @@ import { resultsModel } from '../features/results/resultsModel.js';
 import { contentPageModel } from '../features/admin/ContentPage.js';
 import { storageModel } from '../features/storage/Storage.js';
 import { auditLogModel } from '../features/admin/AuditLog.js';
+import { doubtModel } from '../features/doubts/doubtModel.js';
+
 
 import pool from './pool.js';
 
@@ -42,6 +44,8 @@ export async function initializeDatabase() {
         await pool.query(resultsModel.schema);
         await pool.query(contentPageModel.schema);
         await pool.query(storageModel.schema);
+        await pool.query(doubtModel.schema);
+
         console.log('Tables checked/created.');
 
         await seedContentPages();
