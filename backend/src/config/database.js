@@ -20,9 +20,201 @@ import { doubtModel } from '../features/doubts/doubtModel.js';
 
 import pool from './pool.js';
 
+const globalSnakeCaseMigration = `
+  DO $$ 
+  BEGIN 
+    -- 1. users table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='users') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='isActive') THEN
+        ALTER TABLE users RENAME COLUMN "isActive" TO is_active;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='statusUpdatedAt') THEN
+        ALTER TABLE users RENAME COLUMN "statusUpdatedAt" TO status_updated_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='schoolId') THEN
+        ALTER TABLE users RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='createdAt') THEN
+        ALTER TABLE users RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='teacherId') THEN
+        ALTER TABLE users RENAME COLUMN "teacherId" TO teacher_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='approvedBy') THEN
+        ALTER TABLE users RENAME COLUMN "approvedBy" TO approved_by;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='rejectionReason') THEN
+        ALTER TABLE users RENAME COLUMN "rejectionReason" TO rejection_reason;
+      END IF;
+    END IF;
+
+    -- 2. students table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='students') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='userId') THEN
+        ALTER TABLE students RENAME COLUMN "userId" TO user_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='createdAt') THEN
+        ALTER TABLE students RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+    END IF;
+
+    -- 3. fees table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='fees') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='studentId') THEN
+        ALTER TABLE fees RENAME COLUMN "studentId" TO student_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='userId') THEN
+        ALTER TABLE fees RENAME COLUMN "userId" TO user_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='dueDate') THEN
+        ALTER TABLE fees RENAME COLUMN "dueDate" TO due_date;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='isPaid') THEN
+        ALTER TABLE fees RENAME COLUMN "isPaid" TO is_paid;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='paidDate') THEN
+        ALTER TABLE fees RENAME COLUMN "paidDate" TO paid_date;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='createdAt') THEN
+        ALTER TABLE fees RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='schoolId') THEN
+        ALTER TABLE fees RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+    END IF;
+
+    -- 4. attendance table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='attendance') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attendance' AND column_name='userId') THEN
+        ALTER TABLE attendance RENAME COLUMN "userId" TO user_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attendance' AND column_name='createdAt') THEN
+        ALTER TABLE attendance RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attendance' AND column_name='schoolId') THEN
+        ALTER TABLE attendance RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+    END IF;
+
+    -- 5. timetable table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='timetable') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='dayOfWeek') THEN
+        ALTER TABLE timetable RENAME COLUMN "dayOfWeek" TO day_of_week;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='startTime') THEN
+        ALTER TABLE timetable RENAME COLUMN "startTime" TO start_time;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='endTime') THEN
+        ALTER TABLE timetable RENAME COLUMN "endTime" TO end_time;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='teacherId') THEN
+        ALTER TABLE timetable RENAME COLUMN "teacherId" TO teacher_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='classLevel') THEN
+        ALTER TABLE timetable RENAME COLUMN "classLevel" TO class_level;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='createdAt') THEN
+        ALTER TABLE timetable RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='schoolId') THEN
+        ALTER TABLE timetable RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+    END IF;
+
+    -- 6. syllabus table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='syllabus') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='syllabus' AND column_name='teacherId') THEN
+        ALTER TABLE syllabus RENAME COLUMN "teacherId" TO teacher_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='syllabus' AND column_name='classLevel') THEN
+        ALTER TABLE syllabus RENAME COLUMN "classLevel" TO class_level;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='syllabus' AND column_name='createdAt') THEN
+        ALTER TABLE syllabus RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+    END IF;
+
+    -- 7. teacher_class_assignment table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='teacher_class_assignment') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teacher_class_assignment' AND column_name='teacherId') THEN
+        ALTER TABLE teacher_class_assignment RENAME COLUMN "teacherId" TO teacher_id;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teacher_class_assignment' AND column_name='classLevel') THEN
+        ALTER TABLE teacher_class_assignment RENAME COLUMN "classLevel" TO class_level;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teacher_class_assignment' AND column_name='createdAt') THEN
+        ALTER TABLE teacher_class_assignment RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teacher_class_assignment' AND column_name='schoolId') THEN
+        ALTER TABLE teacher_class_assignment RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+    END IF;
+
+    -- 8. notifications table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='notifications') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='attachmentUrl') THEN
+        ALTER TABLE notifications RENAME COLUMN "attachmentUrl" TO attachment_url;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='recipientRole') THEN
+        ALTER TABLE notifications RENAME COLUMN "recipientRole" TO recipient_role;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='classLevel') THEN
+        ALTER TABLE notifications RENAME COLUMN "classLevel" TO class_level;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='createdBy') THEN
+        ALTER TABLE notifications RENAME COLUMN "createdBy" TO created_by;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='createdAt') THEN
+        ALTER TABLE notifications RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='notifications' AND column_name='schoolId') THEN
+        ALTER TABLE notifications RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+    END IF;
+
+    -- 9. exam_results table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='exam_results') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='exam_results' AND column_name='createdAt') THEN
+        ALTER TABLE exam_results RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+    END IF;
+
+    -- 10. homework table
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='homework') THEN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='homework' AND column_name='createdAt') THEN
+        ALTER TABLE homework RENAME COLUMN "createdAt" TO created_at;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='homework' AND column_name='schoolId') THEN
+        ALTER TABLE homework RENAME COLUMN "schoolId" TO school_id;
+      END IF;
+    END IF;
+  END $$;
+`;
+
+const userPushTokensSchema = `
+  CREATE TABLE IF NOT EXISTS user_push_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      push_token VARCHAR(255) NOT NULL,
+      device_name VARCHAR(100),
+      os VARCHAR(50),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, push_token)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id);
+`;
+
 export async function initializeDatabase() {
     try {
         console.log('Checking/Creating database tables...');
+        
+        // 1. Run global snake_case rename migrations safely
+        console.log('[INIT] Applying safe database migrations (snake_case column mapping)...');
+        await pool.query(globalSnakeCaseMigration);
+
+        // 2. Ensure user_push_tokens table is created
+        console.log('[INIT] Ensuring user_push_tokens table exists...');
+        await pool.query(userPushTokensSchema);
         
         // Run migrations for tables that underwent snake_case transition
         if (resultsModel.migration) await pool.query(resultsModel.migration);
