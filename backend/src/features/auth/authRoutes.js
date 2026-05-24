@@ -209,8 +209,9 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
       student: studentData ? {
         id: studentData.id,
         name: studentData.name,
-        rollNumber: studentData.roll_number,
-        classLevel: studentData.class_level,
+        rollNumber: studentData.rollNumber,
+        classLevel: studentData.classLevel,
+        section: studentData.section,
       } : null,
       userId: user.id,
       token: accessToken,
