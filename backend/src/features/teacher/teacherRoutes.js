@@ -759,4 +759,40 @@ router.get('/subjects', async (req, res) => {
   }
 });
 
+// GET /api/teacher/students/:teacherId
+router.get('/students/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const pool = req.db;
+    const teacher = await requireTeacher(req, teacherId);
+    if (!teacher) return res.status(403).json({ success: false, error: 'Unauthorized' });
+
+    const result = await pool.query(
+      `SELECT id, name, class_level as "classLevel", section, father_name as "fatherName", 
+              mother_name as "motherName", phone, email, roll_number as "rollNumber", 
+              joining_date as "joiningDate", date_of_birth as "dateOfBirth", status 
+       FROM students 
+       WHERE school_id = $1 AND (
+         (class_level, section) IN (
+           SELECT class_level, section FROM subject_assignments WHERE teacher_id = $2
+           UNION
+           SELECT class_level, section FROM teacher_class_assignment WHERE teacher_id = $2
+         )
+         OR class_level IN (
+           SELECT class_level FROM subject_assignments WHERE teacher_id = $2 AND (section IS NULL OR section = 'ALL')
+           UNION
+           SELECT class_level FROM teacher_class_assignment WHERE teacher_id = $2 AND (section IS NULL OR section = 'ALL')
+         )
+       )
+       ORDER BY class_level, section, name ASC`,
+      [req.user.schoolId, teacher.id]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('Fetch teacher students error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch assigned students' });
+  }
+});
+
 export default router;
