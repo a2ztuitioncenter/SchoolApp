@@ -218,7 +218,7 @@ router.post('/login', validateBody(loginSchema), async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    res.status(500).json({ error: 'Server error during login', details: error.message });
   }
 });
 
@@ -404,7 +404,7 @@ router.post('/teacher-login', validateBody(teacherLoginSchema), async (req, res)
     });
   } catch (error) {
     console.error('Teacher login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    res.status(500).json({ error: 'Server error during login', details: error.message });
   }
 });
 
