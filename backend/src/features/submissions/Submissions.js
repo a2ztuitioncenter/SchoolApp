@@ -1,6 +1,41 @@
 import db from '../../config/pool.js';
 
 export const submissionModel = {
+    formatRow(row) {
+        if (!row) return null;
+        return {
+            id: row.id,
+            homeworkId: row.homework_id,
+            homework_id: row.homework_id,
+            studentId: row.student_id,
+            student_id: row.student_id,
+            fileUrl: row.file_url,
+            file_url: row.file_url,
+            status: row.status,
+            submittedAt: row.submitted_at,
+            submitted_at: row.submitted_at,
+            remark: row.remark_text,
+            remarkText: row.remark_text,
+            remark_text: row.remark_text,
+            marks: row.marks,
+            reviewedBy: row.reviewed_by,
+            reviewed_by: row.reviewed_by,
+            reviewedAt: row.reviewed_at,
+            reviewed_at: row.reviewed_at,
+            studentName: row.student_name,
+            student_name: row.student_name,
+            homeworkTitle: row.homework_title,
+            homework_title: row.homework_title,
+            classLevel: row.class_level,
+            class_level: row.class_level,
+            section: row.section,
+            reviewerName: row.reviewer_name,
+            reviewer_name: row.reviewer_name,
+            rollNumber: row.roll_number,
+            roll_number: row.roll_number
+        };
+    },
+
     async createOrUpdate({ homeworkId, studentId, fileUrl }) {
         // Normalize file URL: ensure it starts with / but not /api/
         const normalizedFileUrl = fileUrl ? fileUrl.replace(/^\/api/, '') : null;

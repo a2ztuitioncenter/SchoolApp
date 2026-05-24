@@ -75,7 +75,7 @@ export const submitHomework = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Homework submitted successfully',
-            data: submission
+            data: submissionModel.formatRow(submission)
         });
     } catch (err) {
         console.error('submitHomework error:', err);
@@ -101,7 +101,7 @@ export const getStudentSubmissions = async (req, res) => {
         }
 
         const submissions = await submissionModel.getAllStudentSubmissions(student.id);
-        res.json({ success: true, data: submissions });
+        res.json({ success: true, data: submissions.map(s => submissionModel.formatRow(s)) });
     } catch (err) {
         console.error('getStudentSubmissions error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
@@ -127,7 +127,7 @@ export const getHomeworkSubmissions = async (req, res) => {
         }
 
         const submissions = await submissionModel.getHomeworkSubmissions(homeworkId);
-        res.json({ success: true, data: submissions });
+        res.json({ success: true, data: submissions.map(s => submissionModel.formatRow(s)) });
     } catch (err) {
         console.error('getHomeworkSubmissions error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
@@ -138,7 +138,7 @@ export const getTeacherSubmissions = async (req, res) => {
     try {
         const teacherId = req.user.userId;
         const submissions = await submissionModel.getTeacherSubmissions(teacherId);
-        res.json({ success: true, data: submissions });
+        res.json({ success: true, data: submissions.map(s => submissionModel.formatRow(s)) });
     } catch (err) {
         console.error('getTeacherSubmissions error:', err);
         res.status(500).json({ success: false, error: 'Failed to fetch submissions' });
@@ -186,7 +186,7 @@ export const reviewSubmission = async (req, res) => {
             })
             .catch(dbErr => console.error('[PushNotify] Student fetch failed:', dbErr.message));
 
-        res.json({ success: true, message: 'Submission reviewed successfully', data: updated });
+        res.json({ success: true, message: 'Submission reviewed successfully', data: submissionModel.formatRow(updated) });
     } catch (err) {
         console.error('reviewSubmission error:', err);
         res.status(500).json({ success: false, error: 'Failed to review submission' });
