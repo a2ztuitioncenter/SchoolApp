@@ -250,7 +250,15 @@ const startServer = async () => {
       res.status(500).json({ error: 'Internal server error' });
     });
 
-    // 6. DB Initialization (Conditional)
+    // 6. DB Initialization (Conditional & Hotfixes)
+    try {
+      console.log('[INIT] Running database hotfix migrations...');
+      await pool.query('ALTER TABLE students ADD COLUMN IF NOT EXISTS address TEXT');
+      console.log('[INIT] Database hotfix migrations completed successfully.');
+    } catch (migErr) {
+      console.error('[INIT] Database hotfix migration failed:', migErr.message);
+    }
+
     const shouldInitializeDB = process.env.INITIALIZE_DB === 'true';
     if (shouldInitializeDB) {
       console.log('[INIT] Initializing database schema...');
