@@ -337,22 +337,46 @@ router.get('/attendance/sheet', async (req, res) => {
       return res.status(403).json({ success: false, error: 'You are not assigned to this class' });
     }
 
-    let studentsQuery = `SELECT id, name, roll_number FROM students WHERE class_level = $1`;
-    let studentsParams = [classLevel];
-    if (section) {
-      studentsQuery += ` AND section = $2`;
-      studentsParams.push(section);
-    }
-    studentsQuery += ` ORDER BY name`;
+    let studentsQuery = `SELECT id, name, roll_number FROM students WHERE class_level = $1 AND school_id = $2`;
+    let studentsParams = [classLevel, req.user.schoolId];
 
     let existingQuery = `SELECT a.student_id, a.is_present FROM attendance a
                         JOIN students s ON a.student_id = s.id
-                        WHERE s.class_level = $1`;
-    let existingParams = [classLevel];
+                        WHERE s.class_level = $1 AND s.school_id = $2`;
+    let existingParams = [classLevel, req.user.schoolId];
+
     if (section) {
-      existingQuery += ` AND s.section = $2`;
+      studentsQuery += ` AND section = $3`;
+      studentsParams.push(section);
+
+      existingQuery += ` AND s.section = $3`;
       existingParams.push(section);
+    } else {
+      // Fetch teacher's specific assigned sections to only show what they teach when section is null/All
+      const assignmentsRes = await pool.query(
+        `SELECT section FROM subject_assignments WHERE teacher_id = $1 AND class_level = $2
+         UNION
+         SELECT section FROM teacher_class_assignment WHERE teacher_id = $1 AND class_level = $2`,
+        [teacher.id, classLevel]
+      );
+      const assignedSections = assignmentsRes.rows.map(r => r.section).filter(Boolean);
+      const hasAllSections = assignmentsRes.rows.some(r => r.section === 'ALL' || r.section === null);
+
+      if (!hasAllSections) {
+        if (assignedSections.length > 0) {
+          studentsQuery += ` AND section = ANY($3)`;
+          studentsParams.push(assignedSections);
+
+          existingQuery += ` AND s.section = ANY($3)`;
+          existingParams.push(assignedSections);
+        } else {
+          // No section assignments, return empty
+          studentsQuery += ` AND 1 = 0`;
+          existingQuery += ` AND 1 = 0`;
+        }
+      }
     }
+    studentsQuery += ` ORDER BY name`;
     existingQuery += ` AND a.date = $${existingParams.length + 1}`;
     existingParams.push(date);
 
@@ -400,23 +424,27 @@ router.post('/attendance/mark-bulk', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission for this class/section' });
     }
 
-    // Verify all student IDs exist, are in the correct class/section, and share the school boundary
+    // Verify all student IDs exist, are in the correct class, and share the school boundary
     const uniqueStudentIds = [...new Set(records.map(r => r.studentId))];
-    let studentCheckQuery = `SELECT COUNT(*) as count FROM students 
-                             WHERE id = ANY($1) 
-                               AND class_level = $2 
-                               AND school_id = $3`;
-    let studentCheckParams = [uniqueStudentIds, classLevel, req.user.schoolId];
-    if (section) {
-      studentCheckQuery += ` AND (section = $4 OR (section IS NULL AND $4 = 'A'))`;
-      studentCheckParams.push(section);
-    } else {
-      studentCheckQuery += ` AND (section IS NULL OR section = 'A')`;
+    const studentCheckRes = await pool.query(
+      `SELECT id, name, class_level, section FROM students 
+       WHERE id = ANY($1) 
+         AND class_level = $2 
+         AND school_id = $3`,
+      [uniqueStudentIds, classLevel, req.user.schoolId]
+    );
+
+    if (studentCheckRes.rows.length !== uniqueStudentIds.length) {
+      return res.status(403).json({ success: false, error: 'Forbidden: One or more students do not belong to the authorized class, section, or school boundary' });
     }
 
-    const studentCheckRes = await pool.query(studentCheckQuery, studentCheckParams);
-    if (parseInt(studentCheckRes.rows[0].count, 10) !== uniqueStudentIds.length) {
-      return res.status(403).json({ success: false, error: 'Forbidden: One or more students do not belong to the authorized class, section, or school boundary' });
+    // Verify teacher has permission for each student's specific section
+    for (const student of studentCheckRes.rows) {
+      const studentSection = student.section || null;
+      const hasStudentPermission = await checkTeacherClassPermission(pool, teacher.id, classLevel, studentSection);
+      if (!hasStudentPermission) {
+        return res.status(403).json({ success: false, error: `Forbidden: You do not have permission to mark attendance for student ${student.name || student.id} in section ${studentSection || 'ALL'}` });
+      }
     }
 
     const client = await pool.connect();
