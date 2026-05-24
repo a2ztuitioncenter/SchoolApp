@@ -16,6 +16,7 @@ import { contentPageModel } from '../features/admin/ContentPage.js';
 import { storageModel } from '../features/storage/Storage.js';
 import { auditLogModel } from '../features/admin/AuditLog.js';
 import { doubtModel } from '../features/doubts/doubtModel.js';
+import { supportModel } from '../features/support/Support.js';
 
 
 import pool from './pool.js';
@@ -237,6 +238,11 @@ export async function initializeDatabase() {
         await pool.query(contentPageModel.schema);
         await pool.query(storageModel.schema);
         await pool.query(doubtModel.schema);
+        await pool.query(supportModel.schema);
+        
+        // 3. Migration: Add address column to students table if not exists
+        console.log('[INIT] Running database migration: address column for students...');
+        await pool.query('ALTER TABLE students ADD COLUMN IF NOT EXISTS address TEXT');
 
         console.log('Tables checked/created.');
 

@@ -1,0 +1,2801 @@
+{
+  "timestamp": "2026-05-24T05:15:06.915Z",
+  "database": "production",
+  "tables": {
+    "academic_classes": [
+      {
+        "id": 1,
+        "class_name": "10",
+        "created_at": "2026-04-19T11:07:13.066Z"
+      },
+      {
+        "id": 73,
+        "class_name": "12",
+        "created_at": "2026-04-24T12:16:38.218Z"
+      }
+    ],
+    "academic_sections": [
+      {
+        "id": 1,
+        "class_id": 1,
+        "section_name": "A",
+        "created_at": "2026-04-19T11:07:13.066Z"
+      },
+      {
+        "id": 2,
+        "class_id": 1,
+        "section_name": "B",
+        "created_at": "2026-04-19T11:07:13.066Z"
+      },
+      {
+        "id": 144,
+        "class_id": 73,
+        "section_name": "A",
+        "created_at": "2026-04-24T12:16:38.638Z"
+      }
+    ],
+    "app_files": [
+      {
+        "id": 12,
+        "drive_file_id": "1778754755197_1000454526.jpg",
+        "file_name": "1778754755197_1000454526.jpg",
+        "class_level": "12",
+        "section": "A",
+        "uploaded_by": 12,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "73270",
+        "web_view_link": "/uploads/1778754755197_1000454526.jpg",
+        "download_link": "/uploads/1778754755197_1000454526.jpg",
+        "created_at": "2026-05-14T05:02:35.227Z"
+      },
+      {
+        "id": 13,
+        "drive_file_id": "1778755086880_Screenshot_2026-05-10-10-22-40-84_1c337646f29875672b5a61192b9010f9.jpg",
+        "file_name": "1778755086880_Screenshot_2026-05-10-10-22-40-84_1c337646f29875672b5a61192b9010f9.jpg",
+        "class_level": "12",
+        "section": "A",
+        "uploaded_by": 12,
+        "file_type": "material",
+        "mime_type": "image/jpeg",
+        "file_size": "613906",
+        "web_view_link": "/uploads/1778755086880_Screenshot_2026-05-10-10-22-40-84_1c337646f29875672b5a61192b9010f9.jpg",
+        "download_link": "/uploads/1778755086880_Screenshot_2026-05-10-10-22-40-84_1c337646f29875672b5a61192b9010f9.jpg",
+        "created_at": "2026-05-14T05:08:06.907Z"
+      },
+      {
+        "id": 14,
+        "drive_file_id": "1778755209418_IMG_20260514_095557.jpg",
+        "file_name": "1778755209418_IMG_20260514_095557.jpg",
+        "class_level": "12",
+        "section": "A",
+        "uploaded_by": 12,
+        "file_type": "notice",
+        "mime_type": "image/jpeg",
+        "file_size": "73270",
+        "web_view_link": "/uploads/1778755209418_IMG_20260514_095557.jpg",
+        "download_link": "/uploads/1778755209418_IMG_20260514_095557.jpg",
+        "created_at": "2026-05-14T05:10:09.447Z"
+      },
+      {
+        "id": 5,
+        "drive_file_id": "1777623102792_Resume_..pdf",
+        "file_name": "1777623102792_Resume_..pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "211700",
+        "web_view_link": "/uploads/1777623102792_Resume_..pdf",
+        "download_link": "/uploads/1777623102792_Resume_..pdf",
+        "created_at": "2026-05-01T02:41:38.982Z"
+      },
+      {
+        "id": 7,
+        "drive_file_id": "1778575484027_BIO.pdf",
+        "file_name": "1778575484027_BIO.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "72551",
+        "web_view_link": "/uploads/1778575484027_BIO.pdf",
+        "download_link": "/uploads/1778575484027_BIO.pdf",
+        "created_at": "2026-05-12T03:14:44.192Z"
+      },
+      {
+        "id": 8,
+        "drive_file_id": "1778576257593_BIO.pdf",
+        "file_name": "1778576257593_BIO.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "72551",
+        "web_view_link": "/uploads/1778576257593_BIO.pdf",
+        "download_link": "/uploads/1778576257593_BIO.pdf",
+        "created_at": "2026-05-12T03:27:37.778Z"
+      },
+      {
+        "id": 9,
+        "drive_file_id": "1778577358590_BIO.pdf",
+        "file_name": "1778577358590_BIO.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "72551",
+        "web_view_link": "/uploads/1778577358590_BIO.pdf",
+        "download_link": "/uploads/1778577358590_BIO.pdf",
+        "created_at": "2026-05-12T03:45:58.807Z"
+      },
+      {
+        "id": 10,
+        "drive_file_id": "1778577584599_BIO.pdf",
+        "file_name": "1778577584599_BIO.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "72551",
+        "web_view_link": "/uploads/1778577584599_BIO.pdf",
+        "download_link": "/uploads/1778577584599_BIO.pdf",
+        "created_at": "2026-05-12T03:49:44.804Z"
+      },
+      {
+        "id": 4,
+        "drive_file_id": "1777622312296_IIT_job_notification.pdf",
+        "file_name": "1777622312296_IIT_job_notification.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "553816",
+        "web_view_link": "/uploads/1777622312296_IIT_job_notification.pdf",
+        "download_link": "/uploads/1777622312296_IIT_job_notification.pdf",
+        "created_at": "2026-05-01T02:28:28.444Z"
+      },
+      {
+        "id": 3,
+        "drive_file_id": "1777569291779_IMG-20260430-WA0016.jpg",
+        "file_name": "1777569291779_IMG-20260430-WA0016.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "272848",
+        "web_view_link": "/uploads/1777569291779_IMG-20260430-WA0016.jpg",
+        "download_link": "/uploads/1777569291779_IMG-20260430-WA0016.jpg",
+        "created_at": "2026-04-30T11:44:52.175Z"
+      },
+      {
+        "id": 1,
+        "drive_file_id": "1777528563629_muslim.pdf",
+        "file_name": "1777528563629_muslim.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "566430",
+        "web_view_link": "/uploads/1777528563629_muslim.pdf",
+        "download_link": "/uploads/1777528563629_muslim.pdf",
+        "created_at": "2026-04-30T00:26:00.201Z"
+      },
+      {
+        "id": 2,
+        "drive_file_id": "1777556260601_IIT_job_notification.pdf",
+        "file_name": "1777556260601_IIT_job_notification.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "553816",
+        "web_view_link": "/uploads/1777556260601_IIT_job_notification.pdf",
+        "download_link": "/uploads/1777556260601_IIT_job_notification.pdf",
+        "created_at": "2026-04-30T08:07:41.022Z"
+      },
+      {
+        "id": 6,
+        "drive_file_id": "1778575406148_Resume...pdf",
+        "file_name": "1778575406148_Resume...pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "218517",
+        "web_view_link": "/uploads/1778575406148_Resume...pdf",
+        "download_link": "/uploads/1778575406148_Resume...pdf",
+        "created_at": "2026-05-12T03:13:27.286Z"
+      },
+      {
+        "id": 11,
+        "drive_file_id": "1778578649147_Resume...pdf",
+        "file_name": "1778578649147_Resume...pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "218517",
+        "web_view_link": "/uploads/1778578649147_Resume...pdf",
+        "download_link": "/uploads/1778578649147_Resume...pdf",
+        "created_at": "2026-05-12T04:07:30.159Z"
+      },
+      {
+        "id": 15,
+        "drive_file_id": "1778755442303_IMG_20260514_095557.jpg",
+        "file_name": "1778755442303_IMG_20260514_095557.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "73270",
+        "web_view_link": "/uploads/1778755442303_IMG_20260514_095557.jpg",
+        "download_link": "/uploads/1778755442303_IMG_20260514_095557.jpg",
+        "created_at": "2026-05-14T05:14:02.717Z"
+      },
+      {
+        "id": 16,
+        "drive_file_id": "1778755481127_IMG_20260514_095557.jpg",
+        "file_name": "1778755481127_IMG_20260514_095557.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "73270",
+        "web_view_link": "/uploads/1778755481127_IMG_20260514_095557.jpg",
+        "download_link": "/uploads/1778755481127_IMG_20260514_095557.jpg",
+        "created_at": "2026-05-14T05:14:41.154Z"
+      },
+      {
+        "id": 17,
+        "drive_file_id": "1778755538155_IMG_20260514_095557.jpg",
+        "file_name": "1778755538155_IMG_20260514_095557.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "study_material",
+        "mime_type": "image/jpeg",
+        "file_size": "73270",
+        "web_view_link": "/uploads/1778755538155_IMG_20260514_095557.jpg",
+        "download_link": "/uploads/1778755538155_IMG_20260514_095557.jpg",
+        "created_at": "2026-05-14T05:15:38.563Z"
+      },
+      {
+        "id": 18,
+        "drive_file_id": "1778835872416_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "file_name": "1778835872416_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 106,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "162535",
+        "web_view_link": "/uploads/1778835872416_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "download_link": "/uploads/1778835872416_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "created_at": "2026-05-15T03:34:32.826Z"
+      },
+      {
+        "id": 19,
+        "drive_file_id": "1778836004294_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "file_name": "1778836004294_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 106,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "162535",
+        "web_view_link": "/uploads/1778836004294_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "download_link": "/uploads/1778836004294_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "created_at": "2026-05-15T03:36:44.321Z"
+      },
+      {
+        "id": 20,
+        "drive_file_id": "1778836063815_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "file_name": "1778836063815_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 106,
+        "file_type": "homework",
+        "mime_type": "image/jpeg",
+        "file_size": "162535",
+        "web_view_link": "/uploads/1778836063815_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "download_link": "/uploads/1778836063815_Screenshot_2026-05-15-14-29-31-348_com.android.chrome-edit.jpg",
+        "created_at": "2026-05-15T03:37:44.229Z"
+      },
+      {
+        "id": 21,
+        "drive_file_id": "1779177055361_Buc_Converter.pdf",
+        "file_name": "1779177055361_Buc_Converter.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 12,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "116647",
+        "web_view_link": "/uploads/1779177055361_Buc_Converter.pdf",
+        "download_link": "/uploads/1779177055361_Buc_Converter.pdf",
+        "created_at": "2026-05-19T02:20:56.866Z"
+      },
+      {
+        "id": 22,
+        "drive_file_id": "1779177132948_Test.pdf",
+        "file_name": "1779177132948_Test.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 110,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "116647",
+        "web_view_link": "/uploads/1779177132948_Test.pdf",
+        "download_link": "/uploads/1779177132948_Test.pdf",
+        "created_at": "2026-05-19T02:22:13.832Z"
+      },
+      {
+        "id": 23,
+        "drive_file_id": "homework/general/all/homework_General_All_1779189601769.pdf",
+        "file_name": "Test.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 110,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "116647",
+        "web_view_link": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779189601769.pdf",
+        "download_link": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779189601769.pdf",
+        "created_at": "2026-05-19T05:50:13.189Z"
+      },
+      {
+        "id": 25,
+        "drive_file_id": "homework/general/all/homework_General_All_1779190593887.pdf",
+        "file_name": "Test.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 110,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "116647",
+        "web_view_link": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779190593887.pdf",
+        "download_link": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779190593887.pdf",
+        "created_at": "2026-05-19T06:06:35.600Z"
+      },
+      {
+        "id": 24,
+        "drive_file_id": "homework/general/all/homework_General_All_1779190156613.pdf",
+        "file_name": "Test.pdf",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "homework",
+        "mime_type": "application/pdf",
+        "file_size": "116647",
+        "web_view_link": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779190156613.pdf",
+        "download_link": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779190156613.pdf",
+        "created_at": "2026-05-19T05:59:18.358Z"
+      },
+      {
+        "id": 27,
+        "drive_file_id": "profile/general/all/profile_General_All_1779192035478.png",
+        "file_name": "Sign_Narzima.png",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "profile",
+        "mime_type": "image/png",
+        "file_size": "59527",
+        "web_view_link": "/storage/download/profile%2Fgeneral%2Fall%2Fprofile_General_All_1779192035478.png",
+        "download_link": "/storage/download/profile%2Fgeneral%2Fall%2Fprofile_General_All_1779192035478.png",
+        "created_at": "2026-05-19T06:30:37.083Z"
+      },
+      {
+        "id": 26,
+        "drive_file_id": "profile_pic/general/all/profile_pic_General_All_1779192035551.png",
+        "file_name": "Sign_Narzima.png",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "profile_pic",
+        "mime_type": "image/png",
+        "file_size": "59527",
+        "web_view_link": "/storage/download/profile_pic%2Fgeneral%2Fall%2Fprofile_pic_General_All_1779192035551.png",
+        "download_link": "/storage/download/profile_pic%2Fgeneral%2Fall%2Fprofile_pic_General_All_1779192035551.png",
+        "created_at": "2026-05-19T06:30:37.082Z"
+      },
+      {
+        "id": 28,
+        "drive_file_id": "profile_pic/general/all/profile_pic_General_All_1779192035534.png",
+        "file_name": "Sign_Narzima.png",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "profile_pic",
+        "mime_type": "image/png",
+        "file_size": "59527",
+        "web_view_link": "/storage/download/profile_pic%2Fgeneral%2Fall%2Fprofile_pic_General_All_1779192035534.png",
+        "download_link": "/storage/download/profile_pic%2Fgeneral%2Fall%2Fprofile_pic_General_All_1779192035534.png",
+        "created_at": "2026-05-19T06:30:37.630Z"
+      },
+      {
+        "id": 29,
+        "drive_file_id": "profile/general/all/profile_General_All_1779192716412.png",
+        "file_name": "Sign_Narzima.png",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": null,
+        "file_type": "profile",
+        "mime_type": "image/png",
+        "file_size": "59527",
+        "web_view_link": "/storage/download/profile%2Fgeneral%2Fall%2Fprofile_General_All_1779192716412.png",
+        "download_link": "/storage/download/profile%2Fgeneral%2Fall%2Fprofile_General_All_1779192716412.png",
+        "created_at": "2026-05-19T06:41:58.071Z"
+      },
+      {
+        "id": 30,
+        "drive_file_id": "doubt/general/all/doubt_General_All_1779599134460.png",
+        "file_name": "Logo.png",
+        "class_level": "General",
+        "section": "All",
+        "uploaded_by": 110,
+        "file_type": "doubt",
+        "mime_type": "image/png",
+        "file_size": "805962",
+        "web_view_link": "/storage/download/doubt%2Fgeneral%2Fall%2Fdoubt_General_All_1779599134460.png",
+        "download_link": "/storage/download/doubt%2Fgeneral%2Fall%2Fdoubt_General_All_1779599134460.png",
+        "created_at": "2026-05-23T23:35:36.184Z"
+      }
+    ],
+    "attendance": [
+      {
+        "id": 73,
+        "student_id": 62,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-16T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-17T08:10:59.903Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 74,
+        "student_id": 63,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-16T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-17T08:10:59.970Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 76,
+        "student_id": 65,
+        "user_id": 110,
+        "class_level": "12",
+        "section": "A",
+        "date": "2026-05-17T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-18T13:03:18.198Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 78,
+        "student_id": 62,
+        "user_id": 104,
+        "class_level": "10",
+        "section": null,
+        "date": "2026-05-17T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-18T13:04:15.434Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 79,
+        "student_id": 63,
+        "user_id": 108,
+        "class_level": "10",
+        "section": null,
+        "date": "2026-05-17T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-18T13:04:15.434Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 83,
+        "student_id": 65,
+        "user_id": 12,
+        "class_level": "12",
+        "section": "A",
+        "date": "2026-05-18T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-19T01:04:54.136Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 88,
+        "student_id": 69,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-21T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-21T20:53:55.429Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 89,
+        "student_id": 66,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-21T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-21T20:53:55.508Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 90,
+        "student_id": 70,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-21T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-21T20:53:55.573Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 91,
+        "student_id": 63,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-21T18:30:00.000Z",
+        "is_present": true,
+        "created_at": "2026-05-21T20:53:55.637Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 92,
+        "student_id": 62,
+        "user_id": 12,
+        "class_level": "10",
+        "section": "A",
+        "date": "2026-05-21T18:30:00.000Z",
+        "is_present": false,
+        "created_at": "2026-05-21T20:53:55.702Z",
+        "school_id": "school-001"
+      }
+    ],
+    "audit_log": [],
+    "audit_logs": [
+      {
+        "id": 1,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "contact",
+        "details": {
+          "message": "Updated \"contact\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-04-26T10:03:52.414Z",
+        "school_id": null
+      },
+      {
+        "id": 2,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "help",
+        "details": {
+          "message": "Updated \"help\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-04-26T10:05:02.133Z",
+        "school_id": null
+      },
+      {
+        "id": 3,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "contact",
+        "details": {
+          "message": "Updated \"contact\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-04-26T10:06:20.014Z",
+        "school_id": null
+      },
+      {
+        "id": 4,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "help",
+        "details": {
+          "message": "Updated \"help\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-04-26T10:08:19.748Z",
+        "school_id": null
+      },
+      {
+        "id": 5,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "documentation",
+        "details": {
+          "message": "Updated \"documentation\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-04-26T10:10:16.338Z",
+        "school_id": null
+      },
+      {
+        "id": 6,
+        "user_id": 12,
+        "action": "CREATE_USER",
+        "entity": "users",
+        "entity_id": "58",
+        "details": {
+          "message": "Created teacher: Mehbub"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-01T07:37:22.757Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 7,
+        "user_id": 12,
+        "action": "CREATE_STUDENT",
+        "entity": "students",
+        "entity_id": "29",
+        "details": {
+          "message": "Enrolled student: Student 6 S"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-02T11:45:18.915Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 8,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "60",
+        "details": {
+          "message": "Updated info for John"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T13:01:22.956Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 9,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "12",
+        "details": {
+          "message": "Changed status to inactive"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T13:21:19.811Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 10,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "12",
+        "details": {
+          "message": "Changed status to active"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T13:21:26.162Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 11,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "12",
+        "details": {
+          "message": "Changed status to inactive"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T13:56:41.596Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 12,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "12",
+        "details": {
+          "message": "Changed status to active"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T13:57:17.541Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 13,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "12",
+        "details": {
+          "message": "Changed status to active"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T13:58:41.760Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 14,
+        "user_id": 12,
+        "action": "CREATE_USER",
+        "entity": "users",
+        "entity_id": "65",
+        "details": {
+          "message": "Created teacher: John D"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-03T17:26:32.246Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 15,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "programs",
+        "details": {
+          "message": "Updated \"programs\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-09T06:03:50.123Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 16,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "programs",
+        "details": {
+          "message": "Updated \"programs\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-09T06:28:11.012Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 17,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "privacy",
+        "details": {
+          "message": "Updated \"privacy\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-09T06:32:58.285Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 18,
+        "user_id": 12,
+        "action": "CREATE_STUDENT",
+        "entity": "students",
+        "entity_id": "43",
+        "details": {
+          "message": "Enrolled student: Student9"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-09T07:50:09.050Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 19,
+        "user_id": 12,
+        "action": "CREATE_USER",
+        "entity": "users",
+        "entity_id": "80",
+        "details": {
+          "message": "Created teacher: User9"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-09T18:22:14.785Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 20,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT",
+        "entity": "students",
+        "entity_id": "45",
+        "details": {
+          "message": "Updated student: Student 11"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-11T10:48:59.745Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 21,
+        "user_id": 12,
+        "action": "CREATE_STUDENT",
+        "entity": "students",
+        "entity_id": "53",
+        "details": {
+          "message": "Enrolled student: Mustafa"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-12T06:15:50.342Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 22,
+        "user_id": 12,
+        "action": "CREATE_USER",
+        "entity": "users",
+        "entity_id": "99",
+        "details": {
+          "message": "Created teacher: Teacher $"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:01:21.479Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 23,
+        "user_id": 12,
+        "action": "CREATE_USER",
+        "entity": "users",
+        "entity_id": "100",
+        "details": {
+          "message": "Created staff: Staff 9"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:02:09.068Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 24,
+        "user_id": 12,
+        "action": "CREATE_STUDENT",
+        "entity": "students",
+        "entity_id": "60",
+        "details": {
+          "message": "Enrolled student: Hashem Chan"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:03:28.462Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 25,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "97",
+        "details": {
+          "message": "Updated info for Shukur Ali"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:29:55.624Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 26,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "99",
+        "details": {
+          "message": "Deleted user ID 99"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:30:12.303Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 27,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "documentation",
+        "details": {
+          "message": "Updated \"documentation\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:41:02.054Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 28,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "documentation",
+        "details": {
+          "message": "Updated \"documentation\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-14T10:41:56.096Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 29,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "12",
+        "details": {
+          "userId": 25,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:14:28.860Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 30,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "50",
+        "details": {
+          "userId": 85,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:14:34.602Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 31,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "60",
+        "details": {
+          "userId": 101,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:14:38.718Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 32,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "11",
+        "details": {
+          "userId": 22,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:14:44.454Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 33,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "59",
+        "details": {
+          "userId": 96,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:14:50.896Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 34,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "53",
+        "details": {
+          "userId": 88,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:14:56.745Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 35,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "27",
+        "details": {
+          "userId": 45,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:02.074Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 36,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "18",
+        "details": {
+          "userId": 35,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:13.987Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 37,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "13",
+        "details": {
+          "userId": 28,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:22.539Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 38,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "45",
+        "details": {
+          "userId": 77,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:27.476Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 39,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "29",
+        "details": {
+          "userId": 59,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:35.471Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 40,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "42",
+        "details": {
+          "userId": 74,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:40.191Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 41,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "43",
+        "details": {
+          "userId": 75,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:15:44.969Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 42,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "100",
+        "details": {
+          "message": "Deleted user ID 100"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:04.886Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 43,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "98",
+        "details": {
+          "message": "Deleted user ID 98"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:11.995Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 44,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "97",
+        "details": {
+          "message": "Deleted user ID 97"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:17.088Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 45,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "95",
+        "details": {
+          "message": "Deleted user ID 95"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:22.034Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 46,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "90",
+        "details": {
+          "message": "Deleted user ID 90"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:27.393Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 47,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "80",
+        "details": {
+          "message": "Deleted user ID 80"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:33.131Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 48,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "79",
+        "details": {
+          "message": "Deleted user ID 79"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:38.137Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 49,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "78",
+        "details": {
+          "message": "Deleted user ID 78"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:43.438Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 50,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "65",
+        "details": {
+          "message": "Deleted user ID 65"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:48.440Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 51,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "60",
+        "details": {
+          "message": "Deleted user ID 60"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:53.141Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 52,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "58",
+        "details": {
+          "message": "Deleted user ID 58"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:16:59.958Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 53,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "38",
+        "details": {
+          "message": "Deleted user ID 38"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:17:05.997Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 54,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "32",
+        "details": {
+          "message": "Deleted user ID 32"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:17:16.312Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 55,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "29",
+        "details": {
+          "message": "Deleted user ID 29"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:17:21.404Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 56,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "26",
+        "details": {
+          "message": "Deleted user ID 26"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:17:26.842Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 57,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "24",
+        "details": {
+          "message": "Deleted user ID 24"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:17:50.443Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 58,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "103",
+        "details": {
+          "message": "Deleted user ID 103"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:45:10.354Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 59,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "107",
+        "details": {
+          "message": "Updated info for Bhabajyoti Phukan"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-15T08:51:20.101Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 60,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "64",
+        "details": {
+          "message": "Changed status to inactive"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-17T13:07:47.046Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 61,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT_STATUS",
+        "entity": "students",
+        "entity_id": "64",
+        "details": {
+          "message": "Changed status to active"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-18T06:34:10.210Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 62,
+        "user_id": 12,
+        "action": "UPDATE_CONTENT",
+        "entity": "content_pages",
+        "entity_id": "help",
+        "details": {
+          "message": "Updated \"help\" page content"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-19T06:04:41.885Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 63,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "64",
+        "details": {
+          "userId": 109,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-19T06:29:51.023Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 64,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "111",
+        "details": {
+          "message": "Deleted user ID 111"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-19T12:45:05.140Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 65,
+        "user_id": 12,
+        "action": "CREATE_USER",
+        "entity": "users",
+        "entity_id": "112",
+        "details": {
+          "message": "Created teacher: Muslim Uddin"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-19T12:51:50.490Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 66,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "113",
+        "details": {
+          "message": "Updated info for Hirak Jyoti Bhuyan"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-20T09:49:03.490Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 67,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "107",
+        "details": {
+          "message": "Updated info for Bhabajyoti Phukan"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-20T09:49:46.957Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 68,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "106",
+        "details": {
+          "message": "Updated info for Tilak Dornal"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-20T09:50:06.773Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 69,
+        "user_id": 12,
+        "action": "DELETE_USER",
+        "entity": "users",
+        "entity_id": "107",
+        "details": {
+          "message": "Deleted user ID 107"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-20T17:18:08.754Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 70,
+        "user_id": 12,
+        "action": "UPDATE_USER",
+        "entity": "users",
+        "entity_id": "114",
+        "details": {
+          "message": "Updated info for BHABAJYOTI"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-20T17:21:56.337Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 71,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "61",
+        "details": {
+          "userId": 102,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-21T10:39:35.054Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 72,
+        "user_id": 12,
+        "action": "DELETE_STUDENT",
+        "entity": "students",
+        "entity_id": "68",
+        "details": {
+          "userId": 117,
+          "message": "Deleted student and shared user account",
+          "schoolId": "school-001"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-21T10:44:38.336Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 73,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT",
+        "entity": "students",
+        "entity_id": "65",
+        "details": {
+          "message": "Updated student: Muslim Uddin (including password)"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-21T15:54:57.983Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 74,
+        "user_id": 12,
+        "action": "CREATE_STUDENT",
+        "entity": "students",
+        "entity_id": "77",
+        "details": {
+          "message": "Enrolled student: Student01"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-22T05:58:10.914Z",
+        "school_id": "school-001"
+      },
+      {
+        "id": 75,
+        "user_id": 12,
+        "action": "UPDATE_STUDENT",
+        "entity": "students",
+        "entity_id": "77",
+        "details": {
+          "message": "Updated student: Student01 (including password)"
+        },
+        "ip_address": null,
+        "created_at": "2026-05-22T05:59:56.850Z",
+        "school_id": "school-001"
+      }
+    ],
+    "content_pages": [
+      {
+        "id": 5,
+        "key": "contact",
+        "content": "# Contact Us\n\nWe’re here to help. If you have any questions, feedback, or need support regarding our platform, feel free to reach out.\n\n## General Support\n📧 Email: a2ztuitioncentre@gmail.com\n\n## Business & Partnerships\n📧 Email: a2ztuitioncentre@gmail.com\n\n## Technical Issues\nIf you experience any bugs, login issues, or technical problems, please include:\n- Your registered email\n- Device/browser details\n- Screenshots (if possible)\n- A short description of the issue\n\n## Response Time\nWe usually respond within **24–48 hours** on working days.\n\n## Office Hours\nMonday – Saturday  \n10:00 AM – 6:00 PM (IST)\n\n---\n\nThank you for using our platform.",
+        "updated_at": "2026-04-26T04:36:19.696Z"
+      },
+      {
+        "id": 7,
+        "key": "learn-more",
+        "content": "<h3>About A2Z Tuition</h3><p>A2Z Tuition is dedicated to providing high-quality education through modern technology and expert faculty. Our mission is to empower students with knowledge and skills for a bright future.</p>",
+        "updated_at": "2026-04-23T01:52:10.387Z"
+      },
+      {
+        "id": 8,
+        "key": "terms",
+        "content": "<h3>Terms of Service</h3><p>By using our platform, you agree to comply with our academic guidelines and code of conduct.</p>",
+        "updated_at": "2026-04-23T01:52:10.609Z"
+      },
+      {
+        "id": 4,
+        "key": "resources",
+        "content": "<h3>Learning Resources</h3><p><em>Access curated materials to boost your learning.</em></p><ul><li><b>Digital Library:</b> eBooks and reference papers.</li><li><b>Video Lectures:</b> Recorded sessions for revision.</li><li><b>Practice Tests:</b> Weekly assessments and mock exams.</li></ul>",
+        "updated_at": "2026-04-30T12:16:05.462Z"
+      },
+      {
+        "id": 6,
+        "key": "privacy",
+        "content": "# Privacy Policy\n\n\n\n\nLast Updated: April 25, 2026\n\n\n\n\nWelcome to our A2Z Tuition App. Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information.\n\n\n\n\n## Information We Collect\n\nWe may collect:\n\n- Name, phone number, email address\n\n- Student and class information\n\n- Attendance, homework, and academic records\n\n- Uploaded files, assignments, and documents\n\n- Basic device and usage information\n\n\n\n\n## How We Use Your Information\n\nWe use your information to:\n\n- Provide and manage tuition services\n\n- Track attendance, homework, and student progress\n\n- Enable communication between students, teachers, and parents\n\n- Improve app performance and user experience\n\n\n\n\n## Data Storage &amp; Security\n\nWe take reasonable steps to protect your data from unauthorized access, loss, or misuse. However, no online platform can guarantee complete security.\n\n\n\n\n## Sharing of Information\n\nWe do not sell your personal information. Data may only be shared:\n\n- With authorized teachers, students, or parents\n\n- When required by law\n\n- With trusted service providers for app functionality\n\n\n\n\n## User Responsibilities\n\nUsers are responsible for maintaining the confidentiality of their login credentials and uploaded content.\n\n\n\n\n## Third-Party Services\n\nOur app may use third-party services such as cloud storage, analytics, or authentication providers. Their policies may also apply.\n\n\n\n\n## Children's Privacy\n\nThis app is intended for educational purposes. Parents or guardians may manage student information where required.\n\n\n\n\n## Changes to This Policy\n\nWe may update this Privacy Policy from time to time. Continued use of the app means you accept the updated policy.\n\n\n\n\n## Contact Us\n\nIf you have any questions regarding this Privacy Policy, please contact us through the app support section.\n\n",
+        "updated_at": "2026-05-09T01:02:58.213Z"
+      },
+      {
+        "id": 1,
+        "key": "help",
+        "content": "Welcome to the Help &amp; Support section. We are committed to providing you with a smooth and reliable experience on our platform.\n\n## Frequently Asked Questions\n\n### 1. How do I reset my password?\nGo to the login page and click on **“Forgot Password”** to receive a password reset link.\n\n### 2. How can I update my profile information?\nNavigate to your profile settings from the dashboard and edit your details.\n\n### 3. Homework or data not loading?\nTry:\n- Refreshing the page\n- Checking your internet connection\n- Logging out and logging back in\n\nIf the issue continues, contact support.\n\n### 4. How do I contact support?\nYou can reach us anytime at:\n\n📧 a2ztuitioncentre@gmail.com\n\n## Technical Support\nWhen reporting an issue, please include:\n- Your registered email\n- Device/browser information\n- Screenshots or error messages\n- Steps to reproduce the issue\n\n## Support Availability\nMonday – Saturday  \n10:00 AM – 6:00 PM (IST)\n\nAverage response time: **24–48 hours**\n\nWe appreciate your patience and thank you for using our platform.",
+        "updated_at": "2026-05-19T00:34:41.784Z"
+      },
+      {
+        "id": 3,
+        "key": "programs",
+        "content": "<p><strong>Programs at A2Z Tuition Centre</strong></p><p><br></p><p><strong>At A2Z Tuition Centre</strong>, we believe that education is not limited to textbooks only. Along with academic excellence, we encourage students to develop creativity, confidence, practical knowledge, and innovative thinking.</p><p><br></p><p><strong>Our Programs:</strong></p><p> Academic Classes (Class 7–10)</p><p>We provide quality coaching for students from Class 7 to Class 10 with proper guidance, regular tests, doubt-clearing sessions, and concept-based learning.</p><p><br></p><p><strong>Subjects Available:</strong></p><ol><li>Mathematics</li><li>Science</li><li>English</li><li>Grammar</li><li>Social Science</li><li>Assamese</li></ol><p><br></p><p> <strong>Science Projects &amp; Innovation</strong></p><p><strong><em>Students are encouraged to create:</em></strong></p><ul><li>Science models</li><li>Innovative ideas</li><li>Working projects</li><li>Educational experiments</li></ul><p><br></p><p><em>These activities help students improve:</em></p><ul><li>Scientific thinking</li><li>Creativity</li><li>Problem-solving skills</li><li>Presentation skills</li></ul><p><br></p><p><strong>Wall Magazine Activities</strong></p><p><br></p><p><em>We motivate students to participate in:</em></p><ul><li>Wall magazine preparation</li><li>Educational article writing</li><li>Drawing &amp; creative design</li><li>Current affairs and knowledge sharing</li></ul><p><br></p><p><em>This develops:</em></p><ul><li>Creativity</li><li>Teamwork</li><li>Writing skills</li><li>Leadership qualities</li><li>Personality Development</li></ul><p><br></p><p><strong>Special activities are conducted for:</strong></p><ul><li>Public speaking</li><li>Confidence building</li><li>Communication skills</li><li>Discipline and motivation</li><li>Competitions &amp; Awards</li></ul><p><br></p><p><em>Students regularly participate in:</em></p><ul><li>Quiz competitions</li><li>Science exhibitions</li><li>Essay writing</li><li>Creative activities</li></ul><p><br></p><blockquote>Outstanding students are appreciated with certificates and rewards.</blockquote><p><br></p><h2><strong>Our Mission</strong></h2><blockquote><em>Our mission is to create responsible, confident, knowledgeable, and creative students who can succeed in academics and real life.</em></blockquote><p><br></p><h1><strong>A2Z Tuition Centre</strong></h1><ul><li><strong> Learn • Create • Innovate </strong></li></ul><p><strong>• Succeed</strong></p>",
+        "updated_at": "2026-05-09T00:58:10.935Z"
+      },
+      {
+        "id": 2,
+        "key": "documentation",
+        "content": "# A2Z Tuition App - User Guide\n\nWelcome to the A2Z Tuition ERP! This guide will help **Teachers** and **Students** navigate and use the application efficiently.\n\n---\n\n## l For Teachers\n\nYour dashboard is your central hub for managing your classes, students, and academic responsibilities.\n\n### 1. Timetable &amp; Schedule\n- **View Schedule:** Your daily and weekly classes are displayed on the main dashboard.\n- **Next Class:** Check the \"Ongoing/Upcoming\" section for quick access to your immediate schedule.\n\n### 2. Homework &amp; Assignments\n- **Create Assignments:** Navigate to the **Homework** tab to assign new homework or Daily Practice Problems (DPP). You can specify the class, section, due date, and attach reference files.\n- **Review Submissions:** Go to the submissions section to view student uploads. You can grade them, provide feedback remarks, and mark them as reviewed.\n\n### 3. Attendance\n- **Mark Attendance:** Use the **Attendance** module to take daily attendance for your assigned classes.\n- **View History:** Check past attendance records and overall monthly statistics for your students.\n\n### 4. Study Materials\n- **Upload Resources:** Share notes, presentations, and reference documents via the **Materials** tab. These will be instantly available to students in the selected class and section.\n\n### 5. Exam Results\n- **Upload Grades:** Enter and publish exam scores for your classes through the **Results** module.\n\n---\n\n## 👨‍🎓 For Students\n\nYour dashboard provides everything you need to stay on top of your studies.\n\n### 1. Timetable &amp; Classes\n- **Daily Schedule:** Your timetable is visible right on the dashboard. It highlights your **Ongoing** and **Upcoming** classes so you always know where to be.\n\n### 2. Homework &amp; Submissions\n- **View Tasks:** Check the **Homework/DPP** section for pending assignments.\n- **Submit Work:** Click on a pending assignment to upload your answers (PDF or Image formats accepted).\n- **View Grades:** Once your teacher reviews your submission, you can see your score and teacher remarks in the completed submissions list.\n\n### 3. Study Materials\n- **Download Notes:** Access all study materials, notes, and resources uploaded by your teachers in the **Materials** tab.\n\n### 4. Attendance &amp; Fees\n- **Track Attendance:** Monitor your attendance percentage to ensure you are meeting the requirements.\n- **Fee Status:** Check the **Fees** section to see any pending dues or payment history.\n\n### 5. Notifications &amp; Support\n- **Announcements:** Keep an eye on the **Notifications** panel for important updates from the school administration.\n- **Help &amp; Contact:** Use the **Help &amp; Support** or **Contact Us** tabs if you need technical assistance or want to reach out to the admin.\n\n---\n\n### ⚙️ General Tips\n- **Profile Management:** Both teachers and students can update their personal information and profile pictures via the **Edit Profile** button.\n- **Responsive Design:** The app works seamlessly on both desktop and mobile devices. Use the mobile menu to navigate between modules when on your phone.\n",
+        "updated_at": "2026-05-14T05:11:56.029Z"
+      }
+    ],
+    "exam_results": [
+      {
+        "id": 5,
+        "student_id": 65,
+        "student_name": "Muslim Uddin",
+        "roll_number": "12A002",
+        "class_level": "12",
+        "section": "A",
+        "exam_title": "class test",
+        "subjects": [
+          {
+            "name": "Assamese",
+            "grade": "B+",
+            "total": 100,
+            "obtained": 76
+          }
+        ],
+        "total_marks": "100.00",
+        "obtained_marks": "76.00",
+        "percentage": "76.00",
+        "teacher_id": null,
+        "created_at": "2026-05-19T00:36:42.686Z",
+        "remarks": "Pass",
+        "school_id": "school-001"
+      }
+    ],
+    "fees": [],
+    "homework": [
+      {
+        "id": 21,
+        "teacher_id": null,
+        "class_level": "12",
+        "section": "A",
+        "title": "Test",
+        "description": "Test by dev",
+        "due_date": "2026-05-17T18:30:00.000Z",
+        "subject_id": null,
+        "subject": "Assamese",
+        "attachment_url": "/uploads/homework/homework-1779177055783-782760506.pdf",
+        "school_id": "school-001",
+        "type": "homework",
+        "created_at": "2026-05-19T02:20:58.821Z"
+      },
+      {
+        "id": 22,
+        "teacher_id": null,
+        "class_level": "12",
+        "section": "A",
+        "title": "test",
+        "description": "asdfghj",
+        "due_date": "2026-05-17T18:30:00.000Z",
+        "subject_id": null,
+        "subject": "Assamese",
+        "attachment_url": "/storage/download/homework%2Fgeneral%2Fall%2Fhomework_General_All_1779190156613.pdf",
+        "school_id": "school-001",
+        "type": "homework",
+        "created_at": "2026-05-19T05:59:20.471Z"
+      }
+    ],
+    "materials": [
+      {
+        "id": 5,
+        "title": "study material",
+        "description": "This is targetted to class 10 A",
+        "class_level": "10",
+        "section": "A",
+        "subject": null,
+        "file_url": "/uploads/materials/material-1776609125808-695992587.pdf",
+        "uploaded_by": "7086795477",
+        "uploaded_by_id": 12,
+        "school_id": "school-001",
+        "created_at": "2026-04-19T09:02:01.608Z",
+        "updated_at": "2026-04-19T09:02:01.608Z",
+        "subject_id": null
+      },
+      {
+        "id": 6,
+        "title": "Study material 2",
+        "description": "This is targetted to class 10 B",
+        "class_level": "10",
+        "section": "B",
+        "subject": null,
+        "file_url": "/uploads/materials/material-1776609156555-882277558.pdf",
+        "uploaded_by": "7086795477",
+        "uploaded_by_id": 12,
+        "school_id": "school-001",
+        "created_at": "2026-04-19T09:02:33.251Z",
+        "updated_at": "2026-04-19T09:02:33.251Z",
+        "subject_id": null
+      }
+    ],
+    "notifications": [],
+    "organizations": [
+      {
+        "id": 1,
+        "name": "ABC School",
+        "logo_url": null,
+        "contact_email": null,
+        "address": null,
+        "settings": {},
+        "created_at": "2026-04-23T05:17:19.973Z"
+      }
+    ],
+    "results": [],
+    "students": [
+      {
+        "id": 63,
+        "user_id": 108,
+        "name": "Pol Borah",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Khageswar Borah",
+        "mother_name": "Sebika Borah",
+        "phone": "8822518964",
+        "email": "ab1903760@gmail.com",
+        "roll_number": "10A004",
+        "joining_date": "2026-05-14T18:30:00.000Z",
+        "date_of_birth": "2011-04-25T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-15T06:00:04.378Z"
+      },
+      {
+        "id": 78,
+        "user_id": 127,
+        "name": "Khusbu Lama",
+        "class_level": "7",
+        "section": null,
+        "father_name": "Dilip lama",
+        "mother_name": "Bunu lama",
+        "phone": "7896076350",
+        "email": null,
+        "roll_number": "7001",
+        "joining_date": "2026-05-21T18:30:00.000Z",
+        "date_of_birth": "2014-05-04T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-22T07:45:55.094Z"
+      },
+      {
+        "id": 76,
+        "user_id": 125,
+        "name": "Dipali Lama",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Dilip Lama",
+        "mother_name": "Bunomai Lama",
+        "phone": "6002309100",
+        "email": null,
+        "roll_number": "10A009",
+        "joining_date": "2026-05-21T18:30:00.000Z",
+        "date_of_birth": "2015-09-14T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T21:04:48.782Z"
+      },
+      {
+        "id": 75,
+        "user_id": 124,
+        "name": "Dipali Lama",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Dilip Lama",
+        "mother_name": "Bunomai Lama",
+        "phone": "6002609100",
+        "email": null,
+        "roll_number": "10A008",
+        "joining_date": "2026-05-21T18:30:00.000Z",
+        "date_of_birth": "2015-04-14T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T20:59:01.652Z"
+      },
+      {
+        "id": 79,
+        "user_id": 128,
+        "name": "Bhaba Phukan",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "D phukan",
+        "mother_name": "S phukan",
+        "phone": "6001812116",
+        "email": null,
+        "roll_number": "10A010",
+        "joining_date": "2026-05-21T18:30:00.000Z",
+        "date_of_birth": "2000-11-11T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-22T10:15:25.558Z"
+      },
+      {
+        "id": 67,
+        "user_id": 116,
+        "name": "Swapna Dutta",
+        "class_level": "8",
+        "section": "A",
+        "father_name": "Rupak Dutta",
+        "mother_name": "Munmi Dutta",
+        "phone": "8473053082",
+        "email": null,
+        "roll_number": "8A001",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2013-12-11T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T20:01:41.608Z"
+      },
+      {
+        "id": 66,
+        "user_id": 115,
+        "name": "Khushi Lama",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Anil lama",
+        "mother_name": "Karishma lama",
+        "phone": "9366103135",
+        "email": null,
+        "roll_number": "10A005",
+        "joining_date": "2026-05-19T18:30:00.000Z",
+        "date_of_birth": "2009-10-24T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T17:39:07.595Z"
+      },
+      {
+        "id": 80,
+        "user_id": 129,
+        "name": "PINKI Kakoti",
+        "class_level": "9",
+        "section": "B",
+        "father_name": "Mintu kakoti",
+        "mother_name": "Nilakhi kakoti",
+        "phone": "9395899727",
+        "email": null,
+        "roll_number": "9B001",
+        "joining_date": "2026-05-22T18:30:00.000Z",
+        "date_of_birth": "2012-05-02T18:30:00.000Z",
+        "status": "pending",
+        "school_id": "school-001",
+        "created_at": "2026-05-22T22:51:00.505Z"
+      },
+      {
+        "id": 65,
+        "user_id": 110,
+        "name": "Muslim Uddin",
+        "class_level": "12",
+        "section": "A",
+        "father_name": "N chan",
+        "mother_name": "M Khatun",
+        "phone": "7086795477",
+        "email": "uddinemuslim@gmail.com",
+        "roll_number": "12A002",
+        "joining_date": "2026-05-17T18:30:00.000Z",
+        "date_of_birth": "2002-09-30T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-18T09:22:13.123Z"
+      },
+      {
+        "id": 74,
+        "user_id": 123,
+        "name": "test student0",
+        "class_level": "12",
+        "section": "B",
+        "father_name": "father.1",
+        "mother_name": "mother",
+        "phone": "8878976547",
+        "email": "student9@gmai.com",
+        "roll_number": "12B001",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2026-05-18T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T10:55:43.190Z"
+      },
+      {
+        "id": 73,
+        "user_id": 122,
+        "name": "John Doe",
+        "class_level": "9",
+        "section": "A",
+        "father_name": "Father Doe",
+        "mother_name": "Mother Doe",
+        "phone": "9876546038",
+        "email": "john.doe.7453@example.com",
+        "roll_number": "9A001",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2010-05-14T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T10:43:01.677Z"
+      },
+      {
+        "id": 72,
+        "user_id": 121,
+        "name": "Swpna Dutta",
+        "class_level": "8",
+        "section": "A",
+        "father_name": "Rupak Dutta",
+        "mother_name": "Munmi Dutta",
+        "phone": "9864253806",
+        "email": null,
+        "roll_number": "8A002",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2013-12-11T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T09:55:39.894Z"
+      },
+      {
+        "id": 71,
+        "user_id": 120,
+        "name": "Puja Boruah",
+        "class_level": "9",
+        "section": null,
+        "father_name": "Dilip Boruah",
+        "mother_name": "Mina boruah",
+        "phone": "8761062225",
+        "email": null,
+        "roll_number": "9001",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2026-04-18T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T08:34:44.438Z"
+      },
+      {
+        "id": 70,
+        "user_id": 119,
+        "name": "Muskan Lama",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Muskan Lama",
+        "mother_name": "Muskan Lama",
+        "phone": "6002309100",
+        "email": null,
+        "roll_number": "10A007",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2010-05-14T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T07:56:43.417Z"
+      },
+      {
+        "id": 69,
+        "user_id": 118,
+        "name": "Anjan Ghimire",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Shyam Ghimire",
+        "mother_name": "Gita Devi",
+        "phone": "9365521362",
+        "email": null,
+        "roll_number": "10A006",
+        "joining_date": "2026-05-20T18:30:00.000Z",
+        "date_of_birth": "2010-10-03T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-21T06:48:21.261Z"
+      },
+      {
+        "id": 77,
+        "user_id": 126,
+        "name": "Student01",
+        "class_level": "12",
+        "section": "B",
+        "father_name": "Father",
+        "mother_name": "Mother",
+        "phone": "7086795844",
+        "email": "student01@gmail.com",
+        "roll_number": "12B002",
+        "joining_date": "2026-05-21T18:30:00.000Z",
+        "date_of_birth": "1999-12-31T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-22T00:28:10.914Z"
+      },
+      {
+        "id": 62,
+        "user_id": 104,
+        "name": "Shilpa Devi",
+        "class_level": "10",
+        "section": "A",
+        "father_name": "Aaa aa",
+        "mother_name": "Tukheswari Medhi",
+        "phone": "6002396724",
+        "email": null,
+        "roll_number": "10A003",
+        "joining_date": "2026-05-14T18:30:00.000Z",
+        "date_of_birth": "2011-05-14T18:30:00.000Z",
+        "status": "active",
+        "school_id": "school-001",
+        "created_at": "2026-05-15T02:35:18.161Z"
+      }
+    ],
+    "study_materials": [
+      {
+        "id": 5,
+        "title": "study material",
+        "description": "This is targetted to class 10 A",
+        "file_url": "/uploads/materials/material-1776609125808-695992587.pdf",
+        "class_id": 1,
+        "section_id": 1,
+        "uploaded_by": 12,
+        "uploader_role": "admin",
+        "created_at": "2026-04-19T09:02:01.608Z",
+        "updated_at": "2026-04-19T09:02:01.608Z",
+        "subject_id": null
+      },
+      {
+        "id": 7,
+        "title": "Material 3 by Teacher",
+        "description": "This is a tes material",
+        "file_url": "/storage/download/1778755538155_IMG_20260514_095557.jpg",
+        "class_id": 73,
+        "section_id": 144,
+        "uploaded_by": 29,
+        "uploader_role": "teacher",
+        "created_at": "2026-05-14T05:15:40.947Z",
+        "updated_at": "2026-05-14T05:15:40.947Z",
+        "subject_id": null
+      }
+    ],
+    "subject_assignments": [
+      {
+        "id": "27dbe7b7-1dd4-4fba-b708-592c5a70225f",
+        "subject_id": "72f8a4a2-83a8-447c-af96-5ab88dd7acc4",
+        "class_level": "10",
+        "section": null,
+        "teacher_id": null,
+        "assigned_by": 12,
+        "created_at": "2026-04-21T12:58:35.287Z"
+      },
+      {
+        "id": "3a07b156-64c1-4b75-8c85-f67b1aa42f15",
+        "subject_id": "df1280c4-600f-4f3d-9eff-ecb203c73dca",
+        "class_level": "12",
+        "section": "ALL",
+        "teacher_id": 112,
+        "assigned_by": 12,
+        "created_at": "2026-05-19T07:25:12.582Z"
+      },
+      {
+        "id": "5457c02a-2475-4df8-8580-2531274c40fb",
+        "subject_id": "33f614eb-5f9b-45e8-9dd1-0c6c32bc30de",
+        "class_level": "12",
+        "section": "A",
+        "teacher_id": 112,
+        "assigned_by": 12,
+        "created_at": "2026-05-19T07:33:18.992Z"
+      }
+    ],
+    "subjects": [
+      {
+        "id": "72f8a4a2-83a8-447c-af96-5ab88dd7acc4",
+        "name": "Mathematics",
+        "code": "MAT",
+        "created_at": "2026-04-21T12:26:21.745Z"
+      },
+      {
+        "id": "77e49627-3bd3-4565-b9c4-c016477cb410",
+        "name": "Assamese",
+        "code": "ASS",
+        "created_at": "2026-04-21T12:26:59.121Z"
+      },
+      {
+        "id": "df1280c4-600f-4f3d-9eff-ecb203c73dca",
+        "name": "English",
+        "code": "ENG",
+        "created_at": "2026-04-21T12:26:36.983Z"
+      },
+      {
+        "id": "06009b64-791e-4253-b137-ade56a30bcab",
+        "name": "English Grammar",
+        "code": "EGR",
+        "created_at": "2026-05-09T02:10:26.148Z"
+      },
+      {
+        "id": "d5a7605d-ff61-4fb1-9a65-f7eb06d8c03c",
+        "name": "Science",
+        "code": "SCI",
+        "created_at": "2026-05-09T02:10:26.148Z"
+      },
+      {
+        "id": "33219937-4038-42ec-93ec-4170b5ac1ae3",
+        "name": "Social Science",
+        "code": "SSC",
+        "created_at": "2026-05-09T02:10:26.148Z"
+      },
+      {
+        "id": "fae6d4bd-58d7-4423-9135-f35e841b3b15",
+        "name": "Hindi",
+        "code": "HIN",
+        "created_at": "2026-05-09T02:10:26.148Z"
+      },
+      {
+        "id": "8f3508f5-b67d-4022-9517-b01875863eab",
+        "name": "Computer",
+        "code": "COM",
+        "created_at": "2026-05-09T02:10:26.148Z"
+      },
+      {
+        "id": "33f614eb-5f9b-45e8-9dd1-0c6c32bc30de",
+        "name": "English",
+        "code": "ENG001",
+        "created_at": "2026-05-09T13:25:09.594Z"
+      }
+    ],
+    "submissions": [
+      {
+        "id": 5,
+        "homework_id": 22,
+        "student_id": 65,
+        "file_url": "undefined",
+        "status": "submitted",
+        "remark_text": null,
+        "marks": null,
+        "reviewed_by": null,
+        "reviewed_at": null,
+        "submitted_at": "2026-05-19T06:06:45.811Z"
+      },
+      {
+        "id": 3,
+        "homework_id": 21,
+        "student_id": 65,
+        "file_url": "undefined",
+        "status": "reviewed",
+        "remark_text": null,
+        "marks": "feger",
+        "reviewed_by": null,
+        "reviewed_at": "2026-05-19T06:08:03.180Z",
+        "submitted_at": "2026-05-19T02:22:20.960Z"
+      }
+    ],
+    "syllabus": [],
+    "teacher_class_assignment": [
+      {
+        "id": 47,
+        "teacher_id": 105,
+        "class_level": "7",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-15T03:17:37.419Z"
+      },
+      {
+        "id": 48,
+        "teacher_id": 105,
+        "class_level": "8",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-15T03:17:37.419Z"
+      },
+      {
+        "id": 49,
+        "teacher_id": 105,
+        "class_level": "9",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-15T03:17:37.419Z"
+      },
+      {
+        "id": 50,
+        "teacher_id": 105,
+        "class_level": "10",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-15T03:17:37.419Z"
+      },
+      {
+        "id": 59,
+        "teacher_id": 113,
+        "class_level": "7",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T04:19:03.029Z"
+      },
+      {
+        "id": 60,
+        "teacher_id": 113,
+        "class_level": "8",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T04:19:03.029Z"
+      },
+      {
+        "id": 61,
+        "teacher_id": 113,
+        "class_level": "9",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T04:19:03.029Z"
+      },
+      {
+        "id": 62,
+        "teacher_id": 113,
+        "class_level": "10",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T04:19:03.029Z"
+      },
+      {
+        "id": 67,
+        "teacher_id": 106,
+        "class_level": "7",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T04:20:06.450Z"
+      },
+      {
+        "id": 68,
+        "teacher_id": 106,
+        "class_level": "8",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T04:20:06.450Z"
+      },
+      {
+        "id": 69,
+        "teacher_id": 114,
+        "class_level": "7",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T11:51:55.876Z"
+      },
+      {
+        "id": 70,
+        "teacher_id": 114,
+        "class_level": "8",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T11:51:55.876Z"
+      },
+      {
+        "id": 71,
+        "teacher_id": 114,
+        "class_level": "9",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T11:51:55.876Z"
+      },
+      {
+        "id": 72,
+        "teacher_id": 114,
+        "class_level": "10",
+        "section": "ALL",
+        "school_id": "school-001",
+        "created_at": "2026-05-20T11:51:55.876Z"
+      }
+    ],
+    "timetable": [],
+    "users": [
+      {
+        "id": 123,
+        "name": "test student0",
+        "phone": "8878976547",
+        "email": "student9@gmai.com",
+        "password": "$2a$12$J5IOwZyl3fs/199wWdJxOe/r9PYJIdxPFfOEGjhg34r3qURHbmBpG",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T10:55:43.190Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "student0",
+        "status_updated_at": "2026-05-21T10:56:30.130Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-21T10:56:49.402Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 105,
+        "name": "Anita Subba",
+        "phone": "6000636516",
+        "email": "subba3004@gmail.com",
+        "password": "$2a$12$9Ge093gkBVn.MBrK2XRiOe3ClKqyOEphxyMtrB03CnecTccMjjHVC",
+        "role": "teacher",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-15T03:16:20.276Z",
+        "status": "active",
+        "teacher_id": "T98620",
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "Anitasubba",
+        "status_updated_at": "2026-05-15T03:17:37.419Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-20T10:43:23.531Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 108,
+        "name": "Pol Borah",
+        "phone": "8822518964",
+        "email": "ab1903760@gmail.com",
+        "password": "$2a$12$tm5rsIr5WTfYRcxd5hFb/uAMWRwNjLSA.nLUyBBcORhHzyxZDnE06",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-15T06:00:04.378Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "polborah",
+        "status_updated_at": "2026-05-15T06:00:26.272Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-20T11:13:17.249Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 112,
+        "name": "Muslim Uddin",
+        "phone": "7086795477",
+        "email": "uddinemuslim@gmail.com",
+        "password": "$2a$12$kj/gJDottgHm6KbqzKDAGuhKEPCJt5ZgB8Ar4abMs/bryT.P16Qfy",
+        "role": "teacher",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-19T07:21:50.490Z",
+        "status": "active",
+        "teacher_id": "T57018",
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "muslim",
+        "status_updated_at": "2026-05-19T07:22:07.500Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-20T11:21:52.025Z",
+        "designation": null,
+        "password_status": "generated"
+      },
+      {
+        "id": 126,
+        "name": "Student01",
+        "phone": "7086795844",
+        "email": "student01@gmail.com",
+        "password": "$2a$12$rSxL3Z311FMsnEeAys.6VOAQOAEkrlOD9JDXENGU9b5PDvNE4FBk.",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-22T00:28:10.914Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "utudent01",
+        "status_updated_at": "2026-05-22T00:28:21.796Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "generated"
+      },
+      {
+        "id": 114,
+        "name": "BHABAJYOTI",
+        "phone": "6001812116",
+        "email": "Phukan",
+        "password": "$2a$12$OXf88gsZvEgFUImCDD6YleElqg62WC.geqSiIcCH3vXbkeRiO1kVW",
+        "role": "teacher",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-20T11:50:06.116Z",
+        "status": "active",
+        "teacher_id": "T55298",
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "bhaba",
+        "status_updated_at": "2026-05-20T11:50:43.359Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-20T12:06:47.823Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 127,
+        "name": "Khusbu Lama",
+        "phone": "7896076350",
+        "email": null,
+        "password": "$2a$12$AkCe0Gu6l5gOO/eJY8J.1e/FXBN2/8cp3ELACmqxUXjwNiY/7Lx7q",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-22T07:45:55.094Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "khusbu",
+        "status_updated_at": "2026-05-22T10:17:28.652Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 116,
+        "name": "Swapna Dutta",
+        "phone": "8473053082",
+        "email": null,
+        "password": "$2a$12$wKJDQeOEF7/uQ3euCXBW3uiUZWUMbFIMsVuQ0mop1bHR7TzekD8MW",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-20T20:01:41.608Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "SWPNa",
+        "status_updated_at": "2026-05-20T22:51:31.956Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 125,
+        "name": "Dipali Lama",
+        "phone": "6002309100",
+        "email": null,
+        "password": "$2a$12$GkGteGLkBRx0MIgbW0IXOOx98ijZpD6o5iXWsKBL.Vjwj78HYbufq",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T21:04:48.782Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "6002309100",
+        "status_updated_at": "2026-05-22T10:17:36.518Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 122,
+        "name": "John Doe",
+        "phone": "9876546038",
+        "email": "john.doe.7453@example.com",
+        "password": "$2a$12$lF/G7S1penqEe.93APs3rObY7vb7xwxQnF0jomvuKCgmSC91ErK/2",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T10:43:01.677Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "teststudent_7232",
+        "status_updated_at": "2026-05-21T20:49:57.740Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 106,
+        "name": "Tilak Dornal",
+        "phone": "6000732958",
+        "email": "dornaltilak@gmail.com",
+        "password": "$2a$12$qw9w9dwcAA0xeO2bZck76eJpEuqTkLG2Tg6/kZkipwnjuu163GUNC",
+        "role": "teacher",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-15T03:18:10.131Z",
+        "status": "active",
+        "teacher_id": "T21794",
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "Tilakdornal",
+        "status_updated_at": "2026-05-15T03:19:00.149Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-20T20:25:31.569Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 121,
+        "name": "Swpna Dutta",
+        "phone": "9864253806",
+        "email": null,
+        "password": "$2a$12$EUoYIlAbdhGNk2/.g0lGVeNdh/hQRc/VdakjHq2zoGsm4gfwPQqja",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T09:55:39.894Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "Swapna",
+        "status_updated_at": "2026-05-21T20:50:02.341Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 120,
+        "name": "Puja Boruah",
+        "phone": "8761062225",
+        "email": null,
+        "password": "$2a$12$6ZOamd7wR5UUBbOUunMWKe1Nn9YL4G.U4myLmHN0DZthnQz/Qopv2",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T08:34:44.438Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "jharna",
+        "status_updated_at": "2026-05-21T20:50:06.861Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 119,
+        "name": "Muskan Lama",
+        "phone": "6002309100",
+        "email": null,
+        "password": "$2a$12$aL5K6Z.x09RyBUqvq9kOu.w/kspmtehI5HdrLYuyYEdRzPrARQGx6",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T07:56:43.417Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "dipali",
+        "status_updated_at": "2026-05-21T20:50:11.186Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 118,
+        "name": "Anjan Ghimire",
+        "phone": "9365521362",
+        "email": null,
+        "password": "$2a$12$q5s.rXJGfrglJO7P4unTjOQSgOV.mF3/Q6W8THNpxbF7glIizhyzG",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T06:48:21.261Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "Anjan",
+        "status_updated_at": "2026-05-21T20:50:14.952Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 124,
+        "name": "Dipali Lama",
+        "phone": "6002609100",
+        "email": null,
+        "password": "$2a$12$SS0kwhzhrY5AnGtKIEgSHeR.QPNWjfHXBOs1/Eh3TYUXdQMSIfaGW",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-21T20:59:01.652Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": " 6002309100 ",
+        "status_updated_at": "2026-05-22T10:17:42.718Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 128,
+        "name": "Bhaba Phukan",
+        "phone": "6001812116",
+        "email": null,
+        "password": "$2a$12$KraQuQgoJCEJ/TYQNVR1feZ15tsSvya0FnuNYA6OjCsIjSgyz6FFi",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-22T10:15:25.558Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "bhabap",
+        "status_updated_at": "2026-05-22T10:17:48.757Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-22T10:18:20.429Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 115,
+        "name": "Khushi Lama",
+        "phone": "9366103135",
+        "email": null,
+        "password": "$2a$12$03VK7lq3lgsusimxzZ2zxOSPdHogaiWhXDBv9WKDBYT5qfGTDHc/W",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-20T17:39:07.595Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "khusi",
+        "status_updated_at": "2026-05-20T22:51:36.794Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-22T23:15:07.598Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 113,
+        "name": "Hirak Jyoti Bhuyan",
+        "phone": "6901436680",
+        "email": "hirakbhuyan6000@gmail.com",
+        "password": "$2a$12$pe6.2zWIaB53rBw9guU7WuVCYOOWAJ.2Lp35S1Xe/y3w6Ur6Gk4ie",
+        "role": "teacher",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-20T02:04:33.427Z",
+        "status": "active",
+        "teacher_id": "T47396",
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "Hiraka2z",
+        "status_updated_at": "2026-05-20T04:17:56.994Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 12,
+        "name": "Muslim Uddin",
+        "phone": "7086795477",
+        "email": "admin@a2z.local",
+        "password": "$2a$10$4.hUHZQCO/EMfB/EbYfDrOQTkDuaHFCVdbDPX0lXt05aTt3JPty9m",
+        "role": "admin",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-04-12T00:44:11.963Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": null,
+        "rejection_reason": null,
+        "username": "hbhaba",
+        "status_updated_at": null,
+        "avatar_url": "",
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-22T21:28:24.575Z",
+        "designation": "Super Admin",
+        "password_status": "verified"
+      },
+      {
+        "id": 110,
+        "name": "Muslim Uddin",
+        "phone": "7086795477",
+        "email": "uddinemuslim@gmail.com",
+        "password": "$2a$12$83xlKBVd1hZZCOra1s6WNe4zMuYOmTAmM.qiKSEY2dhc/IhGvyV2i",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-18T09:22:13.123Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "student",
+        "status_updated_at": "2026-05-18T09:22:35.932Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-23T23:34:46.154Z",
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 129,
+        "name": "PINKI Kakoti",
+        "phone": "9395899727",
+        "email": null,
+        "password": "$2a$12$vD8H.JsaEqUoPXhZouRrDOPDNGP5b.Mqqvcv2lTcqQ2nssSD.ReeC",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-22T22:51:00.505Z",
+        "status": "pending",
+        "teacher_id": null,
+        "approved_by": null,
+        "rejection_reason": null,
+        "username": "PINKI ",
+        "status_updated_at": null,
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": null,
+        "designation": null,
+        "password_status": "verified"
+      },
+      {
+        "id": 104,
+        "name": "Shilpa Devi",
+        "phone": "6002396724",
+        "email": null,
+        "password": "$2a$12$F.kNB/kfi0VBsHXQkal9m.KfqHxBwBmO0huq05HOW.FQwhpSARH/G",
+        "role": "student",
+        "is_active": true,
+        "school_id": "school-001",
+        "created_at": "2026-05-15T02:35:18.161Z",
+        "status": "active",
+        "teacher_id": null,
+        "approved_by": 12,
+        "rejection_reason": null,
+        "username": "Shilpa",
+        "status_updated_at": "2026-05-15T02:35:34.980Z",
+        "avatar_url": null,
+        "avatar_drive_id": null,
+        "last_login_at": "2026-05-15T02:36:56.289Z",
+        "designation": null,
+        "password_status": "verified"
+      }
+    ]
+  }
+}

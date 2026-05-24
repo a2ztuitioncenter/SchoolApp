@@ -14,6 +14,7 @@ export const studentModel = {
       roll_number VARCHAR(20),
       joining_date DATE NOT NULL,
       date_of_birth DATE DEFAULT NULL,
+      address TEXT,
       status VARCHAR(20) DEFAULT 'active',
       school_id VARCHAR(50) NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
@@ -38,6 +39,7 @@ const MAP_STUDENT = (row) => {
     rollNumber: row.roll_number,
     joiningDate: row.joining_date,
     dateOfBirth: row.date_of_birth,
+    address: row.address,
     status: row.status,
     schoolId: row.school_id,
     createdAt: row.created_at
@@ -47,13 +49,13 @@ const MAP_STUDENT = (row) => {
 export const createStudent = async (pool, data) => {
   const {
     userId, name, classLevel, section, fatherName, motherName,
-    phone, email, rollNumber, joiningDate, dateOfBirth, status, schoolId
+    phone, email, rollNumber, joiningDate, dateOfBirth, status, schoolId, address
   } = data;
   const result = await pool.query(
-    `INSERT INTO students (user_id, name, class_level, section, father_name, mother_name, phone, email, roll_number, joining_date, date_of_birth, status, school_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+    `INSERT INTO students (user_id, name, class_level, section, father_name, mother_name, phone, email, roll_number, joining_date, date_of_birth, status, school_id, address)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
     [userId, name, classLevel, section || null, fatherName || null, motherName || null,
-     phone || null, email || null, rollNumber || null, joiningDate, dateOfBirth || null, status || 'pending', schoolId]
+     phone || null, email || null, rollNumber || null, joiningDate, dateOfBirth || null, status || 'pending', schoolId, address || null]
   );
   return MAP_STUDENT(result.rows[0]);
 };
@@ -62,7 +64,7 @@ export const createStudent = async (pool, data) => {
 const STUDENT_FIELDS = `
   id, user_id, name, class_level, section, 
   father_name, mother_name, phone, email, 
-  roll_number, joining_date, date_of_birth, 
+  roll_number, joining_date, date_of_birth, address, 
   status, school_id, created_at
 `;
 

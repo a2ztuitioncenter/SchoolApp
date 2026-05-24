@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 
 export const updateProfile = async (req, res) => {
-    const { name, email, avatarUrl: bodyAvatarUrl, avatarDriveId: bodyAvatarDriveId, fatherName, motherName, dateOfBirth } = req.body;
+    const { name, email, phone, address, avatarUrl: bodyAvatarUrl, avatarDriveId: bodyAvatarDriveId, fatherName, motherName, dateOfBirth } = req.body;
     const userId = req.user.userId;
     const pool = req.db;
 
@@ -77,10 +77,11 @@ export const updateProfile = async (req, res) => {
             `UPDATE users
              SET name = COALESCE($2, name),
                  email = COALESCE($3, email),
-                 avatar_url = $4,
-                 avatar_drive_id = $5
+                 phone = COALESCE($4, phone),
+                 avatar_url = $5,
+                 avatar_drive_id = $6
              WHERE id = $1 RETURNING *`,
-            [userId, name, email, avatarUrl, avatarDriveId]
+            [userId, name, email, phone, avatarUrl, avatarDriveId]
         );
 
         const updatedUser = result.rows[0];
@@ -94,6 +95,14 @@ export const updateProfile = async (req, res) => {
             if (name !== undefined) {
                 updates.push(`name = $${paramIdx++}`);
                 values.push(name);
+            }
+            if (phone !== undefined) {
+                updates.push(`phone = $${paramIdx++}`);
+                values.push(phone || null);
+            }
+            if (address !== undefined) {
+                updates.push(`address = $${paramIdx++}`);
+                values.push(address || null);
             }
             if (fatherName !== undefined) {
                 updates.push(`father_name = $${paramIdx++}`);

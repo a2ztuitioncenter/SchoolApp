@@ -31,6 +31,7 @@ import subjectsRoutes   from './features/subjects/subjectsRoutes.js';
 import storageRoutes    from './features/storage/storageRoutes.js';
 import profileRoutes    from './features/profile/profileRoutes.js';
 import contentRoutes    from './features/content/contentRoutes.js';
+import supportRoutes    from './features/support/supportRoutes.js';
 import submissionRoutes from './features/submissions/submissionRoutes.js';
 import assignmentRoutes from './features/homework/assignmentRoutes.js';
 import doubtRoutes      from './features/doubts/doubtRoutes.js';
@@ -182,6 +183,7 @@ const startServer = async () => {
     app.use('/api/submissions', authenticate, submissionRoutes);
     app.use('/api/assignments', authenticate, assignmentRoutes);
     app.use('/api/doubts', authenticate, doubtRoutes);
+    app.use('/api/support', authenticate, supportRoutes);
 
 
     // 4. Static Files & Landing Page (Fallback)
