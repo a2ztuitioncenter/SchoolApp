@@ -2768,13 +2768,17 @@ window.openDoubtReplyModal = function(id) {
   if (fileInfo) fileInfo.style.display = 'none';
 
   // Show overlay and drawer
-  document.getElementById('doubtReplyDrawerOverlay').style.display = 'block';
-  document.getElementById('doubt-reply-modal').classList.add('open');
+  const overlay = document.getElementById('doubtReplyDrawerOverlay');
+  const modal = document.getElementById('doubt-reply-modal');
+  if (overlay) overlay.classList.add('active');
+  if (modal) modal.classList.add('active');
 };
 
 window.closeDoubtReplyModal = function() {
-  document.getElementById('doubtReplyDrawerOverlay').style.display = 'none';
-  document.getElementById('doubt-reply-modal').classList.remove('open');
+  const overlay = document.getElementById('doubtReplyDrawerOverlay');
+  const modal = document.getElementById('doubt-reply-modal');
+  if (overlay) overlay.classList.remove('active');
+  if (modal) modal.classList.remove('active');
 };
 
 // Form submission handler

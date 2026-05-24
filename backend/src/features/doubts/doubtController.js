@@ -1,6 +1,7 @@
 import { doubtModel } from './doubtModel.js';
 import { getStudentByUserId } from '../student/Student.js';
 import { subjectModel } from '../subjects/subjectModel.js';
+import { pushNotificationService } from '../../utils/pushNotificationService.js';
 
 export const createDoubt = async (req, res) => {
   try {
@@ -53,6 +54,14 @@ export const createDoubt = async (req, res) => {
       description,
       attachmentUrl
     }, req.db);
+
+    // Trigger push notification to teacher asynchronously
+    pushNotificationService.send(
+      teacherId,
+      'New Doubt Asked ❓',
+      `Student ${student.name} asked: "${title}"`,
+      { screen: 'TeacherDoubtDetails', doubtId: doubt.id }
+    ).catch(err => console.error('[PushNotify] Error:', err.message));
 
     res.status(201).json({ success: true, data: doubt });
   } catch (err) {
@@ -114,6 +123,21 @@ export const answerDoubt = async (req, res) => {
       solutionText,
       solutionAttachmentUrl
     }, req.db);
+
+    // Trigger push notification to student asynchronously
+    req.db.query('SELECT user_id FROM students WHERE id = $1', [doubt.studentId || doubt.student_id])
+      .then(studentRes => {
+        if (studentRes.rows.length > 0) {
+          const studentUserId = studentRes.rows[0].user_id;
+          pushNotificationService.send(
+            studentUserId,
+            'Doubt Answered! 💡',
+            `Your doubt "${doubt.title}" has been answered by the teacher.`,
+            { screen: 'DoubtDetails', doubtId: doubt.id }
+          ).catch(err => console.error('[PushNotify] Error:', err.message));
+        }
+      })
+      .catch(dbErr => console.error('[PushNotify] Student fetch failed:', dbErr.message));
 
     res.json({ success: true, data: updatedDoubt });
   } catch (err) {

@@ -2,6 +2,7 @@ import { homeworkModel } from './Homework.js';
 import { getStudentByUserId } from '../student/Student.js';
 import { r2StorageService } from '../../utils/r2StorageService.js';
 import path from 'path';
+import { pushNotificationService } from '../../utils/pushNotificationService.js';
 
 // Helper: upload a multer memory-buffer to Cloudflare R2
 async function uploadHomeworkFileToR2(file, classLevel, section, userId) {
@@ -92,6 +93,28 @@ export const createHomework = async (req, res) => {
       assignedBy,
       attachmentUrl
     });
+
+    // Trigger push notification to student class/section asynchronously
+    (async () => {
+      try {
+        const studentRes = await req.db.query(
+          "SELECT user_id FROM students WHERE class_level = $1 AND (section = $2 OR section = 'ALL')",
+          [classLevel, section]
+        );
+        const studentUserIds = studentRes.rows.map(s => s.user_id);
+        
+        if (studentUserIds.length > 0) {
+          await pushNotificationService.send(
+            studentUserIds,
+            'New Assignment 📚',
+            `New Assignment: "${title}" in ${subject || 'Subject'}`,
+            { screen: 'Assignments' }
+          );
+        }
+      } catch (pushErr) {
+        console.error('[PushNotify] Homework notification failed:', pushErr.message);
+      }
+    })();
 
     res.status(201).json({ success: true, message: 'Homework created', data: hw });
   } catch (err) {

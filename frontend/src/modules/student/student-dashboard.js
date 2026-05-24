@@ -209,14 +209,20 @@ function setupTabSwitching() {
       }
 
       if (tabId === 'materials') {
-        const classEl = document.getElementById('dropdown-student-class');
-        const sectionEl = document.getElementById('dropdown-student-section');
-        const classText = classEl ? classEl.textContent : '';
-        const sectionText = sectionEl ? sectionEl.textContent : '';
-        
-        const classMatch = classText.match(/Class: (\d+)/i);
-        const studentClass = classMatch ? classMatch[1] : '';
-        const studentSection = sectionText !== 'N/A' ? sectionText : '';
+        let studentClass = sessionStorage.getItem('studentClass') || '';
+        let studentSection = sessionStorage.getItem('studentSection') || '';
+
+        if (!studentClass) {
+          const classEl = document.getElementById('dropdown-student-class');
+          const classText = classEl ? classEl.textContent : '';
+          const classMatch = classText.match(/Class: (\d+)/i);
+          studentClass = classMatch ? classMatch[1] : '';
+        }
+        if (!studentSection) {
+          const sectionEl = document.getElementById('dropdown-student-section');
+          const sectionText = sectionEl ? sectionEl.textContent : '';
+          studentSection = sectionText !== 'N/A' ? sectionText : '';
+        }
         
         loadMaterials(studentClass, studentSection);
       }
@@ -227,14 +233,20 @@ function setupTabSwitching() {
       }
 
       if (tabId === 'subjects') {
-        const classEl = document.getElementById('dropdown-student-class');
-        const sectionEl = document.getElementById('dropdown-student-section');
-        const classText = classEl ? classEl.textContent : '';
-        const sectionText = sectionEl ? sectionEl.textContent : '';
-        
-        const classMatch = classText.match(/Class: (\d+)/i);
-        const studentClass = classMatch ? classMatch[1] : '';
-        const studentSection = sectionText !== 'N/A' ? sectionText : '';
+        let studentClass = sessionStorage.getItem('studentClass') || '';
+        let studentSection = sessionStorage.getItem('studentSection') || '';
+
+        if (!studentClass) {
+          const classEl = document.getElementById('dropdown-student-class');
+          const classText = classEl ? classEl.textContent : '';
+          const classMatch = classText.match(/Class: (\d+)/i);
+          studentClass = classMatch ? classMatch[1] : '';
+        }
+        if (!studentSection) {
+          const sectionEl = document.getElementById('dropdown-student-section');
+          const sectionText = sectionEl ? sectionEl.textContent : '';
+          studentSection = sectionText !== 'N/A' ? sectionText : '';
+        }
         
         loadSubjects(studentClass, studentSection);
       }
@@ -555,6 +567,14 @@ function populateProfile(profile) {
   // Also update `#student-name` if it exists
   const nameElement = document.getElementById('student-name');
   if (nameElement && profile.name) nameElement.textContent = profile.name;
+  
+  // Save to sessionStorage for tab loading reliability
+  if (profile.classLevel) {
+    sessionStorage.setItem('studentClass', profile.classLevel);
+  }
+  if (profile.section) {
+    sessionStorage.setItem('studentSection', profile.section);
+  }
   
   // Update class
   const classElement = document.getElementById('dropdown-student-class');
@@ -2108,14 +2128,20 @@ async function loadStudentDoubtsTab() {
     }
 
     // Load subjects to populate dropdown
-    const classEl = document.getElementById('dropdown-student-class');
-    const sectionEl = document.getElementById('dropdown-student-section');
-    const classText = classEl ? classEl.textContent : '';
-    const sectionText = sectionEl ? sectionEl.textContent : '';
-    
-    const classMatch = classText.match(/Class: (\d+)/i);
-    const studentClass = classMatch ? classMatch[1] : '';
-    const studentSection = sectionText !== 'N/A' ? sectionText : '';
+    let studentClass = sessionStorage.getItem('studentClass') || '';
+    let studentSection = sessionStorage.getItem('studentSection') || '';
+
+    if (!studentClass) {
+      const classEl = document.getElementById('dropdown-student-class');
+      const classText = classEl ? classEl.textContent : '';
+      const classMatch = classText.match(/Class: (\d+)/i);
+      studentClass = classMatch ? classMatch[1] : '';
+    }
+    if (!studentSection) {
+      const sectionEl = document.getElementById('dropdown-student-section');
+      const sectionText = sectionEl ? sectionEl.textContent : '';
+      studentSection = sectionText !== 'N/A' ? sectionText : '';
+    }
 
     const { subjectsAPI } = await import('../../core/api.js');
     const subjectsRes = await subjectsAPI.getAll(studentClass, studentSection);

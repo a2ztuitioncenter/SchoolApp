@@ -16,6 +16,7 @@ import cookieParser from 'cookie-parser';
 
 
 import authRoutes from './features/auth/authRoutes.js';
+import pushTokenRoutes from './features/auth/pushTokenRoutes.js';
 import studentRoutes from './features/student/studentRoutes.js';
 import adminRoutes from './features/admin/adminRoutes.js';
 import teacherRoutes from './features/teacher/teacherRoutes.js';
@@ -159,6 +160,7 @@ const startServer = async () => {
     // 5. API Routes
     console.log('[INIT] Loading API routes...');
     app.use('/api/auth', authRoutes);
+    app.use('/api/auth', pushTokenRoutes);
     app.use('/api/student', authenticate, studentRoutes);
     app.use('/api/admin', authenticate, authorize('admin'), adminRoutes);
     app.use('/api/teacher', authenticate, authorize(['teacher', 'staff', 'admin']), teacherRoutes);

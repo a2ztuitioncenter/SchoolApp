@@ -4,6 +4,7 @@ import { getStudentByUserId } from '../student/Student.js';
 import { homeworkModel } from '../homework/Homework.js';
 import { subjectModel } from '../subjects/subjectModel.js';
 import path from 'path';
+import { pushNotificationService } from '../../utils/pushNotificationService.js';
 
 export const submitHomework = async (req, res) => {
     try {
@@ -169,6 +170,21 @@ export const reviewSubmission = async (req, res) => {
             marks,
             reviewedBy: reviewerId
         });
+
+        // Trigger push notification to student asynchronously
+        req.db.query('SELECT user_id FROM students WHERE id = $1', [submission.student_id])
+            .then(studentRes => {
+                if (studentRes.rows.length > 0) {
+                    const studentUserId = studentRes.rows[0].user_id;
+                    pushNotificationService.send(
+                        studentUserId,
+                        'Submission Reviewed 📝',
+                        `Your assignment has been graded. Marks: ${marks || 'N/A'}. Remarks: "${remarkText || 'No remarks'}"`,
+                        { screen: 'Assignments' }
+                    ).catch(err => console.error('[PushNotify] Review send failed:', err.message));
+                }
+            })
+            .catch(dbErr => console.error('[PushNotify] Student fetch failed:', dbErr.message));
 
         res.json({ success: true, message: 'Submission reviewed successfully', data: updated });
     } catch (err) {

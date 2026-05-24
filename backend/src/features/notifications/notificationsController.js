@@ -1,6 +1,7 @@
 import { sanitizeIdentifier, sanitizeNullableText, sanitizeText } from '../../utils/sanitize.js';
 import { r2StorageService } from '../../utils/r2StorageService.js';
 import path from 'path';
+import { pushNotificationService } from '../../utils/pushNotificationService.js';
 
 export const getAllNotifications = async (req, res) => {
   try {
@@ -104,6 +105,45 @@ export const createNotification = async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [title, message, attachmentUrl, recipientRole || null, classLevel || null, section || null, createdByInt]
     );
+
+    // Asynchronously query recipients and trigger push notification
+    (async () => {
+      try {
+        let recipientQuery = "SELECT id FROM users WHERE status = 'active'";
+        let recipientParams = [];
+
+        if (recipientRole && recipientRole.toLowerCase() !== 'all') {
+          recipientQuery += " AND LOWER(role) = $1";
+          recipientParams.push(recipientRole.toLowerCase());
+        }
+
+        if (recipientRole?.toLowerCase() === 'student') {
+          if (classLevel) {
+            recipientQuery += ` AND id IN (SELECT user_id FROM students WHERE class_level = $${recipientParams.length + 1})`;
+            recipientParams.push(classLevel);
+          }
+          if (section && section !== 'ALL') {
+            recipientQuery += ` AND id IN (SELECT user_id FROM students WHERE section = $${recipientParams.length + 1})`;
+            recipientParams.push(section);
+          }
+        }
+
+        const recipients = await req.db.query(recipientQuery, recipientParams);
+        const recipientUserIds = recipients.rows.map(r => r.id);
+        
+        if (recipientUserIds.length > 0) {
+          await pushNotificationService.send(
+            recipientUserIds,
+            `📢 Announcement: ${title}`,
+            message,
+            { screen: 'Notifications' }
+          );
+        }
+      } catch (pushErr) {
+        console.error('[PushNotify] Notice announcement failed:', pushErr.message);
+      }
+    })();
+
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('createNotification ERROR:', err.message);
